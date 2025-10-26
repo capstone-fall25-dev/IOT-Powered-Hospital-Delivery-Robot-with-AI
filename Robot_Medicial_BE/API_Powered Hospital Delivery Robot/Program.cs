@@ -1,4 +1,3 @@
-using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -24,18 +23,20 @@ builder.Services.AddDbContext<RobotManagerContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
 
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
 builder.Services.AddAutoMapper(typeof(TaskProfile));
+builder.Services.AddAutoMapper(typeof(DestinationProfile));
 
 // EmailSender
-builder.Services.AddTransient<EmailSender>();
 
 var app = builder.Build();
 
