@@ -25,5 +25,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<string> VerifyOtpAsync(VerifyOtpRequest request);
         Task<(string Token, string Message)> LoginAsync(LoginDto request);
         Task<string> LogoutAsync(HttpContext context);
+        Task<string> RequestForgotPasswordAsync(Models.DTOs.ForgotPasswordRequest request);
+
+
+        Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request);
     }
 }

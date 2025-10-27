@@ -65,6 +65,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var username = User.Identity?.Name ?? User.FindFirst("sub")?.Value;
             return Ok(new { Message = $"Xin chào {username}, bạn đã xác thực thành công!" });
         }
+
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            var result = await _userService.RequestForgotPasswordAsync(request);
+            return Ok(new { message = result });
+        }
+
+        [HttpPost("verify-forgot-password")]
+        public async Task<IActionResult> VerifyForgotPassword([FromBody] VerifyForgotPasswordRequest request)
+        {
+            var result = await _userService.VerifyForgotPasswordAsync(request);
+            return Ok(new { message = result });
+        }
+
     }
 
 }
