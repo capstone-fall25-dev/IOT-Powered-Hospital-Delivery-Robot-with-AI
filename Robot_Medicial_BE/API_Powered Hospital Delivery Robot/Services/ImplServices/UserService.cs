@@ -141,77 +141,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async System.Threading.Tasks.Task UpdateUserAsync(User user)
             => await _repository.UpdateUserAsync(user);
 
-        //public async Task<string> RegisterAsync(RegisterRequest request)
-        //{
-        //    if (await ExistsByUsernameAsync(request.Username))
-        //        return "Username already exists.";
-
-        //    //var user = new User
-        //    //{
-        //    //    Username = request.Username,
-        //    //    PasswordHash = HashPassword(request.Password),
-        //    //    FullName = "Co y ta xinh dep",
-        //    //    Role = "operator",
-        //    //    IsActive = false,
-        //    //    CreatedAt = DateTime.Now,
-        //    //    UpdatedAt = DateTime.Now
-        //    //};
-
-        //    var user = _mapper.Map<User>(request);
-        //    user.PasswordHash = HashPassword(request.Password);
-
-        //    await AddUserAsync(user);
-
-        //    string otp = new Random().Next(100000, 999999).ToString();
-        //    _cache.Set($"OTP_{request.Username}", otp, TimeSpan.FromMinutes(5));
-
-        //    await _emailHelper.SendEmailAsync(
-        //        request.Email,
-        //        "Xác thực đăng ký tài khoản",
-        //        $"<h3>Mã OTP của bạn là: <b>{otp}</b></h3><p>OTP có hiệu lực trong 5 phút.</p>"
-        //    );
-
-        //    return "OTP đã được gửi về email của bạn. Vui lòng xác thực.";
-        //}
-
-
-        //public async Task<string> VerifyOtpAsync(VerifyOtpRequest request)
-        //{
-        //    if (!_cache.TryGetValue($"OTP_{request.Username}", out string? storedOtp))
-        //        return "OTP đã hết hạn hoặc không tồn tại.";
-
-        //    if (storedOtp != request.Otp)
-        //        return "OTP không hợp lệ.";
-
-        //    var user = await GetByUsernameAsync(request.Username);
-        //    if (user == null)
-        //        return "Không tìm thấy người dùng.";
-
-        //    user.IsActive = true;
-        //    user.UpdatedAt = DateTime.Now;
-        //    await UpdateUserAsync(user);
-
-        //    _cache.Remove($"OTP_{request.Username}");
-
-        //    return "Xác thực thành công, tài khoản đã được kích hoạt!";
-        //}
 
 
         public async Task<string> RegisterAsync(RegisterRequest request)
         {
+
+            request.Username = request.Email.Trim().ToLower();
+
             if (await ExistsByUsernameAsync(request.Username))
                 return "Username already exists.";
 
-            //var user = new User
-            //{
-            //    Username = request.Username,
-            //    PasswordHash = HashPassword(request.Password),
-            //    FullName = "Beautiful nurse",
-            //    Role = "operator",
-            //    IsActive = false,
-            //    CreatedAt = DateTime.Now,
-            //    UpdatedAt = DateTime.Now
-            //};
 
             var user = _mapper.Map<User>(request);
             user.PasswordHash = HashPassword(request.Password);
@@ -270,6 +209,60 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             context.Session.Remove("AuthToken");
             return System.Threading.Tasks.Task.FromResult("Log out Successful!");
         }
+
+
+        public async Task<string> RequestForgotPasswordAsync(ForgotPasswordRequest request)
+        {
+            // Tìm user theo email
+            var allUsers = await _repository.GetAllAsync();
+            var user = allUsers.FirstOrDefault(u => u.Username == request.Email);
+
+            if (user == null)
+                return "No account found with this email.";
+
+            // Tạo mã OTP ngẫu nhiên
+            string otp = new Random().Next(100000, 999999).ToString();
+
+            // Lưu OTP trong cache (5 phút)
+            _cache.Set($"FORGOT_{user.Username}", otp, TimeSpan.FromMinutes(5));
+
+            // Gửi OTP đến email người dùng
+            await _emailHelper.SendEmailAsync(
+                user.Username,
+                "Password Reset Verification",
+                $"<h3>Your password reset OTP is: <b>{otp}</b></h3><p>The OTP is valid for 5 minutes.</p>"
+            );
+
+            return "OTP has been sent to your email for password reset.";
+        }
+
+        public async Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request)
+        {
+            // Kiểm tra OTP trong cache
+            if (!_cache.TryGetValue($"FORGOT_{request.Email}", out string? storedOtp))
+                return "OTP has expired or does not exist.";
+
+            if (storedOtp != request.Otp)
+                return "Invalid OTP.";
+
+            // Lấy user theo email
+            var allUsers = await _repository.GetAllAsync();
+            var user = allUsers.FirstOrDefault(u => u.Username == request.Email);
+
+            if (user == null)
+                return "User not found.";
+
+            // Cập nhật mật khẩu mới
+            user.PasswordHash = HashPassword(request.NewPassword);
+            user.UpdatedAt = DateTime.Now;
+            await UpdateUserAsync(user);
+
+            // Xóa OTP khỏi cache
+            _cache.Remove($"FORGOT_{request.Email}");
+
+            return "Password reset successful! You can now log in with your new password.";
+        }
+
 
 
 
