@@ -7,13 +7,20 @@ import DoctorProfileProvisionForm from "../pages/DoctorProfileProvisionForm";
 import DoctorManagementPage from "../pages/DoctorManagementPage";
 import RobotDetailMisson from "../pages/RobotDetailMisson";
 import AddTask from "../pages/AddTask";
+import UserProfile from "../pages/UserDetail";
+import RobotDetail from "../pages/RobotDetail";
+import ChangePasswordPage from "../pages/ChangePasswordPage";
+import RobotMissionHistory from "../pages/MissionHistory";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
+
+import ProjectMapListView from "../pages/Viewlistmap";
 const routes = [
     {
-        path: "/",
+        path: "/login",
         element: <Login />,
     },
     {
-        path: "/home",
+        path: "/",
         element: (
             <Home />
         ),
@@ -44,7 +51,7 @@ const routes = [
         ),
     },
     {
-        path: "/robot-tasks/:id",
+        path: "/robot-tasks",
         element: (
             <MainLayout>
                 <RobotDetailMisson />
@@ -60,6 +67,81 @@ const routes = [
             </MainLayout>
         ),
     },
+
+    {
+        path: "/robot-detail/:id",
+        element: (
+            <MainLayout>
+                <RobotDetail />
+            </MainLayout>
+        ),
+    },
+
+
+    {
+        path: "/user-detail",
+        element: (
+            <MainLayout>
+                <UserProfile />
+            </MainLayout>
+        ),
+    },
+
+    {
+        path: "/doctor-profile",
+        element: (
+            <MainLayout>
+                <DoctorProfileProvisionForm />
+            </MainLayout>
+        ),
+    },
+
+    {
+        path: "/reset-password",
+        element: (
+            <>
+                <ChangePasswordPage />
+            </>
+        ),
+    },
+
+
+    {
+        path: "/change-password",
+        element: (
+            <MainLayout>
+                <ChangePasswordPage />
+            </MainLayout>
+        ),
+    },
+
+    {
+        path: "/history-mission",
+        element: (
+            <MainLayout>
+                <RobotMissionHistory />
+            </MainLayout>
+        ),
+    },
+
+    {
+        path: "/forgot-password",
+        element: (
+            <MainLayout>
+                <ForgotPasswordPage />
+            </MainLayout>
+        ),
+    },
+
+    {
+        path: "/viewlistmap",
+        element: (
+            <MainLayout>
+                <ProjectMapListView />
+            </MainLayout>
+        ),
+    },
 ];
+
 
 export default routes;

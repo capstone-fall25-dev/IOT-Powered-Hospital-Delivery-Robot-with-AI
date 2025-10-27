@@ -1,476 +1,254 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-export default function DoctorProfileProvisionForm({ initialData = {}, onCancel, onSave }) {
-    const [form, setForm] = useState({
-        fullName: initialData.fullName || "",
-        displayName: initialData.displayName || "",
-        email: initialData.email || "",
-        phone: initialData.phone || "",
-        licenseNumber: initialData.licenseNumber || "",
-        clinicHospital: initialData.clinicHospital || "",
-        specialties: initialData.specialties || [],
-        degrees: initialData.degrees || "",
-        yearsExperience: initialData.yearsExperience || "",
-        languages: initialData.languages || [],
-        bio: initialData.bio || "",
-        availabilityNote: initialData.availabilityNote || "",
-        isActive: typeof initialData.isActive === "boolean" ? initialData.isActive : true,
-        role: initialData.role || "doctor",
-        photoFile: null,
-        certifications: initialData.certifications || [],
-        username: initialData.username || "",
+export default function DoctorEdit() {
+    // Load Bootstrap/Icons/Fonts for standalone preview
+    useEffect(() => {
+        const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"; document.head.appendChild(css);
+        const icons = document.createElement("link"); icons.rel = "stylesheet"; icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"; document.head.appendChild(icons);
+        const font = document.createElement("link"); font.rel = "stylesheet"; font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"; document.head.appendChild(font);
+        const js = document.createElement("script"); js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"; js.defer = true; document.body.appendChild(js);
+        return () => { document.head.removeChild(css); document.head.removeChild(icons); document.head.removeChild(font); document.body.removeChild(js); };
+    }, []);
+
+    const styles = (
+        <style>{`
+      :root{--teal:#4CE1C6;--ink:#0f172a}
+      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 20%,#e9f3f1 60%,#e8f0ee 100%);min-height:100vh}
+      .glass{background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:20px}
+      .rounded-2xl{border-radius:22px}
+      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
+      .btn-teal:hover{filter:brightness(1.05)}
+      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
+      .section-title{font-weight:800;color:#0b1432}
+      .avatar{width:120px;height:120px;border-radius:999px;background:#eaf7f4;display:grid;place-items:center;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+      .avatar img{width:100%;height:100%;object-fit:cover}
+      .fieldset{border:1px solid rgba(2,6,23,.08);border-radius:12px;padding:12px}
+      .fieldset legend{font-size:.9rem;font-weight:700;margin:0 10px;background:white;padding:0 6px;color:#334155}
+      .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
+    `}</style>
+    );
+
+    const [model, setModel] = useState({
+        fullName: "BS. Nguyễn Văn A",
+        email: "nguyenvana@example.com",
+        phone: "",
+        hospital: "Bệnh viện Bạch Mai",
+        username: "bsnguyenvana",
         password: "",
-        confirmPassword: "",
-        autoGeneratePassword: true,
-        showPassword: false,
-        sendCredentialsEmail: true,
+        autoPassword: false,
+        sendEmail: true,
+        active: true,
+        role: "Bác sĩ" | "Điều phối" | "Quản trị", // "Bác sĩ" | "Điều phối" | "Quản trị"
+        specialty: "Nội khoa",
+        avatar: null,
     });
 
-    const [generatedPassword, setGeneratedPassword] = useState("");
-    const [errors, setErrors] = useState({});
-    const [submitting, setSubmitting] = useState(false);
+    const [showPwd, setShowPwd] = useState(false);
+    const fileRef = useRef(null);
 
-    const specialtiesOptions = [
-        "Nội khoa",
-        "Ngoại tổng quát",
-        "Sản - Phụ khoa",
-        "Nhi khoa",
-        "Tim mạch",
-        "Da liễu",
-        "Khác",
-    ];
-
-    const languageOptions = ["Tiếng Việt", "English", "中文", "ภาษาไทย"];
-
-    function generatePassword(len = 12) {
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_+";
-        let out = "";
-        for (let i = 0; i < len; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
-        return out;
-    }
-
-    function passwordStrength(pw) {
-        if (!pw) return "empty";
-        let score = 0;
-        if (pw.length >= 8) score++;
-        if (/[A-Z]/.test(pw)) score++;
-        if (/[a-z]/.test(pw)) score++;
-        if (/[0-9]/.test(pw)) score++;
-        if (/[^A-Za-z0-9]/.test(pw)) score++;
-        if (score <= 1) return "Very weak";
-        if (score === 2) return "Weak";
-        if (score === 3) return "Medium";
-        if (score === 4) return "Strong";
-        return "Very strong";
-    }
-
-    function validate() {
-        const e = {};
-        if (!form.fullName.trim()) e.fullName = "Tên đầy đủ là bắt buộc";
-        if (!form.email.trim()) e.email = "Email là bắt buộc";
-        if (form.email && (form.email.indexOf("@") === -1 || form.email.split("@").length !== 2))
-            e.email = "Email không hợp lệ";
-        if (!form.licenseNumber.trim()) e.licenseNumber = "Số giấy phép hành nghề là bắt buộc";
-        if (!form.username.trim()) e.username = "Tên đăng nhập (username) là bắt buộc";
-        if (form.username && form.username.length < 4) e.username = "Username ít nhất 4 ký tự";
-
-        if (!form.autoGeneratePassword) {
-            if (!form.password) e.password = "Mật khẩu là bắt buộc (hoặc bật auto-generate)";
-            if (form.password && form.password.length < 8)
-                e.password = "Mật khẩu nên có ít nhất 8 ký tự";
-            if (form.password !== form.confirmPassword)
-                e.confirmPassword = "Mật khẩu xác nhận không khớp";
+    // Sinh mật khẩu ngẫu nhiên
+    function genPassword() {
+        const chars =
+            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+        let s = "";
+        for (let i = 0; i < 12; i++) {
+            s += chars[Math.floor(Math.random() * chars.length)];
         }
-
-        return e;
+        return s;
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
-        const eobj = validate();
-        setErrors(eobj);
-        if (Object.keys(eobj).length) return;
+    // Đánh giá độ mạnh mật khẩu
+    const strength = useMemo(() => {
+        const v = model.password || "";
+        let n = 0;
+        if (v.length >= 8) n++;
+        if (/[A-Z]/.test(v)) n++;
+        if (/[a-z]/.test(v)) n++;
+        if (/\d/.test(v)) n++;
+        if (/[^\w\s]/.test(v)) n++;
+        const label = n <= 2 ? "Yếu" : n === 3 ? "Trung bình" : "Mạnh";
+        const variant = n <= 2 ? "danger" : n === 3 ? "warning" : "success";
+        const width = n <= 2 ? "25%" : n === 3 ? "60%" : "100%";
+        return { n, label, variant, width };
+    }, [model.password]);
 
-        setSubmitting(true);
-        try {
-            let finalPassword = form.password;
-            if (form.autoGeneratePassword) {
-                finalPassword = generatePassword(12);
-                setGeneratedPassword(finalPassword);
-            }
+    // Xử lý thay đổi form
+    function handleChange(e) {
+        const { name, value, type, checked } = e.target;
+        setModel((prev) => ({
+            ...prev,
+            [name]: type === "checkbox" ? checked : value,
+        }));
+    }
 
-            const payload = {
-                ...form,
-                specialties: form.specialties,
-                languages: form.languages,
-                account: {
-                    username: form.username,
-                    password: finalPassword,
-                    sendCredentialsEmail: form.sendCredentialsEmail,
-                },
-            };
-
-            if (onSave) await onSave(payload);
-        } catch (err) {
-            setErrors({ submit: err?.message || "Lỗi khi lưu thông tin" });
-        } finally {
-            setSubmitting(false);
+    // Chọn ảnh đại diện
+    function pickFile() {
+        if (fileRef.current) {
+            fileRef.current.click();
         }
     }
 
-    function handleChange(field, value) {
-        setForm((s) => ({ ...s, [field]: value }));
+    // Load ảnh lên form
+    function onFile(e) {
+        const f = e.target.files?.[0];
+        if (!f) return;
+
+        const r = new FileReader();
+        r.onload = () =>
+            setModel((m) => ({
+                ...m,
+                avatar: r.result,
+            }));
+        r.readAsDataURL(f);
     }
 
-    function toggleArrayValue(field, value) {
-        setForm((s) => {
-            const arr = s[field] || [];
-            if (arr.includes(value)) return { ...s, [field]: arr.filter((x) => x !== value) };
-            return { ...s, [field]: [...arr, value] };
-        });
+    // Kiểm tra hợp lệ form
+    function isValid() {
+        const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(model.email);
+        const okName = model.fullName.trim().length > 3;
+        const okUser = model.username.trim().length > 4;
+        return okEmail && okName && okUser;
     }
 
-    function handleFileChange(field, file) {
-        setForm((s) => ({ ...s, [field]: file }));
-    }
-
-    function handleGenerateNow() {
-        const pw = generatePassword(12);
-        setGeneratedPassword(pw);
-        setForm((s) => ({ ...s, password: pw, confirmPassword: pw, autoGeneratePassword: true }));
+    // Lưu dữ liệu
+    function save() {
+        if (!isValid()) return alert("Vui lòng kiểm tra lại các trường bắt buộc.");
+        console.log("Dữ liệu gửi đi:", model);
+        alert("Lưu thành công!");
     }
 
     return (
-        <div className="container my-5">
-            <div className="card shadow border-0">
-                <div className="card-header bg-teal text-white d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 className="mb-0" style={{ color: "black" }}>Cập nhật thông tin Bác sĩ</h4>
-                        <small style={{ color: "black" }}>Điền thông tin bổ sung khi cấp tài khoản cho bác sĩ</small>
-                    </div>
-                    <span className={`badge ${form.isActive ? "bg-success" : "bg-secondary"}`}>
-                        {form.isActive ? "Active" : "Inactive"}
-                    </span>
+        <div className="page">
+            {styles}
+
+            <div className="container-lg py-3 py-md-4">
+                <a href="#" className="btn btn-outline-secondary btn-sm rounded-pill mb-3"><i className="bi bi-arrow-left me-1"></i> Quay lại danh sách</a>
+
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                    <h4 className="section-title mb-0">Cập nhật thông tin Bác sĩ</h4>
+                    <span className="badge text-bg-success">Active</span>
                 </div>
+                <p className="text-muted mb-3">Điền thông tin bổ sung khi cấp tài khoản cho bác sĩ</p>
 
-                <div className="card-body">
-                    <form onSubmit={handleSubmit}>
-                        <div className="row g-4">
-                            {/* Cột trái */}
-                            <div className="col-lg-8">
-                                {/* Tên */}
-                                <div className="mb-3">
+                <div className="row g-3 g-lg-4">
+                    {/* Left form */}
+                    <div className="col-lg-8">
+                        <div className="glass p-3 p-md-4 rounded-2xl mb-3">
+                            <div className="row g-3">
+                                <div className="col-md-12">
                                     <label className="form-label">Tên đầy đủ</label>
-                                    <input
-                                        value={form.fullName}
-                                        onChange={(e) => handleChange("fullName", e.target.value)}
-                                        className="form-control"
-                                    />
-                                    {errors.fullName && <div className="text-danger small">{errors.fullName}</div>}
+                                    <input name="fullName" className="form-control" value={model.fullName} onChange={handleChange} placeholder="Họ và tên" />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label">Email</label>
+                                    <input name="email" type="email" className="form-control" value={model.email} onChange={handleChange} placeholder="email@benhvien.vn" />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label">Số điện thoại</label>
+                                    <input name="phone" className="form-control" value={model.phone} onChange={handleChange} placeholder="09xxxxxxxx" />
                                 </div>
 
-                                {/* Email + Phone */}
-                                <div className="row">
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Email</label>
-                                        <input
-                                            value={form.email}
-                                            onChange={(e) => handleChange("email", e.target.value)}
-                                            className="form-control"
-                                        />
-                                        {errors.email && <div className="text-danger small">{errors.email}</div>}
-                                    </div>
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Số điện thoại</label>
-                                        <input
-                                            value={form.phone}
-                                            onChange={(e) => handleChange("phone", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Account section */}
-                                <div className="card border mb-3">
-                                    <div className="card-header bg-light fw-bold">Tài khoản đăng nhập</div>
-                                    <div className="card-body">
-                                        <div className="mb-3">
-                                            <label className="form-label">Tên đăng nhập</label>
-                                            <input
-                                                value={form.username}
-                                                onChange={(e) => handleChange("username", e.target.value)}
-                                                className="form-control"
-                                            />
-                                            {errors.username && <div className="text-danger small">{errors.username}</div>}
-                                        </div>
-
-                                        <div className="form-check form-switch mb-3">
-                                            <input
-                                                className="form-check-input"
-                                                type="checkbox"
-                                                checked={form.autoGeneratePassword}
-                                                onChange={(e) =>
-                                                    handleChange("autoGeneratePassword", e.target.checked)
-                                                }
-                                            />
-                                            <label className="form-check-label">Tự tạo mật khẩu ngẫu nhiên</label>
-                                        </div>
-
-                                        {!form.autoGeneratePassword && (
-                                            <>
-                                                <div className="row">
-                                                    <div className="col-md-6 mb-3">
-                                                        <label className="form-label">Mật khẩu</label>
-                                                        <input
-                                                            type={form.showPassword ? "text" : "password"}
-                                                            value={form.password}
-                                                            onChange={(e) => handleChange("password", e.target.value)}
-                                                            className="form-control"
-                                                        />
-                                                        {errors.password && (
-                                                            <div className="text-danger small">{errors.password}</div>
-                                                        )}
-                                                        <div className="small text-muted">
-                                                            Độ mạnh: {passwordStrength(form.password)}
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-md-6 mb-3">
-                                                        <label className="form-label">Xác nhận mật khẩu</label>
-                                                        <input
-                                                            type={form.showPassword ? "text" : "password"}
-                                                            value={form.confirmPassword}
-                                                            onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                                                            className="form-control"
-                                                        />
-                                                        {errors.confirmPassword && (
-                                                            <div className="text-danger small">
-                                                                {errors.confirmPassword}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                <div className="col-md-12">
+                                    <div className="fieldset">
+                                        <legend>Tài khoản đăng nhập</legend>
+                                        <div className="row g-3">
+                                            <div className="col-md-6">
+                                                <label className="form-label">Tên đăng nhập</label>
+                                                <input name="username" className="form-control" value={model.username} onChange={handleChange} />
+                                            </div>
+                                            <div className="col-md-6 d-flex align-items-end">
+                                                <div className="form-check form-switch">
+                                                    <input className="form-check-input" id="autoPwd" type="checkbox" name="autoPassword" checked={model.autoPassword} onChange={handleChange} />
+                                                    <label htmlFor="autoPwd" className="form-check-label">Tự tạo mật khẩu ngẫu nhiên</label>
                                                 </div>
-                                            </>
-                                        )}
+                                            </div>
 
-                                        {form.autoGeneratePassword && (
-                                            <div className="mb-3">
-                                                <label className="form-label">Mật khẩu (tự tạo)</label>
+                                            <div className="col-md-9">
+                                                <label className="form-label">Mật khẩu</label>
                                                 <div className="input-group">
-                                                    <input
-                                                        readOnly
-                                                        value={generatedPassword || "(Chưa tạo)"}
-                                                        className="form-control"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-outline-secondary"
-                                                        onClick={handleGenerateNow}
-                                                    >
-                                                        Tạo mới
-                                                    </button>
+                                                    <input type={showPwd ? 'text' : 'password'} name="password" className="form-control" value={model.password} onChange={handleChange} placeholder="Nhập mật khẩu hoặc tạo tự động..." />
+                                                    <button type="button" className="btn btn-outline-secondary" onClick={() => setShowPwd(s => !s)}>{showPwd ? 'Ẩn' : 'Hiện'}</button>
+                                                    <button type="button" className="btn btn-outline-primary" onClick={() => setModel(m => ({ ...m, password: genPassword() }))}><i className="bi bi-stars me-1"></i>Tạo mới</button>
+                                                </div>
+                                                <div className="progress mt-2" role="progressbar" aria-label="Độ mạnh mật khẩu" aria-valuemin={0} aria-valuemax={5}>
+                                                    <div className={`progress-bar bg-${strength.variant}`} style={{ width: strength.width }}></div>
+                                                </div>
+                                                <div className="small text-muted mt-1">Độ mạnh: <strong>{strength.label}</strong></div>
+                                            </div>
+                                            <div className="col-md-3 d-flex align-items-end">
+                                                <div className="form-check">
+                                                    <input className="form-check-input" id="sendEmail" type="checkbox" name="sendEmail" checked={model.sendEmail} onChange={handleChange} />
+                                                    <label htmlFor="sendEmail" className="form-check-label">Gửi thông tin đến email bác sĩ</label>
                                                 </div>
                                             </div>
-                                        )}
-
-                                        <div className="form-check">
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={form.sendCredentialsEmail}
-                                                onChange={(e) =>
-                                                    handleChange("sendCredentialsEmail", e.target.checked)
-                                                }
-                                            />
-                                            <label className="form-check-label small">
-                                                Gửi thông tin tài khoản tới email bác sĩ
-                                            </label>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Thông tin khác */}
-                                <div className="row">
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Số giấy phép hành nghề</label>
-                                        <input
-                                            value={form.licenseNumber}
-                                            onChange={(e) => handleChange("licenseNumber", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Cơ sở / Bệnh viện</label>
-                                        <input
-                                            value={form.clinicHospital}
-                                            onChange={(e) => handleChange("clinicHospital", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
+                                <div className="col-md-6">
                                     <label className="form-label">Chuyên khoa</label>
-                                    <div className="row">
-                                        {specialtiesOptions.map((s) => (
-                                            <div className="col-md-4" key={s}>
-                                                <div className="form-check">
-                                                    <input
-                                                        className="form-check-input"
-                                                        type="checkbox"
-                                                        checked={form.specialties.includes(s)}
-                                                        onChange={() => toggleArrayValue("specialties", s)}
-                                                    />
-                                                    <label className="form-check-label">{s}</label>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="row">
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Học vị / Bằng cấp</label>
-                                        <input
-                                            value={form.degrees}
-                                            onChange={(e) => handleChange("degrees", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-3">
-                                        <label className="form-label">Kinh nghiệm (năm)</label>
-                                        <input
-                                            type="number"
-                                            value={form.yearsExperience}
-                                            onChange={(e) => handleChange("yearsExperience", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Ngôn ngữ</label>
-                                    <div className="d-flex flex-wrap gap-2">
-                                        {languageOptions.map((l) => (
-                                            <button
-                                                type="button"
-                                                key={l}
-                                                onClick={() => toggleArrayValue("languages", l)}
-                                                className={`btn btn-sm ${form.languages.includes(l)
-                                                    ? "btn-primary"
-                                                    : "btn-outline-secondary"
-                                                    }`}
-                                            >
-                                                {l}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Tiểu sử / Giới thiệu</label>
-                                    <textarea
-                                        rows={4}
-                                        value={form.bio}
-                                        onChange={(e) => handleChange("bio", e.target.value)}
-                                        className="form-control"
-                                    ></textarea>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Ghi chú lịch khám</label>
-                                    <input
-                                        value={form.availabilityNote}
-                                        onChange={(e) => handleChange("availabilityNote", e.target.value)}
-                                        className="form-control"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Cột phải */}
-                            <div className="col-lg-4">
-                                <div className="card p-3 mb-3 text-center">
-                                    <div
-                                        className="mx-auto rounded-circle bg-light d-flex align-items-center justify-content-center mb-2"
-                                        style={{ width: "120px", height: "120px" }}
-                                    >
-                                        {form.photoFile ? (
-                                            <img
-                                                src={URL.createObjectURL(form.photoFile)}
-                                                alt="avatar"
-                                                className="rounded-circle img-fluid"
-                                            />
-                                        ) : (
-                                            <span className="text-muted small">Chưa có ảnh</span>
-                                        )}
-                                    </div>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => handleFileChange("photoFile", e.target.files?.[0])}
-                                        className="form-control"
-                                    />
-                                </div>
-
-                                <div className="card p-3 mb-3">
-                                    <div className="form-check form-switch mb-3">
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            checked={form.isActive}
-                                            onChange={(e) => handleChange("isActive", e.target.checked)}
-                                        />
-                                        <label className="form-check-label">Kích hoạt tài khoản</label>
-                                    </div>
-
-                                    <label className="form-label">Vai trò</label>
-                                    <select
-                                        value={form.role}
-                                        onChange={(e) => handleChange("role", e.target.value)}
-                                        className="form-select"
-                                    >
-                                        <option value="doctor">Bác sĩ</option>
-                                        <option value="consultant">Consultant</option>
-                                        <option value="admin">Admin</option>
+                                    <select name="specialty" className="form-select" value={model.specialty} onChange={handleChange}>
+                                        {['Nội khoa', 'Ngoại khoa', 'Da liễu', 'Nhi khoa', 'Hồi sức', 'Tim mạch'].map(x => <option key={x} value={x}>{x}</option>)}
                                     </select>
                                 </div>
+                                <div className="col-md-6">
+                                    <label className="form-label">Nơi công tác</label>
+                                    <input name="hospital" className="form-control" value={model.hospital} onChange={handleChange} placeholder="Tên bệnh viện" />
+                                </div>
 
-                                <div className="card p-3">
-                                    <div className="small text-muted">Preview</div>
-                                    <div className="fw-bold">{form.fullName || "—"}</div>
-                                    <div className="text-muted small">{form.clinicHospital || "—"}</div>
-                                    <div className="small mt-2">{form.specialties.join(", ") || "—"}</div>
-                                    <div className="small mt-2">
-                                        Username: <span className="fw-semibold">{form.username || "—"}</span>
+                                <div className="col-12 d-flex justify-content-end gap-2">
+                                    <a href="#" className="btn btn-outline-secondary rounded-pill"><i className="bi bi-arrow-left me-1"></i> Quay lại</a>
+                                    <button disabled={!isValid()} className="btn btn-teal rounded-pill" onClick={save}><i className="bi bi-save2 me-1"></i> Lưu thay đổi</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right column */}
+                    <div className="col-lg-4">
+                        <div className="glass p-3 p-md-4 rounded-2xl mb-3">
+                            <div className="d-flex align-items-center gap-3">
+                                <div className="avatar">{model.avatar ? <img src={model.avatar} alt="avatar" /> : <i className="bi bi-person fs-1 text-muted"></i>}</div>
+                                <div>
+                                    <div className="mb-2">
+                                        <button className="btn btn-light btn-sm rounded-pill me-2" onClick={pickFile}><i className="bi bi-upload me-1"></i> Chọn tệp</button>
+                                        <input ref={fileRef} className="d-none" type="file" accept="image/*" onChange={onFile} />
+                                        {model.avatar && <button className="btn btn-outline-danger btn-sm rounded-pill" onClick={() => setModel(m => ({ ...m, avatar: null }))}><i className="bi bi-x-circle me-1"></i> Gỡ ảnh</button>}
                                     </div>
-                                    {generatedPassword && (
-                                        <div className="small mt-1 text-muted">
-                                            Password: <span className="fw-semibold">{generatedPassword}</span>
-                                        </div>
-                                    )}
+                                    <div className="small text-muted">Ảnh có dạng tròn và sẽ tự căn chỉnh.</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="d-flex justify-content-between align-items-center mt-4">
-                            <div>
-                                <button
-                                    type="button"
-                                    onClick={onCancel}
-                                    className="btn btn-outline-secondary me-2"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="btn btn-primary"
-                                >
-                                    {submitting ? "Đang lưu..." : "Lưu và cấp tài khoản"}
-                                </button>
+                        <div className="glass p-3 p-md-4 rounded-2xl mb-3">
+                            <div className="form-check form-switch">
+                                <input className="form-check-input" id="active" type="checkbox" name="active" checked={model.active} onChange={handleChange} />
+                                <label htmlFor="active" className="form-check-label">Kích hoạt tài khoản</label>
                             </div>
-                            {errors.submit && <div className="text-danger small">{errors.submit}</div>}
+                            <div className="mt-3">
+                                <label className="form-label">Vai trò</label>
+                                <select name="role" className="form-select" value={model.role} onChange={handleChange}>
+                                    <option>Bác sĩ</option>
+                                    <option>Điều phối</option>
+                                    <option>Quản trị</option>
+                                </select>
+                            </div>
                         </div>
-                    </form>
+
+                        <div className="glass p-3 p-md-4 rounded-2xl">
+                            <div className="fw-bold mb-2">Preview</div>
+                            <div className="d-flex align-items-start gap-3">
+                                <div className="avatar" style={{ width: 64, height: 64 }}>{model.avatar ? <img src={model.avatar} alt="avatar" /> : <i className="bi bi-person fs-4 text-muted"></i>}</div>
+                                <div>
+                                    <div className="fw-semibold">{model.fullName}</div>
+                                    <div className="text-muted small">{model.hospital}</div>
+                                    <div className="text-muted small">{model.specialty}</div>
+                                    <span className={`badge ${model.active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} border mt-1`}>{model.active ? 'Active' : 'Inactive'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
