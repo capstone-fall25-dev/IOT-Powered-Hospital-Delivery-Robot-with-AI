@@ -291,14 +291,6 @@ export default function DoctorProfileProvisionForm({ initialData = {}, onCancel,
                                 {/* Thông tin khác */}
                                 <div className="row">
                                     <div className="col-md-6 mb-3">
-                                        <label className="form-label">Số giấy phép hành nghề</label>
-                                        <input
-                                            value={form.licenseNumber}
-                                            onChange={(e) => handleChange("licenseNumber", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-3">
                                         <label className="form-label">Cơ sở / Bệnh viện</label>
                                         <input
                                             value={form.clinicHospital}
@@ -329,51 +321,15 @@ export default function DoctorProfileProvisionForm({ initialData = {}, onCancel,
 
                                 <div className="row">
                                     <div className="col-md-6 mb-3">
-                                        <label className="form-label">Học vị / Bằng cấp</label>
-                                        <input
-                                            value={form.degrees}
-                                            onChange={(e) => handleChange("degrees", e.target.value)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-3">
                                         <label className="form-label">Kinh nghiệm (năm)</label>
                                         <input
                                             type="number"
+                                            min={0}
                                             value={form.yearsExperience}
                                             onChange={(e) => handleChange("yearsExperience", e.target.value)}
                                             className="form-control"
                                         />
                                     </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Ngôn ngữ</label>
-                                    <div className="d-flex flex-wrap gap-2">
-                                        {languageOptions.map((l) => (
-                                            <button
-                                                type="button"
-                                                key={l}
-                                                onClick={() => toggleArrayValue("languages", l)}
-                                                className={`btn btn-sm ${form.languages.includes(l)
-                                                    ? "btn-primary"
-                                                    : "btn-outline-secondary"
-                                                    }`}
-                                            >
-                                                {l}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mb-3">
-                                    <label className="form-label">Tiểu sử / Giới thiệu</label>
-                                    <textarea
-                                        rows={4}
-                                        value={form.bio}
-                                        onChange={(e) => handleChange("bio", e.target.value)}
-                                        className="form-control"
-                                    ></textarea>
                                 </div>
 
                                 <div className="mb-3">

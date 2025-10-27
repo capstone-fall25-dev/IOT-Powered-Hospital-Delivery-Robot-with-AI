@@ -70,7 +70,7 @@ export default function MedFleetLanding() {
             {/* NAVBAR */}
             <nav className="navbar navbar-expand-lg py-3 bg-transparent sticky-top">
                 <div className="container-lg">
-                    <a className="navbar-brand d-flex align-items-center gap-2" href="#">
+                    <a className="navbar-brand d-flex align-items-center gap-2" href="/dashboard">
                         <span className="app-badge"><span>▶︎</span></span>
                         <span>MedFleet</span>
                         <small className="text-muted fw-semibold">• Quản lý xe bệnh viện</small>
@@ -98,14 +98,14 @@ export default function MedFleetLanding() {
                             <h1 className="mt-3 mb-3">Điều phối đội xe <span className="accent">nhanh</span><br />&amp; <span className="accent">an toàn</span></h1>
                             <p className="sub fs-5 pe-lg-5">Tập trung lịch xe, phân ca tài xế, bảo trì và giám sát theo thời gian thực trong một nền tảng duy nhất.</p>
                             <div className="d-flex gap-3 mt-4">
-                                <a className="btn cta-primary btn-lg rounded-pill px-4" href="#signup">Dùng thử miễn phí</a>
+
                                 <a className="btn btn-outline-secondary cta-outline btn-lg rounded-pill px-4" href="#features">Xem tính năng</a>
                             </div>
                         </div>
                         <div className="col-lg-6">
                             <div className="glass rounded-2xl p-2 shadow-soft">
                                 <div className="ratio ratio-16x9 rounded-2xl overflow-hidden">
-                                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Demo thao tác điều lệnh & theo dõi trực tiếp" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>
+                                    <iframe src="" title="Demo thao tác điều lệnh & theo dõi trực tiếp" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>
                                 </div>
                                 <div className="text-center small text-muted py-2">Demo thao tác điều lệnh &amp; theo dõi trực tiếp (0:45)</div>
                             </div>

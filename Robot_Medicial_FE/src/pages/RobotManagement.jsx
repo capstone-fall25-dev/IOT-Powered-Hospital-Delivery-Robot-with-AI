@@ -26,7 +26,7 @@ export default function RobotManagement() {
     const navigate = useNavigate();
 
     const handleClick = (robotId) => {
-        navigate(`/robot-tasks/${robotId}`);
+        navigate(`/robot-detail/${robotId}`);
     };
 
     return (

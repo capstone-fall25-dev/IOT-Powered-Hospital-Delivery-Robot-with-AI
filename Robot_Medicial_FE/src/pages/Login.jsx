@@ -50,7 +50,7 @@ export default function Login() {
 
                     <p
                         className="forgot-password"
-                        onClick={() => navigate("/")}
+                        onClick={() => navigate("/forgot-password")}
                     >
                         Quên mật khẩu?
                     </p>
