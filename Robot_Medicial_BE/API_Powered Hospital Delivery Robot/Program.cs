@@ -82,6 +82,9 @@ builder.Services.AddDbContext<RobotManagerContext>(options =>
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
+
 builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddMemoryCache();
 builder.Services.AddDistributedMemoryCache();
@@ -94,9 +97,13 @@ builder.Services.AddSession(options =>
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
 
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
+builder.Services.AddAutoMapper(typeof(TaskProfile));
+builder.Services.AddAutoMapper(typeof(DestinationProfile));
 
 // EmailSender
 builder.Services.AddAutoMapper(typeof(UserMappingProfile));
