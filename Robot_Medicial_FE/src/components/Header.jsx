@@ -1,20 +1,26 @@
-import React from "react";
-import { Navbar, Nav, Button, Container } from "react-bootstrap";
+import React, { useState } from "react";
+import { Navbar, Nav, Button, Container, Dropdown, Image } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
 const Header = () => {
     const navigate = useNavigate();
+    const [showMenu, setShowMenu] = useState(false);
 
     const handleNavigate = (target) => {
         switch (target) {
             case "dashboard":
-                navigate("/home");
+                navigate("/dashboard");
                 break;
             case "team":
                 navigate("/team");
                 break;
+            case "doctor":
+                navigate("/doctor");
+                break;
+            case "profile":
+                navigate("/user-detail");
+                break;
             case "logout":
-                // ✅ Nếu có token auth thì xoá trước khi logout
                 localStorage.removeItem("token");
                 navigate("/");
                 break;
@@ -29,7 +35,7 @@ const Header = () => {
                 <Navbar.Brand
                     className="fw-bold text-primary"
                     style={{ cursor: "pointer" }}
-                    onClick={() => navigate("/home")}
+                    onClick={() => navigate("/")}
                 >
                     🏥 Hospital-Robot
                 </Navbar.Brand>
@@ -52,11 +58,42 @@ const Header = () => {
                     </Button>
 
                     <Button
-                        variant="danger"
-                        onClick={() => handleNavigate("logout")}
+                        variant="outline-danger"
+                        className="me-3"
+                        onClick={() => handleNavigate("doctor")}
                     >
-                        Đăng Xuất
+                        Quản Lý Bác Sĩ
                     </Button>
+
+                    {/* Ảnh đại diện với dropdown */}
+                    <Dropdown align="end" show={showMenu} onToggle={(isOpen) => setShowMenu(isOpen)}>
+                        <Dropdown.Toggle
+                            as="div"
+                            id="user-menu"
+                            className="d-flex align-items-center"
+                            style={{ cursor: "pointer" }}
+                        >
+                            <Image
+                                src="https://cdn-icons-png.flaticon.com/512/847/847969.png" // Avatar mặc định
+                                alt="avatar"
+                                roundedCircle
+                                style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                            />
+                        </Dropdown.Toggle>
+
+                        <Dropdown.Menu className="shadow-sm border-0">
+                            <Dropdown.Item onClick={() => handleNavigate("profile")}>
+                                <i className="bi bi-person-circle me-2"></i> Thông tin người dùng
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
+                            <Dropdown.Item
+                                onClick={() => handleNavigate("logout")}
+                                className="text-danger fw-semibold"
+                            >
+                                <i className="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                            </Dropdown.Item>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </Nav>
             </Container>
         </Navbar>
