@@ -79,7 +79,7 @@ export default function MedFleetLanding() {
                 <div className="container-lg">
                     <a className="navbar-brand d-flex align-items-center gap-2" href="/dashboard">
                         <span className="app-badge"><span>▶︎</span></span>
-                        <span>MedFleet</span>
+                        <span>SEP490_G35</span>
                         <small className="text-muted fw-semibold">• Quản lý xe bệnh viện</small>
                     </a>
                     <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
