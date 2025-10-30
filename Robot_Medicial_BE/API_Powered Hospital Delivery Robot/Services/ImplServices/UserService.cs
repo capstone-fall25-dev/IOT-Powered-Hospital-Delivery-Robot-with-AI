@@ -129,9 +129,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return Convert.ToBase64String(hash);
             }
         }
-        public Task<bool> ExistsByUsernameAsync(string username)
-            => _repository.ExistsByUsernameAsync(username);
-
+  
         public async System.Threading.Tasks.Task AddUserAsync(User user)
             => await _repository.AddUserAsync(user);
 
@@ -145,29 +143,48 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<string> RegisterAsync(RegisterRequest request)
         {
-
             request.Username = request.Email.Trim().ToLower();
 
-            if (await ExistsByUsernameAsync(request.Username))
-                return "Username already exists.";
+            var existingUser = await GetByUsernameAsync(request.Username);
 
+            if (existingUser != null)
+            {
+                // Nếu user đã kích hoạt rồi → báo lỗi
+                if (existingUser.IsActive == true)
+                    return "Username already exists.";
 
+                // Nếu user chưa active → gửi lại OTP
+                string otp = new Random().Next(100000, 999999).ToString();
+                _cache.Set($"OTP_{request.Username}", otp, TimeSpan.FromMinutes(5));
+
+                await _emailHelper.SendEmailAsync(
+                    request.Email,
+                    "Account Registration Verification",
+                    $"<h3>Your OTP code is: <b>{otp}</b></h3><p>The OTP is valid for 5 minutes.</p>"
+                );
+
+                return "Your account is not yet activated. A new OTP has been sent to your email.";
+            }
+
+            // Nếu user chưa tồn tại → tạo mới
             var user = _mapper.Map<User>(request);
             user.PasswordHash = HashPassword(request.Password);
+            user.IsActive = false;
 
             await AddUserAsync(user);
 
-            string otp = new Random().Next(100000, 999999).ToString();
-            _cache.Set($"OTP_{request.Username}", otp, TimeSpan.FromMinutes(5));
+            string newOtp = new Random().Next(100000, 999999).ToString();
+            _cache.Set($"OTP_{request.Username}", newOtp, TimeSpan.FromMinutes(5));
 
             await _emailHelper.SendEmailAsync(
                 request.Email,
                 "Account Registration Verification",
-                $"<h3>Your OTP code is: <b>{otp}</b></h3><p>The OTP is valid for 5 minutes.</p>"
+                $"<h3>Your OTP code is: <b>{newOtp}</b></h3><p>The OTP is valid for 5 minutes.</p>"
             );
 
             return "OTP has been sent to your email. Please verify your account.";
         }
+
 
 
         public async Task<string> VerifyOtpAsync(VerifyOtpRequest request)
@@ -193,20 +210,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
 
 
-        public async Task<(string Token, string Message)> LoginAsync(LoginDto request)
+        public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
         {
             var user = await GetByUsernameAsync(request.Username);
             if (user == null || user.PasswordHash != HashPassword(request.Password) || user.IsActive == false)
                 return (string.Empty, "UserName, Password incorrect or Account is not Active!.");
 
+            // Sinh token mới
             string token = JwtHelper.GenerateToken(user, _configuration);
+
+            // Lưu token vào session (mỗi user chỉ có 1 token hợp lệ)
+            context.Session.SetString($"UserToken_{user.Username}", token);
+
             return ($"Bearer {token}", "Login Successful!");
         }
 
 
-        public Task<string> LogoutAsync(HttpContext context)
+
+        public Task<string> LogoutAsync(HttpContext context, string username)
         {
-            context.Session.Remove("AuthToken");
+            context.Session.Remove($"UserToken_{username}");
             return System.Threading.Tasks.Task.FromResult("Log out Successful!");
         }
 

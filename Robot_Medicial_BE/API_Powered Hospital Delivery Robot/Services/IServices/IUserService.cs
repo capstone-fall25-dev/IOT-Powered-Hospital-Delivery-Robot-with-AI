@@ -15,7 +15,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // interface login, logout, verifil user
         string HashPassword(string password);
-        Task<bool> ExistsByUsernameAsync(string username);
+       
         Task AddUserAsync(User user);
         Task<User?> GetByUsernameAsync(string username);
         Task UpdateUserAsync(User user);
@@ -23,8 +23,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         Task<string> RegisterAsync(Models.DTOs.RegisterRequest request);
         Task<string> VerifyOtpAsync(VerifyOtpRequest request);
-        Task<(string Token, string Message)> LoginAsync(LoginDto request);
-        Task<string> LogoutAsync(HttpContext context);
+        Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context);
+        Task<string> LogoutAsync(HttpContext context, string username);
         Task<string> RequestForgotPasswordAsync(Models.DTOs.ForgotPasswordRequest request);
 
 
