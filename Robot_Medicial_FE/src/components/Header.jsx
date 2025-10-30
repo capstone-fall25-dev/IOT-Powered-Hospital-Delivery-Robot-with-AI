@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Navbar, Nav, Button, Container, Dropdown, Image } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-
+import logo from '../assets/image/logo.jpg';
 const Header = () => {
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
@@ -10,6 +10,9 @@ const Header = () => {
         switch (target) {
             case "dashboard":
                 navigate("/dashboard");
+                break;
+            case "map":
+                navigate("/viewlistmap");
                 break;
             case "team":
                 navigate("/team");
@@ -33,11 +36,20 @@ const Header = () => {
         <Navbar bg="light" expand="lg" className="shadow-sm fixed-top">
             <Container fluid>
                 <Navbar.Brand
-                    className="fw-bold text-primary"
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
                     onClick={() => navigate("/")}
                 >
-                    🏥 Hospital-Robot
+                    <img
+                        src={logo}
+                        alt="Logo"
+                        style={{
+                            height: "50px",
+                            width: "60px",
+                            objectFit: "contain",
+                            marginRight: "10px",
+                        }}
+                    />
+                    <span className="fw-bold text-primary">SEP490_G35</span>
                 </Navbar.Brand>
 
                 <Nav className="ms-auto d-flex align-items-center">
@@ -48,7 +60,13 @@ const Header = () => {
                     >
                         Bảng Điều Khiển
                     </Button>
-
+                    <Button
+                        variant="outline-primary"
+                        className="me-2"
+                        onClick={() => handleNavigate("map")}
+                    >
+                        Quản Lí Map
+                    </Button>
                     <Button
                         variant="outline-success"
                         className="me-2"
