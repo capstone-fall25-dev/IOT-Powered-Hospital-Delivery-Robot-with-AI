@@ -40,6 +40,17 @@ ros2 launch robot_navigation bringup_launch.py
 ros2 launch rplidar_ros view_rplidar_a2m8_launch.py
 ```
 
+### Test map 
+
+```bash
+ros2 launch robot_navigation test_map_launch.py
+```
+
+### Run websocket
+```bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml address:=0.0.0.0 port:=9000
+```
+
 ros-web-bridge
 receive topic map from ros with websocket ip/port and render map with html css and js
 usb TTL convert from usb to uart to connect between computer and stm32
