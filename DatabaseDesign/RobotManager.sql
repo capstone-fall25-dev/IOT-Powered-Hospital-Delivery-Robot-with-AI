@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.36, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 --
--- Host: localhost    Database: robotmanager
+-- Host: 127.0.0.1    Database: robotmanager
 -- ------------------------------------------------------
--- Server version	8.0.43-0ubuntu0.24.04.2
+-- Server version	9.4.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -31,12 +31,15 @@ CREATE TABLE `alerts` (
   `message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `resolved_at` datetime DEFAULT NULL,
+  `prescription_item_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_alert_status` (`status`),
   KEY `idx_alert_category` (`category`),
   KEY `idx_alert_created` (`created_at`),
   KEY `fk_alert_robot` (`robot_id`),
-  CONSTRAINT `fk_alert_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
+  KEY `IX_alerts_prescription_item_id` (`prescription_item_id`),
+  CONSTRAINT `fk_alert_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_alerts_prescription_items_prescription_item_id` FOREIGN KEY (`prescription_item_id`) REFERENCES `prescription_items` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -73,7 +76,7 @@ CREATE TABLE `compartment_assignments` (
   CONSTRAINT `fk_ca_comp` FOREIGN KEY (`compartment_id`) REFERENCES `robot_compartments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ca_stop` FOREIGN KEY (`stop_id`) REFERENCES `task_stops` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ca_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -82,7 +85,6 @@ CREATE TABLE `compartment_assignments` (
 
 LOCK TABLES `compartment_assignments` WRITE;
 /*!40000 ALTER TABLE `compartment_assignments` DISABLE KEYS */;
-INSERT INTO `compartment_assignments` VALUES (1,1,1,4,'Thuốc theo đơn Khoa Dược','loaded','2025-10-01 18:03:26','2025-10-01 18:03:26'),(2,1,2,8,'Vật tư cách ly','loaded','2025-10-01 18:03:26','2025-10-01 18:03:26'),(3,1,3,12,'Bộ cấp cứu','loaded','2025-10-01 18:03:26','2025-10-01 18:03:26'),(4,1,4,16,'Mẫu xét nghiệm','loaded','2025-10-01 18:03:26','2025-10-01 18:03:26');
 /*!40000 ALTER TABLE `compartment_assignments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -95,11 +97,11 @@ DROP TABLE IF EXISTS `compartment_categories`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `compartment_categories` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -108,7 +110,6 @@ CREATE TABLE `compartment_categories` (
 
 LOCK TABLES `compartment_categories` WRITE;
 /*!40000 ALTER TABLE `compartment_categories` DISABLE KEYS */;
-INSERT INTO `compartment_categories` VALUES (1,'Giao thuốc','Ngăn chứa thuốc cho bệnh nhân'),(2,'Giao đồ ăn','Ngăn chứa thức ăn cho bệnh nhân'),(3,'Giao nước','Ngăn chứa nước uống'),(4,'Giao hồ sơ','Ngăn chứa hồ sơ y tế hoặc giấy tờ');
 /*!40000 ALTER TABLE `compartment_categories` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -127,7 +128,7 @@ CREATE TABLE `destinations` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -136,7 +137,6 @@ CREATE TABLE `destinations` (
 
 LOCK TABLES `destinations` WRITE;
 /*!40000 ALTER TABLE `destinations` DISABLE KEYS */;
-INSERT INTO `destinations` VALUES (1,'Khoa Dược','Dược','T1','2025-10-01 18:03:26'),(2,'Phòng 301A - Khu cách ly','Khu Cách ly','T3','2025-10-01 18:03:26'),(3,'Phòng Cấp Cứu','Cấp cứu','T1','2025-10-01 18:03:26'),(4,'Phòng Xét Nghiệm','Xét nghiệm','T2','2025-10-01 18:03:26');
 /*!40000 ALTER TABLE `destinations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -149,7 +149,7 @@ DROP TABLE IF EXISTS `drug_categories`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `drug_categories` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -187,7 +187,7 @@ CREATE TABLE `logs` (
   CONSTRAINT `fk_log_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_log_stop` FOREIGN KEY (`stop_id`) REFERENCES `task_stops` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_log_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -196,7 +196,6 @@ CREATE TABLE `logs` (
 
 LOCK TABLES `logs` WRITE;
 /*!40000 ALTER TABLE `logs` DISABLE KEYS */;
-INSERT INTO `logs` VALUES (1,3,1,1,'success','Hệ thống khởi động. Robot sẵn sàng.','2025-10-01 18:03:26'),(2,3,1,1,'info','Bắt đầu di chuyển tới điểm dừng: Khoa Dược.','2025-10-01 18:03:26'),(3,3,1,1,'broadcast','Robot đang đến, vui lòng tránh đường.','2025-10-01 18:03:26'),(4,3,1,1,'mic','Mic trực tiếp được kích hoạt.','2025-10-01 18:03:26'),(5,3,1,1,'drive','Lệnh điều khiển: Tiến về phía trước.','2025-10-01 18:03:26');
 /*!40000 ALTER TABLE `logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -245,14 +244,16 @@ DROP TABLE IF EXISTS `medicines`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `medicines` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `medicine_code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `unit` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `medicine_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unit` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `price` decimal(10,2) DEFAULT '0.00',
   `stock_quantity` int DEFAULT '0',
-  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `category_id` bigint unsigned DEFAULT NULL,
+  `expiry_date` datetime DEFAULT NULL,
+  `status` enum('active','expired') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
   PRIMARY KEY (`id`),
   UNIQUE KEY `medicine_code` (`medicine_code`),
   KEY `fk_medicine_category` (`category_id`),
@@ -278,14 +279,14 @@ DROP TABLE IF EXISTS `patients`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `patients` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `patient_code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `full_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `gender` enum('male','female','other') COLLATE utf8mb4_unicode_ci DEFAULT 'other',
+  `patient_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `full_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `gender` enum('male','female','other') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'other',
   `dob` date DEFAULT NULL,
-  `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `department` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `room_number` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `department` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `room_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `room_id` bigint unsigned DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -323,7 +324,7 @@ CREATE TABLE `performance_history` (
   KEY `idx_perf_robot_date` (`robot_id`,`completion_date`),
   KEY `idx_perf_date` (`completion_date`),
   CONSTRAINT `fk_perf_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -332,7 +333,6 @@ CREATE TABLE `performance_history` (
 
 LOCK TABLES `performance_history` WRITE;
 /*!40000 ALTER TABLE `performance_history` DISABLE KEYS */;
-INSERT INTO `performance_history` VALUES (1,1,'Khoa Dược, Phòng 301A - Khu cách ly, Phòng Cấp Cứu, Phòng Xét Nghiệm','2025-10-01 18:03:26',2700,0,'2025-10-01 18:03:26'),(2,2,'Phòng Cấp Cứu, Phòng Xét Nghiệm','2025-09-26 18:03:27',1800,1,'2025-10-01 18:03:27');
 /*!40000 ALTER TABLE `performance_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -348,8 +348,8 @@ CREATE TABLE `prescription_items` (
   `prescription_id` bigint unsigned NOT NULL,
   `medicine_id` bigint unsigned NOT NULL,
   `quantity` int NOT NULL,
-  `dosage` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `instructions` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `dosage` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `instructions` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_pi_prescription` (`prescription_id`),
   KEY `fk_pi_medicine` (`medicine_id`),
@@ -376,11 +376,11 @@ DROP TABLE IF EXISTS `prescriptions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `prescriptions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `prescription_code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `prescription_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `patient_id` bigint unsigned NOT NULL,
   `users_id` bigint unsigned DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `status` enum('pending','approved','dispensed','canceled') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `status` enum('pending','approved','dispensed','canceled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
   PRIMARY KEY (`id`),
   UNIQUE KEY `prescription_code` (`prescription_code`),
   KEY `fk_presc_patient` (`patient_id`),
@@ -423,7 +423,7 @@ CREATE TABLE `robot_compartments` (
   CONSTRAINT `fk_comp_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_compartment_category` FOREIGN KEY (`category_id`) REFERENCES `compartment_categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_compartment_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -432,7 +432,6 @@ CREATE TABLE `robot_compartments` (
 
 LOCK TABLES `robot_compartments` WRITE;
 /*!40000 ALTER TABLE `robot_compartments` DISABLE KEYS */;
-INSERT INTO `robot_compartments` VALUES (1,1,'A','locked',NULL,1,NULL,NULL),(2,4,'A','locked',NULL,1,NULL,NULL),(3,2,'A','locked',NULL,1,NULL,NULL),(4,3,'A','locked','Khoa Dược',1,NULL,NULL),(5,1,'B','locked',NULL,1,NULL,NULL),(6,4,'B','locked',NULL,1,NULL,NULL),(7,2,'B','locked',NULL,1,NULL,NULL),(8,3,'B','locked','Phòng 301A - Khu cách ly',1,NULL,NULL),(9,1,'C','locked',NULL,1,NULL,NULL),(10,4,'C','locked',NULL,1,NULL,NULL),(11,2,'C','locked',NULL,1,NULL,NULL),(12,3,'C','locked','Phòng Cấp Cứu',1,NULL,NULL),(13,1,'D','locked',NULL,1,NULL,NULL),(14,4,'D','locked',NULL,1,NULL,NULL),(15,2,'D','locked',NULL,1,NULL,NULL),(16,3,'D','locked','Phòng Xét Nghiệm',1,NULL,NULL);
 /*!40000 ALTER TABLE `robot_compartments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -447,7 +446,7 @@ CREATE TABLE `robot_maintenance_logs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `robot_id` bigint unsigned NOT NULL,
   `maintenance_date` datetime DEFAULT CURRENT_TIMESTAMP,
-  `details` text COLLATE utf8mb4_unicode_ci,
+  `details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
   KEY `fk_rm_robot2` (`robot_id`),
   CONSTRAINT `fk_rm_robot2` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
@@ -495,7 +494,7 @@ CREATE TABLE `robots` (
   KEY `idx_robot_eta_return` (`eta_return_at`),
   KEY `fk_robot_map` (`map_id`),
   CONSTRAINT `fk_robot_map` FOREIGN KEY (`map_id`) REFERENCES `maps` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -504,7 +503,6 @@ CREATE TABLE `robots` (
 
 LOCK TABLES `robots` WRITE;
 /*!40000 ALTER TABLE `robots` DISABLE KEYS */;
-INSERT INTO `robots` VALUES (1,'RB-001','Robot 001','completed',75.00,21.028500,105.854200,0.00,0.00,0,NULL,NULL,0,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26',NULL),(2,'RB-002','Robot 002','awaiting_handover',62.50,21.028510,105.854210,0.00,0.00,0,NULL,NULL,0,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26',NULL),(3,'RB-003','Robot 003','transporting',48.00,21.028520,105.854220,0.00,0.00,0,NULL,NULL,0,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26',NULL),(4,'RB-004','Robot 004','returning_to_station',33.00,21.028530,105.854230,0.00,0.00,0,NULL,NULL,0,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26',NULL);
 /*!40000 ALTER TABLE `robots` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -517,7 +515,7 @@ DROP TABLE IF EXISTS `rooms`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `rooms` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `room_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `room_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `longitude` decimal(10,7) DEFAULT NULL,
   `latitude` decimal(10,7) DEFAULT NULL,
   `map_id` bigint unsigned DEFAULT NULL,
@@ -622,7 +620,7 @@ CREATE TABLE `task_stops` (
   KEY `fk_stop_destination` (`destination_id`),
   CONSTRAINT `fk_stop_destination` FOREIGN KEY (`destination_id`) REFERENCES `destinations` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_stop_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -631,7 +629,6 @@ CREATE TABLE `task_stops` (
 
 LOCK TABLES `task_stops` WRITE;
 /*!40000 ALTER TABLE `task_stops` DISABLE KEYS */;
-INSERT INTO `task_stops` VALUES (1,1,1,1,NULL,'in_progress','2025-10-01 18:13:26',NULL,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26'),(2,1,2,2,NULL,'pending','2025-10-01 18:28:26',NULL,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26'),(3,1,3,3,NULL,'pending','2025-10-01 18:43:26',NULL,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26'),(4,1,4,4,NULL,'pending','2025-10-01 18:58:26',NULL,NULL,'2025-10-01 18:03:26','2025-10-01 18:03:26');
 /*!40000 ALTER TABLE `task_stops` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -654,6 +651,7 @@ CREATE TABLE `tasks` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `map_id` bigint unsigned DEFAULT NULL,
+  `priority` enum('Normal','Urgent','Critical') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Normal',
   PRIMARY KEY (`id`),
   KEY `idx_task_robot` (`robot_id`),
   KEY `idx_task_status` (`status`),
@@ -662,7 +660,7 @@ CREATE TABLE `tasks` (
   CONSTRAINT `fk_task_map` FOREIGN KEY (`map_id`) REFERENCES `maps` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_tasks_assigned_by` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_tasks_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -671,7 +669,6 @@ CREATE TABLE `tasks` (
 
 LOCK TABLES `tasks` WRITE;
 /*!40000 ALTER TABLE `tasks` DISABLE KEYS */;
-INSERT INTO `tasks` VALUES (1,3,1,'in_progress','2025-10-01 18:03:26',NULL,NULL,0,'2025-10-01 18:03:26','2025-10-01 18:03:26',NULL);
 /*!40000 ALTER TABLE `tasks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -715,4 +712,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-10-30 23:11:16
+-- Dump completed on 2025-11-01 17:06:26
