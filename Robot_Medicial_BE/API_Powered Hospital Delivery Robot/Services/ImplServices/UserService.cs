@@ -209,11 +209,57 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
 
 
+        //public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
+        //{
+        //    var user = await GetByUsernameAsync(request.Username);
+        //    if (user == null || user.PasswordHash != HashPassword(request.Password) || user.IsActive == false)
+        //        return (string.Empty, "UserName, Password incorrect or Account is not Active!.");
+
+        //    // Sinh token mới
+        //    string token = JwtHelper.GenerateToken(user, _configuration);
+
+        //    // Lưu token vào session (mỗi user chỉ có 1 token hợp lệ)
+        //    context.Session.SetString($"UserToken_{user.Email}", token);
+
+        //    return ($"Bearer {token}", "Login Successful!");
+        //}
         public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
         {
             var user = await GetByUsernameAsync(request.Username);
-            if (user == null || user.PasswordHash != HashPassword(request.Password) || user.IsActive == false)
-                return (string.Empty, "UserName, Password incorrect or Account is not Active!.");
+            if (user == null)
+                return (string.Empty, "Invalid username or password.");
+
+            // Nếu tài khoản đã bị khóa
+            if (user.IsActive == false)
+                return (string.Empty, "Your account is locked. Please contact the administrator.");
+
+            // Kiểm tra số lần đăng nhập sai từ cache
+            string failKey = $"LOGIN_FAIL_{user.FullName}";
+            _cache.TryGetValue(failKey, out int failCount);
+
+            // Kiểm tra mật khẩu
+            if (user.PasswordHash != HashPassword(request.Password))
+            {
+                failCount++;
+                _cache.Set(failKey, failCount, TimeSpan.FromMinutes(10)); // Đếm trong 10 phút
+
+                if (failCount >= 5)
+                {
+                    user.IsActive = false;
+                    user.UpdatedAt = DateTime.Now;
+                    await UpdateUserAsync(user);
+
+                    _cache.Remove(failKey); // Xóa bộ đếm khi khóa tài khoản
+
+                    return (string.Empty, "Your account has been locked after too many failed login attempts. Please contact the administrator.");
+                }
+
+                int remaining = 5 - failCount;
+                return (string.Empty, $"Invalid password. You have {remaining} more attempt(s) before your account is locked.");
+            }
+
+            // Đăng nhập thành công → reset bộ đếm
+            _cache.Remove(failKey);
 
             // Sinh token mới
             string token = JwtHelper.GenerateToken(user, _configuration);
