@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
 
             CreateMap<Models.Entities.Task, TaskResponseDto>()
                 .ForMember(dest => dest.RobotName, opt => opt.MapFrom(src => src.Robot.Name))
-                .ForMember(dest => dest.AssignedByUsername, opt => opt.MapFrom(src => src.AssignedByNavigation != null ? src.AssignedByNavigation.Username : null));
+                .ForMember(dest => dest.AssignedByUsername, opt => opt.MapFrom(src => src.AssignedByNavigation != null ? src.AssignedByNavigation.Email : null));
         }
     }
 }

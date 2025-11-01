@@ -75,7 +75,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
-builder.Services.AddDbContext<RobotManagerContext>(options =>
+builder.Services.AddDbContext<RobotmanagerContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 

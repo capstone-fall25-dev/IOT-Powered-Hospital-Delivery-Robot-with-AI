@@ -6,9 +6,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class DestinationRepository : IDestinationRepository
     {
-        private readonly RobotManagerContext _context;
+        private readonly RobotmanagerContext _context;
 
-        public DestinationRepository(RobotManagerContext context)
+        public DestinationRepository(RobotmanagerContext context)
         {
             _context = context;
         }

@@ -6,9 +6,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class TaskRepository : ITaskRepository
     {
-        private readonly RobotManagerContext _context;
+        private readonly RobotmanagerContext _context;
 
-        public TaskRepository(RobotManagerContext context)
+        public TaskRepository(RobotmanagerContext context)
         {
             _context = context;
         }
