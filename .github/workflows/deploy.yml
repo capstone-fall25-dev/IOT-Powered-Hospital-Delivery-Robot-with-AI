@@ -1,21 +1,29 @@
-name: Deploy to VPS
+name: 🚀 Deploy to VPS via SSH
 
 on:
   push:
     branches:
-      - main
+    - main
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: 🧭 Checkout code
+      uses: actions/checkout@v4
 
-      - name: Build and deploy with Docker Compose
-        run: |
-          cd /home/runner/app/IOT-Powered-Hospital-Delivery-Robot-with-AI
+    - name: 🔑 Connect & Deploy to VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd /home/runner/app/IOT-Powered-Hospital-Delivery-Robot-with-AI || exit 1
+          git fetch --all
+          git reset --hard origin/main
           docker compose down
-          docker compose build --no-cache
-          docker compose up -d
+          docker system prune -af
+          docker compose up -d --build
+          docker ps
