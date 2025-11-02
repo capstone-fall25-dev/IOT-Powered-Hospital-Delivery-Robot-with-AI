@@ -16,9 +16,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IUserRepository _userRepository;
         private readonly IMedicineRepository _medicineRepository;
         private readonly ITaskRepository _taskRepository;
+        private readonly ICompartmentAssignmentRepository _compartmentAssignmentRepository;
 
         public PrescriptionService(IPrescriptionRepository repository, IPrescriptionItemRepository itemRepository, IMapper mapper, 
-            IPatientRepository patientRepository, IUserRepository userRepository, IMedicineRepository medicineRepository, ITaskRepository taskRepository)
+            IPatientRepository patientRepository, IUserRepository userRepository, IMedicineRepository medicineRepository, ITaskRepository taskRepository, ICompartmentAssignmentRepository compartmentAssignmentRepository)
         {
             _repository = repository;
             _itemRepository = itemRepository;
@@ -27,6 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _userRepository = userRepository;
             _medicineRepository = medicineRepository;
             _taskRepository = taskRepository;
+            _compartmentAssignmentRepository = compartmentAssignmentRepository;
         }
 
         public async Task<PrescriptionItemResponseDto> AddItemAsync(ulong prescriptionId, PrescriptionItemDto itemDto)
@@ -83,9 +85,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Gán items vào compartment assignments (tự động gán nếu có available)
             var assignedCount = 0;
+            var availableAssignments = await _compartmentAssignmentRepository.GetAllAsync(taskId, "pending");
             foreach (var item in prescription.PrescriptionItems)
             {
-               
+                var assignment = availableAssignments.FirstOrDefault(a => a.Status == "pending");
+                if (assignment != null)
+                {
+                    assignment.ItemDesc = $"{item.Quantity} x {item.Medicine.Name} ({item.Dosage})";
+                    assignment.Status = "loaded"; // Auto-loaded sau gán
+                    await _compartmentAssignmentRepository.UpdateAsync(assignment.Id, assignment);
+                    assignedCount++;
+                }
             }
 
             return new AssignPrescriptionResponseDto

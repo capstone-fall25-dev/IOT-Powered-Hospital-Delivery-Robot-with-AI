@@ -1,0 +1,52 @@
+﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
+using Microsoft.EntityFrameworkCore;
+
+namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
+{
+    public class DestinationRepository : IDestinationRepository
+    {
+        private readonly RobotManagerContext _context;
+
+        public DestinationRepository(RobotManagerContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<Destination> CreateAsync(Destination destination)
+        {
+            _context.Destinations.Add(destination);
+            await _context.SaveChangesAsync();
+            return destination;
+        }
+
+        public async Task<IEnumerable<Destination>> GetAllAsync(string? area = null, string? floor = null)
+        {
+            var query = _context.Destinations.AsQueryable();
+            if (!string.IsNullOrEmpty(area)) query = query.Where(d => d.Area == area);
+            if (!string.IsNullOrEmpty(floor)) query = query.Where(d => d.Floor == floor);
+            return await query.ToListAsync();
+        }
+
+        public async Task<Destination?> GetByIdAsync(ulong id)
+        {
+            return await _context.Destinations.FindAsync(id);
+        }
+
+        public async Task<Destination?> GetByNameAsync(string name)
+        {
+            return await _context.Destinations.FirstOrDefaultAsync(d => d.Name == name);
+        }
+
+        public async Task<Destination?> UpdateAsync(ulong id, Destination destination)
+        {
+            var existing = await _context.Destinations.FindAsync(id);
+            if (existing == null) return null;
+            existing.Name = destination.Name;
+            existing.Area = destination.Area;
+            existing.Floor = destination.Floor;
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+    }
+}

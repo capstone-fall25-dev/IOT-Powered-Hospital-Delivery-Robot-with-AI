@@ -13,6 +13,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMapper _mapper;
         private readonly IUserRepository _userRepository;
         private readonly IRobotRepository _robotRepository;
+        private readonly ICompartmentAssignmentRepository _compartmentAssignmentRepository;
+        private readonly IPerformanceHistoryService _performanceHistoryService;
         private readonly ILogRepository _logRepository;
         private readonly IAlertRepository _alertRepository;
         private readonly ILogService _logService;
@@ -22,12 +24,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly string[] ValidStatuses = { "pending", "in_progress", "awaiting_handover", "returning", "at_station", "completed", "canceled" };
 
         public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository, 
+            ICompartmentAssignmentRepository compartmentAssignmentRepository, IPerformanceHistoryService performanceHistoryService,
             ILogRepository logRepository, IAlertRepository alertRepository, ILogService logService)
         {
             _repository = repository;
             _mapper = mapper;
             _userRepository = userRepository;
             _robotRepository = robotRepository;
+            _compartmentAssignmentRepository = compartmentAssignmentRepository;
+            _performanceHistoryService = performanceHistoryService;
             _logRepository = logRepository;
             _alertRepository = alertRepository;
             _logService = logService;
@@ -157,7 +162,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                   
+                    // Lưu assignment 
+                    var createdAssignment = await _compartmentAssignmentRepository.CreateAsync(assignment);
+                    suggestedAssignments.Add(createdAssignment);
                 }
             }
             else

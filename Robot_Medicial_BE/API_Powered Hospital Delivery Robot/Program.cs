@@ -32,7 +32,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IMapRepository, MapRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<ICompartmentAssignmentRepository, CompartmentAssignmentRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
+builder.Services.AddScoped<IPerformanceHistoryRepository, PerformanceHistoryRepository>();
 builder.Services.AddScoped<ILogRepository, LogRepository>();
 builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
@@ -41,6 +43,7 @@ builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
 builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
 builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
 builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
 builder.Services.AddQuartz(q =>
 {
@@ -57,7 +60,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IMapService, MapService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ICompartmentAssignmentService, CompartmentAssignmentService>();
 builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
+builder.Services.AddScoped<IPerformanceHistoryService, PerformanceHistoryService>();
 builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IAlertService, AlertService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
@@ -66,6 +71,7 @@ builder.Services.AddScoped<IMedicineService, MedicineService>();
 builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
 
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
