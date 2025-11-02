@@ -13,6 +13,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             _context = context;
         }
 
+        // -------------------------------
+        // 📤 Upload (tạo mới map - ROS2 hoặc manual)
+        // -------------------------------
+        public async Task<Map> UploadAsync(Map map)
+        {
+            _context.Maps.Add(map);
+            await _context.SaveChangesAsync();
+            return map;
+        }
+
+        // -------------------------------
+        // 🧱 Create (tạo map từ giao diện quản trị)
+        // -------------------------------
         public async Task<Map> CreateAsync(Map map)
         {
             _context.Maps.Add(map);
@@ -20,34 +33,59 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return map;
         }
 
+        // -------------------------------
+        // 📋 Lấy toàn bộ maps
+        // -------------------------------
         public async Task<IEnumerable<Map>> GetAllAsync()
         {
-            return await _context.Maps.ToListAsync();
+            return await _context.Maps
+                .AsNoTracking()
+                .ToListAsync();
         }
 
+        // -------------------------------
+        // 🔍 Lấy map theo ID (tuỳ chọn include robot)
+        // -------------------------------
         public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
         {
             var query = _context.Maps.AsQueryable();
+
             if (includeRobots)
-            {
                 query = query.Include(m => m.Robots);
-            }
 
             return await query.FirstOrDefaultAsync(m => m.Id == id);
         }
 
-        public async Task<Map?> GetByNameAsync(string mapName)
+        // -------------------------------
+        // 🖼️ Lấy dữ liệu ảnh map
+        // -------------------------------
+        public async Task<byte[]?> GetImageAsync(ulong id)
         {
-            return await _context.Maps.FirstOrDefaultAsync(m => m.MapName == mapName);
+            var map = await _context.Maps
+                .AsNoTracking()
+                .Select(m => new { m.Id, m.ImageData })
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            return map?.ImageData;
         }
 
+        // -------------------------------
+        // 🔍 Kiểm tra trùng tên map
+        // -------------------------------
+        public async Task<Map?> GetByNameAsync(string mapName)
+        {
+            return await _context.Maps
+                .FirstOrDefaultAsync(m => m.MapName == mapName);
+        }
+
+        // -------------------------------
+        // ✏️ Cập nhật thông tin map
+        // -------------------------------
         public async Task<Map?> UpdateAsync(ulong id, Map map)
         {
             var existing = await _context.Maps.FindAsync(id);
             if (existing == null)
-            {
                 return null;
-            }
 
             existing.MapName = map.MapName;
             existing.ImageName = map.ImageName;
@@ -61,10 +99,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.Negate = map.Negate;
             existing.OccupiedThresh = map.OccupiedThresh;
             existing.FreeThresh = map.FreeThresh;
-            existing.ImageData = map.ImageData; // Update nếu upload mới
+            existing.ImageData = map.ImageData;
 
             await _context.SaveChangesAsync();
             return existing;
+        }
+
+        // -------------------------------
+        // 🗑️ Xoá map (nếu cần)
+        // -------------------------------
+        public async Task<bool> DeleteAsync(ulong id)
+        {
+            var map = await _context.Maps.FindAsync(id);
+            if (map == null)
+                return false;
+
+            _context.Maps.Remove(map);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

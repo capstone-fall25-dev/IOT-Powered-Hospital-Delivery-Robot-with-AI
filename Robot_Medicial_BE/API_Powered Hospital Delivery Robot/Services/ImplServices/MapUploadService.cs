@@ -49,7 +49,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             // --- Lưu vào database ---
-            var created = await _repository.CreateAsync(map);
+            var created = await _repository.UploadAsync(map);
 
             // --- Trả về DTO ---
             return _mapper.Map<MapResponseDto>(created);
