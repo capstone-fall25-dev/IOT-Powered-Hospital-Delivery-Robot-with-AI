@@ -22,10 +22,11 @@ builder.Services.AddDbContext<RobotManagerContext>(options =>
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
-
+builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
 
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
