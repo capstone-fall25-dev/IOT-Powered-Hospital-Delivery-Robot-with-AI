@@ -33,6 +33,8 @@ builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<IMapRepository, MapRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
+builder.Services.AddScoped<ILogRepository, LogRepository>();
+builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
 builder.Services.AddQuartz(q =>
 {
@@ -50,12 +52,19 @@ builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IMapService, MapService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
+builder.Services.AddScoped<ILogService, LogService>();
+builder.Services.AddScoped<IAlertService, AlertService>();
 
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
 builder.Services.AddAutoMapper(typeof(MapProfile));
 builder.Services.AddAutoMapper(typeof(TaskProfile));
+builder.Services.AddAutoMapper(typeof(CompartmentAssignmentProfile));
+builder.Services.AddAutoMapper(typeof(PerformanceHistoryProfile));
+builder.Services.AddAutoMapper(typeof(LogAlertProfile));
+builder.Services.AddAutoMapper(typeof(MedicalProfile));
+builder.Services.AddAutoMapper(typeof(DestinationProfile));
 
 var app = builder.Build();
 

@@ -11,16 +11,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IRobotRepository _robotRepository;
         private readonly IMapRepository _mapRepository;
         private readonly IMapper _mapper;
+        private readonly ILogRepository _logRepository;
+        private readonly IAlertService _alertService;
 
         // Enum statuses từ dump
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
-        public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository
-            )
+        public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService)
         {
             _robotRepository = robotRepository;
             _mapper = mapper;
             _mapRepository = mapRepository;
+            _logRepository = logRepository;
+            _alertService = alertService;
         }
 
         public async Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId)
@@ -57,6 +60,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Message = $"Robot {robot.Code} assigned to map {map.MapName}",
                 CreatedAt = DateTime.UtcNow
             };
+            await _logRepository.CreateAsync(log);
 
             return new AssignMapResponseDto
             {
@@ -110,7 +114,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // Chức năng: Auto alert if error_count > 3 or status="failed" - UC 38: Robot Error Alert Notification (Robot Error Handling)
             if (updated.ErrorCountSession > 3 || updated.Status == "failed")
             {
-              
+                await _alertService.CreateAsync(new AlertDto
+                {
+                    RobotId = id,
+                    Severity = "high",
+                    Category = "system",
+                    Status = "open",
+                    Message = $"Robot {updated.Code} error threshold exceeded ({updated.ErrorCountSession} errors). Position: {positionDto.Latitude},{positionDto.Longitude}"
+                });
             }
 
             return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;

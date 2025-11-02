@@ -13,17 +13,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMapper _mapper;
         private readonly IUserRepository _userRepository;
         private readonly IRobotRepository _robotRepository;
+        private readonly ILogRepository _logRepository;
+        private readonly IAlertRepository _alertRepository;
+        private readonly ILogService _logService;
+        //private readonly IDestinationRepository _destinationRepository;
 
         // Enum status cho validate
         private readonly string[] ValidStatuses = { "pending", "in_progress", "awaiting_handover", "returning", "at_station", "completed", "canceled" };
 
-        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository
-         )
+        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository, 
+            ILogRepository logRepository, IAlertRepository alertRepository, ILogService logService)
         {
             _repository = repository;
             _mapper = mapper;
             _userRepository = userRepository;
             _robotRepository = robotRepository;
+            _logRepository = logRepository;
+            _alertRepository = alertRepository;
+            _logService = logService;
+            // _destinationRepository = destinationRepository;
         }
 
         public async Task<TaskResponseDto> ConfirmAsync(ulong id, ulong adminUserId, string adminUsername)
@@ -44,6 +52,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Message = $"Task {id} confirmed by admin {adminUsername}. Starting robot execution.",
                 CreatedAt = DateTime.UtcNow
             };
+            await _logRepository.CreateAsync(confirmLog);
 
             task.Status = "in_progress";
             task.StartedAt = DateTime.UtcNow;
@@ -62,6 +71,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     Message = $"Low battery ({robot.BatteryPercent}%) during task {id} start.",
                     CreatedAt = DateTime.UtcNow
                 };
+                await _alertRepository.CreateAsync(alert); 
 
                 var warningLog = new Log
                 {
@@ -71,6 +81,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     Message = "Low battery warning issued for task start.",
                     CreatedAt = DateTime.UtcNow
                 };
+                await _logRepository.CreateAsync(warningLog);
             }
 
             var fullTask = await _repository.GetByIdAsync(id);
@@ -146,8 +157,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    // Lưu assignment 
-                    
+                  
                 }
             }
             else
@@ -162,6 +172,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     CreatedAt = DateTime.UtcNow
                 };
 
+                await _logRepository.CreateAsync(log);
             }
 
             // Reload full task với stops và assignments để response
@@ -231,7 +242,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     task.Status = "in_progress"; // Or "scheduled"
                     await _repository.UpdateAsync(task.Id, task);
                     assignedCount++;
-              
+                    await _logService.CreateAsync(new LogDto
+                    {
+                        RobotId = robot.Id,
+                        TaskId = task.Id,
+                        LogType = "info",
+                        Message = $"Auto-assigned task {task.Id} to robot {robot.Code}"
+                    });
                 }
             }
             return assignedCount;
@@ -245,7 +262,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return null;
             }
 
-        
+            await _logService.CreateAsync(new LogDto
+            {
+                RobotId = updated.RobotId,
+                TaskId = id,
+                LogType = "info",
+                Message = $"Task priority updated to {priorityDto.Priority}"
+            });
             return _mapper.Map<TaskResponseDto>(updated);
         }
 
@@ -269,6 +292,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Message = logMessage,
                 CreatedAt = DateTime.UtcNow
             };
+            await _logRepository.CreateAsync(submitLog);
 
             task.UpdatedAt = DateTime.UtcNow;
             await _repository.UpdateAsync(id, task);
@@ -335,6 +359,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Message = $"Stop {progressDto.SeqNo} updated to {progressDto.StopStatus} for task {taskId}. Duration: {progressDto.DurationS}s",
                 CreatedAt = DateTime.UtcNow
             };
+            await _logRepository.CreateAsync(log);
 
             return _mapper.Map<TaskResponseDto>(updated);
         }
