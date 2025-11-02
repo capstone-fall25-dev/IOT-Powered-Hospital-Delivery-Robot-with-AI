@@ -36,7 +36,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:80"  # ✅ đổi cổng 80 sang 8080 để tránh lỗi "address already in use"
+      - "8080:80" 
 
 volumes:
   mysql_data:

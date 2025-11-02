@@ -5,7 +5,7 @@ FROM oven/bun:1 AS build
 WORKDIR /app
 COPY . .
 RUN bun install
-RUN bun dev
+RUN bun run build
 
 # ================================
 # Serve stage
