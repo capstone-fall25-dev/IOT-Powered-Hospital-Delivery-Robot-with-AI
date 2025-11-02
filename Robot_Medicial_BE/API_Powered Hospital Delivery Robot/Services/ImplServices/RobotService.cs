@@ -8,84 +8,145 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     public class RobotService : IRobotService
     {
-        private readonly IRobotRepository _repository;
+        private readonly IRobotRepository _robotRepository;
+        private readonly IMapRepository _mapRepository;
         private readonly IMapper _mapper;
+        private readonly ILogRepository _logRepository;
+        private readonly IAlertService _alertService;
 
-        // Enum status cho validate
+        // Enum statuses từ dump
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
-        public RobotService(IRobotRepository repository, IMapper mapper)
+        public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService)
         {
-            _repository = repository;
+            _robotRepository = robotRepository;
             _mapper = mapper;
+            _mapRepository = mapRepository;
+            _logRepository = logRepository;
+            _alertService = alertService;
+        }
+
+        public async Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId)
+        {
+            var robot = await _robotRepository.GetByIdAsync(robotId, includeTasks: true);
+            if (robot == null)
+            {
+                throw new InvalidOperationException("Robot not found");
+            }
+
+            // Không assign nếu task đang in_progress
+            if (robot.Tasks.Any(t => t.Status == "in_progress" || t.Status == "transporting"))
+            {
+                throw new InvalidOperationException("Cannot assign map to robot with active tasks");
+            }
+
+            var map = await _mapRepository.GetByIdAsync(mapId);
+            if (map == null)
+            {
+                throw new InvalidOperationException("Map not found");
+            }
+
+            var updatedRobot = await _robotRepository.AssignMapAsync(robotId, mapId);
+            if (updatedRobot == null)
+            {
+                throw new InvalidOperationException("Failed to assign map");
+            }
+
+            // Tạo Log tự động 
+            var log = new Log
+            {
+                RobotId = robotId,
+                LogType = "info",
+                Message = $"Robot {robot.Code} assigned to map {map.MapName}",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _logRepository.CreateAsync(log);
+
+            return new AssignMapResponseDto
+            {
+                RobotId = robotId,
+                MapId = mapId,
+                MapName = map.MapName,
+                Message = "Map assigned successfully"
+            };
         }
 
         public async Task<RobotResponseDto> CreateAsync(RobotDto robotDto)
         {
-            // Check code là duy nhất
-            var existing = await _repository.GetByCodeAsync(robotDto.Code);
+            var existing = await _robotRepository.GetByCodeAsync(robotDto.Code);
             if (existing != null)
             {
-                throw new InvalidOperationException("Robot code đã tồn tại");
+                throw new InvalidOperationException("Robot code already exists");
             }
 
             if (robotDto.BatteryPercent < 0 || robotDto.BatteryPercent > 100)
             {
-                throw new ArgumentException("Phần trăm pin phải từ 0 đến 100");
+                throw new ArgumentException("Battery percent must be between 0 and 100");
             }
 
             var robot = _mapper.Map<Robot>(robotDto);
-            robot.Status = "at_station";
-            robot.CreatedAt = DateTime.Now;
-            robot.LastHeartbeatAt = DateTime.Now; // Default
+            robot.Status = "completed";
+            robot.CreatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.UtcNow;
+            robot.LastHeartbeatAt = DateTime.UtcNow; // Default
 
-            var created = await _repository.CreateAsync(robot);
+            var created = await _robotRepository.CreateAsync(robot);
             return _mapper.Map<RobotResponseDto>(created);
         }
 
         public async Task<IEnumerable<RobotResponseDto>> GetAllAsync(string? status = null)
         {
-            var robots = await _repository.GetAllAsync(status);
+            var robots = await _robotRepository.GetAllAsync(status);
             return _mapper.Map<IEnumerable<RobotResponseDto>>(robots);
         }
 
         public async Task<RobotResponseDto?> GetByIdAsync(ulong id)
         {
-            var robot = await _repository.GetByIdAsync(id);
+            var robot = await _robotRepository.GetByIdAsync(id, includeCompartments: true, includeTasks: true);
+            return robot != null ? _mapper.Map<RobotResponseDto>(robot) : null;
+        }
 
-            if (robot != null)
+        public async Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto positionDto)
+        {
+            var updated = await _robotRepository.UpdatePositionAsync(id, positionDto.Latitude, positionDto.Longitude);
+            if (updated == null) return null;
+
+            // Chức năng: Auto alert if error_count > 3 or status="failed" - UC 38: Robot Error Alert Notification (Robot Error Handling)
+            if (updated.ErrorCountSession > 3 || updated.Status == "failed")
             {
-                return _mapper.Map<RobotResponseDto>(robot);
+                await _alertService.CreateAsync(new AlertDto
+                {
+                    RobotId = id,
+                    Severity = "high",
+                    Category = "system",
+                    Status = "open",
+                    Message = $"Robot {updated.Code} error threshold exceeded ({updated.ErrorCountSession} errors). Position: {positionDto.Latitude},{positionDto.Longitude}"
+                });
             }
-            return null;
+
+            return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
         }
 
         public async Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto statusDto)
         {
-            // Validate status enum
             if (!ValidStatuses.Contains(statusDto.Status))
             {
-                throw new ArgumentException($"Trạng thái: {statusDto.Status} không hợp lệ. Phải là một trong các trạng thái sau: {string.Join(", ", ValidStatuses)}");
+                throw new ArgumentException($"Invalid status: {statusDto.Status}. Must be one of: {string.Join(", ", ValidStatuses)}");
             }
 
-            var existing = await _repository.GetByIdAsync(id);
+            var existing = await _robotRepository.GetByIdAsync(id);
             if (existing == null)
             {
-                throw new InvalidOperationException("Không tìm thấy robot");
+                throw new InvalidOperationException("Robot not found");
             }
 
-            // Không update nếu offline
             if (existing.Status == "offline")
             {
-                throw new InvalidOperationException("Không thể cập nhật trạng thái của robot khi ngoại tuyến");
+                throw new InvalidOperationException("Cannot update status of offline robot");
             }
 
-            var updated = await _repository.UpdateStatusAsync(id, statusDto.Status);
-            if (updated != null)
-            {
-                return _mapper.Map<RobotResponseDto>(updated);
-            }
-            return null;
+            var updated = await _robotRepository.UpdateStatusAsync(id, statusDto.Status);
+            return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
         }
     }
 }

@@ -6,9 +6,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class DestinationRepository : IDestinationRepository
     {
-        private readonly RobotmanagerContext _context;
+        private readonly RobotManagerContext _context;
 
-        public DestinationRepository(RobotmanagerContext context)
+        public DestinationRepository(RobotManagerContext context)
         {
             _context = context;
         }
@@ -20,9 +20,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return destination;
         }
 
-        public async Task<IEnumerable<Destination>> GetAllAsync()
+        public async Task<IEnumerable<Destination>> GetAllAsync(string? area = null, string? floor = null)
         {
-            return await _context.Destinations.ToListAsync();
+            var query = _context.Destinations.AsQueryable();
+            if (!string.IsNullOrEmpty(area)) query = query.Where(d => d.Area == area);
+            if (!string.IsNullOrEmpty(floor)) query = query.Where(d => d.Floor == floor);
+            return await query.ToListAsync();
         }
 
         public async Task<Destination?> GetByIdAsync(ulong id)
@@ -38,15 +41,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         public async Task<Destination?> UpdateAsync(ulong id, Destination destination)
         {
             var existing = await _context.Destinations.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
-
+            if (existing == null) return null;
             existing.Name = destination.Name;
             existing.Area = destination.Area;
             existing.Floor = destination.Floor;
-            //existing.UpdatedAt = DateTime.UtcNow; // Thêm UpdatedAt nếu model có (hiện không có, nhưng có thể extend)
             await _context.SaveChangesAsync();
             return existing;
         }
