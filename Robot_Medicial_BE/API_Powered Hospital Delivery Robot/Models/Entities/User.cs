@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 [Table("users")]
-[Index("Username", Name = "username", IsUnique = true)]
+[Index("Email", Name = "email", IsUnique = true)]
 [MySqlCollation("utf8mb4_unicode_ci")]
 public partial class User
 {
@@ -15,9 +15,9 @@ public partial class User
     [Column("id")]
     public ulong Id { get; set; }
 
-    [Column("username")]
+    [Column("email")]
     [StringLength(64)]
-    public string Username { get; set; } = null!;
+    public string Email { get; set; } = null!;
 
     [Column("password_hash")]
     [StringLength(255)]
@@ -39,6 +39,9 @@ public partial class User
 
     [Column("updated_at", TypeName = "datetime")]
     public DateTime UpdatedAt { get; set; }
+
+    [InverseProperty("Users")]
+    public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 
     [InverseProperty("User")]
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();

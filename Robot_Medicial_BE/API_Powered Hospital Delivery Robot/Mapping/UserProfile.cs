@@ -14,6 +14,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
 
             CreateMap<User, UserResponseDto>();
+
+            CreateMap<Session, SessionResponseDto>();
         }
     }
 }
