@@ -8,5 +8,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<RobotResponseDto?> GetByIdAsync(ulong id);
         Task<RobotResponseDto> CreateAsync(RobotDto robotDto);
         Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto statusDto);
+        Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId);
+        Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto positionDto);
     }
 }

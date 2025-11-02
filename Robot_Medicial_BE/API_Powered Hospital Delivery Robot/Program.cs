@@ -30,8 +30,6 @@ builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
 
-// EmailSender
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

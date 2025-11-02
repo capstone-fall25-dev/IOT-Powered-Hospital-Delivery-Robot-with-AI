@@ -8,6 +8,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 [Table("robots")]
 [Index("Code", Name = "code", IsUnique = true)]
+[Index("MapId", Name = "fk_robot_map")]
 [Index("EtaDeliveryAt", Name = "idx_robot_eta_delivery")]
 [Index("EtaReturnAt", Name = "idx_robot_eta_return")]
 [Index("Status", Name = "idx_robot_status")]
@@ -70,17 +71,27 @@ public partial class Robot
     [Column("updated_at", TypeName = "datetime")]
     public DateTime UpdatedAt { get; set; }
 
+    [Column("map_id")]
+    public ulong? MapId { get; set; }
+
     [InverseProperty("Robot")]
     public virtual ICollection<Alert> Alerts { get; set; } = new List<Alert>();
 
     [InverseProperty("Robot")]
     public virtual ICollection<Log> Logs { get; set; } = new List<Log>();
 
+    [ForeignKey("MapId")]
+    [InverseProperty("Robots")]
+    public virtual Map? Map { get; set; }
+
     [InverseProperty("Robot")]
     public virtual ICollection<PerformanceHistory> PerformanceHistories { get; set; } = new List<PerformanceHistory>();
 
     [InverseProperty("Robot")]
     public virtual ICollection<RobotCompartment> RobotCompartments { get; set; } = new List<RobotCompartment>();
+
+    [InverseProperty("Robot")]
+    public virtual ICollection<RobotMaintenanceLog> RobotMaintenanceLogs { get; set; } = new List<RobotMaintenanceLog>();
 
     [InverseProperty("Robot")]
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();

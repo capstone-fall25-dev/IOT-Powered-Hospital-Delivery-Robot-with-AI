@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 [Table("tasks")]
+[Index("MapId", Name = "fk_task_map")]
 [Index("AssignedBy", Name = "fk_tasks_assigned_by")]
 [Index("RobotId", Name = "idx_task_robot")]
 [Index("Status", Name = "idx_task_status")]
@@ -44,9 +45,18 @@ public partial class Task
     [Column("updated_at", TypeName = "datetime")]
     public DateTime UpdatedAt { get; set; }
 
+    [Column("map_id")]
+    public ulong? MapId { get; set; }
+
     [ForeignKey("AssignedBy")]
     [InverseProperty("Tasks")]
     public virtual User? AssignedByNavigation { get; set; }
+
+    [Column("priority", TypeName = "enum('Normal','Urgent','Critical')")]
+    public string Priority { get; set; } = "Normal";
+
+    [Column("scheduled_start_at", TypeName = "datetime")]
+    public DateTime? ScheduledStartAt { get; set; }
 
     [InverseProperty("Task")]
     public virtual ICollection<CompartmentAssignment> CompartmentAssignments { get; set; } = new List<CompartmentAssignment>();
@@ -54,9 +64,16 @@ public partial class Task
     [InverseProperty("Task")]
     public virtual ICollection<Log> Logs { get; set; } = new List<Log>();
 
+    [ForeignKey("MapId")]
+    [InverseProperty("Tasks")]
+    public virtual Map? Map { get; set; }
+
     [ForeignKey("RobotId")]
     [InverseProperty("Tasks")]
     public virtual Robot Robot { get; set; } = null!;
+
+    [InverseProperty("Task")]
+    public virtual ICollection<TaskPatientAssignment> TaskPatientAssignments { get; set; } = new List<TaskPatientAssignment>();
 
     [InverseProperty("Task")]
     public virtual ICollection<TaskStop> TaskStops { get; set; } = new List<TaskStop>();
