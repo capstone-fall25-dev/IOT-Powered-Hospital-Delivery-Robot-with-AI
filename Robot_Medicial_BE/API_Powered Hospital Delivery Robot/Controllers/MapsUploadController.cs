@@ -47,6 +47,52 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+[HttpPost("json")]
+public async Task<ActionResult<MapResponseDto>> UploadJson([FromBody] MapUploadJsonDto mapJsonDto)
+{
+    try
+    {
+        IFormFile? imageFile = null;
+
+        // Nếu có ảnh base64
+        if (!string.IsNullOrEmpty(mapJsonDto.ImageBase64))
+        {
+            var bytes = Convert.FromBase64String(mapJsonDto.ImageBase64);
+            var stream = new MemoryStream(bytes);
+            imageFile = new FormFile(stream, 0, bytes.Length, "imageFile", mapJsonDto.ImageName ?? "map.png");
+        }
+
+        // Chuyển về MapUploadDto để tái sử dụng service cũ
+        var dto = new MapUploadDto
+        {
+            MapName = mapJsonDto.MapName,
+            Mode = mapJsonDto.Mode,
+            Resolution = mapJsonDto.Resolution,
+            OriginX = mapJsonDto.OriginX,
+            OriginY = mapJsonDto.OriginY,
+            OriginZ = mapJsonDto.OriginZ,
+            OccupiedThresh = mapJsonDto.OccupiedThresh,
+            FreeThresh = mapJsonDto.FreeThresh,
+            Negate = mapJsonDto.Negate
+        };
+
+        var created = await _uploadService.UploadAsync(dto, imageFile);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Conflict(ex.Message);
+    }
+    catch (ArgumentException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Internal server error: {ex.Message}");
+    }
+}
+
         // -------------------------------
         // GET: /api/MapsUpload/{id}
         // Lấy thông tin map theo ID
