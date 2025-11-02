@@ -13,7 +13,7 @@ import ChangePasswordPage from "../pages/ChangePasswordPage";
 import RobotMissionHistory from "../pages/MissionHistory";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
-import ProjectMapListView from "../pages/Viewlistmap";
+import ProjectMapListView from "../pages/ViewListMap";
 const routes = [
     {
         path: "/login",
