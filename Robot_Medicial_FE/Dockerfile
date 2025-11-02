@@ -18,7 +18,7 @@ FROM nginx:alpine
 
 # Copy file build ra Nginx serve
 COPY --from=build /app/dist /usr/share/nginx/html
-
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Mở cổng 80 cho web
 EXPOSE 80
 
