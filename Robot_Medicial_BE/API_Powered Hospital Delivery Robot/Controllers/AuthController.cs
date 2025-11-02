@@ -59,14 +59,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var result = await _userService.LogoutAsync(HttpContext, username);
             return Ok(new { message = result });
         }
-        [Authorize]
-        [HttpGet("profile")]
-        public async Task<IActionResult> GetProfile()
-        {
-            var username = User.Identity?.Name ?? User.FindFirst("sub")?.Value;
-            return Ok(new { Message = $"Xin chào {username}, bạn đã xác thực thành công!" });
-        }
-
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -82,43 +74,45 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
+
+
+
         [HttpGet("check-login-status")]
         [Authorize]
         public IActionResult CheckLoginStatus()
         {
-            // Lấy token từ header Authorization
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 return Unauthorized(new { Message = "Missing or invalid Authorization header." });
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
 
-            // Đọc token
+            // Đọc token để lấy username
             var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
             var username = jwtToken.Claims.FirstOrDefault(c =>
+                c.Type == "unique_name" ||
                 c.Type == ClaimTypes.Name ||
-                c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
-            )?.Value;
+                c.Type == "sub")?.Value;
 
             if (string.IsNullOrEmpty(username))
-                return Unauthorized(new { Message = "Invalid token - no username found." });
+                return Unauthorized(new { Message = "Invalid token — username not found." });
 
-            // Kiểm tra token trong session
+            // Kiểm tra session
             var sessionToken = HttpContext.Session.GetString($"UserToken_{username}");
             if (sessionToken == null)
                 return Unauthorized(new { Message = "Session expired or user not logged in." });
 
             if (sessionToken != token)
-                return Unauthorized(new { Message = "Token mismatch — user may have logged in from another device." });
+                return Unauthorized(new { Message = "Token mismatch — user logged in elsewhere." });
 
-            // ✅ Nếu mọi thứ hợp lệ
             return Ok(new
             {
-                Message = "User is currently logged in and token is valid.",
+                Message = "User is logged in and token is valid.",
                 Username = username,
                 Token = token
             });
         }
+
 
     }
 

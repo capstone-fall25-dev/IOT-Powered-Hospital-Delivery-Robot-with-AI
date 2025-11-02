@@ -6,9 +6,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class UserRepository : IUserRepository
     {
-        private readonly RobotManagerContext _context;
+        private readonly RobotmanagerContext _context;
 
-        public UserRepository(RobotManagerContext context)
+        public UserRepository(RobotmanagerContext context)
         {
             _context = context;
         }
@@ -37,7 +37,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<User?> GetByUsernameAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Email == username);
         }
 
         public async Task<User?> UpdateAsync(ulong id, User user)
@@ -48,7 +48,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 return null;
             }
 
-            existing.Username = user.Username;
+            existing.Email = user.Email;
             existing.PasswordHash = user.PasswordHash;
             existing.FullName = user.FullName;
             existing.Role = user.Role;
@@ -73,7 +73,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<bool> ExistsByUsernameAsync(string username)
         {
-            return await _context.Users.AnyAsync(u => u.Username == username);
+            return await _context.Users.AnyAsync(u => u.Email == username);
         }
     }
 }

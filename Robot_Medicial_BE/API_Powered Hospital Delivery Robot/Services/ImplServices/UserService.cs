@@ -5,7 +5,6 @@ using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -86,7 +85,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("User not found");
             }
 
-            if (userDto.Username != existing.Username)
+            if (userDto.Username != existing.FullName)
             {
                 var usernameExisting = await _repository.GetByUsernameAsync(userDto.Username);
                 if (usernameExisting != null)
@@ -220,7 +219,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             string token = JwtHelper.GenerateToken(user, _configuration);
 
             // Lưu token vào session (mỗi user chỉ có 1 token hợp lệ)
-            context.Session.SetString($"UserToken_{user.Username}", token);
+            context.Session.SetString($"UserToken_{user.Email}", token);
 
             return ($"Bearer {token}", "Login Successful!");
         }
@@ -238,7 +237,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             // Tìm user theo email
             var allUsers = await _repository.GetAllAsync();
-            var user = allUsers.FirstOrDefault(u => u.Username == request.Email);
+            var user = allUsers.FirstOrDefault(u => u.Email == request.Email);
 
             if (user == null)
                 return "No account found with this email.";
@@ -247,11 +246,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             string otp = new Random().Next(100000, 999999).ToString();
 
             // Lưu OTP trong cache (5 phút)
-            _cache.Set($"FORGOT_{user.Username}", otp, TimeSpan.FromMinutes(5));
+            _cache.Set($"FORGOT_{user.Email}", otp, TimeSpan.FromMinutes(5));
 
             // Gửi OTP đến email người dùng
             await _emailHelper.SendEmailAsync(
-                user.Username,
+                user.Email,
                 "Password Reset Verification",
                 $"<h3>Your password reset OTP is: <b>{otp}</b></h3><p>The OTP is valid for 5 minutes.</p>"
             );
@@ -270,7 +269,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Lấy user theo email
             var allUsers = await _repository.GetAllAsync();
-            var user = allUsers.FirstOrDefault(u => u.Username == request.Email);
+            var user = allUsers.FirstOrDefault(u => u.Email == request.Email);
 
             if (user == null)
                 return "User not found.";
