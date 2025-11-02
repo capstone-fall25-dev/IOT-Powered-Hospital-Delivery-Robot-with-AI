@@ -16,26 +16,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        [HttpGet("get-all")]
+        // Lấy danh sách robot (lọc theo status) - UC 39: Track Robot Status (Robot Handling)
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<RobotResponseDto>>> GetAll([FromQuery] string? status = null)
         {
             var robots = await _service.GetAllAsync(status);
             return Ok(robots);
         }
 
-        [HttpGet("detail/{id}")]
+        // Lấy thông tin chi tiết robot (include compartments/tasks) - UC 39: Track Robot Status (Robot Handling)
+        [HttpGet("{id}")]
         public async Task<ActionResult<RobotResponseDto>> GetById(ulong id)
         {
             var robot = await _service.GetByIdAsync(id);
-            if (robot == null)
+            if (robot == null) return NotFound();
+            // Nếu có MapId, load map và tính position relative (thêm vào DTO nếu cần)
+            if (robot.MapId.HasValue)
             {
-                return NotFound($"Không tìm thấy robot {id}");
+                //var map = await _mapService.GetByIdAsync(robot.MapId.Value);
+                // var (x, y) = _service.CalculatePositionOnMap(robot, map);
+                // robot.PositionOnMap = new { X = x, Y = y }; // Extend DTO nếu cần
             }
-            return Ok(robot);
+            return Ok(robot); // Include Compartments & Tasks
         }
 
-        [HttpPost("add")]
-        public async Task<ActionResult<RobotResponseDto>> CreateRobot(RobotDto robotDto)
+        // Tạo robot mới (default status="completed") - UC 39: Track Robot Status (Robot Handling)
+        [HttpPost]
+        public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
             try
             {
@@ -52,21 +59,50 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        // Cập nhật status robot (validate enum, no offline update) - UC 36: Manual Control Mode Activation & UC 37: Auto Switch to Manual Control (Robot Handling)
         [HttpPatch("{id}/status")]
         public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, UpdateStatusDto statusDto)
         {
             try
             {
                 var updated = await _service.UpdateStatusAsync(id, statusDto);
-                if (updated == null)
-                {
-                    return NotFound($"Không thể cập nhật trạng thái. Robot với ID {id} không tồn tại");
-                }
+                if (updated == null) return NotFound();
                 return Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // Assign map cho robot (check no active task, log) - UC 51: Manage Hospital Map (Map Management)
+        [HttpPut("{robotId}/assign-map/{mapId}")]
+        public async Task<ActionResult<AssignMapResponseDto>> AssignMap(ulong robotId, ulong mapId)
+        {
+            try
+            {
+                var response = await _service.AssignMapAsync(robotId, mapId);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // Cập nhật vị trí robot (latitude/longitude, heartbeat) - UC 39: Track Robot Status & UC 57: Track Robot Movement on Map (Robot Handling & Map Management)
+        [HttpPatch("{id}/position")]
+        public async Task<ActionResult<RobotResponseDto>> UpdatePosition(ulong id, UpdatePositionDto positionDto)
+        {
+            try
+            {
+                var updated = await _service.UpdatePositionAsync(id, positionDto);
+                if (updated == null) return NotFound();
+                return Ok(updated);
             }
             catch (ArgumentException ex)
             {

@@ -6,11 +6,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class RobotRepository : IRobotRepository
     {
-        private readonly RobotmanagerContext _context;
+        private readonly RobotManagerContext _context;
 
-        public RobotRepository(RobotmanagerContext context)
+        public RobotRepository(RobotManagerContext context)
         {
             _context = context;
+        }
+
+        public async Task<Robot?> AssignMapAsync(ulong robotId, ulong mapId)
+        {
+            var robot = await _context.Robots.FindAsync(robotId);
+            if (robot == null)
+            {
+                return null;
+            }
+
+            // Check map exists
+            var map = await _context.Maps.FindAsync(mapId);
+            if (map == null)
+            {
+                return null;
+            }
+
+            robot.MapId = mapId;
+            robot.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return robot;
         }
 
         public async Task<Robot> CreateAsync(Robot robot)
@@ -22,7 +44,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<IEnumerable<Robot>> GetAllAsync(string? status = null)
         {
-            var query = _context.Robots.Include(r => r.RobotCompartments).AsQueryable();
+            var query = _context.Robots.AsQueryable();
             if (!string.IsNullOrEmpty(status))
             {
                 query = query.Where(r => r.Status == status);
@@ -35,11 +57,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await _context.Robots.FirstOrDefaultAsync(r => r.Code == code);
         }
 
-        public async Task<Robot?> GetByIdAsync(ulong id)
+        public async Task<Robot?> GetByIdAsync(ulong id, bool includeCompartments = false, bool includeTasks = false)
         {
-            return await _context.Robots
-                .Include(r => r.RobotCompartments)
-                .FirstOrDefaultAsync(r => r.Id == id);
+            var query = _context.Robots.AsQueryable();
+            if (includeCompartments)
+            {
+                query = query.Include(r => r.RobotCompartments);
+            }
+
+            if (includeTasks)
+            {
+                query = query.Include(r => r.Tasks);
+            }
+
+            return await query.FirstOrDefaultAsync(r => r.Id == id);
         }
 
         public async Task<Robot?> UpdateAsync(ulong id, Robot robot)
@@ -61,9 +92,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.EtaDeliveryAt = robot.EtaDeliveryAt;
             existing.EtaReturnAt = robot.EtaReturnAt;
             existing.ErrorCountSession = robot.ErrorCountSession;
-            existing.UpdatedAt = DateTime.Now;
+            existing.MapId = robot.MapId;
+            existing.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return existing;
+        }
+
+        public async Task<Robot?> UpdatePositionAsync(ulong id, decimal lat, decimal lng)
+        {
+            var robot = await _context.Robots.FindAsync(id);
+            if (robot == null)
+            {
+                return null;
+            }
+
+            robot.Latitude = lat;
+            robot.Longitude = lng;
+            robot.LastHeartbeatAt = DateTime.UtcNow; // Heartbeat update
+            robot.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return robot;
         }
 
         public async Task<Robot?> UpdateStatusAsync(ulong id, string status)
@@ -75,7 +125,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             }
 
             existing.Status = status;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return existing;
         }

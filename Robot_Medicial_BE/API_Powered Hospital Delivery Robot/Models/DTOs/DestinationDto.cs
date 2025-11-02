@@ -4,11 +4,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
     public class DestinationDto
     {
-        public ulong Id { get; set; }
-
         [Required]
-        public string Name { get; set; } = null!; // Unique
+        [StringLength(255)]
+        public string Name { get; set; } = null!;
+        [StringLength(255)]
         public string? Area { get; set; }
+        [StringLength(64)]
         public string? Floor { get; set; }
     }
 
@@ -19,5 +20,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Area { get; set; }
         public string? Floor { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int TaskCount { get; set; } // From relation
     }
 }

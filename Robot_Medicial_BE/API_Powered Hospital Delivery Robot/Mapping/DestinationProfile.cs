@@ -8,8 +8,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
     {
         public DestinationProfile()
         {
-            CreateMap<DestinationDto, Destination>().ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
-            CreateMap<Destination, DestinationResponseDto>();
+            CreateMap<DestinationDto, Destination>()
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+            CreateMap<Destination, DestinationResponseDto>()
+                .ForMember(dest => dest.TaskCount, opt => opt.MapFrom(src => src.TaskStops.Count));
         }
     }
 }

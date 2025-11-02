@@ -6,9 +6,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class UserRepository : IUserRepository
     {
-        private readonly RobotmanagerContext _context;
+        private readonly RobotManagerContext _context;
 
-        public UserRepository(RobotmanagerContext context)
+        public UserRepository(RobotManagerContext context)
         {
             _context = context;
         }
@@ -22,22 +22,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<IEnumerable<User>> GetAllAsync(bool? isActive = null)
         {
-            var getAll = _context.Users.AsQueryable();
+            var query = _context.Users.AsQueryable();
             if (isActive.HasValue)
             {
-                getAll = getAll.Where(u => u.IsActive == isActive.Value);
+                query = query.Where(u => u.IsActive == isActive.Value);
             }
-            return await getAll.ToListAsync();
+            return await query.ToListAsync();
         }
 
-        public async Task<User?> GetByIdAsync(ulong id)
+        public async Task<User?> GetByEmailAsync(string email)
         {
-            return await _context.Users.FindAsync(id);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
 
-        public async Task<User?> GetByUsernameAsync(string username)
+        public async Task<User?> GetByIdAsync(ulong id, bool includeTasks = false, bool includeSessions = false)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Email == username);
+            var query = _context.Users.AsQueryable();
+            if (includeTasks)
+            {
+                query = query.Include(u => u.Tasks);
+            }
+
+            if (includeSessions)
+            {
+                query = query.Include(u => u.Sessions);
+            }
+
+            return await query.FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task<User?> UpdateAsync(ulong id, User user)
@@ -53,7 +64,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.FullName = user.FullName;
             existing.Role = user.Role;
             existing.IsActive = user.IsActive;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return existing;
         }
@@ -69,7 +81,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
         }
-
 
         public async Task<bool> ExistsByUsernameAsync(string username)
         {
