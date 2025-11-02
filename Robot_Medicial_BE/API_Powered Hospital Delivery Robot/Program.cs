@@ -143,7 +143,8 @@ builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDestinationService, DestinationService>();
-
+builder.Services.AddScoped<IMapRepository, MapRepository>();
+builder.Services.AddScoped<IMapUploadService, MapUploadService>();
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
@@ -155,6 +156,7 @@ builder.Services.AddAutoMapper(typeof(LogAlertProfile));
 builder.Services.AddAutoMapper(typeof(MedicalProfile));
 builder.Services.AddAutoMapper(typeof(DestinationProfile));
 builder.Services.AddAutoMapper(typeof(UserMappingProfile));
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
