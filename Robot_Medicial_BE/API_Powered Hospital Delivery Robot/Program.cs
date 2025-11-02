@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -6,6 +7,7 @@ using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,16 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
+builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
+builder.Services.AddQuartz(q =>
+{
+    q.AddJob<TaskSchedulerJob>(j => j.WithIdentity("taskSchedulerJob"));
+    q.AddTrigger(t => t
+        .ForJob("taskSchedulerJob")
+        .WithIdentity("taskSchedulerJob-trigger")
+        .WithCronSchedule("0 0 * * * ?"));
+});
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // Service
 builder.Services.AddScoped<IUserService, UserService>();
