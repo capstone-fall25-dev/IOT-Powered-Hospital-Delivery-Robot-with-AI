@@ -1,4 +1,3 @@
-using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -6,6 +5,7 @@ using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,22 +20,22 @@ builder.Services.AddDbContext<RobotManagerContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
-// Repositories
+// Repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
 
-// Services
+// Service
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
 
+// AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
 builder.Services.AddAutoMapper(typeof(TaskProfile));
-
-// EmailSender
-builder.Services.AddTransient<EmailSender>();
 
 var app = builder.Build();
 
