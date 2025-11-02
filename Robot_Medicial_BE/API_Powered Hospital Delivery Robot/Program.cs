@@ -22,9 +22,15 @@ builder.Services.AddDbContext<RobotManagerContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
+builder.Services.AddCors(opts =>
+{
+    opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
+});
+
 // Repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
+builder.Services.AddScoped<IMapRepository, MapRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
 builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
@@ -41,12 +47,14 @@ builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 // Service
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
+builder.Services.AddScoped<IMapService, MapService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
 
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
+builder.Services.AddAutoMapper(typeof(MapProfile));
 builder.Services.AddAutoMapper(typeof(TaskProfile));
 
 var app = builder.Build();
@@ -59,7 +67,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("CORSPolicy");
 app.UseAuthorization();
 
 app.MapControllers();

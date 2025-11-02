@@ -9,15 +9,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     public class RobotService : IRobotService
     {
         private readonly IRobotRepository _robotRepository;
+        private readonly IMapRepository _mapRepository;
         private readonly IMapper _mapper;
 
         // Enum statuses từ dump
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
-        public RobotService(IRobotRepository robotRepository, IMapper mapper)
+        public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository
+            )
         {
             _robotRepository = robotRepository;
             _mapper = mapper;
+            _mapRepository = mapRepository;
         }
 
         public async Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId)
@@ -34,7 +37,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("Cannot assign map to robot with active tasks");
             }
 
-           
+            var map = await _mapRepository.GetByIdAsync(mapId);
+            if (map == null)
+            {
+                throw new InvalidOperationException("Map not found");
+            }
 
             var updatedRobot = await _robotRepository.AssignMapAsync(robotId, mapId);
             if (updatedRobot == null)
@@ -47,6 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 RobotId = robotId,
                 LogType = "info",
+                Message = $"Robot {robot.Code} assigned to map {map.MapName}",
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -54,6 +62,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 RobotId = robotId,
                 MapId = mapId,
+                MapName = map.MapName,
                 Message = "Map assigned successfully"
             };
         }

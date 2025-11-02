@@ -17,8 +17,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // Enum status cho validate
         private readonly string[] ValidStatuses = { "pending", "in_progress", "awaiting_handover", "returning", "at_station", "completed", "canceled" };
 
-        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository 
-          )
+        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository
+         )
         {
             _repository = repository;
             _mapper = mapper;
@@ -147,6 +147,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     };
 
                     // Lưu assignment 
+                    
                 }
             }
             else
@@ -230,6 +231,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     task.Status = "in_progress"; // Or "scheduled"
                     await _repository.UpdateAsync(task.Id, task);
                     assignedCount++;
+              
                 }
             }
             return assignedCount;
@@ -243,7 +245,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return null;
             }
 
-           
+        
             return _mapper.Map<TaskResponseDto>(updated);
         }
 
