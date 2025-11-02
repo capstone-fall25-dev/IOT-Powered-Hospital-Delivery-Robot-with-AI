@@ -9,53 +9,71 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     [ApiController]
     public class MapsUploadController : ControllerBase
     {
-        private readonly IMapUploadService _service;
+        private readonly IMapUploadService _uploadService;
+        private readonly IMapService _mapService; // Dùng để lấy map ra lại
 
-        public MapsUploadController(IMapUploadService service)
+        public MapsUploadController(IMapUploadService uploadService, IMapService mapService)
         {
-            _service = service;
+            _uploadService = uploadService;
+            _mapService = mapService;
         }
 
-        // Tạo map mới (upload image, validate thresh)
+        // -------------------------------
+        // POST: /api/MapsUpload
+        // Upload map mới (từ ROS2 hoặc client)
+        // -------------------------------
         [HttpPost]
         public async Task<ActionResult<MapResponseDto>> Upload([FromForm] MapUploadDto mapDto, IFormFile? imageFile)
         {
             try
             {
-                // Validate file nếu có
-                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024) // 10MB limit
+                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024)
                     return BadRequest("Image file too large (max 10MB)");
 
-                var created = await _service.UploadAsync(mapDto, imageFile);
+                var created = await _uploadService.UploadAsync(mapDto, imageFile);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return Conflict(ex.Message);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
-        // Lấy map theo Id
+        // -------------------------------
+        // GET: /api/MapsUpload/{id}
+        // Lấy thông tin map theo ID
+        // -------------------------------
         [HttpGet("{id}")]
-        public async Task<ActionResult<MapResponseDto>> GetById(ulong id, [FromServices] IMapUploadService service)
+        public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
-            // Vì MapUploadService chỉ có UploadAsync, bạn có thể dùng repository trực tiếp nếu cần
-            var map = await service.UploadAsync(new MapUploadDto { MapName = "" }, null); // Placeholder, cần thay bằng repository call thực tế
-            if (map == null) return NotFound();
+            var map = await _mapService.GetByIdAsync(id);
+            if (map == null)
+                return NotFound($"Map with ID {id} not found.");
+
             return Ok(map);
         }
 
-        // Lấy image map (serve file)
+        // -------------------------------
+        // GET: /api/MapsUpload/{id}/image
+        // Lấy ảnh map (trả về file PNG)
+        // -------------------------------
         [HttpGet("{id}/image")]
-        public async Task<IActionResult> GetImage(ulong id, [FromServices] IMapUploadService service)
+        public async Task<IActionResult> GetImage(ulong id)
         {
-            // Vì MapUploadService chưa có GetById, có thể dùng repository trực tiếp
-            // Đây là ví dụ placeholder, cần inject IMapRepository hoặc IMapService nếu muốn
-            return NotFound();
+            var map = await _mapService.GetByIdAsync(id);
+            if (map == null || map.ImageData == null)
+                return NotFound("Map image not found.");
+
+            var imageName = map.ImageName ?? "map.png";
+            return File(map.ImageData, "image/png", imageName);
         }
     }
 }
