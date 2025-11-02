@@ -1,18 +1,38 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-/**
- * MedFleet — Doctor Management (React + Bootstrap)
- * Tone: teal/seafoam + glass (match other screens)
- * Features:
- *  - Search, filter by status/specialty, sort by column
- *  - Add/Edit doctor in offcanvas form
- *  - Delete with confirmation
- *  - Status badges, specialty chips
- *  - Export CSV
- */
+import { getAllUsers } from '@/services/userService';
+
 export default function DoctorManagement() {
-    // Load Bootstrap/Icons/Fonts for standalone preview
+    const navigate = useNavigate();
+
+    // --- Styles & Bootstrap
+    const styles = (
+        <style>{`
+      :root{--teal:#4CE1C6;--ink:#0f172a}
+      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
+      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
+      .rounded-2xl{border-radius:24px}
+      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
+      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
+      .btn-teal:hover{filter:brightness(1.05)}
+      .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
+      .table thead th{white-space:nowrap}
+      .table tbody td{vertical-align:middle}
+      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
+      .offcanvas{--bs-offcanvas-width: 520px}
+    `}</style>
+    );
+
+    // --- State
+    const [rows, setRows] = useState([]);
+    const [q, setQ] = useState("");
+    const [status, setStatus] = useState("all");
+    const [specFilter, setSpecFilter] = useState("all");
+    const [sort, setSort] = useState({ key: "name", dir: "asc" });
+    const [form, setForm] = useState({});
+    const [toDelete, setToDelete] = useState(null);
+
+    // --- Load users from API
     useEffect(() => {
         const css = document.createElement("link");
         css.rel = "stylesheet";
@@ -31,130 +51,68 @@ export default function DoctorManagement() {
 
         const js = document.createElement("script");
         js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true; document.body.appendChild(js);
+        js.defer = true;
+        document.body.appendChild(js);
 
-        return () => { document.head.removeChild(css); document.head.removeChild(icons); document.head.removeChild(font); document.body.removeChild(js); };
+        // --- Fetch API
+        getAllUsers()
+            .then(users => {
+                const mapped = users.map(u => ({
+                    id: u.id,
+                    name: u.fullName,
+                    email: u.email,
+                    hospital: u.hospital || "Chưa có",
+                    specialty: u.specialty || "Chưa có",
+                    status: u.status || "active",
+                    username: u.username
+                }));
+                setRows(mapped);
+            })
+            .catch(err => {
+                console.error("Lỗi khi lấy dữ liệu users:", err);
+                alert("Không thể tải danh sách bác sĩ");
+            });
+
+        return () => {
+            document.head.removeChild(css);
+            document.head.removeChild(icons);
+            document.head.removeChild(font);
+            document.body.removeChild(js);
+        };
     }, []);
-    const navigate = useNavigate();
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
-      .rounded-2xl{border-radius:24px}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
-      .table thead th{white-space:nowrap}
-      .table tbody td{vertical-align:middle}
-      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
-      .offcanvas{--bs-offcanvas-width: 520px}
-    `}</style>
-    );
 
-    // Khai báo dữ liệu bác sĩ mặc định
-    const [rows, setRows] = useState([
-        {
-            id: "1",
-            name: "BS. Nguyễn Văn A",
-            email: "nguyenvana@example.com",
-            hospital: "Bệnh viện Bạch Mai",
-            specialty: "Nội khoa",
-            status: "active",
-            username: "bsvana",
-        },
-        {
-            id: "2",
-            name: "BS. Trần Thị B",
-            email: "tranthib@example.com",
-            hospital: "Bệnh viện 108",
-            specialty: "Da liễu",
-            status: "suspended",
-            username: "bstranthiB",
-        },
-    ]);
+    // --- Specs unique
+    const specs = useMemo(() => Array.from(new Set(rows.map(r => r.specialty))), [rows]);
 
-    // Bộ lọc & sắp xếp
-    const [q, setQ] = useState("");
-    const [status, setStatus] = useState("all");
-    const [specFilter, setSpecFilter] = useState("all");
-
-    // Lấy danh sách chuyên khoa duy nhất
-    const specs = useMemo(
-        () => Array.from(new Set(rows.map((r) => r.specialty))),
-        [rows]
-    );
-
-    // Sắp xếp ban đầu
-    const [sort, setSort] = useState({ key: "name", dir: "asc" });
-
-    // --- Bộ lọc tổng hợp
+    // --- Filtered & sorted data
     const filtered = useMemo(() => {
         return rows.filter(
-            (r) =>
+            r =>
                 (status === "all" || r.status === status) &&
                 (specFilter === "all" || r.specialty === specFilter) &&
                 (q === "" ||
-                    [r.name, r.email, r.hospital, r.specialty, r.username]
-                        .join(" ")
-                        .toLowerCase()
-                        .includes(q.toLowerCase()))
+                    [r.name, r.email, r.hospital, r.specialty, r.username].join(" ").toLowerCase().includes(q.toLowerCase()))
         );
     }, [rows, q, status, specFilter]);
 
-    // --- Sắp xếp dữ liệu hiển thị
     const data = useMemo(() => {
         const arr = [...filtered];
         arr.sort((a, b) => {
             const va = String(a[sort.key]).toLowerCase();
             const vb = String(b[sort.key]).toLowerCase();
-            return sort.dir === "asc"
-                ? va.localeCompare(vb)
-                : vb.localeCompare(va);
+            return sort.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
         });
         return arr;
     }, [filtered, sort]);
 
-    // --- Toggle sắp xếp cột
     function toggleSort(k) {
-        setSort((s) =>
-            s.key === k
-                ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" }
-                : { key: k, dir: "asc" }
-        );
+        setSort(s => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: "asc" }));
     }
 
-    // --- CRUD (in-memory)
-    const emptyForm = {
-        id: "",
-        name: "",
-        email: "",
-        hospital: "",
-        specialty: "Nội khoa",
-        status: "active",
-        username: "",
-    };
-
-    const [form, setForm] = useState(emptyForm);
-    const [mode, setMode] = useState("add");
-    const [toDelete, setToDelete] = useState(null);
-
-
-    function save() {
-        if (!form.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-            alert("Vui lòng nhập Tên & Email hợp lệ");
-            return;
-        }
-        setRows((prev) => {
-            const exists = prev.some((r) => r.id === form.id);
-            return exists ? prev.map((r) => (r.id === form.id ? form : r)) : [...prev, form];
-        });
-        window.bootstrap?.Offcanvas.getOrCreateInstance("#drawer").hide();
-    }
     function openEdit(row) {
         navigate("/doctor-profile", { state: { doctor: row, mode: "edit" } });
     }
+
     function confirmDelete(row) {
         setToDelete(row);
         window.bootstrap?.Modal.getOrCreateInstance("#confirm").show();
@@ -162,14 +120,14 @@ export default function DoctorManagement() {
 
     function doDelete() {
         if (!toDelete) return;
-        setRows((prev) => prev.filter((r) => r.id !== toDelete.id));
+        setRows(prev => prev.filter(r => r.id !== toDelete.id));
         window.bootstrap?.Modal.getOrCreateInstance("#confirm").hide();
     }
 
     function exportCSV() {
         const rowsCsv = [
             ["Tên bác sĩ", "Email", "Bệnh viện", "Chuyên khoa", "Trạng thái", "Tài khoản"],
-            ...data.map((r) => [
+            ...data.map(r => [
                 r.name,
                 r.email,
                 r.hospital,
@@ -178,9 +136,7 @@ export default function DoctorManagement() {
                 r.username,
             ]),
         ];
-        const csv = rowsCsv
-            .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-            .join("\n");
+        const csv = rowsCsv.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
