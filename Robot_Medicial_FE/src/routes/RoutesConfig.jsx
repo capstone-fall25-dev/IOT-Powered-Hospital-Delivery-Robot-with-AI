@@ -89,7 +89,7 @@ const routes = [
     },
 
     {
-        path: "/doctor-profile",
+        path: "/doctor-profile/:userId",
         element: (
             <MainLayout>
                 <DoctorProfileProvisionForm />

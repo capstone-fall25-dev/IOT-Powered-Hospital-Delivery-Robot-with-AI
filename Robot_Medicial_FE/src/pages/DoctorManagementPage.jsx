@@ -54,23 +54,23 @@ export default function DoctorManagement() {
         js.defer = true;
         document.body.appendChild(js);
 
-        // --- Fetch API
+        // --- Fetch users
         getAllUsers()
             .then(users => {
                 const mapped = users.map(u => ({
                     id: u.id,
-                    name: u.fullName,
+                    fullName: u.fullName,
                     email: u.email,
-                    hospital: u.hospital || "Chưa có",
-                    specialty: u.specialty || "Chưa có",
-                    status: u.status || "active",
-                    username: u.username
+                    role: u.role,
+                    isActive: u.isActive,
+                    isOnline: u.isOnline,
+                    createdAt: new Date(u.createdAt).toLocaleString("vi-VN"),
                 }));
                 setRows(mapped);
             })
             .catch(err => {
                 console.error("Lỗi khi lấy dữ liệu users:", err);
-                alert("Không thể tải danh sách bác sĩ");
+                alert("Không thể tải danh sách người dùng");
             });
 
         return () => {
@@ -110,7 +110,7 @@ export default function DoctorManagement() {
     }
 
     function openEdit(row) {
-        navigate("/doctor-profile", { state: { doctor: row, mode: "edit" } });
+        navigate(`/doctor-profile/${row.id}`); // truyền userId vào URL
     }
 
     function confirmDelete(row) {
@@ -124,27 +124,6 @@ export default function DoctorManagement() {
         window.bootstrap?.Modal.getOrCreateInstance("#confirm").hide();
     }
 
-    function exportCSV() {
-        const rowsCsv = [
-            ["Tên bác sĩ", "Email", "Bệnh viện", "Chuyên khoa", "Trạng thái", "Tài khoản"],
-            ...data.map(r => [
-                r.name,
-                r.email,
-                r.hospital,
-                r.specialty,
-                r.status === "active" ? "Hoạt động" : "Tạm dừng",
-                r.username,
-            ]),
-        ];
-        const csv = rowsCsv.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "doctors.csv";
-        a.click();
-        URL.revokeObjectURL(url);
-    }
 
     return (
         <div className="page">
@@ -153,12 +132,11 @@ export default function DoctorManagement() {
                 <div className="container-lg">
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
-                            <span className="chip"><i className="bi bi-person-lines-fill me-1"></i> Bác sĩ</span>
-                            <h4 className="mb-0 fw-bold">Quản lý bác sĩ</h4>
+                            <span className="chip"><i className="bi bi-person-lines-fill me-1"></i></span>
+                            <h4 className="mb-0 fw-bold">Quản lý người dùng</h4>
                         </div>
                         <div className="d-flex gap-2">
-                            <button className="btn btn-outline-secondary rounded-pill" onClick={exportCSV}><i className="bi bi-download me-1"></i> Xuất CSV</button>
-                            <button className="btn btn-teal rounded-pill" onClick={() => navigate("/doctor-profile")}><i className="bi bi-plus-lg me-1"></i> Thêm mới bác sĩ</button>
+                            <button className="btn btn-teal rounded-pill" onClick={() => navigate("/doctor-profile")}><i className="bi bi-plus-lg me-1"></i> Thêm mới </button>
                         </div>
                     </div>
 
@@ -177,13 +155,6 @@ export default function DoctorManagement() {
                                     <option value="suspended">Tạm dừng</option>
                                 </select>
                             </div>
-                            <div className="col-md-3">
-                                <label className="form-label">Chuyên khoa</label>
-                                <select className="form-select" value={specFilter} onChange={e => setSpecFilter(e.target.value)}>
-                                    <option value="all">Tất cả</option>
-                                    {specs.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
                             <div className="col-md-2 text-md-end">
                                 <label className="form-label d-block"> </label>
                                 <button className="btn btn-light rounded-pill w-100" onClick={() => { setQ(''); setStatus('all'); setSpecFilter('all'); }}><i className="bi bi-x-circle me-1"></i> Xóa lọc</button>
@@ -198,41 +169,55 @@ export default function DoctorManagement() {
                                 <thead>
                                     <tr>
                                         <th>#</th>
-                                        <th role="button" onClick={() => toggleSort('name')}>Tên bác sĩ {sort.key === 'name' && (sort.dir === 'asc' ? '▲' : '▼')}</th>
-                                        <th role="button" onClick={() => toggleSort('email')}>Email {sort.key === 'email' && (sort.dir === 'asc' ? '▲' : '▼')}</th>
-                                        <th>Bệnh viện</th>
-                                        <th>Chuyên khoa</th>
+                                        <th>Họ tên</th>
+                                        <th>Email</th>
+                                        <th>Vai trò</th>
                                         <th>Trạng thái</th>
-                                        <th>Tài khoản</th>
+                                        <th>Online</th>
+                                        <th>Ngày tạo</th>
                                         <th className="text-end">Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.map((r, idx) => (
+                                    {rows.map((r, idx) => (
                                         <tr key={r.id}>
                                             <td>{idx + 1}</td>
-                                            <td>{r.name}</td>
+                                            <td>{r.fullName}</td>
                                             <td>{r.email}</td>
-                                            <td>{r.hospital}</td>
-                                            <td><span className="badge rounded-pill bg-light text-dark border">{r.specialty}</span></td>
                                             <td>
-                                                {r.status === 'active' ? (
+                                                <span className="badge bg-info-subtle text-dark border">{r.role}</span>
+                                            </td>
+                                            <td>
+                                                {r.isActive ? (
                                                     <span className="badge bg-success-subtle text-success border">Hoạt động</span>
                                                 ) : (
                                                     <span className="badge bg-secondary-subtle text-secondary border">Tạm dừng</span>
                                                 )}
                                             </td>
-                                            <td>{r.username}</td>
+                                            <td>
+                                                {r.isOnline ? (
+                                                    <i className="bi bi-circle-fill text-success"></i>
+                                                ) : (
+                                                    <i className="bi bi-circle text-muted"></i>
+                                                )}
+                                            </td>
+                                            <td>{r.createdAt}</td>
                                             <td className="text-end">
                                                 <div className="btn-group btn-group-sm">
-                                                    <button className="btn btn-outline-secondary" onClick={() => openEdit(r)} ><i className="bi bi-pencil"></i> Sửa</button>
-                                                    <button className="btn btn-outline-danger" onClick={() => confirmDelete(r)}><i className="bi bi-trash"></i> Xóa</button>
+                                                    <button className="btn btn-outline-secondary" onClick={() => openEdit(r)}>
+                                                        <i className="bi bi-pencil"></i> Sửa
+                                                    </button>
+                                                    <button className="btn btn-outline-danger" onClick={() => confirmDelete(r)}>
+                                                        <i className="bi bi-trash"></i> Xóa
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
-                                    {data.length === 0 && (
-                                        <tr><td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu</td></tr>
+                                    {rows.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu</td>
+                                        </tr>
                                     )}
                                 </tbody>
                             </table>
