@@ -44,15 +44,6 @@ CREATE TABLE `alerts` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `alerts`
---
-
-LOCK TABLES `alerts` WRITE;
-/*!40000 ALTER TABLE `alerts` DISABLE KEYS */;
-/*!40000 ALTER TABLE `alerts` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `compartment_assignments`
 --
 
@@ -80,15 +71,6 @@ CREATE TABLE `compartment_assignments` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `compartment_assignments`
---
-
-LOCK TABLES `compartment_assignments` WRITE;
-/*!40000 ALTER TABLE `compartment_assignments` DISABLE KEYS */;
-/*!40000 ALTER TABLE `compartment_assignments` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `compartment_categories`
 --
 
@@ -103,15 +85,6 @@ CREATE TABLE `compartment_categories` (
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `compartment_categories`
---
-
-LOCK TABLES `compartment_categories` WRITE;
-/*!40000 ALTER TABLE `compartment_categories` DISABLE KEYS */;
-/*!40000 ALTER TABLE `compartment_categories` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `destinations`
@@ -132,15 +105,6 @@ CREATE TABLE `destinations` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `destinations`
---
-
-LOCK TABLES `destinations` WRITE;
-/*!40000 ALTER TABLE `destinations` DISABLE KEYS */;
-/*!40000 ALTER TABLE `destinations` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `drug_categories`
 --
 
@@ -154,15 +118,6 @@ CREATE TABLE `drug_categories` (
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `drug_categories`
---
-
-LOCK TABLES `drug_categories` WRITE;
-/*!40000 ALTER TABLE `drug_categories` DISABLE KEYS */;
-/*!40000 ALTER TABLE `drug_categories` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `logs`
@@ -189,15 +144,6 @@ CREATE TABLE `logs` (
   CONSTRAINT `fk_log_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `logs`
---
-
-LOCK TABLES `logs` WRITE;
-/*!40000 ALTER TABLE `logs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `logs` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `maps`
@@ -227,15 +173,6 @@ CREATE TABLE `maps` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `maps`
---
-
-LOCK TABLES `maps` WRITE;
-/*!40000 ALTER TABLE `maps` DISABLE KEYS */;
-/*!40000 ALTER TABLE `maps` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `medicines`
 --
 
@@ -247,7 +184,6 @@ CREATE TABLE `medicines` (
   `medicine_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `unit` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `price` decimal(10,2) DEFAULT '0.00',
   `stock_quantity` int DEFAULT '0',
   `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -260,15 +196,6 @@ CREATE TABLE `medicines` (
   CONSTRAINT `fk_medicine_category` FOREIGN KEY (`category_id`) REFERENCES `drug_categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `medicines`
---
-
-LOCK TABLES `medicines` WRITE;
-/*!40000 ALTER TABLE `medicines` DISABLE KEYS */;
-/*!40000 ALTER TABLE `medicines` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `patients`
@@ -289,21 +216,13 @@ CREATE TABLE `patients` (
   `room_number` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `room_id` bigint unsigned DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('active','discharged') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
   PRIMARY KEY (`id`),
   UNIQUE KEY `patient_code` (`patient_code`),
   KEY `fk_patients_rooms` (`room_id`),
   CONSTRAINT `fk_patients_rooms` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `patients`
---
-
-LOCK TABLES `patients` WRITE;
-/*!40000 ALTER TABLE `patients` DISABLE KEYS */;
-/*!40000 ALTER TABLE `patients` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `performance_history`
@@ -328,15 +247,6 @@ CREATE TABLE `performance_history` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `performance_history`
---
-
-LOCK TABLES `performance_history` WRITE;
-/*!40000 ALTER TABLE `performance_history` DISABLE KEYS */;
-/*!40000 ALTER TABLE `performance_history` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `prescription_items`
 --
 
@@ -357,15 +267,6 @@ CREATE TABLE `prescription_items` (
   CONSTRAINT `fk_pi_prescription` FOREIGN KEY (`prescription_id`) REFERENCES `prescriptions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `prescription_items`
---
-
-LOCK TABLES `prescription_items` WRITE;
-/*!40000 ALTER TABLE `prescription_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `prescription_items` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `prescriptions`
@@ -389,15 +290,6 @@ CREATE TABLE `prescriptions` (
   CONSTRAINT `fk_presc_users` FOREIGN KEY (`users_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `prescriptions`
---
-
-LOCK TABLES `prescriptions` WRITE;
-/*!40000 ALTER TABLE `prescriptions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `prescriptions` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `robot_compartments`
@@ -427,15 +319,6 @@ CREATE TABLE `robot_compartments` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `robot_compartments`
---
-
-LOCK TABLES `robot_compartments` WRITE;
-/*!40000 ALTER TABLE `robot_compartments` DISABLE KEYS */;
-/*!40000 ALTER TABLE `robot_compartments` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `robot_maintenance_logs`
 --
 
@@ -452,15 +335,6 @@ CREATE TABLE `robot_maintenance_logs` (
   CONSTRAINT `fk_rm_robot2` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `robot_maintenance_logs`
---
-
-LOCK TABLES `robot_maintenance_logs` WRITE;
-/*!40000 ALTER TABLE `robot_maintenance_logs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `robot_maintenance_logs` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `robots`
@@ -498,15 +372,6 @@ CREATE TABLE `robots` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `robots`
---
-
-LOCK TABLES `robots` WRITE;
-/*!40000 ALTER TABLE `robots` DISABLE KEYS */;
-/*!40000 ALTER TABLE `robots` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `rooms`
 --
 
@@ -525,15 +390,6 @@ CREATE TABLE `rooms` (
   CONSTRAINT `fk_rooms_maps` FOREIGN KEY (`map_id`) REFERENCES `maps` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `rooms`
---
-
-LOCK TABLES `rooms` WRITE;
-/*!40000 ALTER TABLE `rooms` DISABLE KEYS */;
-/*!40000 ALTER TABLE `rooms` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `sessions`
@@ -558,15 +414,6 @@ CREATE TABLE `sessions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `sessions`
---
-
-LOCK TABLES `sessions` WRITE;
-/*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `task_patient_assignments`
 --
 
@@ -584,15 +431,6 @@ CREATE TABLE `task_patient_assignments` (
   CONSTRAINT `fk_tpa_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `task_patient_assignments`
---
-
-LOCK TABLES `task_patient_assignments` WRITE;
-/*!40000 ALTER TABLE `task_patient_assignments` DISABLE KEYS */;
-/*!40000 ALTER TABLE `task_patient_assignments` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `task_stops`
@@ -624,15 +462,6 @@ CREATE TABLE `task_stops` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `task_stops`
---
-
-LOCK TABLES `task_stops` WRITE;
-/*!40000 ALTER TABLE `task_stops` DISABLE KEYS */;
-/*!40000 ALTER TABLE `task_stops` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `tasks`
 --
 
@@ -652,6 +481,7 @@ CREATE TABLE `tasks` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `map_id` bigint unsigned DEFAULT NULL,
   `priority` enum('Normal','Urgent','Critical') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Normal',
+  `scheduled_start_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_task_robot` (`robot_id`),
   KEY `idx_task_status` (`status`),
@@ -662,15 +492,6 @@ CREATE TABLE `tasks` (
   CONSTRAINT `fk_tasks_robot` FOREIGN KEY (`robot_id`) REFERENCES `robots` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `tasks`
---
-
-LOCK TABLES `tasks` WRITE;
-/*!40000 ALTER TABLE `tasks` DISABLE KEYS */;
-/*!40000 ALTER TABLE `tasks` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `users`
@@ -690,12 +511,8 @@ CREATE TABLE `users` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `users`
---
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
@@ -712,4 +529,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-01 17:06:26
+-- Dump completed on 2025-11-02 11:47:53
