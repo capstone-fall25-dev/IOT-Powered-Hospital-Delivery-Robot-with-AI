@@ -12,13 +12,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     {
         private readonly IAlertRepository _repository;
         private readonly IMapper _mapper;
+        private readonly IPrescriptionItemRepository _itemRepository;
+        private readonly IMedicineRepository _medicineRepository;
         private readonly ITaskRepository _taskRepository; 
 
-        public AlertService(IAlertRepository repository, IMapper mapper
-            , ITaskRepository taskRepository)
+        public AlertService(IAlertRepository repository, IMapper mapper, IPrescriptionItemRepository itemRepository, IMedicineRepository medicineRepository, ITaskRepository taskRepository)
         {
             _repository = repository;
             _mapper = mapper;
+            _itemRepository = itemRepository;
+            _medicineRepository = medicineRepository;
             _taskRepository = taskRepository;
         }
 
@@ -32,7 +35,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<AlertResponseDto> CreateMedicineAlertAsync(ulong prescriptionItemId, string reason, string description, ulong? taskId = null)
         {
-           
+            var item = await _itemRepository.GetByIdAsync(prescriptionItemId);
+            if (item == null)
+            {
+                throw new InvalidOperationException("Prescription item not found");
+            }
+
+            var medicine = await _medicineRepository.GetByIdAsync(item.MedicineId);
+            if (medicine == null)
+            {
+                throw new InvalidOperationException("Medicine not found");
+            }
 
             // Fetch robot_id from task (required since alerts.robot_id NOT NULL)
             if (!taskId.HasValue)
@@ -52,12 +65,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             // Report damaged in item
+            await _itemRepository.ReportDamagedAsync(prescriptionItemId, reason, description);
             var alert = new Alert
             {
                 RobotId = task.RobotId, // Use robot from task
                 Severity = "high",
                 Category = "manual",
                 Status = "open",
+                Message = $"Medicine '{medicine.Name}' in item {prescriptionItemId} is {reason}: {description}. Stock updated.",
                 CreatedAt = DateTime.UtcNow,
                 PrescriptionItemId = prescriptionItemId // Liên kết
             };

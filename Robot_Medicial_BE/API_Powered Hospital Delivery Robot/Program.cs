@@ -35,6 +35,12 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
 builder.Services.AddScoped<ILogRepository, LogRepository>();
 builder.Services.AddScoped<IAlertRepository, AlertRepository>();
+builder.Services.AddScoped<IPatientRepository, PatientRepository>();
+builder.Services.AddScoped<IDrugCategoryRepository, DrugCategoryRepository>();
+builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
+builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
 builder.Services.AddQuartz(q =>
 {
@@ -54,6 +60,12 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
 builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IAlertService, AlertService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IDrugCategoryService, DrugCategoryService>();
+builder.Services.AddScoped<IMedicineService, MedicineService>();
+builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
+builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
 
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
