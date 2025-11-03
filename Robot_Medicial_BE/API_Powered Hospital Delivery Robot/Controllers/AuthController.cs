@@ -114,6 +114,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
 
+
+        [HttpPost("admin-reset-password")]
+        //[Authorize(Roles = "admin")]
+        public async Task<IActionResult> AdminResetPassword([FromQuery] string email)
+        {
+            var result = await _userService.AdminResetPasswordAsync(email);
+            return Ok(new { message = result });
+        }
+
+
+
     }
 
 }

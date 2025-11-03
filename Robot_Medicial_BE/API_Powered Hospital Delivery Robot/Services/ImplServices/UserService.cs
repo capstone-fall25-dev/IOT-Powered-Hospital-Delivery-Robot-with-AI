@@ -361,5 +361,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             return "Password reset successful! You can now log in with your new password.";
         }
+
+
+        public async Task<string> AdminResetPasswordAsync(string email)
+        {
+            var allUsers = await _repository.GetAllAsync();
+            var user = allUsers.FirstOrDefault(u => u.Email == email);
+
+            if (user == null)
+                return "User not found.";
+
+            // Tạo mật khẩu ngẫu nhiên (8 ký tự: chữ hoa, chữ thường, số)
+            string newPassword = GenerateRandomPassword(10);
+
+            // Cập nhật mật khẩu
+            user.PasswordHash = HashPassword(newPassword);
+            user.UpdatedAt = DateTime.Now;
+
+            await UpdateUserAsync(user);
+
+            // Không gửi email — chỉ trả về mật khẩu mới
+            return $"Password has been reset successfully. New password: {newPassword}";
+        }
+
+        // Hàm tạo mật khẩu ngẫu nhiên
+        private string GenerateRandomPassword(int length = 8)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
     }
 }
