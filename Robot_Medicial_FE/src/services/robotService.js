@@ -1,7 +1,7 @@
 // src/services/robotService.js
 import axios from "axios";
 
-const API_BASE = "/api/robots";
+const API_BASE = "http://157.66.26.217:5000/api/robots";
 
 // 1. Lấy danh sách robot, optional filter status
 export const getAllRobots = async (status) => {

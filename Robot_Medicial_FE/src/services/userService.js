@@ -1,9 +1,9 @@
-// userService.js
+const API_BASE = 'http://157.66.26.217:5000/api';
 
 // Lấy tất cả users
 export async function getAllUsers() {
     try {
-        const res = await fetch('/api/users', {
+        const res = await fetch(`${API_BASE}/users`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -19,7 +19,7 @@ export async function getAllUsers() {
 export async function getUserById(id) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`/api/users/${id}`, {
+        const res = await fetch(`${API_BASE}/users/${id}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -34,7 +34,7 @@ export async function getUserById(id) {
 // Tạo user mới
 export async function createUser(userDto) {
     try {
-        const res = await fetch('/api/users', {
+        const res = await fetch(`${API_BASE}/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userDto)
@@ -51,7 +51,7 @@ export async function createUser(userDto) {
 export async function updateUser(id, userDto) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`/api/users/${id}`, {
+        const res = await fetch(`${API_BASE}/users/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userDto)
@@ -68,7 +68,7 @@ export async function updateUser(id, userDto) {
 export async function activateUser(id) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`/api/users/${id}/activate`, { method: 'PATCH' });
+        const res = await fetch(`${API_BASE}/users/${id}/activate`, { method: 'PATCH' });
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return true;
     } catch (err) {
@@ -81,7 +81,7 @@ export async function activateUser(id) {
 export async function deactivateUser(id) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`/api/users/${id}/deactivate`, { method: 'PATCH' });
+        const res = await fetch(`${API_BASE}/users/${id}/deactivate`, { method: 'PATCH' });
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return true;
     } catch (err) {
