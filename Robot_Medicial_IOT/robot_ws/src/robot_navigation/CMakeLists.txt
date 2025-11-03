@@ -15,10 +15,16 @@ install(DIRECTORY
   launch
   map
   param
+  scripts
   #src
   DESTINATION share/${PROJECT_NAME}
+  
 )
 
+install(PROGRAMS
+  scripts/upload_map_api.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

@@ -5,6 +5,7 @@ import requests
 import yaml
 import base64
 import os
+from ament_index_python import get_package_share_directory
 
 class MapUploader(Node):
     def __init__(self):
@@ -14,9 +15,9 @@ class MapUploader(Node):
         self.api_url = "http://157.66.26.217:5000/api/MapsUpload/json"
 
         # === Path to your map files ===
-        pkg_share = os.path.join(os.path.expanduser('~'), 'robot_ws', 'src', 'robot_navigation', 'map')
-        yaml_path = os.path.join(pkg_share, 'map_1.yaml')
-        pgm_path = os.path.join(pkg_share, 'map_1.pgm')
+        pkg_share = get_package_share_directory("robot_navigation")
+        yaml_path = os.path.join(pkg_share,"map" ,'map_2.yaml')
+        pgm_path = os.path.join(pkg_share,"map" ,'map_2.pgm')
 
         self.get_logger().info(f"Reading map YAML: {yaml_path}")
 
