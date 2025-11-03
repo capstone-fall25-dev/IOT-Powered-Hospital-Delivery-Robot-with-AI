@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+
+const backendPort = 5000 || 5170 // Ưu tiên 5000
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -8,9 +11,9 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://157.66.26.217:5000',
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
-        secure: false
+        secure: false,
       }
     }
   },
