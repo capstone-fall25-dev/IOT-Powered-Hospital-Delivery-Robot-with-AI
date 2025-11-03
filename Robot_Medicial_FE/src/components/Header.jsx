@@ -23,6 +23,9 @@ const Header = () => {
             case "profile":
                 navigate("/user-detail");
                 break;
+            case "patient":
+                navigate("/patient");
+                break;
             case "logout":
                 localStorage.removeItem("token");
                 navigate("/");
@@ -74,13 +77,19 @@ const Header = () => {
                     >
                         Quản Lý Đội Robot
                     </Button>
-
+                    <Button
+                        variant="outline-success"
+                        className="me-2"
+                        onClick={() => handleNavigate("patient")}
+                    >
+                        Quản Lý Bệnh Nhân
+                    </Button>
                     <Button
                         variant="outline-danger"
                         className="me-3"
                         onClick={() => handleNavigate("doctor")}
                     >
-                        Quản Lý Bác Sĩ
+                        Quản Lý Người Dùng
                     </Button>
 
                     {/* Ảnh đại diện với dropdown */}
