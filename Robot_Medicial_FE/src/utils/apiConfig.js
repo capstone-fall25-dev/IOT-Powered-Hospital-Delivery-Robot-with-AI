@@ -1,3 +1,7 @@
+export const API_CONFIG = {
+    API_BASE: "http://157.66.26.217:5000/api",
+};
+
 export async function apiFetch(url, options = {}) {
     try {
         const token = sessionStorage.getItem("token");
@@ -27,3 +31,4 @@ export async function apiFetch(url, options = {}) {
         throw err;
     }
 }
+

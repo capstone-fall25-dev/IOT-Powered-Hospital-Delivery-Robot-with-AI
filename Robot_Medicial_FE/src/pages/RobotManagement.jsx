@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAllRobots } from "@/services/robotService";
 
 export default function RobotFleetCards() {
     const navigate = useNavigate();
@@ -18,8 +19,7 @@ export default function RobotFleetCards() {
 
         const font = document.createElement("link");
         font.rel = "stylesheet";
-        font.href =
-            "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
+        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
         document.head.appendChild(font);
 
         const js = document.createElement("script");
@@ -53,15 +53,40 @@ export default function RobotFleetCards() {
     `}</style>
     );
 
-    const [robots, setRobots] = useState([
-        { id: "RB-001", battery: 78, mission: 50, status: "chobangiao" },
-        { id: "RB-002", battery: 55, mission: 95, status: "chobangiao" },
-        { id: "RB-003", battery: 60, mission: 95, status: "chobangiao" },
-        { id: "RB-004", battery: 77, mission: 0, status: "tamtam" },
-    ]);
+    // Map trạng thái từ API sang badge status
+    const statusMap = {
+        transporting: "dangvanchuyen",
+        awaiting_handover: "chobangiao",
+        returning_to_station: "dangquayve",
+        at_station: "taitram",
+        completed: "sansang",
+        charging: "sac",
+        needs_attention: "chobangiao",
+        offline: "khonghoatdong",
+    };
 
+    const [robots, setRobots] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
+
+    useEffect(() => {
+        async function fetchRobots() {
+            try {
+                const data = await getAllRobots();
+                const formatted = data.map((r) => ({
+                    id: r.code,
+                    name: r.name,
+                    battery: r.batteryPercent ?? 0,
+                    mission: r.progressOverallPct ?? 0,
+                    status: statusMap[r.status] || "sansang",
+                }));
+                setRobots(formatted);
+            } catch (err) {
+                console.error("Lỗi khi load robots:", err);
+            }
+        }
+        fetchRobots();
+    }, []);
 
     const filtered = useMemo(
         () =>
@@ -74,14 +99,26 @@ export default function RobotFleetCards() {
     );
 
     function statusBadge(s) {
-        if (s === "chobangiao")
-            return <span className="badge badge-warn badge-status">Chờ bàn giao</span>;
-        if (s === "tamtam")
-            return <span className="badge badge-stop badge-status">Tạm dừng</span>;
-        if (s === "taitram")
-            return <span className="badge badge-warn badge-status">Tại trạm</span>;
-        return <span className="badge badge-ready badge-status">Sẵn sàng</span>;
+        switch (s) {
+            case "chobangiao":
+                return <span className="badge badge-warn badge-status">Chờ bàn giao</span>;
+            case "dangvanchuyen":
+                return <span className="badge badge-ready badge-status">Đang vận chuyển</span>;
+            case "dangquayve":
+                return <span className="badge badge-ready badge-status">Đang quay về</span>;
+            case "taitram":
+                return <span className="badge badge-warn badge-status">Tại trạm</span>;
+            case "sac":
+                return <span className="badge badge-warn badge-status">Đang sạc</span>;
+            case "sansang":
+                return <span className="badge badge-ready badge-status">Sẵn sàng</span>;
+            case "khonghoatdong":
+                return <span className="badge badge-stop badge-status">Không hoạt động</span>;
+            default:
+                return <span className="badge badge-ready badge-status">Trạng thái khác</span>;
+        }
     }
+
 
     return (
         <div className="page">
@@ -105,9 +142,12 @@ export default function RobotFleetCards() {
                         >
                             <option value="all">Tất cả trạng thái</option>
                             <option value="chobangiao">Chờ bàn giao</option>
+                            <option value="dangvanchuyen">Đang vận chuyển</option>
+                            <option value="dangquayve">Đang quay về</option>
                             <option value="taitram">Tại trạm</option>
+                            <option value="sac">Đang sạc</option>
                             <option value="sansang">Sẵn sàng</option>
-                            <option value="tamtam">Tạm dừng</option>
+                            <option value="khonghoatdong">Không hoạt động</option>
                         </select>
                         <button className="btn btn-teal">
                             <i className="bi bi-plus-lg me-1"></i> Thêm robot
@@ -128,25 +168,11 @@ export default function RobotFleetCards() {
                                         <i className="bi bi-battery-half"></i>
                                         <span className="muted">Ắc quy: {r.battery}%</span>
                                     </div>
-                                    <div className="d-flex align-items-center gap-2">
-                                        <i className="bi bi-graph-up"></i>
-                                        <span className="muted">Tiến độ: {r.mission}%</span>
-                                    </div>
                                 </div>
-                                <div
-                                    className="progress progress-dark mb-2"
-                                    role="progressbar"
-                                    aria-label={`mission-${r.id}`}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                >
-                                    <div
-                                        className="progress-bar"
-                                        style={{ width: `${r.mission}%` }}
-                                    ></div>
-                                </div>
+                                <div className="progress-bar" style={{ width: `${r.mission}%` }}></div>
                                 {statusBadge(r.status)}
                             </div>
+
                         </div>
                     ))}
                     {filtered.length === 0 && (

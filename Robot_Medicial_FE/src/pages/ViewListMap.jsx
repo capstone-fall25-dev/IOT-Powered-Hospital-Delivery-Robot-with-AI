@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-
+import { API_CONFIG } from "@/utils/apiConfig";
 /**
  * Project Map List View (React + Bootstrap + Leaflet + Hospital Map)
  * - Giao diện glass đẹp, layout 2 cột: bên trái là danh sách, bên phải hiển thị bản đồ ROS2 từ API
@@ -69,7 +69,7 @@ export default function ProjectMapListView() {
   useEffect(() => {
     async function fetchMap() {
       try {
-        const res = await fetch("http://157.66.26.217:5000/api/MapsUpload/2");
+        const res = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/2`);
         if (!res.ok) throw new Error("Không tải được dữ liệu bản đồ");
         const data = await res.json();
         setMapInfo(data);
@@ -172,8 +172,8 @@ export default function ProjectMapListView() {
                             i.status === "Hoạt động"
                               ? "#0ea5a5"
                               : i.status === "Đang bảo trì"
-                              ? "#f59e0b"
-                              : "#94a3b8",
+                                ? "#f59e0b"
+                                : "#94a3b8",
                         }}
                       ></div>
                       <div>
