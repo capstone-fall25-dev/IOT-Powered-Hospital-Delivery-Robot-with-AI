@@ -15,7 +15,7 @@ install(DIRECTORY
   launch
   map
   param
-  src
+  #src
   DESTINATION share/${PROJECT_NAME}
 )
 
