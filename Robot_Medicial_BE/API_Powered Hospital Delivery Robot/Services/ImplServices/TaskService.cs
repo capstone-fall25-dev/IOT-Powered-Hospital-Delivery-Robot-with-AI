@@ -18,14 +18,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly ILogRepository _logRepository;
         private readonly IAlertRepository _alertRepository;
         private readonly ILogService _logService;
-        //private readonly IDestinationRepository _destinationRepository;
+        private readonly IDestinationRepository _destinationRepository;
 
         // Enum status cho validate
         private readonly string[] ValidStatuses = { "pending", "in_progress", "awaiting_handover", "returning", "at_station", "completed", "canceled" };
 
         public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository, 
             ICompartmentAssignmentRepository compartmentAssignmentRepository, IPerformanceHistoryService performanceHistoryService,
-            ILogRepository logRepository, IAlertRepository alertRepository, ILogService logService)
+            ILogRepository logRepository, IAlertRepository alertRepository, ILogService logService, IDestinationRepository destinationRepository)
         {
             _repository = repository;
             _mapper = mapper;
@@ -36,7 +36,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _logRepository = logRepository;
             _alertRepository = alertRepository;
             _logService = logService;
-            // _destinationRepository = destinationRepository;
+            _destinationRepository = destinationRepository;
         }
 
         public async Task<TaskResponseDto> ConfirmAsync(ulong id, ulong adminUserId, string adminUsername)
@@ -128,9 +128,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 if (stopDto.DestinationId.HasValue)
                 {
-                    // Validate destination nếu cần (giả sử có _destinationRepository)
-                    // var dest = await _destinationRepository.GetByIdAsync(stopDto.DestinationId.Value);
-                    // if (dest == null) throw new InvalidOperationException($"Destination {stopDto.DestinationId} not found");
+                    // Validate destination
+                    var dest = await _destinationRepository.GetByIdAsync(stopDto.DestinationId.Value);
+                    if (dest == null) throw new InvalidOperationException($"Destination {stopDto.DestinationId} not found");
                 }
 
                 var taskStop = _mapper.Map<TaskStop>(stopDto);

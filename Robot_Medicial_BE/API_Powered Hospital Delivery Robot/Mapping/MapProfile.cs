@@ -8,6 +8,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
     {
         public MapProfile()
         {
+            CreateMap<MapDto, Map>()
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+
             // Map từ MapDto → Map (sử dụng cho Create / Update)
             CreateMap<MapDto, Map>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());

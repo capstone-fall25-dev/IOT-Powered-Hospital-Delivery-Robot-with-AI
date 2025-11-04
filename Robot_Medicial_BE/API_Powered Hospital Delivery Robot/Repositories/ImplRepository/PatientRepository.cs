@@ -21,7 +21,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return patient;
         }
 
-        public async Task<Patient?> DischargeAsync(ulong id, string reason)
+        public async Task<Patient?> DischargeAsync(ulong id)
         {
             var patient = await _context.Patients.FindAsync(id);
             if (patient == null)

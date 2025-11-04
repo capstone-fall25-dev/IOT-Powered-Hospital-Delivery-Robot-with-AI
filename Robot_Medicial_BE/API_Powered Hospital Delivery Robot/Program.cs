@@ -143,6 +143,7 @@ builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDestinationService, DestinationService>();
+
 builder.Services.AddScoped<IMapRepository, MapRepository>();
 builder.Services.AddScoped<IMapUploadService, MapUploadService>();
 // AutoMap
