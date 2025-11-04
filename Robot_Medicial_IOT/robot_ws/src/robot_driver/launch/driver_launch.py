@@ -47,30 +47,25 @@ def generate_launch_description():
         ),
 
         # Delay 1s -> bring up STM32 controller
-        TimerAction(
-            period=1.0,
-            actions=[
-                Node(
-                    package='robot_driver',
-                    executable='stm32_controller.py',
-                    name='stm32_odom',
-                    output='screen',
-                    parameters=[hardware_config],
-                )
-            ]
+        Node(
+            package='robot_driver',
+            executable='stm32_controller.py',
+            name='stm32_odom',
+            output='screen',
+            parameters=[hardware_config],
         ),
-       
-        # Delay 3s -> bring up lidar
-        TimerAction(
-            period=3.0,
-            actions=[
-                Node(
-                    package='rplidar_ros',
-                    executable='rplidar_node',
-                    name='rplidar_node',
-                    output='screen',
-                    parameters=[hardware_config],
-                )
-            ]
-        ),
+        # Node(
+        #     package='robot_driver',
+        #     executable='stm32_controller.py',
+        #     name='stm32_odom',
+        #     output='screen',
+        #     parameters=[hardware_config],
+        # ),
+        Node(
+            package='rplidar_ros',
+            executable='rplidar_node',
+            name='rplidar_node',
+            output='screen',
+            parameters=[hardware_config],
+        )
     ])

@@ -24,13 +24,27 @@ ros2 launch robot_driver robot_driver driver_launch.py
 ### Launch slam
 
 ```bash
+ros2 launch robot_driver  driver_launch.py
+
 ros2 launch robot_slam slam_launch.py
+
+
+ros2 launch robot_navigation rviz_view_launch.py (xem map)
+
+ros2 run robot_driver teleop.py (dieu khien)
+
+ros2 run nav2_map_server map_saver_cli -f <tên_bản_đồ> (luu o thu muc hien tai cua terminal)
 
 ```
 
 ### Launch navigation
 ```bash
 ros2 launch robot_navigation bringup_launch.py
+
+ros2 launch robot_driver  driver_launch.py
+
+ros2 launch robot_navigation rviz_view_launch.py (xem map)
+
 
 ```
 

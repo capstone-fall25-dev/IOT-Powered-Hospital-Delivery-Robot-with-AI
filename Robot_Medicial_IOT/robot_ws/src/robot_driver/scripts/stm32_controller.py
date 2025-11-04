@@ -110,15 +110,15 @@ class STM32Driver(Node):
         self.declare_parameter('baudrate', 115200)                  # Serial communication speed (common: 9600, 57600, 115200, 230400)
         
         # Robot Physical Parameters (Critical for accurate kinematics)
-        self.declare_parameter('wheel_radius', 0.05)                # Wheel radius in meters (measure from wheel center to ground contact)
-        self.declare_parameter('wheel_base', 0.3)                   # Distance between wheel centers in meters (left to right)
+        self.declare_parameter('wheel_radius', 0.045)                # Wheel radius in meters (measure from wheel center to ground contact)
+        self.declare_parameter('wheel_base', 0.26)                   # Distance between wheel centers in meters (left to right)
         
         # System Configuration Parameters  
         self.declare_parameter('debug_mode', True)                  # Enable verbose logging and debug output
         self.declare_parameter('data_rate_hz', 25.0)                # Serial data processing frequency (Hz) - affects responsiveness vs CPU load
         
         # Sensor Fusion Parameters
-        self.declare_parameter('use_sensor_fusion', True)           # Enable Kalman filter fusion of IMU + encoder data
+        self.declare_parameter('use_sensor_fusion', False)           # Enable Kalman filter fusion of IMU + encoder data
         self.declare_parameter('publish_imu', True)                 # Publish raw IMU data to /imu topic
         self.declare_parameter('imu_frame_id', 'imu_link')          # TF frame for IMU sensor
         
@@ -377,8 +377,8 @@ class STM32Driver(Node):
             data_parts = line.split()
             # self.get_logger().info(f"Data values: {data_parts}")
             # Validate we have enough data values (9 expected)
-            if len(data_parts) >= 9:
-                data_values = [float(part) for part in data_parts[:9]]
+            if len(data_parts) >= 8:
+                data_values = [float(part) for part in data_parts[:8]]
 
                 # Process the data
                 self.process_combined_data(
@@ -390,7 +390,7 @@ class STM32Driver(Node):
                     data_values[5],   # gx
                     data_values[6],   # gy
                     data_values[7],   # gz
-                    data_values[8] # yaw
+                    # data_values[8] # yaw
                     # data_values[9],   # vl05_1
                     # data_values[10],  # vl05_2
                     # data_values[11],  # vl05_3
@@ -402,7 +402,7 @@ class STM32Driver(Node):
                 
                 # Debug logging (reduced frequency)
                 if self.debug_mode and self.count % 10 == 0:
-                    # self.get_logger().info(f"Processed line {self.count}: {data_values} values")
+                    self.get_logger().info(f"Processed line {self.count}: {data_values} values")
                     pass
                     
             else:
@@ -552,7 +552,8 @@ class STM32Driver(Node):
         # Send command
         command = f"{duty_cycles[0]} {duty_cycles[1]}\n"
         if self.debug_mode and self.count % 10 == 0:
-            self.get_logger().info(f"Comman send: {command}")
+            # self.get_logger().info(f"Comman send: {command}")
+            pass
         # if self.
         # Store motor commands for CSV logging
         self.last_duty_left = duty_cycles[0]
@@ -600,18 +601,6 @@ class STM32Driver(Node):
                 # # FIX: Process individual value, not array
                 range_value = float(raw_value)
                 
-
-                # Apply offset correction for close obstacles
-
-                # # Apply offset correction for close obstacles
-
-                # if range_value < 0.20:
-                #     range_value += 0.2        # Add 20cm offset for small values
-                    
-                # # Optional global offset (uncomment if needed)
-                # # range_value += 0.12
-                
-                # # Clamp to sensor limits
                 msg.range = max(msg.min_range, min(msg.max_range, range_value))
                 
                 # Publish the message
@@ -626,7 +615,7 @@ class STM32Driver(Node):
                 if self.count % 100 == 0:  # Reduce log spam
                     self.get_logger().error(f"VL05 sensor {i} processing error: {e}")
 
-    def process_combined_data(self, v_left, v_right, ax, ay, az, gx, gy, gz, yaw, vl05_1=0.0, vl05_2=0.0, vl05_3=0.0, vl05_4=0.0):
+    def process_combined_data(self, v_left, v_right, ax, ay, az, gx, gy, gz, yaw=0.0, vl05_1=0.0, vl05_2=0.0, vl05_3=0.0, vl05_4=0.0):
         """
         Central sensor data processing hub for multi-sensor integration.
         
@@ -674,7 +663,7 @@ class STM32Driver(Node):
         gx_rads = gx
         gy_rads = gy
         gz_rads = gz
-        yaw_rad = yaw
+        # yaw_rad = yaw
 
         # Update range sensors
         # self.update_range_vl05(current_time, vl05_1, vl05_3, vl05_4, vl05_2)

@@ -69,7 +69,7 @@ export default function ProjectMapListView() {
   useEffect(() => {
     async function fetchMap() {
       try {
-        const res = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/2`);
+        const res = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/3`);
         if (!res.ok) throw new Error("Không tải được dữ liệu bản đồ");
         const data = await res.json();
         setMapInfo(data);
