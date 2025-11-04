@@ -51,11 +51,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Status { get; set; }
     }
 
-    public class DischargePatientDto
-    {
-        public string Reason { get; set; } = null!; // e.g., "Recovered"
-    }
-
     public class PatientReportDto
     {
         public string FullName { get; set; } = null!;

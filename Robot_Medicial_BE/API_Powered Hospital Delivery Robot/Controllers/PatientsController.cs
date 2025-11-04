@@ -66,11 +66,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Discharge patient (set status="discharged", null RoomId/RoomNumber, log reason) - UC 68: Patient Discharge Management (Patient Management)
         [HttpPatch("{id}/discharge")]
-        public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id, DischargePatientDto dto)
+        public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id)
         {
             try
             {
-                var updated = await _service.DischargeAsync(id, dto);
+                var updated = await _service.DischargeAsync(id);
                 if (updated == null) return NotFound();
                 return Ok(updated);
             }

@@ -10,7 +10,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Patient?> GetByCodeAsync(string patientCode);
         Task<Patient> CreateAsync(Patient patient);
         Task<Patient?> UpdateAsync(ulong id, Patient patient);
-        Task<Patient?> DischargeAsync(ulong id, string reason);
+        Task<Patient?> DischargeAsync(ulong id);
         Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong patientId);
     }
 }

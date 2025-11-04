@@ -34,17 +34,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<PatientResponseDto>(created);
         }
 
-        public async Task<PatientResponseDto?> DischargeAsync(ulong id, DischargePatientDto dto)
+        public async Task<PatientResponseDto?> DischargeAsync(ulong id)
         {
-            var updated = await _repository.DischargeAsync(id, dto.Reason);
+            var updated = await _repository.DischargeAsync(id);
             if (updated == null) return null;
-            await _logService.CreateAsync(new LogDto
-            {
-                RobotId = 0, // Or from current robot if related
-                TaskId = null,
-                LogType = "info",
-                Message = $"Patient {id} discharged. Reason: {dto.Reason}"
-            });
             return _mapper.Map<PatientResponseDto>(updated);
         }
 
