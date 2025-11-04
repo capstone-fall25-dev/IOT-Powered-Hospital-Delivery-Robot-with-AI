@@ -15,7 +15,7 @@ import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import PatientsManagement from "@/pages/PatientManagement";
 import ProjectMapListView from "@/pages/ViewListMap";
 import PatientDetail from "@/pages/PatientsDetail";
-
+import CreatePatient from "../pages/CreatePatient";
 const routes = [
     { path: "/login", element: <Login /> },
 
@@ -34,8 +34,9 @@ const routes = [
     { path: "/history-mission", element: <MainLayout><RobotMissionHistory /></MainLayout> },
     { path: "/forgot-password", element: <MainLayout><ForgotPasswordPage /></MainLayout> },
     { path: "/viewlistmap", element: <MainLayout><ProjectMapListView /></MainLayout> },
-    { path: "/patient", element: <MainLayout><PatientsManagement /></MainLayout> },
+    { path: "/patients", element: <MainLayout><PatientsManagement /></MainLayout> },
     { path: "/patient/:id", element: <MainLayout><PatientDetail /></MainLayout> },
+    { path: "/patients/add", element: <MainLayout><CreatePatient /></MainLayout> },
 ];
 
 export default routes;

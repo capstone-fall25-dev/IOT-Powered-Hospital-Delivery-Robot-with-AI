@@ -24,7 +24,7 @@ const Header = () => {
                 navigate("/user-detail");
                 break;
             case "patient":
-                navigate("/patient");
+                navigate("/patients");
                 break;
             case "logout":
                 localStorage.removeItem("token");

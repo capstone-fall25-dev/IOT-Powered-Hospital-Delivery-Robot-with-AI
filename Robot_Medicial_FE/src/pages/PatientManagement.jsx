@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllPatients } from "@/services/patientService";
+import { getMedicineHistory } from "@/services/patientService"; // thêm import API
 
 export default function PatientsManagement() {
     const navigate = useNavigate();
@@ -25,6 +26,11 @@ export default function PatientsManagement() {
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
 
+    // Modal state
+    const [showModal, setShowModal] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [medicineHistory, setMedicineHistory] = useState([]);
+
     useEffect(() => {
         const css = document.createElement("link");
         css.rel = "stylesheet";
@@ -46,7 +52,7 @@ export default function PatientsManagement() {
         js.defer = true;
         document.body.appendChild(js);
 
-        // --- Fetch patients
+        // Fetch patients
         getAllPatients()
             .then((patients) => {
                 const mapped = patients.map((p) => ({
@@ -76,7 +82,6 @@ export default function PatientsManagement() {
         };
     }, []);
 
-    // --- Filtered patients
     const filtered = useMemo(() => {
         return rows.filter(
             (r) =>
@@ -85,6 +90,19 @@ export default function PatientsManagement() {
                     [r.fullName, r.patientCode, r.department, r.roomName].join(" ").toLowerCase().includes(q.toLowerCase()))
         );
     }, [rows, q, status]);
+
+    // --- Open modal và load lịch sử thuốc
+    const handleViewMedicineHistory = async (patient) => {
+        setSelectedPatient(patient);
+        try {
+            const history = await getMedicineHistory(patient.id);
+            setMedicineHistory(history);
+            setShowModal(true);
+        } catch (err) {
+            console.error("Lỗi khi tải lịch sử đơn thuốc:", err);
+            alert("Không thể tải lịch sử đơn thuốc!");
+        }
+    };
 
     return (
         <div className="page">
@@ -160,6 +178,8 @@ export default function PatientsManagement() {
                                         <th>Phòng</th>
                                         <th>SĐT</th>
                                         <th>Trạng thái</th>
+                                        <th>Đơn thuốc</th> {/* cột mới */}
+                                        <th className="text-end">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -183,6 +203,14 @@ export default function PatientsManagement() {
                                                     {r.status}
                                                 </span>
                                             </td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-outline-primary btn-sm"
+                                                    onClick={() => handleViewMedicineHistory(r)}
+                                                >
+                                                    Xem
+                                                </button>
+                                            </td>
                                             <td className="text-end">
                                                 <div className="btn-group btn-group-sm">
                                                     <button
@@ -194,12 +222,11 @@ export default function PatientsManagement() {
                                                     </button>
                                                 </div>
                                             </td>
-
                                         </tr>
                                     ))}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={10} className="text-center text-muted py-4">
+                                            <td colSpan={11} className="text-center text-muted py-4">
                                                 Không có dữ liệu
                                             </td>
                                         </tr>
@@ -208,6 +235,53 @@ export default function PatientsManagement() {
                             </table>
                         </div>
                     </div>
+
+                    {/* --- Modal Lịch sử đơn thuốc --- */}
+                    {showModal && (
+                        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                            <div className="modal-dialog modal-lg modal-dialog-centered">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Lịch sử đơn thuốc - {selectedPatient.fullName}</h5>
+                                        <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        {medicineHistory.length === 0 ? (
+                                            <p>Chưa có đơn thuốc nào.</p>
+                                        ) : (
+                                            <table className="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Tên thuốc</th>
+                                                        <th>Liều lượng</th>
+                                                        <th>Tổng số lượng</th>
+                                                        <th>Ngày kê lần cuối</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {medicineHistory.map((m, i) => (
+                                                        <tr key={i}>
+                                                            <td>{i + 1}</td>
+                                                            <td>{m.medicineName}</td>
+                                                            <td>{m.dosage}</td>
+                                                            <td>{m.totalPrescribedQuantity}</td>
+                                                            <td>{new Date(m.lastPrescribedAt).toLocaleDateString("vi-VN")}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Đóng</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>

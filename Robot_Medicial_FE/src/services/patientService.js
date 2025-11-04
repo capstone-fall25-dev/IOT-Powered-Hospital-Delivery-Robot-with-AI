@@ -55,17 +55,20 @@ export async function updatePatient(id, patientDto) {
 }
 
 // Xuất viện bệnh nhân
-export async function dischargePatient(id, dischargeDto) {
+export async function dischargePatient(id, reason) {
     const res = await fetch(`${BASE_URL}/${id}/discharge`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dischargeDto),
+        body: JSON.stringify({ reason }), // ✅ đúng định dạng API
     });
+
     if (!res.ok) {
         const err = await res.text();
-        throw new Error(err);
+        throw new Error(err || "Discharge failed");
     }
-    return res.json();
+
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
 }
 
 // Lấy lịch sử thuốc của bệnh nhân
