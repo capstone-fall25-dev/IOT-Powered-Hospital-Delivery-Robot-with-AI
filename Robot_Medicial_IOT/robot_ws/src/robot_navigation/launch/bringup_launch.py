@@ -20,12 +20,12 @@ def generate_launch_description():
     
  
     home = os.path.expanduser('~')
-    appdata_map = os.path.join("/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map",'map_1.yaml')
+    appdata_map = os.path.join("/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map",'homeMap.yaml')
     return LaunchDescription([
         # Tham số đầu vào
         DeclareLaunchArgument(
             'params_file',
-            default_value='/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map/robot_2.yaml',
+            default_value='/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/param/robot_2.yaml',
             description='Đường dẫn đến file tham số YAML'
         ),
         # pointcloud_to_laserscan_node,

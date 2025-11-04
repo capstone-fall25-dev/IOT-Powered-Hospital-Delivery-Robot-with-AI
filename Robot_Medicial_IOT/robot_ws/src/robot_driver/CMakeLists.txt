@@ -22,14 +22,11 @@ install(PROGRAMS
   scripts/stm32_controller.py
   scripts/lidar.py
   scripts/teleop.py
-  scripts/filter_lidar_scan.py
   scripts/stm32_node.py
   scripts/web_control.py
   scripts/read_cam.py
   scripts/cmd_vel.py
   scripts/kalman_filter.py
-  scripts/filter_lidar.py
-  scripts/pointcloud.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

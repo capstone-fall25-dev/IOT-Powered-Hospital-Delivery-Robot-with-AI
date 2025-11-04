@@ -56,4 +56,34 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public byte[]? ImageData { get; set; }
         public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>(); // Robots dùng map này
     }
+
+    public class MapUploadDto
+    {
+        [Required]
+        public string MapName { get; set; } = null!;
+
+        public string? Mode { get; set; }
+        public float? Resolution { get; set; }
+        public float? OriginX { get; set; }
+        public float? OriginY { get; set; }
+        public float? OriginZ { get; set; }
+        public float? OccupiedThresh { get; set; }
+        public float? FreeThresh { get; set; }
+        public bool? Negate { get; set; }
+    }
+    public class MapUploadJsonDto
+{
+    public string MapName { get; set; } = null!;
+    public string? Mode { get; set; }
+    public float? Resolution { get; set; }
+    public float? OriginX { get; set; }
+    public float? OriginY { get; set; }
+    public float? OriginZ { get; set; }
+    public float? OccupiedThresh { get; set; }
+    public float? FreeThresh { get; set; }
+    public bool? Negate { get; set; }
+    public string? ImageName { get; set; }
+    public string? ImageBase64 { get; set; } // base64 image
+}
+
 }

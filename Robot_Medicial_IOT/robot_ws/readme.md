@@ -24,7 +24,16 @@ ros2 launch robot_driver robot_driver driver_launch.py
 ### Launch slam
 
 ```bash
+ros2 launch robot_driver  driver_launch.py
+
 ros2 launch robot_slam slam_launch.py
+
+
+ros2 launch robot_navigation rviz_view_launch.py (xem map)
+
+ros2 run robot_driver teleop.py (dieu khien)
+
+ros2 run nav2_map_server map_saver_cli -f <tên_bản_đồ> (luu o thu muc hien tai cua terminal)
 
 ```
 
@@ -32,12 +41,28 @@ ros2 launch robot_slam slam_launch.py
 ```bash
 ros2 launch robot_navigation bringup_launch.py
 
+ros2 launch robot_driver  driver_launch.py
+
+ros2 launch robot_navigation rviz_view_launch.py (xem map)
+
+
 ```
 
 ### Test lidar
 
 ```bash
 ros2 launch rplidar_ros view_rplidar_a2m8_launch.py
+```
+
+### Test map 
+
+```bash
+ros2 launch robot_navigation test_map_launch.py
+```
+
+### Run websocket
+```bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml address:=0.0.0.0 port:=9000
 ```
 
 ros-web-bridge

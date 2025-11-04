@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hospital_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: robotmanager
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  backend:
+    build:
+      context: ./Robot_Medicial_BE
+      dockerfile: Dockerfile
+    container_name: hospital_backend
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=robotmanager;user=root;password=123
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./Robot_Medicial_FE
+      dockerfile: Dockerfile
+    container_name: hospital_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "8080:80" 
+
+volumes:
+  mysql_data:

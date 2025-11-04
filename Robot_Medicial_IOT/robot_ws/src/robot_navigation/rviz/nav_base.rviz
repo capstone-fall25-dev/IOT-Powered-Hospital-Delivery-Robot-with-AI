@@ -86,11 +86,23 @@ Visualization Manager:
           Value: true
         base_link:
           Value: true
+        camera_link:
+          Value: true
+        imu:
+          Value: true
         laser_frame:
           Value: true
         map:
           Value: true
         odom:
+          Value: true
+        vl05_1:
+          Value: true
+        vl05_2:
+          Value: true
+        vl05_3:
+          Value: true
+        vl05_4:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -102,7 +114,19 @@ Visualization Manager:
           odom:
             base_footprint:
               base_link:
+                camera_link:
+                  {}
+                imu:
+                  {}
                 laser_frame:
+                  {}
+                vl05_1:
+                  {}
+                vl05_2:
+                  {}
+                vl05_3:
+                  {}
+                vl05_4:
                   {}
       Update Interval: 0
       Value: true
@@ -549,7 +573,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.575799584388733
+      Angle: -1.5757989883422852
       Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -559,11 +583,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 137.26510620117188
+      Scale: 88.7951431274414
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: -1.8205721378326416
-      Y: -1.0347139835357666
+      X: 0.48138174414634705
+      Y: 0.7329108715057373
     Saved: ~
 Window Geometry:
   Displays:
@@ -587,5 +611,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1610
-  X: 68
-  Y: 70
+  X: 129
+  Y: 96

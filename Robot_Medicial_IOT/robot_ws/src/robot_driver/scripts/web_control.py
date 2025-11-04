@@ -34,8 +34,8 @@ import subprocess
 # load_dotenv("url.env")
 # SERVER_URL = os.getenv("SERVER_URL", "ws://localhost:4000")
 # ROBOT_ID = os.getenv("ROBOT_ID", "default_robot")
-ROBOT_ID = "7730a490-9780-11f0-a2ce-9b3aa75b4ae1"  # Unique robot identifier
-SERVER_URL = "ws://control-robot.bytehome.vn"        # WebSocket server endpoint
+ROBOT_ID = ""  # Unique robot identifier
+SERVER_URL = ""        # WebSocket server endpoint
 
 # Robot velocity constraints and control parameters
 MAX_LINEAR_VEL = 0.22   # Maximum linear velocity (m/s) - safety limit

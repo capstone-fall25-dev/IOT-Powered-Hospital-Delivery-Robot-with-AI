@@ -9,5 +9,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Map?> GetByNameAsync(string mapName); // Check unique
         Task<Map> CreateAsync(Map map);
         Task<Map?> UpdateAsync(ulong id, Map map);
+        // Upload từ ROS2 hoặc client
+        Task<Map> UploadAsync(Map map);
+
+        // CRUD cơ bản
+        Task<Map> CreateAsync(Map map);
+        Task<IEnumerable<Map>> GetAllAsync();
+        Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false);
+        Task<Map?> GetByNameAsync(string mapName);
+        Task<Map?> UpdateAsync(ulong id, Map map);
+        Task<bool> DeleteAsync(ulong id);
+
+        // Lấy dữ liệu ảnh map
+        Task<byte[]?> GetImageAsync(ulong id);
     }
 }

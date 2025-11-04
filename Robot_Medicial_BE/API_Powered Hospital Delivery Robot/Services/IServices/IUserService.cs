@@ -31,5 +31,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
 
         Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request);
+
+        Task<string> AdminResetPasswordAsync(string email);
+
     }
 }
