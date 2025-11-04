@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllPatients } from "@/services/patientService";
-import { getMedicineHistory } from "@/services/patientService"; // thêm import API
+import { getAllPrescriptions } from "@/services/prescriptionServices";
 
-export default function PatientsManagement() {
+export default function PrescriptionManagement() {
     const navigate = useNavigate();
 
     const styles = (
@@ -26,10 +25,9 @@ export default function PatientsManagement() {
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
 
-    // Modal state
+    // Modal
     const [showModal, setShowModal] = useState(false);
-    const [selectedPatient, setSelectedPatient] = useState(null);
-    const [medicineHistory, setMedicineHistory] = useState([]);
+    const [selectedPrescription, setSelectedPrescription] = useState(null);
 
     useEffect(() => {
         const css = document.createElement("link");
@@ -52,26 +50,21 @@ export default function PatientsManagement() {
         js.defer = true;
         document.body.appendChild(js);
 
-        // Fetch patients
-        getAllPatients()
-            .then((patients) => {
-                const mapped = patients.map((p) => ({
+        getAllPrescriptions()
+            .then((prescriptions) => {
+                const mapped = prescriptions.map((p) => ({
                     id: p.id,
-                    patientCode: p.patientCode,
-                    fullName: p.fullName,
-                    gender: p.gender === "male" ? "Nam" : p.gender === "female" ? "Nữ" : "Khác",
-                    dob: p.dob ? new Date(p.dob).toLocaleDateString("vi-VN") : "-",
-                    department: p.department,
-                    roomName: p.roomName || "-",
-                    phone: p.phone || "-",
-                    status: p.status === "active" ? "Đang điều trị" : "Đã xuất viện",
+                    prescriptionCode: p.prescriptionCode,
+                    patientName: p.patientName,
+                    status: p.status === "approved" ? "Đã duyệt" : "Đã cấp phát",
                     createdAt: new Date(p.createdAt).toLocaleString("vi-VN"),
+                    items: p.items,
                 }));
                 setRows(mapped);
             })
             .catch((err) => {
-                console.error("Lỗi khi lấy dữ liệu bệnh nhân:", err);
-                alert("Không thể tải danh sách bệnh nhân");
+                console.error(err);
+                alert("Không thể tải danh sách đơn thuốc");
             });
 
         return () => {
@@ -85,24 +78,10 @@ export default function PatientsManagement() {
     const filtered = useMemo(() => {
         return rows.filter(
             (r) =>
-                (status === "all" || r.status === (status === "active" ? "Đang điều trị" : "Đã xuất viện")) &&
-                (q === "" ||
-                    [r.fullName, r.patientCode, r.department, r.roomName].join(" ").toLowerCase().includes(q.toLowerCase()))
+                (status === "all" || r.status === (status === "approved" ? "Đã duyệt" : "Chờ duyệt")) &&
+                (q === "" || [r.prescriptionCode, r.patientName].join(" ").toLowerCase().includes(q.toLowerCase()))
         );
     }, [rows, q, status]);
-
-    // --- Open modal và load lịch sử thuốc
-    const handleViewMedicineHistory = async (patient) => {
-        setSelectedPatient(patient);
-        try {
-            const history = await getMedicineHistory(patient.id);
-            setMedicineHistory(history);
-            setShowModal(true);
-        } catch (err) {
-            console.error("Lỗi khi tải lịch sử đơn thuốc:", err);
-            alert("Không thể tải lịch sử đơn thuốc!");
-        }
-    };
 
     return (
         <div className="page">
@@ -112,14 +91,15 @@ export default function PatientsManagement() {
                     {/* Header */}
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
-                            <span className="chip">
-                                <i className="bi bi-people-fill me-1"></i>
-                            </span>
-                            <h4 className="mb-0 fw-bold">Quản lý bệnh nhân</h4>
+                            <span className="chip"><i className="bi bi-file-medical me-1"></i></span>
+                            <h4 className="mb-0 fw-bold">Quản lý đơn thuốc</h4>
                         </div>
                         <div>
-                            <button className="btn btn-teal rounded-pill" onClick={() => navigate("/patients/add")}>
-                                <i className="bi bi-plus-lg me-1"></i> Thêm mới
+                            <button
+                                className="btn btn-teal rounded-pill"
+                                onClick={() => navigate("/prescriptions/add")}
+                            >
+                                <i className="bi bi-plus-lg me-1"></i> Thêm đơn thuốc
                             </button>
                         </div>
                     </div>
@@ -131,31 +111,24 @@ export default function PatientsManagement() {
                                 <label className="form-label">Tìm kiếm</label>
                                 <input
                                     className="form-control"
-                                    placeholder="Tên, mã bệnh nhân, phòng..."
+                                    placeholder="Mã đơn, tên bệnh nhân..."
                                     value={q}
                                     onChange={(e) => setQ(e.target.value)}
                                 />
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label">Trạng thái</label>
-                                <select
-                                    className="form-select"
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
-                                >
+                                <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
                                     <option value="all">Tất cả</option>
-                                    <option value="active">Đang điều trị</option>
-                                    <option value="discharged">Đã xuất viện</option>
+                                    <option value="approved">Đã duyệt</option>
+                                    <option value="pending">Chờ duyệt</option>
                                 </select>
                             </div>
                             <div className="col-md-2 text-md-end">
                                 <label className="form-label d-block"> </label>
                                 <button
                                     className="btn btn-light rounded-pill w-100"
-                                    onClick={() => {
-                                        setQ("");
-                                        setStatus("all");
-                                    }}
+                                    onClick={() => { setQ(""); setStatus("all"); }}
                                 >
                                     <i className="bi bi-x-circle me-1"></i> Xóa lọc
                                 </button>
@@ -170,15 +143,10 @@ export default function PatientsManagement() {
                                 <thead>
                                     <tr>
                                         <th>#</th>
-                                        <th>Mã BN</th>
-                                        <th>Họ tên</th>
-                                        <th>Giới tính</th>
-                                        <th>Ngày sinh</th>
-                                        <th>Khoa</th>
-                                        <th>Phòng</th>
-                                        <th>SĐT</th>
+                                        <th>Mã đơn</th>
+                                        <th>Bệnh nhân</th>
                                         <th>Trạng thái</th>
-                                        <th>Đơn thuốc</th>
+                                        <th>Ngày tạo</th>
                                         <th className="text-end">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -186,47 +154,27 @@ export default function PatientsManagement() {
                                     {filtered.map((r, idx) => (
                                         <tr key={r.id}>
                                             <td>{idx + 1}</td>
-                                            <td>{r.patientCode}</td>
-                                            <td>{r.fullName}</td>
-                                            <td>{r.gender}</td>
-                                            <td>{r.dob}</td>
-                                            <td>{r.department}</td>
-                                            <td>{r.roomName}</td>
-                                            <td>{r.phone}</td>
+                                            <td>{r.prescriptionCode}</td>
+                                            <td>{r.patientName}</td>
                                             <td>
-                                                <span
-                                                    className={`badge ${r.status === "Đang điều trị"
-                                                        ? "bg-success-subtle text-success"
-                                                        : "bg-secondary-subtle text-secondary"
-                                                        }`}
-                                                >
+                                                <span className={`badge ${r.status === "Đã duyệt"
+                                                    ? "bg-success-subtle text-success"
+                                                    : "bg-warning-subtle text-warning"
+                                                    }`}>
                                                     {r.status}
                                                 </span>
                                             </td>
-                                            <td>
-                                                <button
-                                                    className="btn btn-outline-primary btn-sm"
-                                                    onClick={() => handleViewMedicineHistory(r)}
-                                                >
+                                            <td>{r.createdAt}</td>
+                                            <td className="text-end">
+                                                <button className="btn btn-outline-primary btn-sm" onClick={() => { setSelectedPrescription(r); setShowModal(true); }}>
                                                     Xem
                                                 </button>
-                                            </td>
-                                            <td className="text-end">
-                                                <div className="btn-group btn-group-sm">
-                                                    <button
-                                                        className="btn btn-outline-info"
-                                                        onClick={() => navigate(`/patient/${r.id}`)}
-                                                        title="Xem chi tiết"
-                                                    >
-                                                        <i className="bi bi-eye"></i>
-                                                    </button>
-                                                </div>
                                             </td>
                                         </tr>
                                     ))}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={11} className="text-center text-muted py-4">
+                                            <td colSpan={6} className="text-center text-muted py-4">
                                                 Không có dữ liệu
                                             </td>
                                         </tr>
@@ -236,44 +184,39 @@ export default function PatientsManagement() {
                         </div>
                     </div>
 
-                    {/* --- Modal Lịch sử đơn thuốc --- */}
-                    {showModal && (
+                    {/* Modal xem items */}
+                    {showModal && selectedPrescription && (
                         <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                             <div className="modal-dialog modal-lg modal-dialog-centered">
                                 <div className="modal-content">
                                     <div className="modal-header">
-                                        <h5 className="modal-title">Lịch sử đơn thuốc - {selectedPatient.fullName}</h5>
+                                        <h5 className="modal-title">Chi tiết đơn - {selectedPrescription.prescriptionCode}</h5>
                                         <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                     </div>
                                     <div className="modal-body">
-                                        {medicineHistory.length === 0 ? (
-                                            <p>Chưa có đơn thuốc nào.</p>
-                                        ) : (
-                                            <table className="table table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>#</th>
-                                                        <th>Tên thuốc</th>
-                                                        <th>Liều lượng</th>
-                                                        <th>Tổng số lượng</th>
-                                                        <th>Ngày kê lần cuối</th>
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Tên thuốc</th>
+                                                    <th>Số lượng</th>
+                                                    <th>Liều lượng</th>
+                                                    <th>Hướng dẫn</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedPrescription.items.map((item, i) => (
+                                                    <tr key={i}>
+                                                        <td>{i + 1}</td>
+                                                        <td>{item.medicineName || "-"}</td>
+                                                        <td>{item.quantity}</td>
+                                                        <td>{item.dosage}</td>
+                                                        <td>{item.instructions}</td>
                                                     </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {medicineHistory.map((m, i) => (
-                                                        <tr key={i}>
-                                                            <td>{i + 1}</td>
-                                                            <td>{m.medicineName}</td>
-                                                            <td>{m.dosage}</td>
-                                                            <td>{m.totalPrescribedQuantity}</td>
-                                                            <td>{new Date(m.lastPrescribedAt).toLocaleDateString("vi-VN")}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
-
                                     <div className="modal-footer">
                                         <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Đóng</button>
                                     </div>

@@ -1,37 +1,19 @@
 import React, { useState } from "react";
-import { Navbar, Nav, Button, Container, Dropdown, Image } from "react-bootstrap";
+import { Navbar, Nav, Container, Dropdown, Image } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import logo from '../assets/image/logo.jpg';
+
 const Header = () => {
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
 
-    const handleNavigate = (target) => {
-        switch (target) {
-            case "dashboard":
-                navigate("/dashboard");
-                break;
-            case "map":
-                navigate("/viewlistmap");
-                break;
-            case "team":
-                navigate("/team");
-                break;
-            case "doctor":
-                navigate("/doctor");
-                break;
-            case "profile":
-                navigate("/user-detail");
-                break;
-            case "patient":
-                navigate("/patients");
-                break;
-            case "logout":
-                localStorage.removeItem("token");
-                navigate("/");
-                break;
-            default:
-                navigate("/");
+    const handleNavigate = (path) => {
+        if (path === "logout") {
+            // Xử lý logout ở đây
+            console.log("Logging out...");
+            // navigate("/login"); // Ví dụ chuyển về login
+        } else {
+            navigate(`/${path}`);
         }
     };
 
@@ -46,53 +28,15 @@ const Header = () => {
                         src={logo}
                         alt="Logo"
                         style={{
-                            height: "50px",
-                            width: "60px",
+                            height: "30px",
+                            width: "30px",
                             objectFit: "contain",
                             marginRight: "10px",
                         }}
                     />
                     <span className="fw-bold text-primary">SEP490_G35</span>
                 </Navbar.Brand>
-
-                <Nav className="ms-auto d-flex align-items-center">
-                    <Button
-                        variant="outline-primary"
-                        className="me-2"
-                        onClick={() => handleNavigate("dashboard")}
-                    >
-                        Bảng Điều Khiển
-                    </Button>
-                    <Button
-                        variant="outline-primary"
-                        className="me-2"
-                        onClick={() => handleNavigate("map")}
-                    >
-                        Quản Lí Map
-                    </Button>
-                    <Button
-                        variant="outline-success"
-                        className="me-2"
-                        onClick={() => handleNavigate("team")}
-                    >
-                        Quản Lý Đội Robot
-                    </Button>
-                    <Button
-                        variant="outline-success"
-                        className="me-2"
-                        onClick={() => handleNavigate("patient")}
-                    >
-                        Quản Lý Bệnh Nhân
-                    </Button>
-                    <Button
-                        variant="outline-danger"
-                        className="me-3"
-                        onClick={() => handleNavigate("doctor")}
-                    >
-                        Quản Lý Người Dùng
-                    </Button>
-
-                    {/* Ảnh đại diện với dropdown */}
+                <Nav className="ms-auto">
                     <Dropdown align="end" show={showMenu} onToggle={(isOpen) => setShowMenu(isOpen)}>
                         <Dropdown.Toggle
                             as="div"
@@ -101,7 +45,7 @@ const Header = () => {
                             style={{ cursor: "pointer" }}
                         >
                             <Image
-                                src="https://cdn-icons-png.flaticon.com/512/847/847969.png" // Avatar mặc định
+                                src="https://cdn-icons-png.flaticon.com/512/847/847969.png"
                                 alt="avatar"
                                 roundedCircle
                                 style={{ width: "40px", height: "40px", objectFit: "cover" }}

@@ -140,7 +140,7 @@ export default function DoctorManagement() {
                         </div>
                     </div>
 
-                    {/* Filters */}
+
                     <div className="glass rounded-2xl p-3 p-md-4 mb-3 toolbar">
                         <div className="row g-2 align-items-end">
                             <div className="col-md-4">
@@ -162,7 +162,7 @@ export default function DoctorManagement() {
                         </div>
                     </div>
 
-                    {/* Table */}
+
                     <div className="glass rounded-2xl p-2 p-md-3">
                         <div className="table-responsive">
                             <table className="table align-middle">
@@ -208,7 +208,7 @@ export default function DoctorManagement() {
                                                         <i className="bi bi-pencil"></i> Sửa
                                                     </button>
                                                     <button className="btn btn-outline-danger" onClick={() => confirmDelete(r)}>
-                                                        <i className="bi bi-trash"></i> Xóa
+                                                        <i className="bi bi-file-lock"></i> Khóa
                                                     </button>
                                                 </div>
                                             </td>
@@ -221,25 +221,6 @@ export default function DoctorManagement() {
                                     )}
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Confirm delete */}
-            <div className="modal fade" id="confirm" tabIndex={-1} aria-hidden="true">
-                <div className="modal-dialog modal-dialog-centered">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title"><i className="bi bi-exclamation-triangle text-danger me-2"></i>Xóa bác sĩ?</h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-                        </div>
-                        <div className="modal-body">
-                            Bạn có chắc muốn xóa <strong>{toDelete?.name}</strong>? Hành động này không thể hoàn tác.
-                        </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
-                            <button type="button" className="btn btn-danger" onClick={doDelete}>Xóa</button>
                         </div>
                     </div>
                 </div>

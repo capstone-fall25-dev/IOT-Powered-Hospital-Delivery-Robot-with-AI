@@ -1,6 +1,6 @@
 import { API_CONFIG } from "@/utils/apiConfig";
 
-const BASE_URL = `${API_CONFIG.API_BASE}/Patients`;
+const BASE_URL = `${API_CONFIG.API_BASE}/maps`;
 
 export async function getAllMaps() {
     const res = await fetch(BASE_URL);

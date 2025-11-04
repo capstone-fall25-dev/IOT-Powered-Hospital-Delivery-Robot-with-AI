@@ -16,6 +16,9 @@ import PatientsManagement from "@/pages/PatientManagement";
 import ProjectMapListView from "@/pages/ViewListMap";
 import PatientDetail from "@/pages/PatientsDetail";
 import CreatePatient from "../pages/CreatePatient";
+import RoomFleetCards from "../pages/RoomManagement";
+import MedicineListPage from "../pages/MedicineMangement";
+import PrescriptionManagement from "../pages/PrescriptionsManagement";
 const routes = [
     { path: "/login", element: <Login /> },
 
@@ -37,6 +40,9 @@ const routes = [
     { path: "/patients", element: <MainLayout><PatientsManagement /></MainLayout> },
     { path: "/patient/:id", element: <MainLayout><PatientDetail /></MainLayout> },
     { path: "/patients/add", element: <MainLayout><CreatePatient /></MainLayout> },
+    { path: "/rooms/all", element: <MainLayout><RoomFleetCards /></MainLayout> },
+    { path: "/medicines", element: <MainLayout><MedicineListPage /></MainLayout> },
+    { path: "/prescriptions", element: <MainLayout><PrescriptionManagement /></MainLayout> },
 ];
 
 export default routes;
