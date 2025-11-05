@@ -40,13 +40,30 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             var user = _mapper.Map<User>(userDto);
-            //user.PasswordHash = BCrypt.HashPassword(userDto.Password);
-            user.PasswordHash = userDto.Password;
+            user.PasswordHash = HashPassword(userDto.Password);
             user.CreatedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
-            user.IsActive = true;
+            user.IsActive = false; // Chưa kích hoạt cho đến khi xác minh OTP
 
             var created = await _repository.CreateAsync(user);
+
+            // Sinh OTP ngẫu nhiên
+            string otp = new Random().Next(100000, 999999).ToString();
+
+            // Lưu OTP vào cache, hết hạn sau 5 phút
+            _cache.Set($"OTP_{user.Email}", otp, TimeSpan.FromMinutes(5));
+
+            // Gửi email xác nhận
+            await _emailHelper.SendEmailAsync(
+                user.Email,
+                "Account Verification",
+                $"<h3>Welcome, {userDto.FullName ?? "User"}!</h3>" +
+                $"<p>Your verification code is: <b>{otp}</b></p>" +
+                $"<p>The code is valid for 5 minutes.</p>"
+            );
+
+
+
             return _mapper.Map<UserResponseDto>(created);
         }
 
@@ -135,8 +152,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             user.UpdatedAt = DateTime.UtcNow;
             if (!string.IsNullOrEmpty(userDto.Password))
             {
-                //user.PasswordHash = BCrypt.HashPassword(userDto.Password);
-                user.PasswordHash = userDto.Password;
+                user.PasswordHash = HashPassword(userDto.Password);
             }
             else
             {
