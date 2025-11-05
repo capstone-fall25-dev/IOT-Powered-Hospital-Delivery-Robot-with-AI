@@ -27,12 +27,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
             CreateMap<Patient, PatientReportDto>()
                 .ForMember(dest => dest.TotalVisits,
                     opt => opt.MapFrom(src => src.Prescriptions.Count))
-                .ForMember(dest => dest.TotalMedicinesPrescribed,
-                    opt => opt.MapFrom(src => src.Prescriptions
-                        .SelectMany(p => p.PrescriptionItems)
-                        .Select(i => i.Medicine.Name)
-                        .Distinct()
-                        .Count()))
+                    .ForMember(dest => dest.TotalMedicinesPrescribed,
+ opt => opt.MapFrom(src => src.Prescriptions
+     .Where(p => p.PrescriptionItems != null)
+     .SelectMany(p => p.PrescriptionItems)
+     .Where(i => i != null && i.Medicine != null)
+     .Select(i => i.Medicine.Name)
+     .Distinct()
+     .Count()))
+
                 // ❌ XÓA dòng TotalCost
                 .ForMember(dest => dest.LastVisit,
                     opt => opt.MapFrom(src => src.Prescriptions
