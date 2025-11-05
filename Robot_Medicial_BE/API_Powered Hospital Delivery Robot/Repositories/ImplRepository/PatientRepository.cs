@@ -56,7 +56,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             if (includePrescriptions)
             {
-                query = query.Include(p => p.Prescriptions).ThenInclude(pr => pr.PrescriptionItems);
+                query = query.Include(p => p.Prescriptions).ThenInclude(pr => pr.PrescriptionItems).ThenInclude(m=>m.Medicine);
             }
 
             return await query.FirstOrDefaultAsync(p => p.Id == id);
