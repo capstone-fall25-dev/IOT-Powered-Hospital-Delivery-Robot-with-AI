@@ -3,7 +3,7 @@
 -- ======================
 INSERT INTO users (id, email, password_hash, full_name, role, is_active, created_at, updated_at)
 VALUES
-(2, 'operator1@hospital.com', '$2y$10$abc123abc123abc123abc123abc123abc123abc123abc123abc12', 'Nguyễn Thị Lan', 'operator', 1, NOW(), NOW()),
+(2, 'operator1@hospital.com', '$2y$10$abc123abc123abc123abc123abc123abc123abc123abc123abc12', 'Nguyễn Thị Lan', 'doctor', 1, NOW(), NOW()),
 (3, 'doctor1@hospital.com', '$2y$10$abc123abc123abc123abc123abc123abc123abc123abc123abc12', 'Bác sĩ Trần Văn Hùng', 'admin', 1, NOW(), NOW());
 
  -- maps
