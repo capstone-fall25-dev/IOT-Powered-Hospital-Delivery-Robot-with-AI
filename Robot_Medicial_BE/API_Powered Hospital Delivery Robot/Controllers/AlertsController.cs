@@ -16,7 +16,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách cảnh báo (lọc robotId/status/severity/prescriptionItemId) - UC 32: Task Notification Alerts & UC 38: Robot Error Alert Notification (Task Management & Robot Handling)
+        // Lấy danh sách cảnh báo (lọc robotId/status/severity/prescriptionItemId)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AlertResponseDto>>> GetAll([FromQuery] ulong? robotId = null, [FromQuery] string? status = null, [FromQuery] string? severity = null, [FromQuery] ulong? prescriptionItemId = null)
         {
@@ -24,7 +24,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(alerts);
         }
 
-        // Lấy chi tiết cảnh báo - UC 32: Task Notification Alerts (Task Management)
+        // Lấy chi tiết cảnh báo 
         [HttpGet("{id}")]
         public async Task<ActionResult<AlertResponseDto>> GetById(ulong id)
         {
@@ -33,7 +33,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(alert);
         }
 
-        // Tạo cảnh báo mới (auto created_at) - UC 32: Task Notification Alerts & UC 38: Robot Error Alert Notification (Task Management & Robot Handling)
+        // Tạo cảnh báo mới (auto created_at)
         [HttpPost]
         public async Task<ActionResult<AlertResponseDto>> Create(AlertDto alertDto)
         {
@@ -48,7 +48,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật cảnh báo (e.g., resolve, set resolved_at) - UC 32: Task Notification Alerts (Task Management)
+        // Cập nhật cảnh báo (e.g., resolve, set resolved_at)
         [HttpPut("{id}")]
         public async Task<ActionResult<AlertResponseDto>> Update(ulong id, AlertDto alertDto)
         {

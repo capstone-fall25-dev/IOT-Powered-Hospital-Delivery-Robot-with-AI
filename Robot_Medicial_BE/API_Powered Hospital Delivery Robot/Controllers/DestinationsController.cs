@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,16 +16,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách điểm đến (lọc area/floor) - UC 53: Route Optimization (Map Management)
+        // Lấy danh sách điểm đến (lọc area/floor)
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<DestinationResponseDto>>> GetAll([FromQuery] string? area = null, [FromQuery] string? floor = null)
         {
             var dests = await _service.GetAllAsync(area, floor);
             return Ok(dests);
         }
 
-        // Lấy chi tiết điểm đến (include TaskCount) - UC 53: Route Optimization (Map Management)
+        // Lấy chi tiết điểm đến (include TaskCount) 
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> GetById(ulong id)
         {
             var dest = await _service.GetByIdAsync(id);
@@ -32,8 +35,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(dest);
         }
 
-        // Tạo điểm đến mới (validate unique name) - UC 53: Route Optimization (Map Management)
+        // Tạo điểm đến mới (validate unique name) 
         [HttpPost]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> Create(DestinationDto dto)
         {
             try
@@ -47,8 +51,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật điểm đến (validate unique name) - UC 52: Update Location Information (Map Management)
+        // Cập nhật điểm đến (validate unique name)
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, DestinationDto dto)
         {
             try

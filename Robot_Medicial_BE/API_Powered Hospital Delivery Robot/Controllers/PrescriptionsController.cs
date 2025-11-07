@@ -18,16 +18,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách đơn thuốc (lọc theo patientId/status) - UC 66: Track Patient Medicine History & UC 70: Generate Patient Reports (Patient Management)
+        // Lấy danh sách đơn thuốc (lọc theo patientId/status) 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PrescriptionResponseDto>>> GetAll([FromQuery] ulong? patientId = null, [FromQuery] string? status = null)
         {
             var prescriptions = await _service.GetAllAsync(patientId, status);
             return Ok(prescriptions);
         }
 
-        // Lấy chi tiết đơn thuốc (include PatientName/UserEmail/Items) - UC 66: Track Patient Medicine History (Patient Management)
+        // Lấy chi tiết đơn thuốc (include PatientName/UserEmail/Items) 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<PrescriptionResponseDto>> GetById(ulong id)
         {
             var prescription = await _service.GetByIdAsync(id);
@@ -52,8 +54,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật status đơn thuốc (pending/approved/dispensed/canceled) - UC 47: Approve Prescription (Prescription Management)
+        // Cập nhật status đơn thuốc (pending/approved/dispensed/canceled) 
         [HttpPatch("{id}/status/{status}")]
+        [Authorize]
         public async Task<ActionResult<PrescriptionResponseDto>> UpdateStatus(ulong id, string status)
         {
             try
@@ -68,8 +71,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Thêm item vào đơn thuốc (validate stock) - UC 46: Create Prescription (Prescription Management)
+        // Thêm item vào đơn thuốc (validate stock) 
         [HttpPost("{prescriptionId}/items")]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<PrescriptionItemResponseDto>> AddItem(ulong prescriptionId, PrescriptionItemDto itemDto)
         {
             try
@@ -83,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Assign đơn thuốc vào task (create TaskPatientAssignment, auto assign items to compartments) - UC 48: Dispatch Medicine via Robot (Prescription Management)
+        // Assign đơn thuốc vào task (create TaskPatientAssignment, auto assign items to compartments)  - UC 10: Creates Task by Prescription (Task Management)
         [HttpPost("{prescriptionId}/assign-task/{taskId}")]
         public async Task<ActionResult<AssignPrescriptionResponseDto>> AssignToTask(ulong prescriptionId, ulong taskId)
         {

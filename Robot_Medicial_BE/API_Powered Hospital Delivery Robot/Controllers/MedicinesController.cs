@@ -19,6 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách thuốc (lọc categoryId/status)
         [HttpGet]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<IEnumerable<MedicineResponseDto>>> GetAll([FromQuery] ulong? categoryId = null, [FromQuery] string? status = null)
         {
             var medicines = await _service.GetAllAsync(categoryId, status == null ? null : (MedicineStatus?)Enum.Parse(typeof(MedicineStatus), status));
@@ -27,6 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết thuốc 
         [HttpGet("{id}")]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<MedicineResponseDto>> GetById(ulong id)
         {
             var medicine = await _service.GetByIdAsync(id);

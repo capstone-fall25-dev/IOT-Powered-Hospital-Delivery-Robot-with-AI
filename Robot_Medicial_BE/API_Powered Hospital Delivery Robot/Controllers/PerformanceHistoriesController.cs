@@ -15,7 +15,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách lịch sử hiệu suất (lọc robotId) - UC 35: Generate Task Report & UC 40: Robot Performance Report (Task Management & Robot Handling)
+        // Lấy danh sách lịch sử hiệu suất (lọc robotId) 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PerformanceHistoryResponseDto>>> GetAll([FromQuery] ulong? robotId = null)
         {
@@ -23,7 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(histories);
         }
 
-        // Lấy chi tiết lịch sử hiệu suất - UC 35: Generate Task Report (Task Management)
+        // Lấy chi tiết lịch sử hiệu suất 
         [HttpGet("{id}")]
         public async Task<ActionResult<PerformanceHistoryResponseDto>> GetById(ulong id)
         {
@@ -32,7 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(history);
         }
 
-        // Tạo lịch sử hiệu suất (auto completion_date for test, integrate auto from task complete) - UC 35: Generate Task Report (Task Management)
+        // Tạo lịch sử hiệu suất (auto completion_date for test, integrate auto from task complete) 
         [HttpPost]
         public async Task<ActionResult<PerformanceHistoryResponseDto>> Create(PerformanceHistoryDto historyDto)
         {

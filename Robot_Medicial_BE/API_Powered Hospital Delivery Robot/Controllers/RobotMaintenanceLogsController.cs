@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RobotMaintenanceLogsController : ControllerBase
     {
         private readonly IRobotMaintenanceLogService _service;
@@ -16,7 +18,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách log bảo trì robot (lọc theo robotId) - UC 40: Robot Performance Report (Robot Handling)
+        // Lấy danh sách log bảo trì robot (lọc theo robotId)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RobotMaintenanceLogResponseDto>>> GetAll([FromQuery] ulong? robotId = null)
         {
@@ -24,7 +26,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(logs);
         }
 
-        // Lấy chi tiết log bảo trì - UC 40: Robot Performance Report (Robot Handling)
+        // Lấy chi tiết log bảo trì 
         [HttpGet("{id}")]
         public async Task<ActionResult<RobotMaintenanceLogResponseDto>> GetById(ulong id)
         {
@@ -33,7 +35,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(log);
         }
 
-        // Tạo log bảo trì mới (validate robot) - UC 40: Robot Performance Report (Robot Handling)
+        // Tạo log bảo trì mới (validate robot) 
         [HttpPost]
         public async Task<ActionResult<RobotMaintenanceLogResponseDto>> Create(RobotMaintenanceLogDto logDto)
         {

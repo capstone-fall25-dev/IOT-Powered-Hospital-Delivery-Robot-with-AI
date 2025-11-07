@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách item đơn thuốc (lọc prescriptionId/medicineId) - UC 66: Track Patient Medicine History (Patient Management)
+        // Lấy danh sách item đơn thuốc (lọc prescriptionId/medicineId) 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PrescriptionItemResponseDto>>> GetAll([FromQuery] ulong? prescriptionId = null, [FromQuery] ulong? medicineId = null)
         {
             var items = await _service.GetAllAsync(prescriptionId, medicineId);
             return Ok(items);
         }
 
-        // Lấy chi tiết item đơn thuốc - UC 66: Track Patient Medicine History (Patient Management)
+        // Lấy chi tiết item đơn thuốc 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> GetById(ulong id)
         {
             var item = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(item);
         }
 
-        // Tạo item đơn thuốc (validate stock) - UC 46: Create Prescription (Prescription Management)
+        // Tạo item đơn thuốc (validate stock) 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> Create(PrescriptionItemDto itemDto)
         {
             try
@@ -48,8 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật item đơn thuốc (quantity/dosage) - UC 47: Approve Prescription (Prescription Management)
+        // Cập nhật item đơn thuốc (quantity/dosage) 
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> Update(ulong id, PrescriptionItemDto itemDto)
         {
             try
@@ -64,8 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Báo cáo item thuốc hỏng (append instructions, auto alert high/manual) - UC 50: Alert for Missing or Damaged Medicine (Prescription Management)
+        // Báo cáo item thuốc hỏng (append instructions, auto alert high/manual) 
         [HttpPatch("{id}/damaged")]
+        [Authorize]
         public async Task<ActionResult<ReportDamagedMedicineResponseDto>> ReportDamaged(ulong id, ReportDamagedMedicineDto damagedDto)
         {
             try

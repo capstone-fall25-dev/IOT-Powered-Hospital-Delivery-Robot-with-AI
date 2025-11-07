@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách loại thuốc - UC 42: Register New Medicine (Medicine Management)
+        // Lấy danh sách loại thuốc
         [HttpGet]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<IEnumerable<DrugCategoryResponseDto>>> GetAll()
         {
             var categories = await _service.GetAllAsync();
             return Ok(categories);
         }
 
-        // Lấy chi tiết loại thuốc - UC 42: Register New Medicine (Medicine Management)
+        // Lấy chi tiết loại thuốc 
         [HttpGet("{id}")]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> GetById(ulong id)
         {
             var category = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(category);
         }
 
-        // Tạo loại thuốc mới (validate unique name) - UC 42: Register New Medicine (Medicine Management)
+        // Tạo loại thuốc mới (validate unique name) 
         [HttpPost]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> Create(DrugCategoryDto categoryDto)
         {
             try
@@ -48,8 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật loại thuốc (validate unique name) - UC 43: Update Medicine Information (Medicine Management)
+        // Cập nhật loại thuốc (validate unique name) 
         [HttpPut("{id}")]
+        [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> Update(ulong id, DrugCategoryDto categoryDto)
         {
             try
