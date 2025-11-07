@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
@@ -10,11 +11,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     {
         private readonly IMapRepository _repository;
         private readonly IMapper _mapper;
+        private readonly IAlertService _alertService;
+        private readonly IRobotRepository _robotRepository;
 
-        public MapService(IMapRepository repository, IMapper mapper)
+        public MapService(IMapRepository repository, IMapper mapper, IAlertService alertService, IRobotRepository robotRepository)
         {
             _repository = repository;
             _mapper = mapper;
+            _alertService = alertService;
+            _robotRepository = robotRepository;
         }
 
         public async Task<MapResponseDto> CreateAsync(MapDto mapDto, IFormFile? imageFile = null)
@@ -104,6 +109,29 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var updated = await _repository.UpdateAsync(id, map);
             return updated != null ? _mapper.Map<MapResponseDto>(updated) : null;
+        }
+
+        public async Task<AlertResponseDto> ReportMapErrorAsync(MapErrorDto dto)
+        {
+            var map = await _repository.GetByIdAsync(dto.MapId);
+            if (map == null)
+                throw new Exception("Map not found.");
+
+            // Kiểm tra robot tồn tại
+            var robot = await _robotRepository.GetByIdAsync(dto.RobotId);
+            if (robot == null)
+                throw new Exception($"Robot with ID {dto.RobotId} not found.");
+
+            var alert = new AlertDto
+            {
+                RobotId = dto.RobotId, // ✅ Không còn null
+                Severity = "medium",
+                Category = "obstacle",
+                Status = "open",
+                Message = $"Map Error ({dto.ErrorType}) reported by {dto.ReporterEmail ?? "unknown"} via robot '{robot.Name}': {dto.Description}"
+            };
+
+            return await _alertService.CreateAsync(alert);
         }
     }
 }
