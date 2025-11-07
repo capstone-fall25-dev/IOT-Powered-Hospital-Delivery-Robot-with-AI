@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách phòng (include map) - UC 67: Patient Admission Management (Patient Management)
+        // Lấy danh sách phòng (include map)
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAll()
         {
             var rooms = await _service.GetAllAsync();
             return Ok(rooms);
         }
 
-        // Lấy chi tiết phòng - UC 67: Patient Admission Management (Patient Management)
+        // Lấy chi tiết phòng 
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> GetById(ulong id)
         {
             var room = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(room);
         }
 
-        // Tạo phòng mới (assign map) - UC 52: Update Location Information (Map Management)
+        // Tạo phòng mới 
         [HttpPost]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> Create(RoomDto roomDto)
         {
             try
@@ -48,8 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật phòng (location/map) - UC 52: Update Location Information (Map Management)
+        // Cập nhật phòng (location/map) - UC 25: Update Location Information (Map Management)
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> Update(ulong id, RoomDto roomDto)
         {
             try

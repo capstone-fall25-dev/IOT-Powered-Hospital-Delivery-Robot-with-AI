@@ -35,25 +35,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var existing = await _repository.GetByEmailAsync(userDto.Email);
             if (existing != null)
-            {
                 throw new InvalidOperationException("Email already exists");
-            }
+
+            var role = userDto.Role?.Trim().ToLowerInvariant();
+            if (role is null || (role != "doctor" && role != "pharmacist"))
+                throw new InvalidOperationException("Role must be 'doctor' or 'pharmacist' when creating a user.");
 
             var user = _mapper.Map<User>(userDto);
+
+            user.Role = role;
+
             user.PasswordHash = HashPassword(userDto.Password);
             user.CreatedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
-            user.IsActive = false; // Chưa kích hoạt cho đến khi xác minh OTP
+            user.IsActive = false; // kích hoạt sau khi xác minh OTP
 
             var created = await _repository.CreateAsync(user);
 
-            // Sinh OTP ngẫu nhiên
             string otp = new Random().Next(100000, 999999).ToString();
-
-            // Lưu OTP vào cache, hết hạn sau 5 phút
             _cache.Set($"OTP_{user.Email}", otp, TimeSpan.FromMinutes(5));
-
-            // Gửi email xác nhận
             await _emailHelper.SendEmailAsync(
                 user.Email,
                 "Account Verification",
@@ -61,8 +61,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 $"<p>Your verification code is: <b>{otp}</b></p>" +
                 $"<p>The code is valid for 5 minutes.</p>"
             );
-
-
 
             return _mapper.Map<UserResponseDto>(created);
         }
