@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách assign ngăn chứa (lọc taskId/status) - UC 30: Multi-Destination Delivery (Task Management)
+        // Lấy danh sách ngăn chứa (lọc taskId/status) - UC 36: View list Compartment 
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> GetAll([FromQuery] ulong? taskId = null, [FromQuery] string? status = null)
         {
             var assignments = await _service.GetAllAsync(taskId, status);
             return Ok(assignments);
         }
 
-        // Lấy chi tiết assign ngăn chứa - UC 30: Multi-Destination Delivery (Task Management)
+        // Lấy chi tiết ngăn chứa 
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> GetById(ulong id)
         {
             var assignment = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(assignment);
         }
 
-        // Tạo assign ngăn chứa cho task/stop/compartment - UC 28: Assign Task to Robot (Task Management)
+        // Tạo hộp - UC 34: Compartment Creation
         [HttpPost]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Create(CompartmentAssignmentDto assignmentDto)
         {
             try
@@ -52,8 +56,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật assign ngăn chứa (status/item_desc, validate not loaded) - UC 24: Update Task Status (Task Management)
+        // Cập nhật hộp - UC 35: Update Compartment
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Update(ulong id, CompartmentAssignmentDto assignmentDto)
         {
             try
@@ -72,8 +77,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Load item vào ngăn chứa (set status="loaded", validate pending/locked, log) - UC 48: Dispatch Medicine via Robot (Prescription Management)
+        // Load item vào ngăn chứa (set status="loaded", validate pending/locked, log) 
         [HttpPatch("{id}/load")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Load(ulong id, LoadCompartmentDto loadDto)
         {
             try
@@ -88,8 +94,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Bulk load items vào ngăn chứa cho task (validate match count, log) - UC 48: Dispatch Medicine via Robot (Prescription Management)
+        // Bulk load items vào ngăn chứa cho task (validate match count, log) 
         [HttpPost("tasks/{taskId}/load-compartments")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> BulkLoad(ulong taskId, List<LoadCompartmentDto> loadDtos)
         {
             try
