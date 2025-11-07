@@ -71,6 +71,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public float? FreeThresh { get; set; }
         public bool? Negate { get; set; }
     }
+
     public class MapUploadJsonDto
     {
         public string MapName { get; set; } = null!;
@@ -84,5 +85,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public bool? Negate { get; set; }
         public string? ImageName { get; set; }
         public string? ImageBase64 { get; set; } // base64 image
+    }
+
+    public class MapErrorDto
+    {
+        public ulong RobotId { get; set; }
+        public ulong MapId { get; set; }
+        public string ErrorType { get; set; } = string.Empty; // e.g., obstacle, missing-room, wrong-path
+        public string Description { get; set; } = string.Empty;
+        public string? ReporterEmail { get; set; } = null;
     }
 }

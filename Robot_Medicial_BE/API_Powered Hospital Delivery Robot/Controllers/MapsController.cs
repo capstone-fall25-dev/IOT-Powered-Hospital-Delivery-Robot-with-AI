@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -96,6 +97,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-
+        [Authorize]
+        [HttpPost("{mapId}/report-error")]
+        public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
+        {
+            dto.MapId = mapId;
+            var result = await _service.ReportMapErrorAsync(dto);
+            return Ok(result);
+        }
     }
 }
