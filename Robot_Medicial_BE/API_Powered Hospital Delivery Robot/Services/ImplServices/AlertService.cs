@@ -1,9 +1,11 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Hubs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
@@ -14,15 +16,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMapper _mapper;
         private readonly IPrescriptionItemRepository _itemRepository;
         private readonly IMedicineRepository _medicineRepository;
-        private readonly ITaskRepository _taskRepository; 
+        private readonly ITaskRepository _taskRepository;
+        private readonly IHubContext<AlertHub> _alertHub;
 
-        public AlertService(IAlertRepository repository, IMapper mapper, IPrescriptionItemRepository itemRepository, IMedicineRepository medicineRepository, ITaskRepository taskRepository)
+        public AlertService(IAlertRepository repository, 
+            IMapper mapper, 
+            IPrescriptionItemRepository itemRepository, 
+            IMedicineRepository medicineRepository, 
+            ITaskRepository taskRepository,
+            IHubContext<AlertHub> alertHub)
         {
             _repository = repository;
             _mapper = mapper;
             _itemRepository = itemRepository;
             _medicineRepository = medicineRepository;
             _taskRepository = taskRepository;
+            _alertHub = alertHub;
         }
 
         public async Task<AlertResponseDto> CreateAsync(AlertDto alertDto)
@@ -30,7 +39,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var alert = _mapper.Map<Alert>(alertDto);
             alert.CreatedAt = DateTime.UtcNow;
             var created = await _repository.CreateAsync(alert);
-            return _mapper.Map<AlertResponseDto>(created);
+            var response = _mapper.Map<AlertResponseDto>(created);
+
+            // Gửi alert real-time
+            await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
+
+            return response;
         }
 
         public async Task<AlertResponseDto> CreateMedicineAlertAsync(ulong prescriptionItemId, string reason, string description, ulong? taskId = null)
@@ -78,7 +92,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
 
             var created = await _repository.CreateAsync(alert);
-            return _mapper.Map<AlertResponseDto>(created);
+            var response = _mapper.Map<AlertResponseDto>(created);
+
+            // Gửi alert real-time
+            await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
+
+            return response;
         }
 
         public async Task<IEnumerable<AlertResponseDto>> GetAllAsync(ulong? robotId = null, string? status = null, string? severity = null, ulong? prescriptionItemId = null)

@@ -4,6 +4,7 @@ using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -46,7 +47,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (map == null || map.ImageData == null) return NotFound();
 
             var imageName = map.ImageName ?? "map.png";
-            return File(map.ImageData, "image/png", imageName); 
+            return File(map.ImageData, "image/png", imageName);
         }
 
         // Tạo map mới (upload image, validate thresh) 
@@ -102,6 +103,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
         {
             dto.MapId = mapId;
+
+            // Lấy thông tin người báo lỗi từ token
+            var email = User.FindFirst(ClaimTypes.Email)?.Value
+                        ?? User.FindFirst("email")?.Value;                 // phòng khi issuer dùng key "email"
+            var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name;
+
+            // Nếu có đủ cả hai -> format gộp
+            dto.ReporterEmail = (string.IsNullOrWhiteSpace(fullName) && string.IsNullOrWhiteSpace(email)) ? "unknown" : $"{fullName} ({email})";
+
             var result = await _service.ReportMapErrorAsync(dto);
             return Ok(result);
         }

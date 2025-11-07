@@ -1,9 +1,11 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Hubs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
+using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
@@ -13,13 +15,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMapper _mapper;
         private readonly IAlertService _alertService;
         private readonly IRobotRepository _robotRepository;
+        private readonly IHubContext<AlertHub> _alertHub;
 
-        public MapService(IMapRepository repository, IMapper mapper, IAlertService alertService, IRobotRepository robotRepository)
+        public MapService(IMapRepository repository, 
+            IMapper mapper, 
+            IAlertService alertService, 
+            IRobotRepository robotRepository,
+            IHubContext<AlertHub> alertHub)
         {
             _repository = repository;
             _mapper = mapper;
             _alertService = alertService;
             _robotRepository = robotRepository;
+            _alertHub = alertHub;
         }
 
         public async Task<MapResponseDto> CreateAsync(MapDto mapDto, IFormFile? imageFile = null)
@@ -113,7 +121,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<AlertResponseDto> ReportMapErrorAsync(MapErrorDto dto)
         {
-            var map = await _repository.GetByIdAsync(dto.MapId);
+            if (!dto.MapId.HasValue)
+                throw new ArgumentException("MapId is required.");
+
+            var map = await _repository.GetByIdAsync(dto.MapId.Value);
             if (map == null)
                 throw new Exception("Map not found.");
 
@@ -124,14 +135,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var alert = new AlertDto
             {
-                RobotId = dto.RobotId, // ✅ Không còn null
+                RobotId = dto.RobotId,
                 Severity = "medium",
                 Category = "obstacle",
                 Status = "open",
-                Message = $"Map Error ({dto.ErrorType}) reported by {dto.ReporterEmail ?? "unknown"} via robot '{robot.Name}': {dto.Description}"
+                Message = $"Map Error ({dto.ErrorType}) reported by {dto.ReporterEmail ?? "unknown"} " +
+                          $"via robot '{robot.Name}' on map '{map.MapName}': {dto.Description}"
             };
 
-            return await _alertService.CreateAsync(alert);
+            var createdAlert = await _alertService.CreateAsync(alert);
+
+            // Phát realtime tới tất cả client
+            await _alertHub.Clients.All.SendAsync("ReceiveAlert", createdAlert);
+
+            return createdAlert;
         }
     }
 }

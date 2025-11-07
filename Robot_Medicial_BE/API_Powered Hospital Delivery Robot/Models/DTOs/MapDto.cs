@@ -90,9 +90,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     public class MapErrorDto
     {
         public ulong RobotId { get; set; }
-        public ulong MapId { get; set; }
+        public ulong? MapId { get; set; }
         public string ErrorType { get; set; } = string.Empty; // e.g., obstacle, missing-room, wrong-path
         public string Description { get; set; } = string.Empty;
+        
+        // controller sẽ điền từ token
         public string? ReporterEmail { get; set; } = null;
     }
 }
