@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: 🚀 Deploy to VPS
 
 on:
   push:
@@ -10,10 +10,13 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - name: Checkout code
+    - name: 🧭 Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.PERSONAL_TOKEN }} # 🔑 Dùng token riêng để có quyền pull repo
 
-    - name: Build and deploy with Docker Compose
+    - name: 🚀 Build and deploy with Docker Compose
       run: |
         cd /home/runner/app/IOT-Powered-Hospital-Delivery-Robot-with-AI
         git fetch --all

@@ -6,7 +6,7 @@ services:
     container_name: hospital_mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_ROOT_PASSWORD: 1239
       MYSQL_DATABASE: robotmanager
     volumes:
       - mysql_data:/var/lib/mysql
@@ -23,7 +23,7 @@ services:
       - mysql
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=robotmanager;user=root;password=123
+      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=robotmanager;user=root;password=1239
     ports:
       - "5000:5000"
 
