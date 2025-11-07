@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả user (lọc theo isActive) - UC 15: View User List (Quản lý Hệ thống - User Management)
+        // Lấy danh sách tất cả user (lọc theo isActive) - UC 8: View User List (User Management)
         [HttpGet]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAll([FromQuery] bool? isActive = null)
         {
             var users = await _service.GetAllAsync(isActive);
             return Ok(users);
         }
 
-        // Lấy thông tin chi tiết user (include Tasks & ActiveSessions) - UC 7: View User Detail & UC 9: View Login History (Quản lý Hệ thống - User Management & Session Management)
+        // Lấy thông tin chi tiết user
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<UserResponseDto>> GetById(ulong id)
         {
             var user = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(user); // Include Tasks và ActiveSessions
         }
 
-        // Xem trạng thái real-time của user (IsOnline, ActiveSessions, LastActivity) - UC 5: Maintain Active Session & UC 9: View Login History (Session Management)
+        // Xem trạng thái real-time của user
         [HttpGet("{id}/status")]
+        [Authorize]
         public async Task<ActionResult<UserStatusDto>> GetStatus(ulong id)
         {
             try
@@ -48,8 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Tạo user mới (operator) - UC 11: Create User Account (User Management)
+        // Tạo user mới - UC 5: Provide an account (User Management)
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<UserResponseDto>> Create(UserDto userDto)
         {
             try
@@ -63,8 +68,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin user (email/fullname/role/password) - UC 12: Modify User Account & UC 16: Update Personal Profile & UC 17: Manage User Roles (User Management)
+        // Cập nhật thông tin user (email/fullname/role/password) - UC 6: Update user (User Management)
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<ActionResult<UserResponseDto>> Update(ulong id, UserDto userDto)
         {
             try
@@ -79,8 +85,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Kích hoạt user (set isActive=true) - UC 14: Reactivate User Account (User Management)
+        // Kích hoạt user (set isActive=true) - UC 7: Activate/Deactivate User Account (User Management)
         [HttpPatch("{id}/activate")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Activate(ulong id)
         {
             try
@@ -95,8 +102,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Vô hiệu hóa user (set isActive=false, protect admin) - UC 13: Deactivate User Account (User Management)
+        // Vô hiệu hóa user (set isActive=false, protect admin) - UC7
         [HttpPatch("{id}/deactivate")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Deactivate(ulong id)
         {
             try

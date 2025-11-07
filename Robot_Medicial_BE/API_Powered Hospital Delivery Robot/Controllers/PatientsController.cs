@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả patient (include Room) - UC 63: View Patient Profile & UC 70: Generate Patient Reports (Patient Management)
+        // Lấy danh sách tất cả patient (include Room) 
         [HttpGet]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetAll()
         {
             var patients = await _service.GetAllAsync();
             return Ok(patients);
         }
 
-        // Lấy thông tin chi tiết patient (include Room/Prescriptions.Items) - UC 63: View Patient Profile & UC 66: Track Patient Medicine History & UC 70: Generate Patient Reports (Patient Management)
+        // Lấy thông tin chi tiết patient (include Room/Prescriptions.Items) - UC 30: View Patient Profile (Patient Management)
         [HttpGet("{id}")]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientResponseDto>> GetById(ulong id)
         {
             var patient = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(patient);
         }
 
-        // Tạo patient mới (validate unique code) - UC 61: Register New Patient (Patient Management)
+        // Tạo patient mới (validate unique code) - UC 28: Create New Patient (Patient Management)
         [HttpPost]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientResponseDto>> Create(PatientDto patientDto)
         {
             try
@@ -48,8 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin patient (validate unique code, room/department) - UC 62: Update Patient Record & UC 67: Patient Admission Management (Patient Management)
+        // Cập nhật thông tin patient (validate unique code, room/department) - UC 29: Update Patient (Patient Management)
         [HttpPut("{id}")]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientResponseDto>> Update(ulong id, PatientDto patientDto)
         {
             try
@@ -64,8 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Discharge patient (set status="discharged", null RoomId/RoomNumber, log reason) - UC 68: Patient Discharge Management (Patient Management)
+        // Discharge patient (set status="discharged", null RoomId/RoomNumber, log reason) - UC 32: Patient Discharge Management (Patient Management)
         [HttpPatch("{id}/discharge")]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id)
         {
             try
@@ -80,8 +86,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // UC 66: Track Patient Medicine History - View dedicated medicine history (aggregate from items)
+        // Theo dõi lịch sử thuốc của bệnh nhân - UC 31: Track Patient Medicine History (Patient Management)
         [HttpGet("{id}/medicine-history")]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<IEnumerable<PatientMedicineHistoryDto>>> GetMedicineHistory(ulong id)
         {
             try
@@ -95,8 +102,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // UC 70: Generate Patient Reports - Aggregate patient report (visits from prescriptions/meds/cost)
+        // UC 33: Generate Patient Reports (Patient Management)
         [HttpGet("{id}/report")]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientReportDto>> GetReport(ulong id)
         {
             try

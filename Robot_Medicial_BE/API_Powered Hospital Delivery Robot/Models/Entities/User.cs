@@ -27,7 +27,7 @@ public partial class User
     [StringLength(128)]
     public string? FullName { get; set; }
 
-    [Column("role", TypeName = "enum('admin','operator')")]
+    [Column("role", TypeName = "enum('admin','doctor','pharmacist')")]
     public string Role { get; set; } = null!;
 
     [Required]

@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách map - UC 51: Manage Hospital Map (Map Management)
+        // Lấy danh sách map
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<MapResponseDto>>> GetAll()
         {
             var maps = await _service.GetAllAsync();
             return Ok(maps);
         }
 
-        // Lấy chi tiết map (include Robots) - UC 51: Manage Hospital Map (Map Management)
+        // Lấy chi tiết map (include Robots) - UC 26: Track Robot Movement on Map (Map Management)
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
             var map = await _service.GetByIdAsync(id);
@@ -33,8 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(map); // Include Robots
         }
 
-        // Lấy image map (serve file) - UC 57: Track Robot Movement on Map (Map Management)
+        // Lấy image map (serve file) - UC26
         [HttpGet("{id}/image")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<IActionResult> GetImage(ulong id)
         {
             var map = await _service.GetByIdAsync(id);
@@ -44,8 +48,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return File(map.ImageData, "image/png", imageName); 
         }
 
-        // Tạo map mới (upload image, validate thresh) - UC 51: Manage Hospital Map (Map Management)
+        // Tạo map mới (upload image, validate thresh) 
         [HttpPost]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> Create([FromForm] MapDto mapDto, IFormFile? imageFile)
         {
             try
@@ -67,8 +72,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật map (upload image mới nếu có) - UC 52: Update Location Information (Map Management)
+        // Cập nhật map 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromForm] MapDto mapDto, IFormFile? imageFile)
         {
             try
@@ -89,5 +95,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+
     }
 }

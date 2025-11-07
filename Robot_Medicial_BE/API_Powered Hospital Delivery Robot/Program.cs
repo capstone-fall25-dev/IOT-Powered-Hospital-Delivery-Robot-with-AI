@@ -83,6 +83,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// CORS
 builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
@@ -105,17 +106,20 @@ builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
 builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
+builder.Services.AddScoped<IMapRepository, MapRepository>();
 
+// Service
 builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddMemoryCache();
 builder.Services.AddDistributedMemoryCache();
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
-builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
+
 builder.Services.AddQuartz(q =>
 {
     q.AddJob<TaskSchedulerJob>(j => j.WithIdentity("taskSchedulerJob"));
@@ -126,7 +130,7 @@ builder.Services.AddQuartz(q =>
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// Service
+builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IMapService, MapService>();
@@ -143,9 +147,8 @@ builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDestinationService, DestinationService>();
-
-builder.Services.AddScoped<IMapRepository, MapRepository>();
 builder.Services.AddScoped<IMapUploadService, MapUploadService>();
+
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));

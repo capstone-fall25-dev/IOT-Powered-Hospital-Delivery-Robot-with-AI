@@ -3,6 +3,7 @@ using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -17,16 +18,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách task (lọc theo priority) - UC 25: View Task History & UC 34: Task Priority Setting (Task Management)
+        // Lấy danh sách task (lọc theo priority) - UC 12: View Task History (Task Management)
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskResponseDto>>> GetAll([FromQuery] string? priority = null)
         {
             var tasks = await _service.GetAllAsync(priority);
             return Ok(tasks);
         }
 
-        // Lấy thông tin chi tiết task (include stops/compartments) - UC 25: View Task History & UC 27: Monitor Task Progress (Task Management)
+        // Lấy thông tin chi tiết task (include stops/compartments)
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> GetById(ulong id)
         {
             var task = await _service.GetByIdAsync(id);
@@ -34,8 +37,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(task);
         }
 
-        // Lấy task theo user (assigned_by) - UC 25: View Task History (Task Management)
+        // Lấy task theo user 
         [HttpGet("by-user/{userId}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskResponseDto>>> GetByUser(ulong userId)
         {
             try
@@ -49,8 +53,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 21: Create Transport Task & UC 22: Doctor Creates Task by Prescription & UC 28: Assign Task to Robot (Task Management)
+        // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 10: Creates Task by Prescription (Task Management)
         [HttpPost]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Create(CreateTaskDto createTaskDto)
         {
             try
@@ -65,8 +70,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật task (status/robot/priority) - UC 24: Update Task Status & UC 34: Task Priority Setting (Task Management)
+        // Cập nhật task (status/robot/priority) - UC 11: Update Task Status (Task Management)
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Update(ulong id, TaskDto taskDto)
         {
             try
@@ -85,8 +91,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Hủy task (set status="canceled") - UC 26: Cancel Task (Task Management)
+        // Hủy task (set status="canceled") - UC 13: Cancel Task (Task Management)
         [HttpDelete("cancel/{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<IActionResult> Delete(ulong id)
         {
             try
@@ -104,14 +111,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Submit task để admin confirm (log message) - UC 23: Submit Task Request (Task Management)
+        // Submit task để admin confirm (log message) 
         [HttpPost("{id}/submit")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Submit(ulong id, SubmitTaskDto submitDto)
         {
             try
             {
                 var currentUserId = GetCurrentUserId();
-                var currentUsername = GetCurrentUsername();
+                var currentUsername = GetCurrentFullname();
 
                 var submitted = await _service.SubmitAsync(id, submitDto, currentUserId, currentUsername);
                 return Ok(submitted);
@@ -126,7 +134,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Admin confirm task (set in_progress, log, alert low battery) - UC 23: Submit Task Request (Task Management)
+        // Admin confirm task (set in_progress, log, alert low battery)
         [HttpPost("{id}/confirm")]
         [Authorize(Roles = "admin")]
         public async Task<ActionResult<TaskResponseDto>> Confirm(ulong id)
@@ -134,7 +142,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             try
             {
                 var adminUserId = GetCurrentUserId();
-                var adminUsername = GetCurrentUsername();
+                var adminUsername = GetCurrentFullname();
 
                 var confirmed = await _service.ConfirmAsync(id, adminUserId, adminUsername);
                 return Ok(confirmed);
@@ -149,8 +157,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật tiến độ task (stop status, duration, auto-complete if all done) - UC 24: Update Task Status & UC 27: Monitor Task Progress & UC 31: Task Confirmation by Receiver (Task Management)
+        // Cập nhật tiến độ task (stop status, duration, auto-complete if all done) - UC 14: Task Confirmation by Receiver (Task Management)
         [HttpPatch("{id}/progress")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> UpdateProgress(ulong id, UpdateProgressDto progressDto)
         {
             try
@@ -164,7 +173,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật priority task - UC 34: Task Priority Setting (Task Management)
+        // Cập nhật priority task 
         [HttpPatch("{id}/priority")]
         public async Task<ActionResult<TaskResponseDto>> SetPriority(ulong id, TaskPriorityDto priorityDto)
         {
@@ -180,17 +189,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Test scheduler - auto assign pending tasks to available robots (test cron job) - UC 33: Task Scheduling (Task Management)
+        // Test scheduler - auto assign pending tasks to available robots (test cron job)
         [HttpPost("schedule-pending")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<int>> SchedulePending()
         {
             var count = await _service.SchedulePendingTasksAsync();
             return Ok(new { AssignedCount = count, Message = $"Scheduled {count} pending tasks" });
         }
 
-        // Tạo báo cáo nhiệm vụ (tổng/avg duration/lỗi theo robot, lọc ngày/robot) - UC 35: Generate Task Report (Task Management)
+        // Tạo báo cáo nhiệm vụ (tổng/avg duration/lỗi theo robot, lọc ngày/robot) - UC 15: Generate Task Report (Task Management)
         [HttpGet("report")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskReportDto>>> GetTaskReport([FromQuery] ulong? robotId = null, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             var reports = await _service.GetTaskReportAsync(robotId, startDate, endDate);
@@ -199,12 +209,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         private ulong GetCurrentUserId()
         {
-            return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
+            return ulong.Parse(claim.Value);
         }
 
-        private string GetCurrentUsername()
+        private string GetCurrentFullname()
         {
-            return User.FindFirst("username")?.Value ?? "MemeTest";
+            var claim = User.FindFirst("FullName");
+            if (claim == null) throw new UnauthorizedAccessException("Fullname not found in token");
+            return claim.Value;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? FullName { get; set; }
 
         [Required]
-        public string Role { get; set; } = "operator"; // 'admin' hoặc 'operator'
+        public string Role { get; set; }
 
         public bool IsActive { get; set; } = true;
     }

@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách robot (lọc theo status) - UC 39: Track Robot Status (Robot Handling)
+        // Lấy danh sách robot (lọc theo status) 
         [HttpGet]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RobotResponseDto>>> GetAll([FromQuery] string? status = null)
         {
             var robots = await _service.GetAllAsync(status);
             return Ok(robots);
         }
 
-        // Lấy thông tin chi tiết robot (include compartments/tasks) - UC 39: Track Robot Status (Robot Handling)
+        // Lấy thông tin chi tiết robot (include compartments/tasks)
         [HttpGet("{id}")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RobotResponseDto>> GetById(ulong id)
         {
             var robot = await _service.GetByIdAsync(id);
@@ -40,8 +43,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(robot); // Include Compartments & Tasks
         }
 
-        // Tạo robot mới (default status="completed") - UC 39: Track Robot Status (Robot Handling)
+        // Tạo robot mới (default status="completed") 
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
             try
@@ -59,8 +63,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật status robot (validate enum, no offline update) - UC 36: Manual Control Mode Activation & UC 37: Auto Switch to Manual Control (Robot Handling)
+        // Cập nhật status robot (validate enum, no offline update) 
         [HttpPatch("{id}/status")]
+        [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, UpdateStatusDto statusDto)
         {
             try
@@ -79,7 +84,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Assign map cho robot (check no active task, log) - UC 51: Manage Hospital Map (Map Management)
+        // Assign map cho robot (check no active task, log) 
         [HttpPut("{robotId}/assign-map/{mapId}")]
         public async Task<ActionResult<AssignMapResponseDto>> AssignMap(ulong robotId, ulong mapId)
         {
@@ -94,7 +99,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật vị trí robot (latitude/longitude, heartbeat) - UC 39: Track Robot Status & UC 57: Track Robot Movement on Map (Robot Handling & Map Management)
+        // Cập nhật vị trí robot (latitude/longitude, heartbeat) 
         [HttpPatch("{id}/position")]
         public async Task<ActionResult<RobotResponseDto>> UpdatePosition(ulong id, UpdatePositionDto positionDto)
         {
@@ -105,6 +110,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return Ok(updated);
             }
             catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // Kích hoạt chế độ điều khiển thủ công - UC 16: Manual Control Mode Activation (Robot)
+        [HttpPatch("{id}/manual-control")]
+        [Authorize(Roles = "doctor")]
+        public async Task<ActionResult<RobotResponseDto>> ManualControl(ulong id)
+        {
+            var statusDto = new UpdateStatusDto { Status = "manual_control" };
+            try
+            {
+                var updated = await _service.UpdateStatusAsync(id, statusDto);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }

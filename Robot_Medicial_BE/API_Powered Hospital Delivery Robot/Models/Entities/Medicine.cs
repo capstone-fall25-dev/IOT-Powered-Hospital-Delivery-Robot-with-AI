@@ -46,8 +46,7 @@ public partial class Medicine
     public DateTime? ExpiryDate { get; set; }
 
     [Column("status", TypeName = "enum('active','expired')")]
-    [EnumDataType(typeof(MedicineStatus))]
-    public MedicineStatus Status { get; set; } = MedicineStatus.Active;
+    public MedicineStatus Status { get; set; } 
 
     [ForeignKey("CategoryId")]
     [InverseProperty("Medicines")]

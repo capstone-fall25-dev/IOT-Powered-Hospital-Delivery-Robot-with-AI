@@ -33,6 +33,9 @@ public partial class PrescriptionItem
     [StringLength(255)]
     public string? Instructions { get; set; }
 
+    [InverseProperty("PrescriptionItem")]
+    public virtual ICollection<Alert> Alerts { get; set; } = new List<Alert>();
+
     [ForeignKey("MedicineId")]
     [InverseProperty("PrescriptionItems")]
     public virtual Medicine Medicine { get; set; } = null!;
@@ -40,7 +43,4 @@ public partial class PrescriptionItem
     [ForeignKey("PrescriptionId")]
     [InverseProperty("PrescriptionItems")]
     public virtual Prescription Prescription { get; set; } = null!;
-
-    [InverseProperty("PrescriptionItem")]
-    public virtual ICollection<Alert> Alerts { get; set; } = new List<Alert>();
 }

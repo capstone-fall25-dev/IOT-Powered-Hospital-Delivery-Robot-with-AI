@@ -1,7 +1,9 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -33,13 +35,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(prescription);
         }
 
-        // Tạo đơn thuốc mới (auto add items, set user=currentUser) - UC 46: Create Prescription (Prescription Management)
+        // Tạo đơn thuốc mới (auto add items, set user=currentUser) - UC 21: Create Prescription (Prescription Management)
         [HttpPost]
+        [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PrescriptionResponseDto>> Create(PrescriptionDto prescriptionDto)
         {
             try
             {
-                var currentUserId = GetCurrentUserId(); // Từ auth
+                var currentUserId = GetCurrentUserId(); 
                 var created = await _service.CreateAsync(prescriptionDto, currentUserId);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
@@ -97,7 +100,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         private ulong GetCurrentUserId()
         {
-            return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
+            return ulong.Parse(claim.Value);
         }
     }
 }
