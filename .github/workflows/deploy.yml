@@ -14,7 +14,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        token: ${{ secrets.PERSONAL_TOKEN }} # 🔑 Dùng token riêng để có quyền pull repo
+        token: ${{ secrets.PERSONAL_TOKEN }}
 
     - name: 🚀 Build and deploy with Docker Compose
       run: |
