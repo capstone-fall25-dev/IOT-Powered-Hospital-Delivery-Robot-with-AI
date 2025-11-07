@@ -1,7 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
+using System;
+using System.Collections.Generic;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
@@ -58,8 +59,7 @@ public partial class RobotManagerContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,7 +142,14 @@ public partial class RobotManagerContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Status).HasDefaultValueSql("'active'");
             entity.Property(e => e.StockQuantity).HasDefaultValueSql("'0'");
+
+            entity.Property(e => e.Status)
+                .HasConversion(
+                    v => v.ToString().ToLower(),  // Enum -> string ("active", "expired")
+                    v => (MedicineStatus)Enum.Parse(typeof(MedicineStatus), v, true)  // string -> Enum
+                );
 
             entity.HasOne(d => d.Category).WithMany(p => p.Medicines)
                 .OnDelete(DeleteBehavior.SetNull)
@@ -155,6 +162,7 @@ public partial class RobotManagerContext : DbContext
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.Gender).HasDefaultValueSql("'other'");
+            entity.Property(e => e.Status).HasDefaultValueSql("'active'");
 
             entity.HasOne(d => d.Room).WithMany(p => p.Patients)
                 .OnDelete(DeleteBehavior.SetNull)
@@ -262,6 +270,7 @@ public partial class RobotManagerContext : DbContext
             entity.HasKey(e => e.Id).HasName("PRIMARY");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Priority).HasDefaultValueSql("'Normal'");
             entity.Property(e => e.Status).HasDefaultValueSql("'pending'");
             entity.Property(e => e.UpdatedAt)
                 .ValueGeneratedOnAddOrUpdate()

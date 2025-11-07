@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace API_Powered_Hospital_Delivery_Robot.Models.Entities
 {
     [Table("alerts")]
+    [Index("PrescriptionItemId", Name = "IX_alerts_prescription_item_id")]
     [Index("RobotId", Name = "fk_alert_robot")]
     [Index("Category", Name = "idx_alert_category")]
     [Index("CreatedAt", Name = "idx_alert_created")]
@@ -40,15 +41,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.Entities
         [Column("resolved_at", TypeName = "datetime")]
         public DateTime? ResolvedAt { get; set; }
 
-        [Column("prescription_item_id")] 
+        [Column("prescription_item_id")]
         public ulong? PrescriptionItemId { get; set; }
+
+        [ForeignKey("PrescriptionItemId")]
+        [InverseProperty("Alerts")]
+        public virtual PrescriptionItem? PrescriptionItem { get; set; }
 
         [ForeignKey("RobotId")]
         [InverseProperty("Alerts")]
         public virtual Robot Robot { get; set; } = null!;
-
-        [ForeignKey("PrescriptionItemId")]
-        [InverseProperty("Alerts")]
-        public virtual PrescriptionItem? PrescriptionItem { get; set; } = null!; 
     }
 }

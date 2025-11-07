@@ -48,15 +48,15 @@ public partial class Task
     [Column("map_id")]
     public ulong? MapId { get; set; }
 
-    [ForeignKey("AssignedBy")]
-    [InverseProperty("Tasks")]
-    public virtual User? AssignedByNavigation { get; set; }
-
     [Column("priority", TypeName = "enum('Normal','Urgent','Critical')")]
-    public string Priority { get; set; } = "Normal";
+    public string Priority { get; set; } = null!;
 
     [Column("scheduled_start_at", TypeName = "datetime")]
     public DateTime? ScheduledStartAt { get; set; }
+
+    [ForeignKey("AssignedBy")]
+    [InverseProperty("Tasks")]
+    public virtual User? AssignedByNavigation { get; set; }
 
     [InverseProperty("Task")]
     public virtual ICollection<CompartmentAssignment> CompartmentAssignments { get; set; } = new List<CompartmentAssignment>();

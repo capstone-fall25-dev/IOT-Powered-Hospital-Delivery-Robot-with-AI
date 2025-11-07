@@ -16,7 +16,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Email),
+                new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("FullName", user.FullName ?? string.Empty),
                 new Claim("CreatedAt", user.CreatedAt.ToString("O"))

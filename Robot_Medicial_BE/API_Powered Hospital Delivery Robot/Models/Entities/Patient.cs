@@ -53,7 +53,7 @@ public partial class Patient
     public DateTime? CreatedAt { get; set; }
 
     [Column("status", TypeName = "enum('active','discharged')")]
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = null!;
 
     [InverseProperty("Patient")]
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();

@@ -2,6 +2,7 @@
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -97,7 +98,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         private ulong GetCurrentUserId()
         {
-            return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
+            return ulong.Parse(claim.Value);
         }
     }
 }
