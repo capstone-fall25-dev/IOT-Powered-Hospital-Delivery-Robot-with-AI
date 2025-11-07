@@ -53,14 +53,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 10: Creates Task by Prescription (Task Management)
+        // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 10: Creates Task by Prescription (Task Management) %Có 1 api tạo task ở PrescriptionsController%
         [HttpPost]
         [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Create(CreateTaskDto createTaskDto)
         {
             try
             {
-                var currentUserId = GetCurrentUserId(); // Từ auth
+                var currentUserId = GetCurrentUserId(); 
                 var created = await _service.CreateAsync(createTaskDto, currentUserId);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }

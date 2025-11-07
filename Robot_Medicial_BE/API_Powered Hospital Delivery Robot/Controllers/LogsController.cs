@@ -16,7 +16,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách log (lọc robotId/taskId/logType) - UC 20: Audit User Activity & UC 29: Task Failure Logging (User Management & Task Management)
+        // Lấy danh sách log (lọc robotId/taskId/logType) 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LogResponseDto>>> GetAll([FromQuery] ulong? robotId = null, [FromQuery] ulong? taskId = null, [FromQuery] string? logType = null)
         {
@@ -24,7 +24,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(logs);
         }
 
-        // Lấy chi tiết log - UC 20: Audit User Activity (User Management)
+        // Lấy chi tiết log 
         [HttpGet("{id}")]
         public async Task<ActionResult<LogResponseDto>> GetById(ulong id)
         {
@@ -33,7 +33,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(log);
         }
 
-        // Tạo log mới (auto created_at) - UC 29: Task Failure Logging & UC 32: Task Notification Alerts (Task Management)
+        // Tạo log mới (auto created_at) 
         [HttpPost]
         public async Task<ActionResult<LogResponseDto>> Create(LogDto logDto)
         {
