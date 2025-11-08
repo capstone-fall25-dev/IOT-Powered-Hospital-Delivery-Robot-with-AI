@@ -23,9 +23,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//builder.Services.AddDbContext<RobotManagerContext>(options =>
+//    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
+//        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
+
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
 //  Swagger + Bearer
 builder.Services.AddSwaggerGen(options =>

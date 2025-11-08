@@ -17,6 +17,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Status { get; set; } = "pending"; 
     }
 
+
+    public class CompartmentAssignmentDto1
+    {
+        public ulong Id { get; set; }
+        public ulong TaskId { get; set; }
+        public ulong StopId { get; set; }
+        public int StopSeqNo { get; set; }
+        public ulong CompartmentId { get; set; }           // ← ulong
+        public string CompartmentCode { get; set; } = string.Empty; // ← string
+        public string ItemDesc { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
     // DTO cho load (input)
     public class LoadCompartmentDto
     {

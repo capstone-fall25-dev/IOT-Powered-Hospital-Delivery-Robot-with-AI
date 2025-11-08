@@ -20,6 +20,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime? HandedOverAt { get; set; }
     }
 
+
+
+    public class TaskStopDto1
+    {
+        public ulong Id { get; set; }
+        public int SeqNo { get; set; }
+        public ulong? DestinationId { get; set; }
+        public string? DestinationName { get; set; }
+        public string? CustomName { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime? EtaAt { get; set; }
+        public DateTime? ArrivedAt { get; set; }
+        public DateTime? HandedOverAt { get; set; }
+    }
+
     public class UpdateProgressDto
     {
         public int SeqNo { get; set; }
