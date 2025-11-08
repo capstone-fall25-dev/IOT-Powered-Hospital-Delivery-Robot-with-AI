@@ -53,5 +53,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var updated = await _repository.UpdateAsync(id, dest);
             return updated != null ? _mapper.Map<DestinationResponseDto>(updated) : null;
         }
+
+        // ✅ NEW: Lấy vị trí (x, y)
+        public async Task<DestinationPositionDto?> GetPositionByIdAsync(ulong destinationId)
+        {
+            var pos = await _repository.GetPositionByIdAsync(destinationId);
+            if (pos == null)
+                throw new InvalidOperationException("Không tìm thấy địa điểm.");
+            return pos;
+        }
     }
 }

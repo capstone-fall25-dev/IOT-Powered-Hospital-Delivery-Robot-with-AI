@@ -14,7 +14,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly ILogRepository _logRepository;
         private readonly IAlertService _alertService;
 
-        // Enum statuses từ dump
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
         public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService)
@@ -30,37 +29,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var robot = await _robotRepository.GetByIdAsync(robotId, includeTasks: true);
             if (robot == null)
-            {
                 throw new InvalidOperationException("Robot not found");
-            }
 
-            // Không assign nếu task đang in_progress
             if (robot.Tasks.Any(t => t.Status == "in_progress" || t.Status == "transporting"))
-            {
                 throw new InvalidOperationException("Cannot assign map to robot with active tasks");
-            }
 
             var map = await _mapRepository.GetByIdAsync(mapId);
             if (map == null)
-            {
                 throw new InvalidOperationException("Map not found");
-            }
 
             var updatedRobot = await _robotRepository.AssignMapAsync(robotId, mapId);
             if (updatedRobot == null)
-            {
                 throw new InvalidOperationException("Failed to assign map");
-            }
 
-            // Tạo Log tự động 
-            var log = new Log
+            await _logRepository.CreateAsync(new Log
             {
                 RobotId = robotId,
                 LogType = "info",
                 Message = $"Robot {robot.Code} assigned to map {map.MapName}",
                 CreatedAt = DateTime.UtcNow
-            };
-            await _logRepository.CreateAsync(log);
+            });
 
             return new AssignMapResponseDto
             {
@@ -75,20 +63,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var existing = await _robotRepository.GetByCodeAsync(robotDto.Code);
             if (existing != null)
-            {
                 throw new InvalidOperationException("Robot code already exists");
-            }
 
             if (robotDto.BatteryPercent < 0 || robotDto.BatteryPercent > 100)
-            {
                 throw new ArgumentException("Battery percent must be between 0 and 100");
-            }
 
             var robot = _mapper.Map<Robot>(robotDto);
             robot.Status = "completed";
-            robot.CreatedAt = DateTime.UtcNow;
-            robot.UpdatedAt = DateTime.UtcNow;
-            robot.LastHeartbeatAt = DateTime.UtcNow; // Default
+            robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.UtcNow;
 
             var created = await _robotRepository.CreateAsync(robot);
             return _mapper.Map<RobotResponseDto>(created);
@@ -106,12 +88,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return robot != null ? _mapper.Map<RobotResponseDto>(robot) : null;
         }
 
-        public async Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto positionDto)
+        public async Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto dto)
         {
-            var updated = await _robotRepository.UpdatePositionAsync(id, positionDto.Latitude, positionDto.Longitude);
+            var updated = await _robotRepository.UpdatePositionAsync(id, dto.Latitude, dto.Longitude);
             if (updated == null) return null;
 
-            // Chức năng: Auto alert if error_count > 3 or status="failed" - UC 38: Robot Error Alert Notification (Robot Error Handling)
             if (updated.ErrorCountSession > 3 || updated.Status == "failed")
             {
                 await _alertService.CreateAsync(new AlertDto
@@ -120,32 +101,48 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     Severity = "high",
                     Category = "system",
                     Status = "open",
-                    Message = $"Robot {updated.Code} error threshold exceeded ({updated.ErrorCountSession} errors). Position: {positionDto.Latitude},{positionDto.Longitude}"
+                    Message = $"Robot {updated.Code} error threshold exceeded ({updated.ErrorCountSession} errors). Position: {dto.Latitude},{dto.Longitude}"
                 });
             }
 
-            return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
+            return _mapper.Map<RobotResponseDto>(updated);
         }
 
-        public async Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto statusDto)
+        // ✅ ROS cập nhật trạng thái theo Code
+        public async Task<RobotResponseDto?> UpdateStatusAsync(RobotStatusUpdateDto dto)
         {
-            if (!ValidStatuses.Contains(statusDto.Status))
+            if (string.IsNullOrEmpty(dto.Code) || string.IsNullOrEmpty(dto.Status))
+                throw new ArgumentException("Robot code or status cannot be empty");
+
+            var updated = await _robotRepository.UpdateStatusAsync(dto.Code, dto.Status);
+            if (updated == null)
+                throw new InvalidOperationException($"Robot with code {dto.Code} not found");
+
+            await _logRepository.CreateAsync(new Log
             {
-                throw new ArgumentException($"Invalid status: {statusDto.Status}. Must be one of: {string.Join(", ", ValidStatuses)}");
-            }
+                RobotId = updated.Id,
+                LogType = "info",
+                Message = $"Robot {updated.Code} updated status to {dto.Status}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return _mapper.Map<RobotResponseDto>(updated);
+        }
+
+        // ✅ Admin/Doctor cập nhật theo Id
+        public async Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto dto)
+        {
+            if (!ValidStatuses.Contains(dto.Status))
+                throw new ArgumentException($"Invalid status: {dto.Status}. Must be one of: {string.Join(", ", ValidStatuses)}");
 
             var existing = await _robotRepository.GetByIdAsync(id);
             if (existing == null)
-            {
                 throw new InvalidOperationException("Robot not found");
-            }
 
             if (existing.Status == "offline")
-            {
                 throw new InvalidOperationException("Cannot update status of offline robot");
-            }
 
-            var updated = await _robotRepository.UpdateStatusAsync(id, statusDto.Status);
+            var updated = await _robotRepository.UpdateStatusAsync(id, dto.Status);
             return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
         }
     }

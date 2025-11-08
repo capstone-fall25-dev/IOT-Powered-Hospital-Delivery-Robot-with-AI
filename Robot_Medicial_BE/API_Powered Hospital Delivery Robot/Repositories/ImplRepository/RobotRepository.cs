@@ -16,21 +16,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         public async Task<Robot?> AssignMapAsync(ulong robotId, ulong mapId)
         {
             var robot = await _context.Robots.FindAsync(robotId);
-            if (robot == null)
-            {
-                return null;
-            }
+            if (robot == null) return null;
 
-            // Check map exists
             var map = await _context.Maps.FindAsync(mapId);
-            if (map == null)
-            {
-                return null;
-            }
+            if (map == null) return null;
 
             robot.MapId = mapId;
             robot.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -46,9 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             var query = _context.Robots.AsQueryable();
             if (!string.IsNullOrEmpty(status))
-            {
                 query = query.Where(r => r.Status == status);
-            }
             return await query.ToListAsync();
         }
 
@@ -61,25 +51,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             var query = _context.Robots.AsQueryable();
             if (includeCompartments)
-            {
                 query = query.Include(r => r.RobotCompartments);
-            }
-
             if (includeTasks)
-            {
                 query = query.Include(r => r.Tasks);
-            }
-
             return await query.FirstOrDefaultAsync(r => r.Id == id);
         }
 
         public async Task<Robot?> UpdateAsync(ulong id, Robot robot)
         {
             var existing = await _context.Robots.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
+            if (existing == null) return null;
 
             existing.Code = robot.Code;
             existing.Name = robot.Name;
@@ -102,33 +83,36 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         public async Task<Robot?> UpdatePositionAsync(ulong id, decimal lat, decimal lng)
         {
             var robot = await _context.Robots.FindAsync(id);
-            if (robot == null)
-            {
-                return null;
-            }
+            if (robot == null) return null;
 
             robot.Latitude = lat;
             robot.Longitude = lng;
-            robot.LastHeartbeatAt = DateTime.UtcNow; // Heartbeat update
+            robot.LastHeartbeatAt = DateTime.UtcNow;
             robot.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return robot;
+        }
 
+        public async Task<Robot?> UpdateStatusAsync(string code, string status)
+        {
+            var robot = await _context.Robots.FirstOrDefaultAsync(r => r.Code == code);
+            if (robot == null) return null;
+
+            robot.Status = status;
+            robot.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return robot;
         }
 
         public async Task<Robot?> UpdateStatusAsync(ulong id, string status)
         {
-            var existing = await _context.Robots.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
+            var robot = await _context.Robots.FindAsync(id);
+            if (robot == null) return null;
 
-            existing.Status = status;
-            existing.UpdatedAt = DateTime.UtcNow;
-
+            robot.Status = status;
+            robot.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return existing;
+            return robot;
         }
     }
 }

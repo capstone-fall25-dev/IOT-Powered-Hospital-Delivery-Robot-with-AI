@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
@@ -10,5 +11,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto statusDto);
         Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId);
         Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto positionDto);
+
+        // ✅ ROS gửi status (theo Code)
+        Task<RobotResponseDto?> UpdateStatusAsync(RobotStatusUpdateDto dto);
     }
 }

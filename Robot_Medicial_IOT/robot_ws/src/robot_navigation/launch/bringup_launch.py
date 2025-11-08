@@ -20,7 +20,7 @@ def generate_launch_description():
     
  
     home = os.path.expanduser('~')
-    appdata_map = os.path.join("/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map",'homeMap.yaml')
+    appdata_map = os.path.join("/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map",'my_map_.yaml')
     return LaunchDescription([
         # Tham số đầu vào
         DeclareLaunchArgument(

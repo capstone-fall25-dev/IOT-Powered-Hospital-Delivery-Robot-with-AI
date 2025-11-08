@@ -66,10 +66,10 @@ public partial class Robot
     public DateTime? LastHeartbeatAt { get; set; }
 
     [Column("created_at", TypeName = "datetime")]
-    public DateTime CreatedAt { get; set; }
+    public DateTime? CreatedAt { get; set; }
 
     [Column("updated_at", TypeName = "datetime")]
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 
     [Column("map_id")]
     public ulong? MapId { get; set; }

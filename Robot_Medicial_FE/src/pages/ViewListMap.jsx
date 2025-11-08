@@ -69,7 +69,7 @@ export default function ProjectMapListView() {
   useEffect(() => {
     async function fetchMap() {
       try {
-        const res = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/3`);
+        const res = await fetch(`http://localhost:5170/api/MapsUpload/4`);
         if (!res.ok) throw new Error("Không tải được dữ liệu bản đồ");
         const data = await res.json();
         setMapInfo(data);
@@ -92,7 +92,7 @@ export default function ProjectMapListView() {
           zoomControl: false,
         });
 
-        const imageUrl = `http://157.66.26.217:5000/api/MapsUpload/${mapInfo.id}/image`;
+        const imageUrl = `http://localhost:5170/api/MapsUpload/4/image`;
 
         const res = mapInfo.resolution || 0.05;
         const width = mapInfo.width || 800;
@@ -100,10 +100,14 @@ export default function ProjectMapListView() {
         const originX = mapInfo.originX || 0;
         const originY = mapInfo.originY || 0;
 
+        // const imageBounds = [
+        //   [originY, originX],
+        //   [originY + height * res, originX + width * res],
+        // ];
         const imageBounds = [
-          [originY, originX],
-          [originY + height * res, originX + width * res],
-        ];
+  [originY + height * res, originX + width * res],  // bottom-right
+   [originY, originX],                               // top-left
+ ];
 
         L.imageOverlay(imageUrl, imageBounds, { opacity: 1 }).addTo(mapRef.current);
         mapRef.current.fitBounds(imageBounds);

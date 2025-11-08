@@ -1,7 +1,7 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
@@ -17,7 +17,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách robot (lọc theo status) 
         [HttpGet]
         [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RobotResponseDto>>> GetAll([FromQuery] string? status = null)
@@ -26,111 +25,76 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(robots);
         }
 
-        // Lấy thông tin chi tiết robot (include compartments/tasks)
         [HttpGet("{id}")]
         [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RobotResponseDto>> GetById(ulong id)
         {
             var robot = await _service.GetByIdAsync(id);
             if (robot == null) return NotFound();
-            // Nếu có MapId, load map và tính position relative (thêm vào DTO nếu cần)
-            if (robot.MapId.HasValue)
-            {
-                //var map = await _mapService.GetByIdAsync(robot.MapId.Value);
-                // var (x, y) = _service.CalculatePositionOnMap(robot, map);
-                // robot.PositionOnMap = new { X = x, Y = y }; // Extend DTO nếu cần
-            }
-            return Ok(robot); // Include Compartments & Tasks
+            return Ok(robot);
         }
 
-        // Tạo robot mới (default status="completed") 
         [HttpPost]
         [Authorize(Roles = "admin")]
         public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
+            var created = await _service.CreateAsync(robotDto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
+        // ✅ ROS gửi trạng thái (không cần token)
+        [HttpPost("update-status")]
+       // [AllowAnonymous]
+        public async Task<ActionResult> UpdateStatus([FromBody] RobotStatusUpdateDto dto)
+        {
             try
             {
-                var created = await _service.CreateAsync(robotDto);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+                var updated = await _service.UpdateStatusAsync(dto);
+                return Ok(new
+                {
+                    message = $"✅ Updated robot '{dto.Code}' to status '{dto.Status}'",
+                    robot = updated
+                });
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
-        // Cập nhật status robot (validate enum, no offline update) 
         [HttpPatch("{id}/status")]
         [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, UpdateStatusDto statusDto)
+        public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, UpdateStatusDto dto)
         {
-            try
-            {
-                var updated = await _service.UpdateStatusAsync(id, statusDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var updated = await _service.UpdateStatusAsync(id, dto);
+            if (updated == null) return NotFound();
+            return Ok(updated);
         }
 
-        // Assign map cho robot (check no active task, log) 
         [HttpPut("{robotId}/assign-map/{mapId}")]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<AssignMapResponseDto>> AssignMap(ulong robotId, ulong mapId)
         {
-            try
-            {
-                var response = await _service.AssignMapAsync(robotId, mapId);
-                return Ok(response);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var result = await _service.AssignMapAsync(robotId, mapId);
+            return Ok(result);
         }
 
-        // Cập nhật vị trí robot (latitude/longitude, heartbeat) 
         [HttpPatch("{id}/position")]
-        public async Task<ActionResult<RobotResponseDto>> UpdatePosition(ulong id, UpdatePositionDto positionDto)
+        public async Task<ActionResult<RobotResponseDto>> UpdatePosition(ulong id, UpdatePositionDto dto)
         {
-            try
-            {
-                var updated = await _service.UpdatePositionAsync(id, positionDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var updated = await _service.UpdatePositionAsync(id, dto);
+            if (updated == null) return NotFound();
+            return Ok(updated);
         }
 
-        // Kích hoạt chế độ điều khiển thủ công - UC 16: Manual Control Mode Activation (Robot)
         [HttpPatch("{id}/manual-control")]
         [Authorize(Roles = "doctor")]
         public async Task<ActionResult<RobotResponseDto>> ManualControl(ulong id)
         {
-            var statusDto = new UpdateStatusDto { Status = "manual_control" };
-            try
-            {
-                var updated = await _service.UpdateStatusAsync(id, statusDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var dto = new UpdateStatusDto { Status = "manual_control" };
+            var updated = await _service.UpdateStatusAsync(id, dto);
+            if (updated == null) return NotFound();
+            return Ok(updated);
         }
     }
 }

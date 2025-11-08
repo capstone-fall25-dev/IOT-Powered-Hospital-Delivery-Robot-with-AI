@@ -79,6 +79,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public decimal Longitude { get; set; }
     }
 
+ public class RobotStatusUpdateDto
+    {
+        [Required]
+        [StringLength(50)]
+        public string Code { get; set; } = null!; // Mã robot, ví dụ "RB-01"
+
+        [Required]
+        [StringLength(50)]
+        public string Status { get; set; } = null!; // Trạng thái ROS gửi: transporting, at_station, error...
+    }
     // DTO cho assign map
     public class AssignMapResponseDto
     {

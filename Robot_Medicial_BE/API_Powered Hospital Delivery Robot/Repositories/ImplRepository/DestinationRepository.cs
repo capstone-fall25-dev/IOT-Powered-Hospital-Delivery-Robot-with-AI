@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,11 +43,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             var existing = await _context.Destinations.FindAsync(id);
             if (existing == null) return null;
+
             existing.Name = destination.Name;
             existing.Area = destination.Area;
             existing.Floor = destination.Floor;
+            existing.X = destination.X;
+            existing.Y = destination.Y;
             await _context.SaveChangesAsync();
             return existing;
+        }
+
+        // ✅ NEW: Lấy vị trí (x, y, name) theo ID
+        public async Task<DestinationPositionDto?> GetPositionByIdAsync(ulong destinationId)
+        {
+            return await _context.Destinations
+                .Where(d => d.Id == destinationId)
+                .Select(d => new DestinationPositionDto
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    X = d.X ?? 0,
+                    Y = d.Y ?? 0,
+                    Area = d.Area,
+                    Floor = d.Floor
+                })
+                .FirstOrDefaultAsync();
         }
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
+using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -61,7 +62,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 IFormFile? imageFile = null;
 
-                // Nếu có ảnh base64 thì chuyển về IFormFile
                 if (!string.IsNullOrEmpty(mapJsonDto.ImageBase64))
                 {
                     var bytes = Convert.FromBase64String(mapJsonDto.ImageBase64);
@@ -69,7 +69,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     imageFile = new FormFile(stream, 0, bytes.Length, "imageFile", mapJsonDto.ImageName ?? "map.png");
                 }
 
-                // Dùng DTO cũ để upload
                 var dto = new MapUploadDto
                 {
                     MapName = mapJsonDto.MapName,
@@ -116,7 +115,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // ============================================================
         // GET: /api/MapsUpload/{id}/image
-        // Trả về ảnh map (tự động convert .pgm → .png)
+        // Trả về ảnh map (convert .pgm → .png chính xác)
         // ============================================================
         [HttpGet("{id}/image")]
         public async Task<IActionResult> GetImage(ulong id)
@@ -133,38 +132,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 if (imageName.EndsWith(".pgm", StringComparison.OrdinalIgnoreCase))
                 {
                     using var ms = new MemoryStream(map.ImageData);
-                    using var reader = new StreamReader(ms);
+                    using var br = new BinaryReader(ms, Encoding.ASCII, leaveOpen: true);
 
                     // --- Đọc header PGM ---
-                    var magic = reader.ReadLine(); // thường là "P5"
+                    string magic = ReadLine(br);
                     if (magic != "P5")
                         throw new InvalidDataException("Invalid PGM format");
 
                     // --- Bỏ qua dòng comment nếu có ---
                     string line;
-                    do
-                    {
-                        line = reader.ReadLine();
-                    } while (line.StartsWith("#"));
+                    do { line = ReadLine(br); } while (line.StartsWith("#"));
 
                     // --- Kích thước ảnh ---
                     var sizeParts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     int width = int.Parse(sizeParts[0]);
                     int height = int.Parse(sizeParts[1]);
-                    var maxVal = int.Parse(reader.ReadLine() ?? "255");
 
-                    // --- Đọc pixel data ---
-                    var pixelData = new byte[width * height];
-                    ms.Read(pixelData, 0, pixelData.Length);
+                    // --- Max value (thường là 255) ---
+                    int maxVal = int.Parse(ReadLine(br));
 
-                    // --- Tạo ảnh grayscale ---
+                    // --- Đọc pixel data nhị phân chính xác ---
+                    var pixelData = br.ReadBytes(width * height);
+
+                    // --- Tạo ảnh grayscale đúng hướng ---
                     using var image = new Image<L8>(width, height);
                     for (int y = 0; y < height; y++)
                     {
                         for (int x = 0; x < width; x++)
                         {
-                            // ROS map gốc bị đảo trục Y → lật ngược lại
-                            var val = pixelData[(height - y - 1) * width + x];
+                            // ✅ Đảo trục Y theo chuẩn ROS (ROS lưu từ dưới → trên)
+                        //    var val = pixelData[(height - y - 1) * width + x];
+                            var val = pixelData[y * width + x];
                             image[x, y] = new L8(val);
                         }
                     }
@@ -184,6 +182,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 return StatusCode(500, $"Failed to process image: {ex.Message}");
             }
+        }
+
+        // ============================================================
+        // 🔧 Hàm phụ trợ đọc dòng trong BinaryReader
+        // ============================================================
+        private static string ReadLine(BinaryReader br)
+        {
+            List<byte> bytes = new();
+            byte b;
+            while (br.BaseStream.Position < br.BaseStream.Length && (b = br.ReadByte()) != '\n')
+                bytes.Add(b);
+            return Encoding.ASCII.GetString(bytes.ToArray()).Trim();
         }
     }
 }

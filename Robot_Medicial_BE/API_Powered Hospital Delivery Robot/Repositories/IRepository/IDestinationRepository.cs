@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 {
@@ -9,5 +10,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Destination?> GetByNameAsync(string name);
         Task<Destination> CreateAsync(Destination destination);
         Task<Destination?> UpdateAsync(ulong id, Destination destination);
+
+           Task<DestinationPositionDto?> GetPositionByIdAsync(ulong destinationId);
     }
 }

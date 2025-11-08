@@ -43,6 +43,7 @@ import os
 from datetime import datetime
 from tf2_ros import TransformBroadcaster
 from kalman_filter import KalmanFilter
+from std_msgs.msg import String
 
 try:
     from tf_transformations import quaternion_from_euler
@@ -160,7 +161,14 @@ class STM32Driver(Node):
         self.cmd_vel_subscription = self.create_subscription(
             Twist, '/cmd_vel', self.cmd_vel_callback, 10           # Robot velocity commands from navigation/teleop
         )
-        
+
+        self.control_box_subcription = self.create_subscription(
+            String, '/control_box', self.control_box_callback, 10
+        )
+        self.control_box_msg = '0 0'
+        self.control_box_status = False
+        self.get_logger().info(f"status: {self.control_box_status}")
+
         # Publishers - Outgoing robot state information
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)      # Robot pose and velocity estimates
         self.imu_publisher = self.create_publisher(Imu, '/imu', 10)             # Raw inertial measurement data
@@ -206,6 +214,7 @@ class STM32Driver(Node):
         self.last_cmd_vx = 0.0                # Previous linear velocity command (m/s)
         self.last_cmd_vy = 0.0                # Previous lateral velocity command (m/s) - unused for differential drive
         self.last_cmd_omega = 0.0             # Previous angular velocity command (rad/s)
+        
         
         # ======================================================================================== 
         # INITIALIZATION COMPLETION
@@ -377,8 +386,8 @@ class STM32Driver(Node):
             data_parts = line.split()
             # self.get_logger().info(f"Data values: {data_parts}")
             # Validate we have enough data values (9 expected)
-            if len(data_parts) >= 8:
-                data_values = [float(part) for part in data_parts[:8]]
+            if len(data_parts) >= 12:
+                data_values = [float(part) for part in data_parts[:12]]
 
                 # Process the data
                 self.process_combined_data(
@@ -390,11 +399,11 @@ class STM32Driver(Node):
                     data_values[5],   # gx
                     data_values[6],   # gy
                     data_values[7],   # gz
-                    # data_values[8] # yaw
-                    # data_values[9],   # vl05_1
-                    # data_values[10],  # vl05_2
-                    # data_values[11],  # vl05_3
-                    # data_values[12]   # vl05_4
+                    0.0, # yaw
+                    data_values[8],   # vl05_1
+                    data_values[9],  # vl05_2
+                    data_values[10],  # vl05_3
+                    data_values[11]   # vl05_4
                 )
                 
                 self.count += 1
@@ -402,7 +411,7 @@ class STM32Driver(Node):
                 
                 # Debug logging (reduced frequency)
                 if self.debug_mode and self.count % 10 == 0:
-                    self.get_logger().info(f"Processed line {self.count}: {data_values} values")
+                    # self.get_logger().info(f"Processed line {self.count}: {data_values} values")
                     pass
                     
             else:
@@ -486,6 +495,11 @@ class STM32Driver(Node):
         omega = (v_right - v_left) / self.wheel_base
         return vx, vy, omega
     
+    def control_box_callback(self, msg : String):
+        self.control_box_msg = msg.data
+        if '1' in self.control_box_msg:
+            self.control_box_status = True
+ 
     def cmd_vel_callback(self, msg):
         """
         Process incoming velocity commands from ROS2 navigation or teleop.
@@ -547,13 +561,18 @@ class STM32Driver(Node):
             duty = int((vel / v_max) * duty_max)
             duty = max(-duty_max, min(duty_max, duty))
             duty_cycles.append(duty)
-        
+        command = ''
        
         # Send command
-        command = f"{duty_cycles[0]} {duty_cycles[1]}\n"
-        if self.debug_mode and self.count % 10 == 0:
-            # self.get_logger().info(f"Comman send: {command}")
-            pass
+        if self.control_box_status:
+            command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
+            self.control_box_status = False
+        else:
+            self.control_box_msg = '0 0'
+            command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
+        if self.debug_mode and '1' in command:
+            self.get_logger().info(f"Comman send: {command}")
+            # pass
         # if self.
         # Store motor commands for CSV logging
         self.last_duty_left = duty_cycles[0]
@@ -569,6 +588,8 @@ class STM32Driver(Node):
             if self.serial_port and self.serial_port.is_open:
                 self.serial_port.write(command.encode('utf-8'))
                 self.serial_port.flush()
+                # if '1' in command:
+                #     time.sleep(2)
             else:
                 self.get_logger().warn('Serial port not available for command sending')
         except serial.SerialException as e:
@@ -577,7 +598,7 @@ class STM32Driver(Node):
         except Exception as e:
             self.get_logger().error(f'Unexpected error sending command: {e}')
     
-    def update_range_vl05(self, current_time, vl05_1, vl05_3, vl05_4, vl05_2=float('nan')):
+    def update_range_vl05(self, current_time, vl05_1=float('inf'), vl05_3=float('inf'), vl05_4=float('inf'), vl05_2=float('nan')):
         """Enhanced VL53L0X range sensor processing - FIXED"""
         values = [vl05_1, vl05_2, vl05_3, vl05_4]
 
@@ -607,9 +628,9 @@ class STM32Driver(Node):
                 self.range_vl05_pub[i].publish(msg)
                 
                 # Debug logging (reduced frequency)
-                if self.debug_mode and self.count % 500 == 0:
-                    sensor_name = self.frame_ids[i].replace('vl05_', '').upper()
-                    self.get_logger().info(f"VL05_{sensor_name}: raw={raw_value:.3f}m → final={msg.range:.3f}m")
+                # if self.debug_mode and self.count % 500 == 0:
+                #     sensor_name = self.frame_ids[i].replace('vl05_', '').upper()
+                #     self.get_logger().info(f"VL05_{sensor_name}: raw={raw_value:.3f}m → final={msg.range:.3f}m")
                     
             except Exception as e:
                 if self.count % 100 == 0:  # Reduce log spam
@@ -678,7 +699,7 @@ class STM32Driver(Node):
         if self.publish_imu_enabled:
             self.publish_imu_with_timestamp(current_time, ax, ay, az, gx_rads, gy_rads, gz_rads, yaw)
         # Update range sensors
-        # self.update_range_vl05(current_time, vl05_1, vl05_3, vl05_4, vl05_2)
+        self.update_range_vl05(current_time, vl05_1, vl05_3, vl05_4, vl05_2)
 
         # Save to CSV if enabled
         if self.save_to_csv:
@@ -943,8 +964,8 @@ class STM32Driver(Node):
             self.imu_publisher.publish(imu_msg)
             
             # Debug logging
-            if self.debug_mode and self.count % 1000 == 0:
-                self.get_logger().info(f'Published IMU: yaw={math.degrees(yaw):.1f}°')
+            # if self.debug_mode and self.count % 1000 == 0:
+            #     self.get_logger().info(f'Published IMU: yaw={math.degrees(yaw):.1f}°')
     
         except Exception as e:
             self.get_logger().error(f'Error publishing IMU data: {e}')
@@ -1002,7 +1023,7 @@ class STM32Driver(Node):
         if self.serial_port:
             try:
                 if self.serial_port.is_open:
-                    command = "0 0\n"
+                    command = "0 0 0 0\n"
                     self.serial_port.write(command.encode('utf-8'))  # Stop command
                     self.serial_port.flush()
                     time.sleep(0.1)

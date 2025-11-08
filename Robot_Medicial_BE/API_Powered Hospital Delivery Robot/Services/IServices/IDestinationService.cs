@@ -8,5 +8,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<DestinationResponseDto?> GetByIdAsync(ulong id);
         Task<DestinationResponseDto> CreateAsync(DestinationDto dto);
         Task<DestinationResponseDto?> UpdateAsync(ulong id, DestinationDto dto);
+
+        Task<DestinationPositionDto?> GetPositionByIdAsync(ulong destinationId);
     }
 }

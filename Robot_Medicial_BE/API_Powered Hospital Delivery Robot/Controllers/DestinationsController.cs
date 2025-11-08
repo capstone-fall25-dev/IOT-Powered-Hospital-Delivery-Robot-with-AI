@@ -1,7 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
@@ -16,16 +15,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách điểm đến (lọc area/floor)
         [HttpGet]
-        [Authorize(Roles = "admin, doctor")]
+     //   [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<DestinationResponseDto>>> GetAll([FromQuery] string? area = null, [FromQuery] string? floor = null)
         {
             var dests = await _service.GetAllAsync(area, floor);
             return Ok(dests);
         }
 
-        // Lấy chi tiết điểm đến (include TaskCount) 
         [HttpGet("{id}")]
         [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> GetById(ulong id)
@@ -35,9 +32,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(dest);
         }
 
-        // Tạo điểm đến mới (validate unique name) 
+        // ✅ NEW: Lấy vị trí (x, y)
+        [HttpGet("{id}/position")]
+     //   [Authorize(Roles = "admin, doctor, nurse")]
+        public async Task<ActionResult<DestinationPositionDto>> GetPosition(ulong id)
+        {
+            try
+            {
+                var result = await _service.GetPositionByIdAsync(id);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
         [HttpPost]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> Create(DestinationDto dto)
         {
             try
@@ -51,9 +63,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật điểm đến (validate unique name)
         [HttpPut("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+  //      [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, DestinationDto dto)
         {
             try

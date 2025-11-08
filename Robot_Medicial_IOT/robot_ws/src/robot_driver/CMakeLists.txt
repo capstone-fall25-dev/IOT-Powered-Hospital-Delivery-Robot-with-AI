@@ -17,6 +17,7 @@ find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rplidar_ros REQUIRED)
+find_package(std_msgs REQUIRED)
 
 install(PROGRAMS
   scripts/stm32_controller.py
@@ -27,6 +28,9 @@ install(PROGRAMS
   scripts/read_cam.py
   scripts/cmd_vel.py
   scripts/kalman_filter.py
+  scripts/gotoPos.py
+  scripts/control_box.py
+  scripts/position_pos.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

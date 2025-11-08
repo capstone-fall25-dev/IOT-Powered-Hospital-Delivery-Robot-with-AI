@@ -56,6 +56,12 @@ def generate_launch_description():
         ),
         # Node(
         #     package='robot_driver',
+        #     executable='read_cam.py',
+        #     name="camera_robot",
+        #     output="screen",
+        # ),
+        # Node(
+        #     package='robot_driver',
         #     executable='stm32_controller.py',
         #     name='stm32_odom',
         #     output='screen',
