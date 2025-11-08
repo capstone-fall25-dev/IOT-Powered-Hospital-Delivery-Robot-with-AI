@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
 using API_Powered_Hospital_Delivery_Robot.Mappings;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
@@ -162,6 +163,9 @@ builder.Services.AddAutoMapper(typeof(DestinationProfile));
 builder.Services.AddAutoMapper(typeof(UserMappingProfile));
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+// SignalR
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -178,5 +182,8 @@ app.UseMiddleware<SingleDeviceMiddleware>();
 app.UseAuthentication();           
 app.UseAuthorization();            
 app.MapControllers();
+
+// Map Hubs
+app.MapHub<AlertHub>("/hubs/alert");
 
 app.Run();
