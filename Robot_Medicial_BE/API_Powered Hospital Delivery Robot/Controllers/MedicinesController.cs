@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách thuốc (lọc categoryId/status)
         [HttpGet]
-        [Authorize(Roles = "pharmacist, doctor")]
+      //  [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<IEnumerable<MedicineResponseDto>>> GetAll([FromQuery] ulong? categoryId = null, [FromQuery] string? status = null)
         {
             var medicines = await _service.GetAllAsync(categoryId, status == null ? null : (MedicineStatus?)Enum.Parse(typeof(MedicineStatus), status));
@@ -38,7 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo thuốc mới (validate unique code) - UC 17: Register New Medicine (Medicine Management)
         [HttpPost]
-        [Authorize(Roles = "pharmacist")]
+       // [Authorize(Roles = "pharmacist")]
         public async Task<ActionResult<MedicineResponseDto>> Create(MedicineDto medicineDto)
         {
             try
@@ -54,7 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật thông tin thuốc (validate unique code) - UC 18: Update Medicine Information (Medicine Management)
         [HttpPut("{id}")]
-        [Authorize(Roles = "pharmacist")]
+      //  [Authorize(Roles = "pharmacist")]
         public async Task<ActionResult<MedicineResponseDto>> Update(ulong id, MedicineDto medicineDto)
         {
             try
@@ -71,7 +71,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Scan thuốc hết hạn (flag expired or clear stock)
         [HttpPost("scan-expired")]
-        [Authorize(Roles = "pharmacist")]
+       // [Authorize(Roles = "pharmacist")]
         public async Task<ActionResult<ScanExpiredResponseDto>> ScanExpired([FromBody] ScanExpiredDto scanDto)
         {
             try
@@ -87,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Xóa thuốc hết hạn (hard delete) - UC 19: Remove Expired Medicines (Medicine Management)
         [HttpDelete("remove-expired")]
-        [Authorize(Roles = "pharmacist")]
+     //   [Authorize(Roles = "pharmacist")]
         public async Task<ActionResult<int>> RemoveExpired()
         {
             try
@@ -103,7 +103,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo báo cáo tồn kho thuốc (shortages/trends dispensed last month) - UC 20: Generate Medicine Stock Report (Medicine Management)
         [HttpGet("stock-report")]
-        [Authorize(Roles = "pharmacist")]
+      //  [Authorize(Roles = "pharmacist")]
         public async Task<ActionResult<IEnumerable<MedicineStockReportDto>>> GetStockReport([FromQuery] int threshold = 10)
         {
             var reports = await _service.GetStockReportAsync(threshold);

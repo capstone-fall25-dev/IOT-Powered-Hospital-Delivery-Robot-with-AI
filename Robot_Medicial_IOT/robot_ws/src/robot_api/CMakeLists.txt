@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(robot_driver)
+project(robot_api)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,41 +7,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(rclpy REQUIRED)
-find_package(rplidar_ros REQUIRED)
 find_package(std_msgs REQUIRED)
-
-install(PROGRAMS
-  scripts/stm32_controller.py
-  scripts/lidar.py
-  scripts/teleop.py
-  scripts/stm32_node.py
-  scripts/web_control.py
-  # scripts/read_cam.py
-  scripts/cmd_vel.py
-  scripts/kalman_filter.py
-  # scripts/gotoPos.py
-  # scripts/control_box.py
-  # scripts/position_pos.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(DIRECTORY
-  launch
-  urdf
-  config
-  scripts
-  DESTINATION share/${PROJECT_NAME}
-)
-
+find_package(geometry_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -55,4 +22,18 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+install(DIRECTORY
+  launch
+  scripts
+  DESTINATION share/${PROJECT_NAME}
+  
+)
+
+install(PROGRAMS
+  scripts/control_box.py
+  scripts/gotoPos.py
+  scripts/position_pos.py
+  scripts/read_cam.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 ament_package()

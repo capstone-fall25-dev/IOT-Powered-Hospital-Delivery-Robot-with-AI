@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách loại thuốc
         [HttpGet]
-        [Authorize(Roles = "pharmacist, doctor")]
+       // [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<IEnumerable<DrugCategoryResponseDto>>> GetAll()
         {
             var categories = await _service.GetAllAsync();
@@ -28,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết loại thuốc 
         [HttpGet("{id}")]
-        [Authorize(Roles = "pharmacist, doctor")]
+    //    [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> GetById(ulong id)
         {
             var category = await _service.GetByIdAsync(id);
@@ -38,7 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo loại thuốc mới (validate unique name) 
         [HttpPost]
-        [Authorize(Roles = "pharmacist, doctor")]
+     //   [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> Create(DrugCategoryDto categoryDto)
         {
             try
@@ -54,7 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật loại thuốc (validate unique name) 
         [HttpPut("{id}")]
-        [Authorize(Roles = "pharmacist, doctor")]
+    //    [Authorize(Roles = "pharmacist, doctor")]
         public async Task<ActionResult<DrugCategoryResponseDto>> Update(ulong id, DrugCategoryDto categoryDto)
         {
             try

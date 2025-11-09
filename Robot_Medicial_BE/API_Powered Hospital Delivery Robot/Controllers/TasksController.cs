@@ -20,7 +20,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách task (lọc theo priority) - UC 12: View Task History (Task Management)
         [HttpGet]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskResponseDto>>> GetAll([FromQuery] string? priority = null)
         {
             var tasks = await _service.GetAllAsync(priority);
@@ -29,7 +29,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy thông tin chi tiết task (include stops/compartments)
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> GetById(ulong id)
         {
             var task = await _service.GetByIdAsync(id);
@@ -39,7 +39,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy task theo user 
         [HttpGet("by-user/{userId}")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskResponseDto>>> GetByUser(ulong userId)
         {
             try
@@ -55,7 +55,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 10: Creates Task by Prescription (Task Management) %Có 1 api tạo task ở PrescriptionsController%
         [HttpPost]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Create(CreateTaskDto createTaskDto)
         {
             try
@@ -72,7 +72,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật task (status/robot/priority) - UC 11: Update Task Status (Task Management)
         [HttpPut("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Update(ulong id, TaskDto taskDto)
         {
             try
@@ -93,7 +93,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Hủy task (set status="canceled") - UC 13: Cancel Task (Task Management)
         [HttpDelete("cancel/{id}")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<IActionResult> Delete(ulong id)
         {
             try
@@ -113,7 +113,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Submit task để admin confirm (log message) 
         [HttpPost("{id}/submit")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> Submit(ulong id, SubmitTaskDto submitDto)
         {
             try
@@ -136,7 +136,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Admin confirm task (set in_progress, log, alert low battery)
         [HttpPost("{id}/confirm")]
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")]
         public async Task<ActionResult<TaskResponseDto>> Confirm(ulong id)
         {
             try
@@ -159,7 +159,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật tiến độ task (stop status, duration, auto-complete if all done) - UC 14: Task Confirmation by Receiver (Task Management)
         [HttpPatch("{id}/progress")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<TaskResponseDto>> UpdateProgress(ulong id, UpdateProgressDto progressDto)
         {
             try
@@ -191,7 +191,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Test scheduler - auto assign pending tasks to available robots (test cron job)
         [HttpPost("schedule-pending")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<int>> SchedulePending()
         {
             var count = await _service.SchedulePendingTasksAsync();
@@ -200,7 +200,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo báo cáo nhiệm vụ (tổng/avg duration/lỗi theo robot, lọc ngày/robot) - UC 15: Generate Task Report (Task Management)
         [HttpGet("report")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<TaskReportDto>>> GetTaskReport([FromQuery] ulong? robotId = null, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             var reports = await _service.GetTaskReportAsync(robotId, startDate, endDate);

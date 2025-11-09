@@ -44,6 +44,7 @@ from datetime import datetime
 from tf2_ros import TransformBroadcaster
 from kalman_filter import KalmanFilter
 from std_msgs.msg import String
+from sensor_msgs.msg import LaserScan
 
 try:
     from tf_transformations import quaternion_from_euler
@@ -162,12 +163,12 @@ class STM32Driver(Node):
             Twist, '/cmd_vel', self.cmd_vel_callback, 10           # Robot velocity commands from navigation/teleop
         )
 
+        self.control_box_msg = '0 0'
+        self.control_box_status = False
         self.control_box_subcription = self.create_subscription(
             String, '/control_box', self.control_box_callback, 10
         )
-        self.control_box_msg = '0 0'
-        self.control_box_status = False
-        self.get_logger().info(f"status: {self.control_box_status}")
+        # self.get_logger().info(f"status: {self.control_box_status}")
 
         # Publishers - Outgoing robot state information
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)      # Robot pose and velocity estimates
@@ -193,6 +194,15 @@ class STM32Driver(Node):
             self.create_publisher(Range, topic, 10)
             for topic in self.topics_vl05
         ]
+
+        self.pub_range_sensor = self.create_publisher(
+            LaserScan, "/tof_scan", 10
+        )
+
+        self.num_sensors = 4
+        self.angle_span = 0.04  # rad (khoảng ±1.15°) để RViz tách 4 tia
+        self.range_min = 0.02
+        self.range_max = 2.0
         
         # Timing and processing state
         self.last_time = self.get_clock().now()    # Previous timestamp for delta-time calculations
@@ -410,9 +420,9 @@ class STM32Driver(Node):
                 self.consecutive_errors = 0  # Reset error counter on success
                 
                 # Debug logging (reduced frequency)
-                if self.debug_mode and self.count % 10 == 0:
-                    # self.get_logger().info(f"Processed line {self.count}: {data_values} values")
-                    pass
+                if self.debug_mode and self.count % 40 == 0:
+                    self.get_logger().info(f"Processed line {self.count}: {data_values} values")
+                    # pass
                     
             else:
                 if self.debug_mode:
@@ -497,9 +507,23 @@ class STM32Driver(Node):
     
     def control_box_callback(self, msg : String):
         self.control_box_msg = msg.data
-        if '1' in self.control_box_msg:
-            self.control_box_status = True
- 
+        self.control_box_status = True
+        command = f"0 0 {self.control_box_msg}\n"
+
+        # try:
+        #     if self.serial_port and self.serial_port.is_open:
+        #         self.serial_port.write(command.encode('utf-8'))
+        #         self.serial_port.flush()
+        #         self.get_logger().info(f"Control data: {command}")
+
+        #     else:
+        #         self.get_logger().warn('Serial port not available for command sending')
+        # except serial.SerialException as e:
+        #     self.get_logger().error(f'Failed to send command: {e}')
+        #     self.connect_to_serial()
+        # except Exception as e:
+        #     self.get_logger().error(f'Unexpected error sending command: {e}')
+       
     def cmd_vel_callback(self, msg):
         """
         Process incoming velocity commands from ROS2 navigation or teleop.
@@ -561,16 +585,9 @@ class STM32Driver(Node):
             duty = int((vel / v_max) * duty_max)
             duty = max(-duty_max, min(duty_max, duty))
             duty_cycles.append(duty)
-        command = ''
        
-        # Send command
-        if self.control_box_status:
-            command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
-            self.control_box_status = False
-        else:
-            self.control_box_msg = '0 0'
-            command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
-        if self.debug_mode and '1' in command:
+        command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
+        if  self.control_box_status:
             self.get_logger().info(f"Comman send: {command}")
             # pass
         # if self.
@@ -626,6 +643,22 @@ class STM32Driver(Node):
                 
                 # Publish the message
                 self.range_vl05_pub[i].publish(msg)
+
+                msg = LaserScan()
+                msg.header.stamp = self.get_clock().now().to_msg()
+                msg.header.frame_id = 'base_link'  # Link gốc robot
+
+                msg.angle_min = -self.angle_span / 2
+                msg.angle_max = self.angle_span / 2
+                msg.angle_increment = (msg.angle_max - msg.angle_min) / (self.num_sensors - 1)
+                msg.time_increment = 0.0
+                msg.scan_time = 0.1
+                msg.range_min = self.range_min
+                msg.range_max = self.range_max
+                msg.ranges = values
+                msg.intensities = [1.0] * self.num_sensors
+
+                self.pub_range_sensor.publish(msg)
                 
                 # Debug logging (reduced frequency)
                 # if self.debug_mode and self.count % 500 == 0:

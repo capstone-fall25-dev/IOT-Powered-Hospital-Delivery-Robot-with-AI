@@ -20,7 +20,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách đơn thuốc (lọc theo patientId/status) 
         [HttpGet]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<IEnumerable<PrescriptionResponseDto>>> GetAll([FromQuery] ulong? patientId = null, [FromQuery] string? status = null)
         {
             var prescriptions = await _service.GetAllAsync(patientId, status);
@@ -29,7 +29,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết đơn thuốc (include PatientName/UserEmail/Items) 
         [HttpGet("{id}")]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<PrescriptionResponseDto>> GetById(ulong id)
         {
             var prescription = await _service.GetByIdAsync(id);
@@ -56,7 +56,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật status đơn thuốc (pending/approved/dispensed/canceled) 
         [HttpPatch("{id}/status/{status}")]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<PrescriptionResponseDto>> UpdateStatus(ulong id, string status)
         {
             try

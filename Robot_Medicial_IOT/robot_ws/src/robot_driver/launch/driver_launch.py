@@ -28,6 +28,17 @@ def generate_launch_description():
     # --- Launch args ---
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
+    robot_api_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('robot_api'),
+                'launch',
+                'robot_api.launch.py'
+            )
+        )
+    )
+
+
     return LaunchDescription([
         # Declare args
         DeclareLaunchArgument(
@@ -54,24 +65,12 @@ def generate_launch_description():
             output='screen',
             parameters=[hardware_config],
         ),
-        # Node(
-        #     package='robot_driver',
-        #     executable='read_cam.py',
-        #     name="camera_robot",
-        #     output="screen",
-        # ),
-        # Node(
-        #     package='robot_driver',
-        #     executable='stm32_controller.py',
-        #     name='stm32_odom',
-        #     output='screen',
-        #     parameters=[hardware_config],
-        # ),
         Node(
             package='rplidar_ros',
             executable='rplidar_node',
             name='rplidar_node',
             output='screen',
             parameters=[hardware_config],
-        )
+        ),
+        # robot_api_launch
     ])

@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách phòng (include map)
         [HttpGet]
-        [Authorize(Roles = "admin, doctor")]
+       // // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAll()
         {
             var rooms = await _service.GetAllAsync();
@@ -28,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết phòng 
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+       // // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> GetById(ulong id)
         {
             var room = await _service.GetByIdAsync(id);
@@ -38,7 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo phòng mới 
         [HttpPost]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> Create(RoomDto roomDto)
         {
             try
@@ -54,7 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật phòng (location/map) - UC 25: Update Location Information (Map Management)
         [HttpPut("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> Update(ulong id, RoomDto roomDto)
         {
             try

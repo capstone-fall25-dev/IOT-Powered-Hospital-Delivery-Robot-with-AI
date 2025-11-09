@@ -18,7 +18,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin, doctor")]
+     //   [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RobotResponseDto>>> GetAll([FromQuery] string? status = null)
         {
             var robots = await _service.GetAllAsync(status);
@@ -26,7 +26,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+        //[Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RobotResponseDto>> GetById(ulong id)
         {
             var robot = await _service.GetByIdAsync(id);
@@ -35,7 +35,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
+       // [Authorize(Roles = "admin")]
         public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
             var created = await _service.CreateAsync(robotDto);
@@ -63,7 +63,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpPatch("{id}/status")]
-        [Authorize(Roles = "admin, doctor")]
+       // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, UpdateStatusDto dto)
         {
             var updated = await _service.UpdateStatusAsync(id, dto);
@@ -72,7 +72,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpPut("{robotId}/assign-map/{mapId}")]
-        [Authorize(Roles = "admin")]
+      //  [Authorize(Roles = "admin")]
         public async Task<ActionResult<AssignMapResponseDto>> AssignMap(ulong robotId, ulong mapId)
         {
             var result = await _service.AssignMapAsync(robotId, mapId);
@@ -88,7 +88,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpPatch("{id}/manual-control")]
-        [Authorize(Roles = "doctor")]
+     //   [Authorize(Roles = "doctor")]
         public async Task<ActionResult<RobotResponseDto>> ManualControl(ulong id)
         {
             var dto = new UpdateStatusDto { Status = "manual_control" };

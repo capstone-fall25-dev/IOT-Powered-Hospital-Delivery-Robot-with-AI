@@ -149,7 +149,8 @@ builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<IMapUploadService, MapUploadService>();
-
+builder.Services.AddScoped<IRobotCompartmentService, RobotCompartmentService>();
+builder.Services.AddScoped<IRobotCompartmentRepository, RobotCompartmentRepository>();
 // AutoMap
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));

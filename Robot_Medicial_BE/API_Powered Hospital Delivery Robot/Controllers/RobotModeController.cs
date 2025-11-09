@@ -4,55 +4,190 @@ using API_Powered_Hospital_Delivery_Robot.Hubs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class RobotModeController : ControllerBase
     {
         private readonly IHubContext<RobotPositionHub> _hubContext;
+        private readonly ILogger<RobotModeController> _logger;
 
-        public RobotModeController(IHubContext<RobotPositionHub> hubContext)
+        private static string? _currentMode = null;
+
+        public RobotModeController(
+            IHubContext<RobotPositionHub> hubContext,
+            ILogger<RobotModeController> logger)
         {
             _hubContext = hubContext;
+            _logger = logger;
         }
 
+        // =======================================================
+        // 🧩 GỬI CHẾ ĐỘ HOẠT ĐỘNG (mapping, save_map, run_map)
+        // =======================================================
         public class RobotModeRequest
         {
-            public string Mode { get; set; } = null!;
+            public string Mode { get; set; } = string.Empty;
             public string? MapName { get; set; }
         }
 
-        /// <summary>
-        /// Gửi hoạt động xuống ROS2 qua WebSocket (SignalR Hub)
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> SendMode([FromBody] RobotModeRequest request)
+        [HttpPost("SendMode")]
+        public async Task<IActionResult> SendMode([FromBody] RobotModeRequest req)
         {
-            if (string.IsNullOrWhiteSpace(request.Mode))
+            if (string.IsNullOrWhiteSpace(req.Mode))
                 return BadRequest("Mode is required");
 
-            string mode = request.Mode.ToLower();
+            string mode = req.Mode.Trim().ToLower();
 
             if (mode is not ("mapping" or "save_map" or "run_map"))
                 return BadRequest("Mode must be one of: mapping, save_map, run_map");
 
-            if ((mode == "save_map" || mode == "run_map") && string.IsNullOrWhiteSpace(request.MapName))
+            if ((mode == "save_map" || mode == "run_map") && string.IsNullOrWhiteSpace(req.MapName))
                 return BadRequest("MapName is required for save_map and run_map");
 
-            // Dữ liệu gửi xuống ROS2
-            var command = new
+            try
             {
-                type = "robot_mode",
-                mode = mode,
-                map_name = request.MapName,
-                timestamp = DateTime.UtcNow
-            };
+                _currentMode = mode;
 
-            // Gửi broadcast tới tất cả ROS2 clients qua SignalR
-            await _hubContext.Clients.All.SendAsync("ReceiveRobotCommand", command);
+                var command = new
+                {
+                    type = "robot_mode",
+                    mode,
+                    map_name = req.MapName,
+                    timestamp = DateTime.UtcNow
+                };
 
-            Console.WriteLine($"📡 Sent command to ROS2: {mode} (map={request.MapName})");
+                await _hubContext.Clients.All.SendAsync("ReceiveRobotCommand", command);
+                _logger.LogInformation("🤖 Sent robot mode command: {Mode} (map={Map})", mode, req.MapName);
 
-            return Ok(new { status = "sent", mode = mode, map_name = request.MapName });
+                return Ok(new { status = "sent", mode, map_name = req.MapName });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to send robot mode command");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // =======================================================
+        // 📍 GỬI VỊ TRÍ ROBOT (x, y, theta)
+        // =======================================================
+        public class RobotPositionRequest
+        {
+            public double X { get; set; }
+            public double Y { get; set; }
+            public double Theta { get; set; }
+        }
+
+        [HttpPost("update-position")]
+        public async Task<IActionResult> UpdateRobotPosition([FromBody] RobotPositionRequest pos)
+        {
+            try
+            {
+                var positionData = new
+                {
+                    type = "robot_position",
+                    x = pos.X,
+                    y = pos.Y,
+                    theta = pos.Theta,
+                    timestamp = DateTime.UtcNow
+                };
+
+                await _hubContext.Clients.All.SendAsync("ReceivePosition", positionData);
+                _logger.LogInformation("📡 [From Robot] Position => X={X}, Y={Y}, θ={Theta}", pos.X, pos.Y, pos.Theta);
+
+                return Ok(new { status = "broadcasted", position = positionData });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to broadcast robot position");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // =======================================================
+        // 🗺️ NHẬN DỮ LIỆU MAP TỪ ROS2 (mapping)
+        // =======================================================
+        public class MapUpdateRequest
+        {
+            public string Type { get; set; } = "map_update";
+            public long Timestamp { get; set; }
+            public double Resolution { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public OriginData Origin { get; set; } = new();
+            public string Data_b64 { get; set; } = string.Empty;
+
+            public class OriginData
+            {
+                public double X { get; set; }
+                public double Y { get; set; }
+                public double Z { get; set; }
+            }
+        }
+
+        [HttpPost("map-update")]
+        public async Task<IActionResult> ReceiveMapUpdate([FromBody] MapUpdateRequest map)
+        {
+            try
+            {
+                if (_currentMode != "mapping")
+                {
+                    _logger.LogWarning("🚫 Map update ignored — current mode is '{Mode}'", _currentMode);
+                    return Ok(new { status = "ignored", reason = "not in mapping mode" });
+                }
+
+                await _hubContext.Clients.All.SendAsync("ReceiveMapUpdate", map);
+                _logger.LogInformation("🗺️ [Mapping] Map frame received (w={Width}, h={Height})", map.Width, map.Height);
+
+                return Ok(new { status = "received", width = map.Width, height = map.Height });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to handle map update");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        // =======================================================
+        // ⚙️ GỬI LỆNH ĐIỀU KHIỂN ĐỘNG CƠ (A, W, D, S, X)
+        // =======================================================
+        public class MotorCommandRequest
+        {
+            public string Key { get; set; } = string.Empty; // "w", "a", "s", "d", "x"
+        }
+
+        /// <summary>
+        /// 🕹️ FE gửi phím điều khiển (A/W/S/D/X) => Broadcast cho ROS2 xử lý
+        /// </summary>
+        [HttpPost("control")]
+        public async Task<IActionResult> SendMotorCommand([FromBody] MotorCommandRequest req)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(req.Key))
+                    return BadRequest("Key is required (a, w, s, d, x)");
+
+                string key = req.Key.Trim().ToLower();
+                if (key is not ("a" or "w" or "s" or "d" or "x"))
+                    return BadRequest("Invalid key. Allowed: a, w, s, d, x");
+
+                var motorCommand = new
+                {
+                    type = "motor_control",
+                    key,
+                    timestamp = DateTime.UtcNow
+                };
+
+                await _hubContext.Clients.All.SendAsync("ReceiveMotorCommand", motorCommand);
+                _logger.LogInformation("🕹️ Motor command sent: {Key}", key);
+
+                return Ok(new { status = "sent", command = motorCommand });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to send motor command");
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

@@ -22,7 +22,7 @@ install(DIRECTORY
 )
 
 install(PROGRAMS
-  scripts/upload_map_api.py
+  # scripts/upload_map_api.py
   DESTINATION lib/${PROJECT_NAME}
 )
 if(BUILD_TESTING)

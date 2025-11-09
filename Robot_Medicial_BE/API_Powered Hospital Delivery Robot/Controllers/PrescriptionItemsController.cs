@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách item đơn thuốc (lọc prescriptionId/medicineId) 
         [HttpGet]
-        [Authorize]
+     //   [Authorize]
         public async Task<ActionResult<IEnumerable<PrescriptionItemResponseDto>>> GetAll([FromQuery] ulong? prescriptionId = null, [FromQuery] ulong? medicineId = null)
         {
             var items = await _service.GetAllAsync(prescriptionId, medicineId);
@@ -28,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết item đơn thuốc 
         [HttpGet("{id}")]
-        [Authorize]
+     //   [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> GetById(ulong id)
         {
             var item = await _service.GetByIdAsync(id);
@@ -38,7 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo item đơn thuốc (validate stock) 
         [HttpPost]
-        [Authorize]
+      //  [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> Create(PrescriptionItemDto itemDto)
         {
             try
@@ -54,7 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật item đơn thuốc (quantity/dosage) 
         [HttpPut("{id}")]
-        [Authorize]
+      //  [Authorize]
         public async Task<ActionResult<PrescriptionItemResponseDto>> Update(ulong id, PrescriptionItemDto itemDto)
         {
             try
@@ -71,7 +71,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Báo cáo item thuốc hỏng (append instructions, auto alert high/manual) 
         [HttpPatch("{id}/damaged")]
-        [Authorize]
+      //  [Authorize]
         public async Task<ActionResult<ReportDamagedMedicineResponseDto>> ReportDamaged(ulong id, ReportDamagedMedicineDto damagedDto)
         {
             try

@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách tất cả user (lọc theo isActive) - UC 8: View User List (User Management)
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAll([FromQuery] bool? isActive = null)
         {
             var users = await _service.GetAllAsync(isActive);
@@ -28,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy thông tin chi tiết user
         [HttpGet("{id}")]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<UserResponseDto>> GetById(ulong id)
         {
             var user = await _service.GetByIdAsync(id);
@@ -38,7 +38,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Xem trạng thái real-time của user
         [HttpGet("{id}/status")]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<UserStatusDto>> GetStatus(ulong id)
         {
             try
@@ -54,7 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo user mới - UC 5: Provide an account (User Management)
         [HttpPost]
-        [Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<ActionResult<UserResponseDto>> Create(UserDto userDto)
         {
             try
@@ -70,7 +70,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật thông tin user (email/fullname/role/password) - UC 6: Update user (User Management)
         [HttpPut("{id}")]
-        [Authorize]
+        // [Authorize]
         public async Task<ActionResult<UserResponseDto>> Update(ulong id, UserDto userDto)
         {
             try
@@ -87,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Kích hoạt user (set isActive=true) - UC 7: Activate/Deactivate User Account (User Management)
         [HttpPatch("{id}/activate")]
-        [Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> Activate(ulong id)
         {
             try
@@ -104,7 +104,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Vô hiệu hóa user (set isActive=false, protect admin) - UC7
         [HttpPatch("{id}/deactivate")]
-        [Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> Deactivate(ulong id)
         {
             try
