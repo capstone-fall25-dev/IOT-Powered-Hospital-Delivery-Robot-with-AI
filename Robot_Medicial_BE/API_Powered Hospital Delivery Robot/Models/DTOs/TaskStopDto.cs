@@ -18,6 +18,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime? EtaAt { get; set; }
         public DateTime? ArrivedAt { get; set; }
         public DateTime? HandedOverAt { get; set; }
+        public ulong? PatientId { get; set; }
     }
 
 

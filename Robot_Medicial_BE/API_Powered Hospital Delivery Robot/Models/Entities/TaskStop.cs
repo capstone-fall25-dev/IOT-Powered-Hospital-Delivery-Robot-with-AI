@@ -62,4 +62,13 @@ public partial class TaskStop
     [ForeignKey("TaskId")]
     [InverseProperty("TaskStops")]
     public virtual Task Task { get; set; } = null!;
+
+
+    [Column("patient_id")]
+    public ulong? PatientId { get; set; }
+
+    [ForeignKey("PatientId")]
+    [InverseProperty("TaskStops")]
+    public virtual Patient? Patient { get; set; }
+
 }

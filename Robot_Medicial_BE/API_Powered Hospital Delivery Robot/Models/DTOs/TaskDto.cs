@@ -91,7 +91,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         /// <summary>
         /// Optional: Danh sách patient IDs liên quan
         /// </summary>
-        public List<ulong>? PatientIds { get; set; }
+        //public List<ulong>? PatientIds { get; set; }
     }
 
     /// <summary>
@@ -119,6 +119,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; } // Optional, default "pending"
 
         public DateTime? EtaAt { get; set; }
+
+        public ulong? PatientId { get; set; }
     }
 
     /// <summary>

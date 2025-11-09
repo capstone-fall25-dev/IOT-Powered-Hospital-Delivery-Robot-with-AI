@@ -26,6 +26,13 @@ public partial class Destination
     [StringLength(64)]
     public string? Floor { get; set; }
 
+    [Column("x_coordinate")]
+    public float? XCoordinate { get; set; }
+
+    [Column("y_coordinate")]
+    public float? YCoordinate { get; set; }
+
+
     [Column("created_at", TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }
 
