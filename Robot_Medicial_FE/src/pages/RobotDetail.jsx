@@ -75,7 +75,7 @@ export default function RobotDetail() {
                             <div className="mt-1">{statusBadge(robot.status)}</div>
                         </div>
                         <div className="d-flex gap-2">
-                            <button className="btn btn-teal rounded-pill">Điều khiển robot</button>
+                            <button className="btn btn-teal rounded-pill" onClick={() => navigate(`/robot-tasks`)} >Điều khiển robot</button>
                         </div>
                     </div>
 

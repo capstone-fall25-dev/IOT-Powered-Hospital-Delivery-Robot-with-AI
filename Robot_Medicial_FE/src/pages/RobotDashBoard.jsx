@@ -216,7 +216,7 @@ export default function RobotDashboard() {
                                                             <td className="text-end">
                                                                 <button
                                                                     className="btn btn-outline-secondary btn-sm"
-                                                                    onClick={() => navigate(`/tasks/${t.id}`)}
+                                                                    onClick={() => navigate(`/robot-tasks`)}
                                                                 >
                                                                     Theo dõi
                                                                 </button>
