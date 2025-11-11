@@ -67,4 +67,6 @@ public partial class Map
 
     [InverseProperty("Map")]
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
+     [InverseProperty("Map")]
+    public virtual ICollection<Destination> Destinations { get; set; } = new List<Destination>();
 }

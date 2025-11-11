@@ -30,10 +30,33 @@ def generate_launch_description():
         name="position_robot_node",
         output="screen"
     )
+    stream_map_node = Node(
+        package="robot_api",
+        executable="stream_map_api.py",
+        name="stream_map_node",
+        output="screen"
+    )
+
+    control_robot_node = Node(
+        package="robot_api",
+        executable="control_robot_api.py",
+        name="control_robot_node",
+        output="screen"
+    )
+
+    map_api_node = Node(
+        package="robot_api",
+        executable="map_api.py",
+        name="map_api_node",
+        output="screen"
+    )   
     ld = LaunchDescription()
     ld.add_action(control_box_node)
     ld.add_action(camera_node)
     ld.add_action(position_node)
+    ld.add_action(stream_map_node)
+    ld.add_action(control_robot_node)
+    ld.add_action(map_api_node)
 
     return ld
     

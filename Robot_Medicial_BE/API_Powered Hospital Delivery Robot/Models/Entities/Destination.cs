@@ -25,11 +25,20 @@ public partial class Destination
     [Column("floor")]
     [StringLength(64)]
     public string? Floor { get; set; }
+
     [Column("x")]
     public double? X { get; set; }
 
     [Column("y")]
     public double? Y { get; set; }
+
+    // 🧭 Thêm khóa ngoại mapId
+    [Column("map_id")]
+    public ulong? MapId { get; set; }
+
+    [ForeignKey("MapId")]
+    [InverseProperty("Destinations")]
+    public virtual Map? Map { get; set; }
 
     [Column("created_at", TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }

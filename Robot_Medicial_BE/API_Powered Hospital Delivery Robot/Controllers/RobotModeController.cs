@@ -93,7 +93,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceivePosition", positionData);
-                _logger.LogInformation("📡 [From Robot] Position => X={X}, Y={Y}, θ={Theta}", pos.X, pos.Y, pos.Theta);
+                // _logger.LogInformation("📡 [From Robot] Position => X={X}, Y={Y}, θ={Theta}", pos.X, pos.Y, pos.Theta);
 
                 return Ok(new { status = "broadcasted", position = positionData });
             }
