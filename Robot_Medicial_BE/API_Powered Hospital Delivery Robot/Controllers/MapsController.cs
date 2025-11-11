@@ -21,7 +21,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy danh sách map
         [HttpGet]
-     //   [Authorize(Roles = "admin, doctor")]
+        //   [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<MapResponseDto>>> GetAll()
         {
             var maps = await _service.GetAllAsync();
@@ -52,7 +52,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Tạo map mới (upload image, validate thresh) 
         [HttpPost]
-      //  [Authorize(Roles = "admin, doctor")]
+        //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> Create([FromForm] MapDto mapDto, IFormFile? imageFile)
         {
             try
@@ -76,7 +76,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Cập nhật map 
         [HttpPut("{id}")]
-       // [Authorize(Roles = "admin, doctor")]
+        // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromForm] MapDto mapDto, IFormFile? imageFile)
         {
             try
@@ -99,7 +99,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         //[Authorize]
-       [HttpPost("{mapId}/report-error")]
+        [HttpPost("{mapId}/report-error")]
         public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
         {
             dto.MapId = mapId;

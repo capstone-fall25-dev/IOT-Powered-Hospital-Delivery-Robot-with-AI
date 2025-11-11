@@ -8,8 +8,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
     {
         public DestinationProfile()
         {
+            // ✅ Map đầy đủ các thuộc tính (bao gồm X, Y, MapId)
             CreateMap<DestinationDto, Destination>()
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.TaskStops, opt => opt.Ignore());
+
             CreateMap<Destination, DestinationResponseDto>()
                 .ForMember(dest => dest.TaskCount, opt => opt.MapFrom(src => src.TaskStops.Count));
         }

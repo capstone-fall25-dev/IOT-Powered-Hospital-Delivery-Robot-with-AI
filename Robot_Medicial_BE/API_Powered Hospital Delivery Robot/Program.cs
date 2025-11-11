@@ -25,8 +25,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
 
 //  Swagger + Bearer
 builder.Services.AddSwaggerGen(options =>
@@ -178,14 +178,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("CORSPolicy");
-app.UseSession();                   
+app.UseSession();
 app.UseMiddleware<SingleDeviceMiddleware>();
-app.UseAuthentication();           
-app.UseAuthorization();            
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 // Map Hubs
 app.MapHub<AlertHub>("/hubs/alert");
 app.MapHub<RobotPositionHub>("/hubs/robotposition");
+app.MapHub<RobotCameraHub>("/hubs/robotcamera");
+app.MapHub<RobotHub>("/hubs/robot");
 
 app.Run();

@@ -101,6 +101,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             }
         }
 
+        // ✅ Bổ sung mới: gửi list điểm đến xuống robot
+        public async Task BroadcastDestinationRoute(object route)
+        {
+            try
+            {
+                await Clients.All.SendAsync("ReceiveDestinationRoute", route);
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"🧭 [Broadcast] Destination Route: {System.Text.Json.JsonSerializer.Serialize(route)}");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ [BroadcastDestinationRoute] Error: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
         /// <summary>
         /// 👥 Tham gia nhóm (ví dụ robot theo id)
         /// </summary>

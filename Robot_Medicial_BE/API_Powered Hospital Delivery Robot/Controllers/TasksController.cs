@@ -60,7 +60,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         {
             try
             {
-                var currentUserId = GetCurrentUserId(); 
+                var currentUserId = GetCurrentUserId();
                 var created = await _service.CreateAsync(createTaskDto, currentUserId);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }

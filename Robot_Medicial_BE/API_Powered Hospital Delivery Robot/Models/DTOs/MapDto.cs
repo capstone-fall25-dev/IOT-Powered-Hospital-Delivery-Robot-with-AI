@@ -55,6 +55,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime CreatedAt { get; set; }
         public byte[]? ImageData { get; set; }
         public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>(); // Robots dùng map này
+        public IEnumerable<DestinationDto> Destinasion { get; set; } = new List<DestinationDto>();
     }
 
     public class MapUploadDto

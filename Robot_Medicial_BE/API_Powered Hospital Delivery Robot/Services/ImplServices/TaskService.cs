@@ -23,7 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // Enum status cho validate
         private readonly string[] ValidStatuses = { "pending", "in_progress", "awaiting_handover", "returning", "at_station", "completed", "canceled" };
 
-        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository, 
+        public TaskService(ITaskRepository repository, IMapper mapper, IUserRepository userRepository, IRobotRepository robotRepository,
             ICompartmentAssignmentRepository compartmentAssignmentRepository,
             ILogRepository logRepository, IAlertRepository alertRepository, ILogService logService, IDestinationRepository destinationRepository)
         {
@@ -75,7 +75,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     Message = $"Low battery ({robot.BatteryPercent}%) during task {id} start.",
                     CreatedAt = DateTime.UtcNow
                 };
-                await _alertRepository.CreateAsync(alert); 
+                await _alertRepository.CreateAsync(alert);
 
                 var warningLog = new Log
                 {
