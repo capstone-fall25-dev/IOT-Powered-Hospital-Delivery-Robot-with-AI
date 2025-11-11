@@ -27,10 +27,10 @@ public partial class Destination
     public string? Floor { get; set; }
 
     [Column("x")]
-    public double? X { get; set; }
+    public float? X { get; set; }
 
     [Column("y")]
-    public double? Y { get; set; }
+    public float? Y { get; set; }
 
     // 🧭 Thêm khóa ngoại mapId
     [Column("map_id")]
