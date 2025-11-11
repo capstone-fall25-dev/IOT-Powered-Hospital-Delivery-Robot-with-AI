@@ -25,14 +25,18 @@ public partial class Destination
     [Column("floor")]
     [StringLength(64)]
     public string? Floor { get; set; }
+
     [Column("x")]
-    public double? X { get; set; }
+    public float? X { get; set; }
 
     [Column("y")]
-    public double? Y { get; set; }
+    public float? Y { get; set; }
 
     [Column("created_at", TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }
+
+    [Column("map_id")]
+    public ulong? MapId { get; set; }
 
     [InverseProperty("Destination")]
     public virtual ICollection<TaskStop> TaskStops { get; set; } = new List<TaskStop>();

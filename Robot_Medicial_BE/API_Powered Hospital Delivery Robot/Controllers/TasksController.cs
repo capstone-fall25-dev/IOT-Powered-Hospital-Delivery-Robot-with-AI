@@ -56,11 +56,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         // Tạo task mới (auto tạo stops/compartments, set assigned_by = currentUser) - UC 10: Creates Task by Prescription (Task Management) %Có 1 api tạo task ở PrescriptionsController%
         [HttpPost]
         // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<TaskResponseDto>> Create(CreateTaskDto createTaskDto)
+        public async Task<ActionResult<TaskResponseDto>> Create(CreateTaskDto1 createTaskDto)
         {
             try
             {
-                var currentUserId = GetCurrentUserId(); 
+                var currentUserId = GetCurrentUserId();
                 var created = await _service.CreateAsync(createTaskDto, currentUserId);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
@@ -207,11 +207,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(reports);
         }
 
+        /*    private ulong GetCurrentUserId()
+            {
+                var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
+                return ulong.Parse(claim.Value);
+            }*/
+
         private ulong GetCurrentUserId()
         {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
-            return ulong.Parse(claim.Value);
+            return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
         }
 
         private string GetCurrentFullname()
