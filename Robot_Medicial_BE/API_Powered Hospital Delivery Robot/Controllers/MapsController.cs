@@ -30,7 +30,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Lấy chi tiết map (include Robots) - UC 26: Track Robot Movement on Map (Map Management)
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin, doctor")]
+      //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
             var map = await _service.GetByIdAsync(id);
@@ -99,7 +99,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         //[Authorize]
-        [HttpPost("{mapId}/report-error")]
+    //    [HttpPost("{mapId}/report-error")]
         public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
         {
             dto.MapId = mapId;
