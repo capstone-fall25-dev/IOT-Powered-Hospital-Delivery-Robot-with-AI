@@ -187,5 +187,7 @@ app.MapControllers();
 // Map Hubs
 app.MapHub<AlertHub>("/hubs/alert");
 app.MapHub<RobotPositionHub>("/hubs/robotposition");
+app.MapHub<RobotCameraHub>("/hubs/robotcamera");
+app.MapHub<RobotHub>("/hubs/robot");
 
 app.Run();

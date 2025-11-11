@@ -32,11 +32,16 @@ public partial class Destination
     [Column("y")]
     public float? Y { get; set; }
 
-    [Column("created_at", TypeName = "datetime")]
-    public DateTime CreatedAt { get; set; }
-
+    // 🧭 Thêm khóa ngoại mapId
     [Column("map_id")]
     public ulong? MapId { get; set; }
+
+    [ForeignKey("MapId")]
+    [InverseProperty("Destinations")]
+    public virtual Map? Map { get; set; }
+
+    [Column("created_at", TypeName = "datetime")]
+    public DateTime CreatedAt { get; set; }
 
     [InverseProperty("Destination")]
     public virtual ICollection<TaskStop> TaskStops { get; set; } = new List<TaskStop>();

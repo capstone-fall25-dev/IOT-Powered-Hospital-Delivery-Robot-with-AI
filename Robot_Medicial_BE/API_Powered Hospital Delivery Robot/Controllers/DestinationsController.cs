@@ -50,19 +50,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         [HttpPost]
         // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<DestinationResponseDto>> Create(DestinationDto dto)
-        {
-            try
+        public async Task<ActionResult<DestinationResponseDto>> Create([FromBody] DestinationDto dto)
             {
-                var created = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
 
+                try
+                {
+                    // ⚙️ Ghi log để dễ kiểm tra dữ liệu từ FE
+                    Console.WriteLine($"[POST /api/Destinations] " +
+                                    $"Name={dto.Name}, MapId={dto.MapId}, X={dto.X}, Y={dto.Y}, Floor={dto.Floor}");
+
+                    // ✅ Gọi service xử lý logic tạo mới
+                    var created = await _service.CreateAsync(dto);
+
+                    // 🧩 Trả về kết quả chuẩn REST: 201 Created + location header
+                    return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] {ex.Message}");
+                    return StatusCode(500, new { message = "Lỗi khi tạo địa điểm.", error = ex.Message });
+                }
+            }
         [HttpPut("{id}")]
   //      [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, DestinationDto dto)

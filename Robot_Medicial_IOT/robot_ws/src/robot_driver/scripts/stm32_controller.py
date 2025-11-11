@@ -116,7 +116,7 @@ class STM32Driver(Node):
         self.declare_parameter('wheel_base', 0.26)                   # Distance between wheel centers in meters (left to right)
         
         # System Configuration Parameters  
-        self.declare_parameter('debug_mode', True)                  # Enable verbose logging and debug output
+        self.declare_parameter('debug_mode', False)                  # Enable verbose logging and debug output
         self.declare_parameter('data_rate_hz', 25.0)                # Serial data processing frequency (Hz) - affects responsiveness vs CPU load
         
         # Sensor Fusion Parameters
@@ -207,7 +207,7 @@ class STM32Driver(Node):
         # Timing and processing state
         self.last_time = self.get_clock().now()    # Previous timestamp for delta-time calculations
         self.count = 0                              # Message counter for debug logging frequency control
-        
+        self.command = "0 0 0 0\n"
         # ========================================================================================
         # SERIAL COMMUNICATION STATE - Timer-based approach (NO THREADING)
         # ========================================================================================
@@ -361,6 +361,22 @@ class STM32Driver(Node):
         except Exception as e:
             self.consecutive_errors += 1
             self.get_logger().error(f'Unexpected error reading serial: {e}')
+        
+        try:
+            if self.serial_port and self.serial_port.is_open:
+                self.serial_port.write(self.command.encode('utf-8'))
+                self.serial_port.flush()
+                print(self.command)
+                # if '1' in command:
+                #     time.sleep(2)
+            else:
+                self.get_logger().warn('Serial port not available for command sending')
+        except serial.SerialException as e:
+            self.get_logger().error(f'Failed to send command: {e}')
+            self.connect_to_serial()
+        except Exception as e:
+            self.get_logger().error(f'Unexpected error sending command: {e}')
+        
     
     def process_serial_line(self, line):
         """
@@ -508,7 +524,7 @@ class STM32Driver(Node):
     def control_box_callback(self, msg : String):
         self.control_box_msg = msg.data
         self.control_box_status = True
-        command = f"0 0 {self.control_box_msg}\n"
+        self.command = f"0 0 {self.control_box_msg}\n"
 
         # try:
         #     if self.serial_port and self.serial_port.is_open:
@@ -586,9 +602,9 @@ class STM32Driver(Node):
             duty = max(-duty_max, min(duty_max, duty))
             duty_cycles.append(duty)
        
-        command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
-        if  self.control_box_status:
-            self.get_logger().info(f"Comman send: {command}")
+        self.command = f"{duty_cycles[0]} {duty_cycles[1]} {self.control_box_msg}\n"
+        # if  self.control_box_status:
+        # self.get_logger().info(f"Comman send: {command}")
             # pass
         # if self.
         # Store motor commands for CSV logging
@@ -600,20 +616,8 @@ class STM32Driver(Node):
         
         # if self.count % 10 == 0 and (duty_cycles[0] != 0 or duty_cycles[1] != 0):
         #     self.get_logger().info(f"Motor commands: {duty_cycles[0]} {duty_cycles[1]}")
-   
-        try:
-            if self.serial_port and self.serial_port.is_open:
-                self.serial_port.write(command.encode('utf-8'))
-                self.serial_port.flush()
-                # if '1' in command:
-                #     time.sleep(2)
-            else:
-                self.get_logger().warn('Serial port not available for command sending')
-        except serial.SerialException as e:
-            self.get_logger().error(f'Failed to send command: {e}')
-            self.connect_to_serial()
-        except Exception as e:
-            self.get_logger().error(f'Unexpected error sending command: {e}')
+       
+        
     
     def update_range_vl05(self, current_time, vl05_1=float('inf'), vl05_3=float('inf'), vl05_4=float('inf'), vl05_2=float('nan')):
         """Enhanced VL53L0X range sensor processing - FIXED"""
