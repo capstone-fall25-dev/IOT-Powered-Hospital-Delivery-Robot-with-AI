@@ -67,4 +67,7 @@ public partial class Patient
 
     [InverseProperty("Patient")]
     public virtual ICollection<TaskPatientAssignment> TaskPatientAssignments { get; set; } = new List<TaskPatientAssignment>();
+
+    [InverseProperty("Patient")]
+    public virtual ICollection<TaskStop> TaskStops { get; set; } = new List<TaskStop>();
 }

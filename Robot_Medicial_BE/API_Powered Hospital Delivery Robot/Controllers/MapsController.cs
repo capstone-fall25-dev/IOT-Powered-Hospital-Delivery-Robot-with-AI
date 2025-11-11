@@ -98,8 +98,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        [Authorize]
-       //[HttpPost("{mapId}/report-error")]
+        //[Authorize]
+       [HttpPost("{mapId}/report-error")]
         public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
         {
             dto.MapId = mapId;

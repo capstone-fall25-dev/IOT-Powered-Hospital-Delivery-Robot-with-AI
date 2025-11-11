@@ -12,12 +12,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Upload từ ROS2 hoặc client
         Task<Map> UploadAsync(Map map);
 
-        // CRUD cơ bản
-        
-        
-        
-        
-        
         Task<bool> DeleteAsync(ulong id);
 
         // Lấy dữ liệu ảnh map
