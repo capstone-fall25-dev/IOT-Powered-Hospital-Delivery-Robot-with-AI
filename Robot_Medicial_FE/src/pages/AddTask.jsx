@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { createTask } from "@/services/taskService";
 import { getAllRobots } from "@/services/robotService";
-import { getAllMaps } from "@/services/mapService"; // giả sử API này trả về danh sách maps
+import { getAllMaps, getMapById } from "@/services/mapService";
 
 export default function TaoNhiemVu() {
-    // Load Bootstrap/Icons/Fonts
+    // Load CSS/JS
     useEffect(() => {
         const css = document.createElement("link");
         css.rel = "stylesheet";
@@ -18,7 +18,8 @@ export default function TaoNhiemVu() {
 
         const font = document.createElement("link");
         font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
+        font.href =
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
         document.head.appendChild(font);
 
         const js = document.createElement("script");
@@ -43,38 +44,38 @@ export default function TaoNhiemVu() {
       .title{font-weight:900;color:#0b1432}
       .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
       .btn-teal:hover{filter:brightness(1.05)}
-      .list-card{min-height:220px}
     `}</style>
     );
 
     const [robots, setRobots] = useState([]);
     const [maps, setMaps] = useState([]);
+    const [destinations, setDestinations] = useState([]);
+
     const [form, setForm] = useState({
-        mapId: "",
         robotId: "",
         assignedBy: 0,
-        status: "pending",
+        mapId: "",
         priority: 1,
-        startedAt: new Date().toISOString().slice(0, 16),
-        completedAt: "",
-        totalDurationS: 0,
-        totalErrors: 0,
-        prescriptionId: 0,
+        status: "pending",
         scheduledStartAt: new Date().toISOString().slice(0, 16),
         taskStops: [],
+        compartmentAssignments: [],
     });
+
     const [message, setMessage] = useState("");
 
+    const canAddStop = form.robotId && form.mapId;
     const canStart = form.robotId && form.taskStops.length > 0;
 
-    // Load robots và maps từ API
+    // Load robots & maps
     useEffect(() => {
         async function loadData() {
             try {
-                const robotsData = await getAllRobots();
+                const [robotsData, mapsData] = await Promise.all([
+                    getAllRobots(),
+                    getAllMaps(),
+                ]);
                 setRobots(robotsData);
-
-                const mapsData = await getAllMaps();
                 setMaps(mapsData);
             } catch (err) {
                 console.error("Lỗi tải dữ liệu:", err);
@@ -82,6 +83,67 @@ export default function TaoNhiemVu() {
         }
         loadData();
     }, []);
+
+    // Gọi API lấy map detail khi chọn map
+    async function handleSelectMap(mapId) {
+        setForm((f) => ({ ...f, mapId }));
+        if (!mapId) return setDestinations([]);
+        try {
+            const detail = await getMapById(mapId);
+            setDestinations(detail?.destinations || []);
+        } catch (err) {
+            console.error("Lỗi lấy map detail:", err);
+            setDestinations([]);
+        }
+    }
+
+    function addStop() {
+        setForm((f) => {
+            const stopIndex = f.taskStops.length + 1; // auto seqNo backend sẽ dùng
+            const newStop = {
+                destinationId: "",
+                customName: "",
+                status: "pending",
+                etaAt: new Date().toISOString(),
+                patientId: 0,
+            };
+            const newCompartment = {
+                stopSeqNo: stopIndex, // liên kết với stop
+                compartmentId: 0,
+                itemDesc: "",
+                status: "available",
+            };
+            return {
+                ...f,
+                taskStops: [...f.taskStops, newStop],
+                compartmentAssignments: [...f.compartmentAssignments, newCompartment],
+            };
+        });
+    }
+
+    function removeStop(idx) {
+        setForm((f) => ({
+            ...f,
+            taskStops: f.taskStops.filter((_, i) => i !== idx),
+            compartmentAssignments: f.compartmentAssignments.filter((_, i) => i !== idx),
+        }));
+    }
+
+    function updateStop(idx, key, value) {
+        setForm((f) => {
+            const stops = [...f.taskStops];
+            stops[idx][key] = value;
+            return { ...f, taskStops: stops };
+        });
+    }
+
+    function updateCompartment(idx, key, value) {
+        setForm((f) => {
+            const comps = [...f.compartmentAssignments];
+            comps[idx][key] = value;
+            return { ...f, compartmentAssignments: comps };
+        });
+    }
 
     const stats = useMemo(
         () => ({
@@ -92,75 +154,44 @@ export default function TaoNhiemVu() {
         [form.taskStops]
     );
 
-    function addStop() {
-        setForm((f) => ({
-            ...f,
-            taskStops: [
-                ...f.taskStops,
-                {
-                    id: 0,
-                    seqNo: f.taskStops.length + 1,
-                    destinationId: 0,
-                    customName: "",
-                    status: "pending",
-                    etaAt: new Date().toISOString(),
-                    arrivedAt: "",
-                    handedOverAt: "",
-                },
-            ],
-        }));
-    }
-
-    function removeStop(idx) {
-        setForm((f) => ({
-            ...f,
-            taskStops: f.taskStops.filter((_, i) => i !== idx),
-        }));
-    }
-
-    function updateStop(idx, key, value) {
-        setForm((f) => {
-            const updatedStops = [...f.taskStops];
-            updatedStops[idx][key] = value;
-            return { ...f, taskStops: updatedStops };
-        });
-    }
-
     async function startMission() {
         if (!canStart) return;
         try {
-            const now = new Date().toISOString();
-            const taskDto = {
-                ...form,
-                mapId: Number(form.mapId),
+            const dto = {
                 robotId: Number(form.robotId),
-                startedAt: form.startedAt || now,
-                scheduledStartAt: form.scheduledStartAt || now,
-                completedAt: form.completedAt || null,
-                suggestedCompartments: form.taskStops.map((_, idx) => ({
-                    id: 0,
-                    compartmentId: idx + 1,
-                    stopId: idx + 1,
-                    taskId: 0,
-                    status: "available",
+                assignedBy: Number(form.assignedBy),
+                mapId: Number(form.mapId),
+                priority: Number(form.priority),
+                status: form.status,
+                scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+                taskStops: form.taskStops.map((s, i) => ({
+                    seqNo: i + 1,
+                    destinationId: Number(s.destinationId),
+                    customName: s.customName,
+                    status: s.status,
+                    etaAt: new Date(s.etaAt).toISOString(),
+                    patientId: Number(s.patientId || 0),
+                })),
+                compartmentAssignments: form.compartmentAssignments.map((c) => ({
+                    stopSeqNo: Number(c.stopSeqNo),
+                    compartmentId: Number(c.compartmentId),
+                    itemDesc: c.itemDesc,
+                    status: c.status,
                 })),
             };
-            const created = await createTask(taskDto);
+            const created = await createTask(dto);
             setMessage(`Tạo nhiệm vụ thành công! ID: ${created.id}`);
             setForm({
-                mapId: "",
                 robotId: "",
                 assignedBy: 0,
-                status: "pending",
+                mapId: "",
                 priority: 1,
-                startedAt: new Date().toISOString().slice(0, 16),
-                completedAt: "",
-                totalDurationS: 0,
-                totalErrors: 0,
-                prescriptionId: 0,
+                status: "pending",
                 scheduledStartAt: new Date().toISOString().slice(0, 16),
                 taskStops: [],
+                compartmentAssignments: [],
             });
+            setDestinations([]);
         } catch (err) {
             console.error(err);
             setMessage(`Lỗi tạo nhiệm vụ: ${err.response?.data || err.message}`);
@@ -173,14 +204,13 @@ export default function TaoNhiemVu() {
             <div className="container-lg py-4">
                 <h4 className="title mb-3">Tạo Nhiệm Vụ Mới</h4>
                 <div className="glass p-3 p-md-4 rounded-2xl">
-
                     {/* Chọn Map */}
                     <div className="mb-3">
                         <label className="form-label fw-semibold">Chọn Map</label>
                         <select
                             className="form-select"
                             value={form.mapId}
-                            onChange={(e) => setForm({ ...form, mapId: e.target.value })}
+                            onChange={(e) => handleSelectMap(e.target.value)}
                         >
                             <option value="">— Chọn map —</option>
                             {maps.map((m) => (
@@ -208,30 +238,56 @@ export default function TaoNhiemVu() {
                         </select>
                     </div>
 
-                    {/* Task Stops dynamic */}
+                    {/* Task Stops */}
                     <div className="mb-3">
                         <div className="d-flex justify-content-between align-items-center mb-2">
                             <h5>Điểm đến (Task Stops)</h5>
-                            <button className="btn btn-outline-secondary btn-sm" onClick={addStop}>Thêm Điểm</button>
+                            <button
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={addStop}
+                            // disabled={!canAddStop}
+                            >
+                                Thêm Điểm
+                            </button>
                         </div>
+
                         {form.taskStops.map((stop, idx) => (
-                            <div key={idx} className="glass p-2 mb-2 rounded-2xl">
+                            <div key={idx} className="glass p-3 mb-3 rounded-2xl">
+                                <h6 className="fw-bold mb-2">Điểm #{idx + 1}</h6>
                                 <div className="row g-2 align-items-center">
-                                    <div className="col-md-2">
-                                        <label>Seq No</label>
-                                        <input type="number" className="form-control" value={stop.seqNo} onChange={(e) => updateStop(idx, "seqNo", Number(e.target.value))} />
-                                    </div>
-                                    <div className="col-md-2">
-                                        <label>Destination ID</label>
-                                        <input type="number" className="form-control" value={stop.destinationId} onChange={(e) => updateStop(idx, "destinationId", Number(e.target.value))} />
+                                    <div className="col-md-3">
+                                        <label>Địa điểm đến</label>
+                                        <select
+                                            className="form-select"
+                                            value={stop.destinationId}
+                                            onChange={(e) =>
+                                                updateStop(idx, "destinationId", e.target.value)
+                                            }
+                                        >
+                                            <option value="">— Chọn điểm đến —</option>
+                                            {destinations.map((d) => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.name || `Điểm ${d.id}`}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="col-md-3">
-                                        <label>Tên điểm đến</label>
-                                        <input type="text" className="form-control" value={stop.customName} onChange={(e) => updateStop(idx, "customName", e.target.value)} />
+                                        <label>Tên hiển thị</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={stop.customName}
+                                            onChange={(e) => updateStop(idx, "customName", e.target.value)}
+                                        />
                                     </div>
                                     <div className="col-md-2">
                                         <label>Trạng thái</label>
-                                        <select className="form-select" value={stop.status} onChange={(e) => updateStop(idx, "status", e.target.value)}>
+                                        <select
+                                            className="form-select"
+                                            value={stop.status}
+                                            onChange={(e) => updateStop(idx, "status", e.target.value)}
+                                        >
                                             <option value="pending">pending</option>
                                             <option value="in_progress">in_progress</option>
                                             <option value="completed">completed</option>
@@ -239,27 +295,98 @@ export default function TaoNhiemVu() {
                                     </div>
                                     <div className="col-md-2">
                                         <label>ETA</label>
-                                        <input type="datetime-local" className="form-control" value={stop.etaAt.slice(0, 16)} onChange={(e) => updateStop(idx, "etaAt", e.target.value)} />
+                                        <input
+                                            type="datetime-local"
+                                            className="form-control"
+                                            value={stop.etaAt.slice(0, 16)}
+                                            onChange={(e) => updateStop(idx, "etaAt", e.target.value)}
+                                        />
                                     </div>
-                                    <div className="col-md-1 d-flex align-items-end">
-                                        <button className="btn btn-outline-danger btn-sm" onClick={() => removeStop(idx)}>X</button>
+                                    <div className="col-md-2">
+                                        <label>Patient ID</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={stop.patientId}
+                                            onChange={(e) =>
+                                                updateStop(idx, "patientId", Number(e.target.value))
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Compartment Assignments */}
+                                <div className="mt-3 border-top pt-2">
+                                    <h6>Compartment Assignments</h6>
+                                    <div className="row g-2">
+                                        <div className="col-md-3">
+                                            <label>Compartment ID</label>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                value={
+                                                    form.compartmentAssignments[idx]?.compartmentId || 0
+                                                }
+                                                onChange={(e) =>
+                                                    updateCompartment(idx, "compartmentId", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label>Mô tả item</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={form.compartmentAssignments[idx]?.itemDesc || ""}
+                                                onChange={(e) =>
+                                                    updateCompartment(idx, "itemDesc", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-3">
+                                            <label>Trạng thái</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.compartmentAssignments[idx]?.status || "available"}
+                                                onChange={(e) =>
+                                                    updateCompartment(idx, "status", e.target.value)
+                                                }
+                                            >
+                                                <option value="available">available</option>
+                                                <option value="in_use">in_use</option>
+                                                <option value="error">error</option>
+                                            </select>
+                                        </div>
+                                        <div className="col-md-2 d-flex align-items-end">
+                                            <button
+                                                className="btn btn-outline-danger btn-sm"
+                                                onClick={() => removeStop(idx)}
+                                            >
+                                                X
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Tổng quan & nút submit */}
+                    {/* Tổng quan */}
                     <div className="glass p-3 rounded-2xl d-flex flex-column">
                         <div className="mb-2">
-                            <strong>Số điểm:</strong> {stats.stops}, <strong>Khoảng cách ~</strong> {stats.distanceKm} km, <strong>Thời gian ~</strong> {stats.etaMin} phút
+                            <strong>Số điểm:</strong> {stats.stops},{" "}
+                            <strong>Khoảng cách ~</strong> {stats.distanceKm} km,{" "}
+                            <strong>Thời gian ~</strong> {stats.etaMin} phút
                         </div>
-                        <button className="btn btn-teal mt-2 w-100" disabled={!canStart} onClick={startMission}>
+                        <button
+                            className="btn btn-teal mt-2 w-100"
+                            disabled={!canStart}
+                            onClick={startMission}
+                        >
                             Bắt đầu nhiệm vụ
                         </button>
                         {message && <div className="mt-2 small text-center">{message}</div>}
                     </div>
-
                 </div>
             </div>
         </div>
