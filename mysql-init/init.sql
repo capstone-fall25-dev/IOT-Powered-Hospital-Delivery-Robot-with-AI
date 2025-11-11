@@ -1,0 +1,4 @@
+-- ✅ Cho phép root truy cập từ mọi IP
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '1239';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
