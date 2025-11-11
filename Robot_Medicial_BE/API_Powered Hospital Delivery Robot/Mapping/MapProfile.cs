@@ -25,7 +25,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
             // Map từ Map → MapResponseDto (output)
             CreateMap<Map, MapResponseDto>()
                 .ForMember(dest => dest.Robots, opt => opt.MapFrom(src => src.Robots))
-                .ForMember(dest => dest.ImageData, opt => opt.MapFrom(src => src.ImageData));
+                .ForMember(dest => dest.ImageData, opt => opt.MapFrom(src => src.ImageData))
+                .ForMember(dest => dest.Destinasion, opt => opt.MapFrom(src => src.Destinations));
         }
     }
 }

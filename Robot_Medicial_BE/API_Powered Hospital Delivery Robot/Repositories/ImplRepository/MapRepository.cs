@@ -37,24 +37,30 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         // 📋 Lấy toàn bộ maps
         // -------------------------------
         public async Task<IEnumerable<Map>> GetAllAsync()
-        {
-            return await _context.Maps
-                .AsNoTracking()
-                .ToListAsync();
-        }
+{
+    return await _context.Maps
+        .AsNoTracking()
+        .Include(m => m.Robots)
+        .Include(m => m.Destinations) // ✅ Thêm include Destinations
+        .ToListAsync();
+}
 
         // -------------------------------
         // 🔍 Lấy map theo ID (tuỳ chọn include robot)
         // -------------------------------
-        public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
-        {
-            var query = _context.Maps.AsQueryable();
+    
+public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
+{
+    var query = _context.Maps.AsQueryable();
 
-            if (includeRobots)
-                query = query.Include(m => m.Robots);
+    if (includeRobots)
+        query = query.Include(m => m.Robots);
 
-            return await query.FirstOrDefaultAsync(m => m.Id == id);
-        }
+    // ✅ Luôn include Destinations
+    query = query.Include(m => m.Destinations);
+
+    return await query.FirstOrDefaultAsync(m => m.Id == id);
+}
 
         // -------------------------------
         // 🖼️ Lấy dữ liệu ảnh map
