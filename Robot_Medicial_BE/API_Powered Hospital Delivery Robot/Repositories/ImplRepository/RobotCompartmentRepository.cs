@@ -32,5 +32,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             await _context.SaveChangesAsync();
             return compartment;
         }
+
+        public async Task<IEnumerable<RobotCompartment>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId)
+        {
+            return await _context.RobotCompartments
+                .Include(rc => rc.Robot)
+                .Include(rc => rc.Category)
+                .Include(rc => rc.Patient)
+                .Where(rc => rc.CategoryId == categoryId && rc.RobotId == robotId && rc.IsActive == true)
+                .ToListAsync();
+        }
     }
 }

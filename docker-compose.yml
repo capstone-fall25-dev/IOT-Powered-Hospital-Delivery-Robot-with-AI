@@ -10,9 +10,11 @@ services:
       MYSQL_DATABASE: robotmanager
     volumes:
       - mysql_data:/var/lib/mysql
+      # ✅ Tạo script init SQL
+      - ./mysql-init:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
-
+    
   backend:
     build:
       context: ./Robot_Medicial_BE
@@ -36,7 +38,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:80" 
+      - "8080:80"
 
 volumes:
   mysql_data:

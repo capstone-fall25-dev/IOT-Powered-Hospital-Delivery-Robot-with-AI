@@ -70,3 +70,65 @@ receive topic map from ros with websocket ip/port and render map with html css a
 usb TTL convert from usb to uart to connect between computer and stm32
 
 
+
+
+# 🚀 Robot Service Restart Guide (Ubuntu)
+
+Tài liệu này hướng dẫn cách **khởi động lại (restart)** các dịch vụ ROS trên Ubuntu.
+
+## 📦 Danh sách dịch vụ
+Các dịch vụ đang được cấu hình trong hệ thống:
+- **robot_driver** — điều khiển phần cứng, động cơ, cảm biến
+- **robot_api** — cung cấp REST API hoặc WebSocket cho giao tiếp bên ngoài
+- **navigation** — chạy ROS navigation stack (move_base, map_server, v.v.)
+- **slam_launch** — chạy SLAM (GMapping, Hector SLAM, hoặc RTAB-Map)
+
+---
+
+## ⚙️ 1. Kiểm tra trạng thái dịch vụ
+
+```bash
+sudo systemctl status robot_driver.service
+sudo systemctl status robot_api.service
+sudo systemctl status navigation.service
+sudo systemctl status slam_launch.service
+```
+## 🔁 2. Khởi động  dịch vụ
+```bash
+sudo systemctl restart robot_driver
+sudo systemctl restart robot_api
+sudo systemctl restart navigation
+sudo systemctl restart slam_launch
+```
+
+## 🧹 3. Dừng tất cả dịch vụ
+```bash
+sudo systemctl stop robot_driver
+sudo systemctl stop robot_api
+sudo systemctl stop navigation
+sudo systemctl stop slam_launch
+
+```
+
+## ▶️ 4. Khởi động tất cả dịch vụ
+```bash
+sudo systemctl start robot_driver
+sudo systemctl start robot_api
+sudo systemctl start navigation
+sudo systemctl start slam_launch
+
+```
+## 🔍 5. Xem log của từng service
+```bash
+sudo journalctl -u robot_driver -f
+sudo journalctl -u robot_api -f
+sudo journalctl -u navigation -f
+sudo journalctl -u slam_launch -f
+
+```
+
+## 6 When open computer run 
+```bash
+chmod +x restart_service.sh
+./restart_service.sh
+```

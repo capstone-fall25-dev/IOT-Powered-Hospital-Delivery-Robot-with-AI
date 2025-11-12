@@ -5,6 +5,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
     public interface IRobotCompartmentRepository
     {
         Task<RobotCompartment?> GetByIdAsync(ulong id);
-        Task<RobotCompartment?> UpdateStatusAsync(ulong id, string status); 
+        Task<RobotCompartment?> UpdateStatusAsync(ulong id, string status);
+        Task<IEnumerable<RobotCompartment>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId);
     }
 }

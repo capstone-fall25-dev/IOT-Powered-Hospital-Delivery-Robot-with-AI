@@ -34,6 +34,9 @@ install(PROGRAMS
   scripts/gotoPos.py
   scripts/position_pos.py
   scripts/read_cam.py
+  scripts/map_api.py
+  scripts/stream_map_api.py
+  scripts/control_robot_api.py
   DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

@@ -81,7 +81,7 @@ export default function Sidebar() {
         <ul>
           <li onClick={() => navigate("/team")}><i className="bi bi-robot"></i> Đội Robot</li>
           <li onClick={() => navigate("/patients")}><i className="bi bi-person-lines-fill"></i> Bệnh nhân</li>
-          <li onClick={() => navigate("/doctor")}><i className="bi bi-capsule"></i> Bác sĩ</li>
+          <li onClick={() => navigate("/doctor")}><i className="bi bi-people"></i> Người dùng</li>
           <li onClick={() => navigate("/dashboard")}><i className="bi bi-list-task"></i> Nhiệm vụ</li>
           <li onClick={() => navigate("/viewlistmap")}><i className="bi bi-map"></i> Bản đồ</li>
           <li onClick={() => navigate("/rooms/all")}><i className="bi bi-hospital me-2"></i> Phòng bệnh</li>

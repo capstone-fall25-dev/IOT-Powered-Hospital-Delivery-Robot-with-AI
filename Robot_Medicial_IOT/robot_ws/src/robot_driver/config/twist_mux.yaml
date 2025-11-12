@@ -1,0 +1,18 @@
+topic_list:
+  - 
+    name: "teleop"
+    topic: "/cmd_vel_teleop"
+    timeout: 0.5
+    priority: 100
+    short_desc: "Manual teleop"
+    scale: 1.0
+
+  - 
+    name: "navigation"
+    topic: "/cmd_vel_nav"
+    timeout: 0.5
+    priority: 50
+    short_desc: "Navigation (Nav2)"
+    scale: 1.0
+
+cmd_vel_topic: "/cmd_vel"  # output cuối cùng cho robot

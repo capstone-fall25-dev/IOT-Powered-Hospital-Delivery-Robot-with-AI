@@ -74,7 +74,7 @@ export default function MedFleetLogin() {
 
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || `Lỗi đăng nhập (HTTP ${res.status})`);
+                throw new Error(errData.message || `Tài khoản hoặc mật khẩu không chính xác!`);
             }
 
             const data = await res.json();
