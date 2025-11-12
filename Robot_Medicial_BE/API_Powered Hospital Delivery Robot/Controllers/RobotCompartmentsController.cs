@@ -57,5 +57,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpGet("category/{categoryId}/robot/{robotId}")]
+        public async Task<IActionResult> GetByCategoryAndRobot([FromRoute] ulong categoryId, [FromRoute] ulong robotId)
+        {
+            var result = await _service.GetByCategoryAndRobotAsync(categoryId, robotId);
+            if (!result.Any())
+                return NotFound($"Không tìm thấy ngăn chứa thuộc danh mục ID = {categoryId} cho robot ID = {robotId}");
+
+            return Ok(result);
+        }
     }
 }
