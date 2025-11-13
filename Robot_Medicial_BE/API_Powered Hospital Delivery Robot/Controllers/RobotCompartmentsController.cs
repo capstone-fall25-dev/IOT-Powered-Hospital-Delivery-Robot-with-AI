@@ -67,5 +67,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             return Ok(result);
         }
+
+        // NEW: Lấy toàn bộ ngăn chứa theo robot
+        [HttpGet("robot/{robotId}")]
+        public async Task<IActionResult> GetByRobot([FromRoute] ulong robotId)
+        {
+            var result = await _service.GetByRobotAsync(robotId);
+
+            if (!result.Any())
+                return NotFound($"Robot ID = {robotId} không có compartment nào.");
+
+            return Ok(result);
+        }
+
     }
 }

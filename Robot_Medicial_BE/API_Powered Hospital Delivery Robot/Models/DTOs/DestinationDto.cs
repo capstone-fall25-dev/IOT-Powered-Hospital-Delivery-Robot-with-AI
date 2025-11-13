@@ -31,6 +31,5 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? MapId { get; set; }
         public DateTime CreatedAt { get; set; }
         public int TaskCount { get; set; }
-        
     }
 }

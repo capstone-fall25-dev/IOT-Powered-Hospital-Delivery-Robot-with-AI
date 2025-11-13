@@ -35,5 +35,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var compartments = await _repository.GetByCategoryAndRobotAsync(categoryId, robotId);
             return _mapper.Map<IEnumerable<RobotCompartmentResponseDto>>(compartments);
         }
+
+        public async Task<IEnumerable<RobotCompartmentResponseDto>> GetByRobotAsync(ulong robotId)
+        {
+            var data = await _repository.GetByRobotAsync(robotId);
+            return _mapper.Map<IEnumerable<RobotCompartmentResponseDto>>(data);
+        }
     }
 }

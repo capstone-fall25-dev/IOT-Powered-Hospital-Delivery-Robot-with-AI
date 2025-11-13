@@ -73,7 +73,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<MapResponseDto?> GetByIdAsync(ulong id)
         {
             var map = await _repository.GetByIdAsync(id, includeRobots: true);
-            return map != null ? _mapper.Map<MapResponseDto>(map) : null;
+            if (map == null) return null;
+
+            var dto = _mapper.Map<MapResponseDto>(map);
+
+            dto.Destinations = map.Destinations.Select(d => new DestinationResponseDto
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Area = d.Area,
+                Floor = d.Floor,
+                X = d.X,
+                Y = d.Y,
+                MapId = d.MapId,
+                CreatedAt = d.CreatedAt,
+                TaskCount = d.TaskStops.Count()
+            }).ToList();
+
+            return dto;
         }
 
         public async Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto, IFormFile? imageFile = null)
