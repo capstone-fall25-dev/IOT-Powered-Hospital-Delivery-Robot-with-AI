@@ -9,7 +9,6 @@ using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Quartz;
@@ -121,17 +120,6 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-builder.Services.AddQuartz(q =>
-{
-    q.AddJob<TaskSchedulerJob>(j => j.WithIdentity("taskSchedulerJob"));
-    q.AddTrigger(t => t
-        .ForJob("taskSchedulerJob")
-        .WithIdentity("taskSchedulerJob-trigger")
-        .WithCronSchedule("0 0 * * * ?"));
-});
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
-
-builder.Services.AddScoped<ITaskSchedulerService, TaskSchedulerService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRobotService, RobotService>();
 builder.Services.AddScoped<IMapService, MapService>();
@@ -189,5 +177,6 @@ app.MapHub<AlertHub>("/hubs/alert");
 app.MapHub<RobotPositionHub>("/hubs/robotposition");
 app.MapHub<RobotCameraHub>("/hubs/robotcamera");
 app.MapHub<RobotHub>("/hubs/robot");
+app.MapHub<TaskHub>("/hubs/task");
 
 app.Run();
