@@ -167,8 +167,6 @@ app.UseSession();
 app.UseHttpsRedirection();
 app.UseCors("CORSPolicy");
 
-app.UseSession();
-
 app.UseMiddleware<SingleDeviceMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
