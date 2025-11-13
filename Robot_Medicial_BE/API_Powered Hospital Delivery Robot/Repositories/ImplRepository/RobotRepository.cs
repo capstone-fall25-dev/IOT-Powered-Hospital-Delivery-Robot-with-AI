@@ -114,5 +114,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             await _context.SaveChangesAsync();
             return robot;
         }
+
+        public async Task<Robot?> AssignMapToRobotAsync(ulong robotId, ulong mapId)
+        {
+            var robot = await _context.Robots.FindAsync(robotId);
+            if (robot == null) return null;
+
+            var map = await _context.Maps.FindAsync(mapId);
+            if (map == null) return null;
+
+            robot.MapId = mapId;
+            robot.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return robot;
+        }
     }
 }

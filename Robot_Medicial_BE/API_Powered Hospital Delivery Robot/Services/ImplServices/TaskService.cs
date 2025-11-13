@@ -10,11 +10,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     public class TaskService : ITaskService
     {
         private readonly ITaskRepository _repo;
+        private readonly IRobotRepository _repoRobot;
         private readonly IHubContext<TaskHub> _taskHub;
 
-        public TaskService(ITaskRepository repo, IHubContext<TaskHub> taskHub)
+        public TaskService(ITaskRepository repo, IRobotRepository repoRobot, IHubContext<TaskHub> taskHub)
         {
             _repo = repo;
+            _repoRobot = repoRobot;
             _taskHub = taskHub;
         }
 
@@ -38,11 +40,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var robot = await _repo.GetRobotAsync(dto.RobotId)
                 ?? throw new InvalidOperationException("Robot không tồn tại.");
 
-            // Ngăn robot đang vận hành bị gán thêm task
-            if (robot.Status != "at_station" && robot.Status != "completed")
-                throw new InvalidOperationException($"Robot {robot.Name} hiện đang ở trạng thái {robot.Status}, không thể giao nhiệm vụ mới.");
+            // BƯỚC 1: TỰ ĐỘNG CẬP NHẬT MAP CHO ROBOT
+            if (robot.MapId != dto.MapId)
+            {
+                var updated = await _repoRobot.AssignMapToRobotAsync(robot.Id, dto.MapId);
+                if (updated == null)
+                    throw new InvalidOperationException("Không thể gán map mới cho robot.");
+            }
 
-            // ===== Bước 1: tạo Task ở trạng thái pending =====
+            // BƯỚC 2: Ngăn robot đang vận hành bị gán thêm task. Robot chỉ nhận task nếu at_station
+            if (robot.Status != "at_station")
+                throw new InvalidOperationException(
+                    $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', KHÔNG thể nhận nhiệm vụ mới. Robot chỉ có thể nhận task khi đang 'at_station'."
+                );
+
+            // ===== Bước 3: tạo Task ở trạng thái pending =====
             var task = new Models.Entities.Task
             {
                 MapId = dto.MapId,
@@ -58,7 +70,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             try
             {
-                // ===== Bước 2: tạo Stop + gán Compartment =====
+                // ===== Bước 4: tạo Stop + gán Compartment =====
                 foreach (var s in dto.Stops.OrderBy(x => x.SeqNo))
                 {
                     var comp = await _repo.GetCompartmentAsync(s.CompartmentId)
@@ -95,7 +107,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     });
                 }
 
-                // ===== Bước 3: đổi trạng thái Task và Robot =====
+                // ===== Bước 5: đổi trạng thái Task và Robot =====
                 task.Status = "in_progress";
                 await _repo.UpdateAsync(task.Id, task);
 
@@ -120,16 +132,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto)
         {
-            var task = await _repo.GetByIdAsync(id) ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
-            if (!string.IsNullOrEmpty(dto.Status)) task.Status = dto.Status;
-            if (dto.Priority.HasValue) task.Priority = dto.Priority.ToString();
+            var task = await _repo.GetByIdAsync(id)
+                ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
+
+            if (!string.IsNullOrEmpty(dto.Status))
+                task.Status = dto.Status;
+
+            if (dto.Priority.HasValue)
+                task.Priority = dto.Priority.ToString();
+
             var updated = await _repo.UpdateAsync(id, task);
             if (updated != null)
             {
-                var response = MapToResponse(updated);
-                await _taskHub.Clients.All.SendAsync("TaskUpdated", response);
-                return response;
+                var res = MapToResponse(updated);
+                await _taskHub.Clients.All.SendAsync("TaskUpdated", res);
+                return res;
             }
+
             return null;
         }
 

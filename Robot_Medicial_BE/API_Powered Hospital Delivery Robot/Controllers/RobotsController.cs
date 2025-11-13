@@ -96,5 +96,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (updated == null) return NotFound();
             return Ok(updated);
         }
+
+        [HttpGet("available")]
+        public async Task<IActionResult> GetAvailableRobots()
+        {
+            var robots = await _service.GetAllAsync("at_station");
+            return Ok(robots);
+        }
+
     }
 }

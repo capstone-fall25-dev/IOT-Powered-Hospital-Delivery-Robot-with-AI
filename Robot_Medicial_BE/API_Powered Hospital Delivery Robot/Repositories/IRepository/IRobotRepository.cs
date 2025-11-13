@@ -13,5 +13,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Robot?> UpdateAsync(ulong id, Robot robot);
         Task<Robot?> AssignMapAsync(ulong robotId, ulong mapId);
         Task<Robot?> UpdatePositionAsync(ulong id, decimal lat, decimal lng);
+        Task<Robot?> AssignMapToRobotAsync(ulong robotId, ulong mapId);
+
     }
 }
