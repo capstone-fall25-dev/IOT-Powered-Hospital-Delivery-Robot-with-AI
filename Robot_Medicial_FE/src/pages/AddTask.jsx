@@ -1,63 +1,60 @@
+// ===================== IMPORTS =====================
 import { useEffect, useState } from "react";
 import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
-import { getAllCompartments } from "@/services/compartmentService";
+import { getCompartmentsByRobot } from "@/services/robotCompartmentService";
+import { getAllPrescriptions } from "@/services/prescriptionServices"; // <-- NEW
+import * as signalR from "@microsoft/signalr";
 
-export default function Addtask() {
+export default function AddTask() {
+
+    // ===================== GLOBAL CSS =====================
     useEffect(() => {
         const css = document.createElement("link");
         css.rel = "stylesheet";
         css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
 
         const icons = document.createElement("link");
         icons.rel = "stylesheet";
         icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
 
         const font = document.createElement("link");
         font.rel = "stylesheet";
         font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
 
-        const js = document.createElement("script");
-        js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true;
-        document.body.appendChild(js);
+        document.head.appendChild(css);
+        document.head.appendChild(icons);
+        document.head.appendChild(font);
 
         return () => {
             document.head.removeChild(css);
             document.head.removeChild(icons);
             document.head.removeChild(font);
-            document.body.removeChild(js);
         };
     }, []);
 
     const styles = (
         <style>{`
-        :root{--teal:#4CE1C6;--ink:#0f172a}
-        .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(1200px 600px at 15% 10%,rgba(76,225,198,.18),transparent 60%),radial-gradient(900px 500px at 90% 5%,rgba(76,225,198,.12),transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 20%,#e9f3f1 60%,#e8f0ee 100%);min-height:100vh}
-        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.85);box-shadow:0 16px 48px rgba(15,23,42,.08);border-radius:24px}
-        .rounded-2xl{border-radius:24px}
+        :root{--teal:#4CE1C6;--ink:#0b1324}
+        .page{font-family:Inter;color:#0b1324;background:#f6faf9;min-height:100vh}
+        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-radius:24px;box-shadow:0 16px 48px rgba(15,23,42,.08)}
+        .btn-teal{background:var(--teal);font-weight:700}
         .title{font-weight:900;color:#0b1432}
-        .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-        .btn-teal:hover{filter:brightness(1.05)}
-        .list-card{min-height:220px}
+        .rx-box{background:#f8f9fa;border-left:4px solid #4CE1C6;padding:10px;margin-top:10px;border-radius:6px;}
         `}</style>
     );
 
+    // ===================== STATE =====================
     const [maps, setMaps] = useState([]);
     const [robots, setRobots] = useState([]);
     const [destinations, setDestinations] = useState([]);
     const [patients, setPatients] = useState([]);
-    const [compartments, setCompartments] = useState([]);
+    const [availableCompartments, setAvailableCompartments] = useState([]);
 
     const [form, setForm] = useState({
         mapId: "",
         robotId: "",
-        assignedBy: 0,
-        status: "pending",
         priority: 1,
         scheduledStartAt: new Date().toISOString().slice(0, 16),
         taskStops: [],
@@ -68,64 +65,77 @@ export default function Addtask() {
     const canAddStop = form.mapId && form.robotId;
     const canStart = form.robotId && form.taskStops.length > 0;
 
-    const TASK_STOP_STATUS = {
-        pending: "Đang chờ",
-        in_progress: "Đang thực hiện",
-        awaiting_handover: "Chờ bàn giao",
-        delivered: "Đã giao",
-        skipped: "Bỏ qua",
-        failed: "Thất bại",
-    };
-
-    const COMPARTMENT_STATUS = {
-        pending: "Đang chờ",
-        loaded: "Đã nạp",
-        unlocked: "Mở khóa",
-        delivered: "Đã giao",
-        locked: "Khóa",
-        canceled: "Đã hủy",
-    };
-
-    // Load maps và patients khi mount
+    // ===================== SIGNALR =====================
     useEffect(() => {
-        async function loadBase() {
-            try {
-                const [mapsData, patientsData, comps] = await Promise.all([
-                    getAllMaps(),
-                    getAllPatients(),
-                    getAllCompartments(),
-                ]);
-                setMaps(mapsData);
-                setPatients(patientsData);
-                setCompartments(comps);
-            } catch (err) {
-                console.error("Lỗi tải dữ liệu:", err);
-            }
-        }
-        loadBase();
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5170/hubs/task", {
+                transport: signalR.HttpTransportType.WebSockets,
+                skipNegotiation: true,
+            })
+            .withAutomaticReconnect()
+            .build();
+
+        conn.start()
+            .then(() => console.log("SignalR Connected"))
+            .catch((err) => console.error("SignalR Connect Error:", err));
+
+        conn.on("TaskCreated", (task) => {
+            setMessage(`📡 Nhiệm vụ mới được tạo #${task.id}`);
+        });
+
+        return () => conn.stop();
     }, []);
 
-    // Khi chọn map → load destinations và robots
+    // ===================== LOAD MAPS + PATIENTS =====================
+    useEffect(() => {
+        async function load() {
+            setMaps(await getAllMaps());
+            setPatients(await getAllPatients());
+        }
+        load();
+    }, []);
+
+    // ===================== MAP SELECT =====================
     async function handleSelectMap(mapId) {
-        setForm(f => ({ ...f, mapId, robotId: "" }));
-        if (!mapId) {
-            setDestinations([]);
-            setRobots([]);
-            return;
-        }
-        try {
-            const mapDetail = await getMapById(mapId);
-            const destList = mapDetail.destinasion || mapDetail.destinations || [];
-            setDestinations(destList);
-            setRobots(mapDetail.robots || []);
-        } catch (err) {
-            console.error("Lỗi lấy chi tiết map:", err);
-        }
+        setForm((f) => ({ ...f, mapId, robotId: "", taskStops: [] }));
+
+        if (!mapId) return;
+
+        const mapDetail = await getMapById(mapId);
+
+        setDestinations(
+            mapDetail.destinations ||
+            mapDetail.destinasions ||
+            mapDetail.Destinations ||
+            []
+        );
+
+        setRobots(mapDetail.robots || []);
     }
 
+    // ===================== ROBOT SELECT =====================
+    async function handleSelectRobot(robotId) {
+        setForm((f) => ({ ...f, robotId }));
+
+        if (!robotId) {
+            setAvailableCompartments([]);
+            return;
+        }
+
+        const comps = await getCompartmentsByRobot(robotId);
+
+        const filtered = comps.filter(
+            (x) => x.status === "unlocked" || x.status === "empty"
+        );
+
+        setAvailableCompartments(filtered);
+    }
+
+    // ===================== STOP HANDLERS =====================
     function addStop() {
         const nextSeq = form.taskStops.length + 1;
-        setForm(f => ({
+
+        setForm((f) => ({
             ...f,
             taskStops: [
                 ...f.taskStops,
@@ -134,85 +144,95 @@ export default function Addtask() {
                     destinationId: "",
                     patientId: "",
                     compartmentId: "",
-                    itemDesc: "",
-                    status: "pending",
+                    prescriptionPreview: null, // <-- NEW
                 },
             ],
         }));
     }
 
     function removeStop(idx) {
-        setForm(f => ({
+        setForm((f) => ({
             ...f,
             taskStops: f.taskStops.filter((_, i) => i !== idx),
         }));
     }
 
     function updateStop(idx, key, value) {
-        setForm(f => {
-            const updatedStops = [...f.taskStops];
-            updatedStops[idx][key] = value;
-            return { ...f, taskStops: updatedStops };
+        setForm((f) => {
+            const clone = [...f.taskStops];
+            clone[idx][key] = value;
+            return { ...f, taskStops: clone };
         });
     }
 
-    async function startMission() {
-        if (!canStart) return;
-        try {
-            const now = new Date().toISOString(); // thời gian hiện tại
+    // ===================== LOAD PRESCRIPTION WHEN SELECT PATIENT =====================
+    async function handleSelectPatient(patientId, idx) {
+        updateStop(idx, "patientId", patientId);
 
+        if (!patientId) {
+            updateStop(idx, "prescriptionPreview", null);
+            return;
+        }
+
+        // Lấy đơn thuốc approved mới nhất
+        const list = await getAllPrescriptions(patientId, "approved");
+
+        if (list.length === 0) {
+            updateStop(idx, "prescriptionPreview", null);
+            return;
+        }
+
+        const latest = list.sort((a, b) =>
+            new Date(b.createdAt) - new Date(a.createdAt)
+        )[0];
+
+        updateStop(idx, "prescriptionPreview", latest);
+    }
+
+    // ===================== SUBMIT =====================
+    async function startMission() {
+        try {
             const payload = {
-                robotId: Number(form.robotId),
-                assignedBy: 1, // fix cứng
                 mapId: Number(form.mapId),
+                robotId: Number(form.robotId),
                 priority: Number(form.priority),
-                status: form.status,
-                scheduledStartAt: form.scheduledStartAt
-                    ? new Date(form.scheduledStartAt).toISOString()
-                    : now,
-                taskStops: form.taskStops.map(s => ({
-                    seqNo: Number(s.seqNo),
+                scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+                stops: form.taskStops.map((s) => ({
+                    seqNo: s.seqNo,
                     destinationId: Number(s.destinationId),
                     patientId: Number(s.patientId),
-                    customName: s.customName || "Nam",
-                    status: s.status,
-                    etaAt: s.etaAt ? new Date(s.etaAt).toISOString() : now,
-                })),
-                compartmentAssignments: form.taskStops.map(s => ({
-                    stopSeqNo: Number(s.seqNo),
-                    compartmentId: Number(s.compartmentId || 0),
-                    itemDesc: s.itemDesc || "",
-                    status: s.compartmentStatus || "pending",
+                    compartmentId: Number(s.compartmentId),
                 })),
             };
 
             const created = await createTask(payload);
-            setMessage(`Tạo nhiệm vụ thành công! ID: ${created.id}`);
-            setForm(f => ({ ...f, taskStops: [] })); // reset stops
+            setMessage(`🎉 Tạo nhiệm vụ thành công! ID = ${created.id}`);
+
+            setForm((f) => ({ ...f, taskStops: [] }));
         } catch (err) {
-            console.error(err);
-            setMessage(`Lỗi tạo nhiệm vụ: ${err.response?.data || err.message}`);
+            setMessage(`❌ Lỗi: ${err.response?.data || err.message}`);
         }
     }
 
-
+    // ===================== RENDER =====================
     return (
         <div className="page">
             {styles}
             <div className="container-lg py-4">
-                <h4 className="title mb-3">Tạo Nhiệm Vụ Mới</h4>
-                <div className="glass p-3 p-md-4 rounded-2xl">
+                <h4 className="title mb-3">Tạo nhiệm vụ mới</h4>
 
-                    {/* Chọn Map */}
+                <div className="glass p-4">
+
+                    {/* MAP */}
                     <div className="mb-3">
-                        <label className="form-label fw-semibold">Chọn Map</label>
+                        <label className="fw-semibold">Chọn map</label>
                         <select
                             className="form-select"
                             value={form.mapId}
                             onChange={(e) => handleSelectMap(e.target.value)}
                         >
-                            <option value="">— Chọn map —</option>
-                            {maps.map(m => (
+                            <option value="">— chọn map —</option>
+                            {maps.map((m) => (
                                 <option key={m.id} value={m.id}>
                                     {m.id} • {m.mapName}
                                 </option>
@@ -220,163 +240,152 @@ export default function Addtask() {
                         </select>
                     </div>
 
-                    {/* Chọn Robot */}
+                    {/* ROBOT */}
                     <div className="mb-3">
-                        <label className="form-label fw-semibold">Chọn Robot</label>
+                        <label className="fw-semibold">Chọn robot</label>
                         <select
                             className="form-select"
                             value={form.robotId}
-                            onChange={(e) => setForm({ ...form, robotId: e.target.value })}
+                            onChange={(e) => handleSelectRobot(e.target.value)}
                             disabled={!form.mapId}
                         >
-                            <option value="">— Chọn robot —</option>
-                            {robots.map(r => (
+                            <option value="">— chọn robot —</option>
+                            {robots.map((r) => (
                                 <option key={r.id} value={r.id}>
                                     {r.id} • {r.name} (Pin {r.batteryPercent}%)
                                 </option>
                             ))}
                         </select>
                     </div>
-                    {/* Độ ưu tiên */}
+
+                    {/* PRIORITY */}
                     <div className="mb-3">
-                        <label className="form-label fw-semibold">Độ ưu tiên</label>
+                        <label className="fw-semibold">Độ ưu tiên</label>
                         <select
                             className="form-select"
                             value={form.priority}
-                            onChange={(e) => setForm(f => ({ ...f, priority: Number(e.target.value) }))}
+                            onChange={(e) =>
+                                setForm((f) => ({ ...f, priority: Number(e.target.value) }))
+                            }
                         >
-                            <option value={1}>1 - Thấp</option>
-                            <option value={2}>2 - Trung bình</option>
-                            <option value={3}>3 - Cao</option>
+                            <option value={0}>0 - Low</option>
+                            <option value={1}>1 - Normal</option>
+                            <option value={2}>2 - High</option>
                         </select>
                     </div>
 
-                    {/* Trạng thái task */}
-                    <div className="mb-3">
-                        <label className="form-label fw-semibold">Trạng thái nhiệm vụ</label>
-                        <select
-                            className="form-select"
-                            value={form.status}
-                            onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))}
+                    {/* ADD STOP */}
+                    <div className="text-end mb-2">
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={addStop}
+                            disabled={!canAddStop}
                         >
-                            <option value="pending">Đang chờ</option>
-                            <option value="in_progress">Đang thực hiện</option>
-                            <option value="completed">Hoàn thành</option>
-                            <option value="canceled">Đã hủy</option>
-                        </select>
-                    </div>
-                    {/* Thêm điểm đến */}
-                    <div className="mb-3 text-end">
-                        <button className="btn btn-outline-secondary btn-sm" onClick={addStop} disabled={!canAddStop}>
-                            + Thêm điểm đến
+                            + Thêm điểm dừng
                         </button>
                     </div>
 
-                    {/* Danh sách stop */}
-                    {form.taskStops.map((stop, idx) => (
-                        <div key={idx} className="glass p-3 mb-3 rounded-2xl">
-                            {/* Hàng 1: Thông tin chính */}
-                            <div className="row g-2 align-items-end">
-                                <div className="col-md-2">
+                    {/* STOP LIST */}
+                    {form.taskStops.map((s, idx) => (
+                        <div className="glass p-3 mb-3" key={idx}>
+
+                            <div className="row g-3">
+
+                                <div className="col-2">
                                     <label>Thứ tự</label>
-                                    <input type="number" className="form-control" value={stop.seqNo} disabled />
+                                    <input className="form-control" value={s.seqNo} disabled />
                                 </div>
 
-                                <div className="col-md-3">
+                                <div className="col-3">
                                     <label>Điểm đến</label>
                                     <select
                                         className="form-select"
-                                        value={stop.destinationId}
-                                        onChange={(e) => updateStop(idx, "destinationId", e.target.value)}
+                                        value={s.destinationId}
+                                        onChange={(e) =>
+                                            updateStop(idx, "destinationId", e.target.value)
+                                        }
                                     >
-                                        <option value="">— Chọn —</option>
+                                        <option value="">— chọn điểm đến —</option>
                                         {destinations.map((d) => (
                                             <option key={d.id} value={d.id}>{d.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                <div className="col-md-3">
+                                <div className="col-3">
                                     <label>Bệnh nhân</label>
                                     <select
                                         className="form-select"
-                                        value={stop.patientId}
-                                        onChange={(e) => updateStop(idx, "patientId", e.target.value)}
+                                        value={s.patientId}
+                                        onChange={(e) =>
+                                            handleSelectPatient(e.target.value, idx)
+                                        }
                                     >
-                                        <option value="">— Chọn bệnh nhân —</option>
+                                        <option value="">— chọn bệnh nhân —</option>
                                         {patients.map((p) => (
-                                            <option key={p.patientCode} value={p.patientCode}>{p.fullName}</option>
+                                            <option key={p.id} value={p.id}>{p.fullName}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                <div className="col-md-2">
-                                    <label>Trạng thái điểm dừng</label>
-                                    <select
-                                        className="form-select"
-                                        value={stop.status}
-                                        onChange={(e) => updateStop(idx, "status", e.target.value)}
-                                    >
-                                        {Object.entries(TASK_STOP_STATUS).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="col-md-1 d-flex align-items-end">
-                                    <button className="btn btn-outline-danger btn-sm" onClick={() => removeStop(idx)}>X</button>
-                                </div>
-                            </div>
-
-                            {/* Hàng 2: Box Ngăn chứa */}
-                            <div className="row g-2 mt-3 align-items-end border-top pt-2">
-                                <div className="col-md-3 d-flex flex-column">
+                                <div className="col-3">
                                     <label>Ngăn chứa</label>
                                     <select
                                         className="form-select"
-                                        value={stop.compartmentId || ""}
-                                        onChange={(e) => updateStop(idx, "compartmentId", e.target.value)}
+                                        value={s.compartmentId}
+                                        onChange={(e) =>
+                                            updateStop(idx, "compartmentId", e.target.value)
+                                        }
                                     >
-                                        <option value="">— Chọn ngăn —</option>
-                                        {compartments.map((c) => (
-                                            <option key={c.compartmentId} value={c.compartmentId}>{c.compartmentCode}</option>
+                                        <option value="">— chọn ngăn —</option>
+                                        {availableCompartments.map((c) => (
+                                            <option key={c.id} value={c.id}>{c.compartmentCode}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                <div className="col-md-5 d-flex flex-column">
-                                    <label>&nbsp;</label> {/* placeholder để căn hàng với label khác */}
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="Mô tả vật phẩm"
-                                        value={stop.itemDesc || ""}
-                                        onChange={(e) => updateStop(idx, "itemDesc", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="col-md-4 d-flex flex-column">
-                                    <label>Trạng thái ngăn chứa</label>
-                                    <select
-                                        className="form-select"
-                                        value={stop.compartmentStatus || "pending"}
-                                        onChange={(e) => updateStop(idx, "compartmentStatus", e.target.value)}
+                                <div className="col-1 d-flex align-items-end">
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => removeStop(idx)}
                                     >
-                                        {Object.entries(COMPARTMENT_STATUS).map(([value, label]) => (
-                                            <option key={value} value={value}>{label}</option>
-                                        ))}
-                                    </select>
+                                        X
+                                    </button>
                                 </div>
                             </div>
+
+                            {/* PRESCRIPTION PREVIEW */}
+                            {s.prescriptionPreview && (
+                                <div className="rx-box mt-3">
+                                    <h6 className="fw-bold">
+                                        📄 Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
+                                    </h6>
+
+                                    {s.prescriptionPreview.items.map(item => (
+                                        <div key={item.id} className="mb-2">
+                                            <b>{item.medicineName}</b>
+                                            <div>Số lượng: {item.quantity}</div>
+                                            <div>Liều dùng: {item.dosage}</div>
+                                            <div>Hướng dẫn: {item.instructions}</div>
+                                            <hr />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                         </div>
                     ))}
-                    {/* Bắt đầu nhiệm vụ */}
-                    <div className="d-flex flex-column">
-                        <button className="btn btn-teal mt-2 w-100" disabled={!canStart} onClick={startMission}>
-                            Bắt đầu nhiệm vụ
-                        </button>
-                        {message && <div className="mt-2 small text-center">{message}</div>}
-                    </div>
+
+                    {/* SUBMIT */}
+                    <button
+                        className="btn btn-teal w-100"
+                        disabled={!canStart}
+                        onClick={startMission}
+                    >
+                        Bắt đầu nhiệm vụ
+                    </button>
+
+                    {message && <div className="mt-3 text-center fw-bold">{message}</div>}
                 </div>
             </div>
         </div>
