@@ -86,7 +86,11 @@ builder.Services.AddAuthentication(options =>
 // CORS
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
+    opts.AddPolicy("CORSPolicy", 
+        builder => builder.AllowAnyHeader().
+        AllowAnyMethod().
+        AllowCredentials().
+        SetIsOriginAllowed((host) => true));
 });
 
 // Repository
@@ -163,10 +167,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseSession();
 app.UseHttpsRedirection();
 app.UseCors("CORSPolicy");
+
 app.UseSession();
+
 app.UseMiddleware<SingleDeviceMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
