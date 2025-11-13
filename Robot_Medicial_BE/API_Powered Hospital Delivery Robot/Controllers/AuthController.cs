@@ -77,38 +77,96 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
 
 
+        //[HttpGet("check-login-status")]
+        //[Authorize]
+        //public IActionResult CheckLoginStatus()
+        //{
+        //    var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+        //    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        //        return Unauthorized(new { Message = "Missing or invalid Authorization header." });
+
+        //    var token = authHeader.Substring("Bearer ".Length).Trim();
+
+        //    // Đọc token để lấy username
+        //    var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        //    var username = jwtToken.Claims.FirstOrDefault(c =>
+        //                    c.Type == "unique_name" ||
+        //                    c.Type == ClaimTypes.Name ||
+        //                    c.Type == "sub" ||
+        //                    c.Type == ClaimTypes.Email ||
+        //                    c.Type == "email" ||
+        //                    c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+
+        //    if (string.IsNullOrEmpty(username))
+        //        return Unauthorized(new { Message = "Invalid token — username not found." });
+
+        //    // Kiểm tra session
+        //    var sessionToken = HttpContext.Session.GetString($"UserToken_{username}");
+        //    if (sessionToken == null)
+        //        return Unauthorized(new { Message = "Session expired or user not logged in." });
+
+        //    if (sessionToken != token)
+        //        return Unauthorized(new { Message = "Token mismatch — user logged in elsewhere." });
+
+        //    return Ok(new
+        //    {
+        //        Message = "User is logged in and token is valid.",
+        //        Username = username,
+        //        Token = token
+        //    });
+        //}
         [HttpGet("check-login-status")]
         [Authorize]
-        public IActionResult CheckLoginStatus()
+        public async Task<IActionResult> CheckLoginStatus()
         {
+            // 1️⃣ Lấy token từ header
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 return Unauthorized(new { Message = "Missing or invalid Authorization header." });
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
 
-            // Đọc token để lấy username
-            var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
-            var username = jwtToken.Claims.FirstOrDefault(c =>
-                c.Type == "unique_name" ||
-                c.Type == ClaimTypes.Name ||
-                c.Type == "sub")?.Value;
+            // 2️⃣ Đọc token để lấy email (dùng email làm key session)
+            JwtSecurityToken jwtToken;
+            try
+            {
+                jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+            }
+            catch
+            {
+                return Unauthorized(new { Message = "Invalid token format." });
+            }
 
-            if (string.IsNullOrEmpty(username))
-                return Unauthorized(new { Message = "Invalid token — username not found." });
+            var email = jwtToken.Claims.FirstOrDefault(c =>
+                            c.Type == ClaimTypes.Email ||
+                            c.Type == "email" ||
+                            c.Type == "unique_name" ||
+                            c.Type == "sub" ||
+                            c.Type == ClaimTypes.Name)?.Value;
 
-            // Kiểm tra session
-            var sessionToken = HttpContext.Session.GetString($"UserToken_{username}");
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(new { Message = "Invalid token — email not found." });
+
+            // 3️⃣ Kiểm tra session theo email
+            var sessionToken = HttpContext.Session.GetString($"UserToken_{email}");
             if (sessionToken == null)
                 return Unauthorized(new { Message = "Session expired or user not logged in." });
 
             if (sessionToken != token)
                 return Unauthorized(new { Message = "Token mismatch — user logged in elsewhere." });
 
+            // 4️⃣ Lấy thông tin user từ DB (tùy chọn)
+            var user = await _userService.GetByUsernameAsync(email);
+            if (user == null)
+                return Unauthorized(new { Message = "User not found." });
+
+            // 5️⃣ Thành công
             return Ok(new
             {
                 Message = "User is logged in and token is valid.",
-                Username = username,
+                Email = email,
+                Username = user.FullName,
                 Token = token
             });
         }
