@@ -4,7 +4,8 @@ import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import { getCompartmentsByRobot } from "@/services/robotCompartmentService";
-import { getAllPrescriptions } from "@/services/prescriptionServices"; // <-- NEW
+import { getAllPrescriptions } from "@/services/prescriptionServices"; 
+import { getAvailableRobots } from "@/services/robotService";
 import * as signalR from "@microsoft/signalr";
 
 export default function AddTask() {
@@ -62,7 +63,7 @@ export default function AddTask() {
 
     const [message, setMessage] = useState("");
 
-    const canAddStop = form.mapId && form.robotId;
+    const canAddStop = form.robotId;
     const canStart = form.robotId && form.taskStops.length > 0;
 
     // ===================== SIGNALR =====================
@@ -87,17 +88,19 @@ export default function AddTask() {
     }, []);
 
     // ===================== LOAD MAPS + PATIENTS =====================
+    // LOAD MAPS + PATIENTS + ROBOTS
     useEffect(() => {
         async function load() {
             setMaps(await getAllMaps());
             setPatients(await getAllPatients());
+            setRobots(await getAvailableRobots());   // ⭐ Robot global
         }
         load();
     }, []);
 
     // ===================== MAP SELECT =====================
     async function handleSelectMap(mapId) {
-        setForm((f) => ({ ...f, mapId, robotId: "", taskStops: [] }));
+        setForm((f) => ({ ...f, mapId }));
 
         if (!mapId) return;
 
@@ -110,7 +113,6 @@ export default function AddTask() {
             []
         );
 
-        setRobots(mapDetail.robots || []);
     }
 
     // ===================== ROBOT SELECT =====================
@@ -247,7 +249,6 @@ export default function AddTask() {
                             className="form-select"
                             value={form.robotId}
                             onChange={(e) => handleSelectRobot(e.target.value)}
-                            disabled={!form.mapId}
                         >
                             <option value="">— chọn robot —</option>
                             {robots.map((r) => (

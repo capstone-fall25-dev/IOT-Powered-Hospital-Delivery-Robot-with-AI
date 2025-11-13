@@ -39,3 +39,9 @@ export const updateRobotPosition = async (id, positionDto) => {
     const res = await axios.patch(`${API_CONFIG.API_BASE}/${id}/position`, positionDto);
     return res.data;
 };
+
+// ⭐ API new: lấy robot at_station
+export const getAvailableRobots = async () => {
+    const res = await axios.get(`${API_CONFIG.API_BASE}/robots/available`);
+    return res.data;
+};
