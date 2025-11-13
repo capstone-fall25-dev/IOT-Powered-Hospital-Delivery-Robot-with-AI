@@ -49,6 +49,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime ScheduledStartAt { get; set; }
         public List<TaskStopDto> Stops { get; set; } = new List<TaskStopDto>();
         public List<CompartmentAssignmentDto> SuggestedCompartments { get; set; } = new List<CompartmentAssignmentDto>();
+        public string Message { get; set; }
     }
 
     public class TaskReportDto

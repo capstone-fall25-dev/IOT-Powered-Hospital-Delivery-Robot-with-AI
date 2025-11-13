@@ -122,35 +122,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-
             var createdTask = await _repository.CreateAsync(task);
 
-            // === 4. Tạo TaskStops – SeqNo do người dùng nhập ===
+            // === 4. Lấy ngăn UNLOCKED ===
+            var unlockedCompartments = robot.RobotCompartments
+                .Where(c => c.IsActive == true && c.Status == "unlocked")
+                .ToList();
+
+            var lockedCompartmentIds = robot.RobotCompartments
+                .Where(c => c.IsActive == true && c.Status == "locked")
+                .Select(c => c.Id)
+                .ToList();
+
+            // === 5. Biến theo dõi ===
             var createdStops = new List<TaskStop>();
-            var stopSeqToIdMap = new Dictionary<int, ulong>();
-            var usedSeqNos = new HashSet<int>(); // Kiểm tra trùng
+            var finalAssignments = new List<CompartmentAssignment>();
+            var usedSeqNos = new HashSet<int>();
             int previousSeqNo = 0;
 
+            int compartmentIndex = 0;
+            var skippedDueToUserLocked = new List<int>(); // Stop bị bỏ vì user chọn locked
+            var skippedDueToNoCompartment = new List<int>(); // Stop bị bỏ vì hết ngăn unlocked
+            var messages = new List<string>();
+
+            // === 6. Xử lý từng Stop ===
             foreach (var stopDto in createTaskDto.TaskStops.OrderBy(s => s.SeqNo))
             {
-                // === VALIDATE SEQNO DO NGƯỜI DÙNG NHẬP ===
+                // --- Validate SeqNo ---
                 if (stopDto.SeqNo <= 0)
                     throw new ValidationException("SeqNo must be greater than 0.");
-
                 if (stopDto.SeqNo <= previousSeqNo)
                     throw new ValidationException($"SeqNo {stopDto.SeqNo} must be greater than previous SeqNo {previousSeqNo}.");
-
                 if (usedSeqNos.Contains(stopDto.SeqNo))
                     throw new ValidationException($"SeqNo {stopDto.SeqNo} is duplicated.");
 
                 previousSeqNo = stopDto.SeqNo;
                 usedSeqNos.Add(stopDto.SeqNo);
 
-                // === Validate Destination hoặc CustomName ===
+                // --- Validate Destination ---
                 if (!stopDto.DestinationId.HasValue && string.IsNullOrWhiteSpace(stopDto.CustomName))
                     throw new ValidationException($"Stop SeqNo {stopDto.SeqNo}: Either DestinationId or CustomName is required.");
 
-                // === Validate Destination ===
                 if (stopDto.DestinationId.HasValue)
                 {
                     var dest = await _destinationRepository.GetByIdAsync(stopDto.DestinationId.Value);
@@ -158,12 +170,67 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         throw new InvalidOperationException($"Destination ID {stopDto.DestinationId} not found.");
                 }
 
+                // --- KIỂM TRA GÁN NGĂN ---
+                ulong? assignedCompartmentId = null;
+                bool skipStop = false;
 
-                // === Tạo TaskStop ===
+                var userAssign = createTaskDto.CompartmentAssignments?
+                    .FirstOrDefault(a => a.StopSeqNo == stopDto.SeqNo);
+
+                if (userAssign != null)
+                {
+                    // Người dùng chọn ngăn
+                    var isUnlocked = unlockedCompartments.Any(c => c.Id == userAssign.CompartmentId);
+                    if (!isUnlocked)
+                    {
+                        // NGƯỜI DÙNG CHỌN LOCKED → BỎ QUA STOP HOÀN TOÀN
+                        skippedDueToUserLocked.Add(stopDto.SeqNo);
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = robot.Id,
+                            TaskId = createdTask.Id,
+                            LogType = "warning",
+                            Message = $"Stop {stopDto.SeqNo} skipped: User requested locked Compartment ID {userAssign.CompartmentId}.",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        skipStop = true;
+                    }
+                    else
+                    {
+                        assignedCompartmentId = userAssign.CompartmentId;
+                    }
+                }
+                else
+                {
+                    // TỰ ĐỘNG GÁN
+                    if (compartmentIndex >= unlockedCompartments.Count)
+                    {
+                        skippedDueToNoCompartment.Add(stopDto.SeqNo);
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = robot.Id,
+                            TaskId = createdTask.Id,
+                            LogType = "info",
+                            Message = $"Stop {stopDto.SeqNo} skipped: No more unlocked compartments.",
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        skipStop = true;
+                    }
+                    else
+                    {
+                        assignedCompartmentId = unlockedCompartments[compartmentIndex % unlockedCompartments.Count].Id;
+                        compartmentIndex++;
+                    }
+                }
+
+                // === BỎ QUA STOP NÀY HOÀN TOÀN ===
+                if (skipStop) continue;
+
+                // === CHỈ TẠO TASKSTOP NẾU CÓ NGĂN UNLOCKED ĐỂ GÁN ===
                 var taskStop = new TaskStop
                 {
                     TaskId = createdTask.Id,
-                    SeqNo = stopDto.SeqNo, // ← DO NGƯỜI DÙNG NHẬP
+                    SeqNo = stopDto.SeqNo,
                     DestinationId = stopDto.DestinationId,
                     CustomName = stopDto.CustomName?.Trim(),
                     Status = string.IsNullOrWhiteSpace(stopDto.Status) ? "pending" : stopDto.Status.Trim(),
@@ -175,86 +242,71 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 var createdStop = await _repository.CreateTaskStopAsync(taskStop);
                 createdStops.Add(createdStop);
-                stopSeqToIdMap[stopDto.SeqNo] = createdStop.Id;
-            }
 
-            // === 5. Xử lý Compartment Assignments ===
-            var finalAssignments = new List<CompartmentAssignment>();
-            var availableCompartments = robot.RobotCompartments
-                .Where(c => c.IsActive == true && c.Status == "unlocked")
-                .ToList();
+                // === TẠO ASSIGNMENT ===
+                string itemDesc = userAssign != null && !string.IsNullOrWhiteSpace(userAssign.ItemDesc)
+                    ? userAssign.ItemDesc.Trim()
+                    : $"Auto: Stop {stopDto.SeqNo} - {(stopDto.CustomName ?? "Delivery")}";
 
-            if (!availableCompartments.Any())
-            {
-                await _logRepository.CreateAsync(new Log
+                var assignment = new CompartmentAssignment
                 {
-                    RobotId = robot.Id,
                     TaskId = createdTask.Id,
-                    LogType = "warning",
-                    Message = "No available compartments (unlocked & active) for assignment.",
-                    CreatedAt = DateTime.UtcNow
-                });
+                    StopId = createdStop.Id,
+                    CompartmentId = assignedCompartmentId.Value,
+                    ItemDesc = itemDesc,
+                    Status = "pending",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                var createdAssignment = await _compartmentAssignmentRepository.CreateAsync(assignment);
+                finalAssignments.Add(createdAssignment);
             }
 
-            // User cung cấp
-            if (createTaskDto.CompartmentAssignments != null && createTaskDto.CompartmentAssignments.Any())
+            // === 7. TẠO MESSAGE – ĐÚNG SỐ LƯỢNG STOP THÀNH CÔNG ===
+            int successfulStops = createdStops.Count;
+
+            if (successfulStops > 0)
             {
-                foreach (var assignDto in createTaskDto.CompartmentAssignments)
-                {
-                    if (!stopSeqToIdMap.TryGetValue(assignDto.StopSeqNo, out var stopId))
-                        throw new ValidationException($"StopSeqNo {assignDto.StopSeqNo} not found in task stops.");
-
-                    var compartment = availableCompartments.FirstOrDefault(c => c.Id == assignDto.CompartmentId);
-                    if (compartment == null)
-                        throw new InvalidOperationException($"Compartment ID {assignDto.CompartmentId} not available or not belong to robot {robot.Id}.");
-
-                    var assignment = new CompartmentAssignment
-                    {
-                        TaskId = createdTask.Id,
-                        StopId = stopId,
-                        CompartmentId = assignDto.CompartmentId,
-                        ItemDesc = string.IsNullOrWhiteSpace(assignDto.ItemDesc) ? "User-defined item" : assignDto.ItemDesc.Trim(),
-                        Status = string.IsNullOrWhiteSpace(assignDto.Status) ? "pending" : assignDto.Status.Trim(),
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-
-                    var createdAssignment = await _compartmentAssignmentRepository.CreateAsync(assignment);
-                    finalAssignments.Add(createdAssignment);
-                }
+                messages.Add($"Task created successfully with {successfulStops} stop(s).");
             }
-            // Tự động gợi ý
-            else if (availableCompartments.Any())
+            else
             {
-                int index = 0;
-                foreach (var stop in createdStops.OrderBy(s => s.SeqNo)) // Đảm bảo thứ tự
-                {
-                    var compartment = availableCompartments[index % availableCompartments.Count];
-                    index++;
-
-                    var assignment = new CompartmentAssignment
-                    {
-                        TaskId = createdTask.Id,
-                        StopId = stop.Id,
-                        CompartmentId = compartment.Id,
-                        ItemDesc = $"Auto: Stop {stop.SeqNo} - {(stop.CustomName ?? stop.Destination?.Name ?? "Delivery")}",
-                        Status = "pending",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-
-                    var createdAssignment = await _compartmentAssignmentRepository.CreateAsync(assignment);
-                    finalAssignments.Add(createdAssignment);
-                }
+                messages.Add("Task created but no stops were assigned.");
             }
 
-            // === 6. Reload full task ===
+            if (lockedCompartmentIds.Any())
+            {
+                messages.Add($"Locked compartments {string.Join(", ", lockedCompartmentIds)} were completely ignored.");
+            }
+
+            if (skippedDueToUserLocked.Any())
+            {
+                messages.Add($"Skipped {skippedDueToUserLocked.Count} stop(s) [SeqNo: {string.Join(", ", skippedDueToUserLocked)}] because user requested locked compartment.");
+            }
+
+            if (skippedDueToNoCompartment.Any())
+            {
+                messages.Add($"Skipped {skippedDueToNoCompartment.Count} stop(s) [SeqNo: {string.Join(", ", skippedDueToNoCompartment)}] due to no available unlocked compartment.");
+            }
+
+            string finalMessage = string.Join(" ", messages);
+
+            // === 8. Ghi log + Response ===
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = robot.Id,
+                TaskId = createdTask.Id,
+                LogType = "info",
+                Message = finalMessage,
+                CreatedAt = DateTime.UtcNow
+            });
+
             var fullTask = await _repository.GetByIdAsync(createdTask.Id);
             if (fullTask == null)
                 throw new InvalidOperationException("Failed to reload created task.");
 
-            // === 7. Tạo Response DTO ===
-            var response = new TaskResponseDto
+            return new TaskResponseDto
             {
                 Id = fullTask.Id,
                 RobotId = fullTask.RobotId,
@@ -270,7 +322,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 CreatedAt = fullTask.CreatedAt,
                 UpdatedAt = fullTask.UpdatedAt,
                 ScheduledStartAt = fullTask.ScheduledStartAt ?? default,
-
                 Stops = fullTask.TaskStops
                     .OrderBy(s => s.SeqNo)
                     .Select(s => new TaskStopDto
@@ -284,9 +335,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         ArrivedAt = s.ArrivedAt,
                         HandedOverAt = s.HandedOverAt,
                         PatientId = s.PatientId,
-
                     }).ToList(),
-
                 SuggestedCompartments = finalAssignments.Select(a => new CompartmentAssignmentDto
                 {
                     Id = a.Id,
@@ -294,11 +343,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     StopId = a.StopId,
                     TaskId = a.TaskId,
                     Status = a.Status ?? "pending"
-                }).ToList()
+                }).ToList(),
+                Message = finalMessage
             };
-
-            return response;
         }
+
 
         public async Task<bool> DeleteAsync(ulong id)
         {
