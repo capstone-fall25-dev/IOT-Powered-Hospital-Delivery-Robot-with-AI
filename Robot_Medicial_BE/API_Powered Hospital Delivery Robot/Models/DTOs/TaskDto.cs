@@ -30,7 +30,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class CreateTaskStopDto
     {
-        [Required] public int SeqNo { get; set; }
+        [Required] 
+        public int SeqNo { get; set; }
 
         [Required(ErrorMessage = "Phải chọn điểm đến.")]
         public ulong DestinationId { get; set; }
@@ -40,6 +41,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         [Required(ErrorMessage = "Phải chọn khoang.")]
         public ulong CompartmentId { get; set; }
+
+        [Required(ErrorMessage = "Phải chọn loại ngăn chứa.")]
+        public ulong CategoryId { get; set; }
     }
 
     public class UpdateTaskDto

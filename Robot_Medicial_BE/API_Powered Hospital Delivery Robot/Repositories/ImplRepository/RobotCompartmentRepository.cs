@@ -1,4 +1,4 @@
-using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,6 +50,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .Include(rc => rc.Patient)
                 .Where(rc => rc.RobotId == robotId && rc.IsActive == true)
                 .ToListAsync();
+        }
+
+        public async System.Threading.Tasks.Task AssignPatientToCompartment(ulong compartmentId, ulong patientId)
+        {
+            var comp = await _context.RobotCompartments.FindAsync(compartmentId);
+            if (comp == null)
+                throw new InvalidOperationException("Compartment not found");
+
+            comp.PatientId = patientId; // Gán bệnh nhân
+            comp.Status = "locked";     // Khoang đang chứa thuốc
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> AssignCategoryToCompartment(ulong compId, ulong categoryId)
+        {
+            var comp = await _context.RobotCompartments.FindAsync(compId);
+            if (comp == null) return false;
+
+            comp.CategoryId = categoryId;
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

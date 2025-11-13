@@ -8,5 +8,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<RobotCompartment?> UpdateStatusAsync(ulong id, string status);
         Task<IEnumerable<RobotCompartment>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId);
         Task<IEnumerable<RobotCompartment>> GetByRobotAsync(ulong robotId);
+        public System.Threading.Tasks.Task AssignPatientToCompartment(ulong compartmentId, ulong patientId);
+        Task<bool> AssignCategoryToCompartment(ulong compId, ulong categoryId);
     }
 }

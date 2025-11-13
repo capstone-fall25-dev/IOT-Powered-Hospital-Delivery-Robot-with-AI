@@ -3,26 +3,31 @@ import { useEffect, useState } from "react";
 import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
-import { getCompartmentsByRobot } from "@/services/robotCompartmentService";
-import { getAllPrescriptions } from "@/services/prescriptionServices"; 
+import {
+    getCompartmentsByRobot,
+    getAllCategories,
+} from "@/services/robotCompartmentService";
+import { getAllPrescriptions } from "@/services/prescriptionServices";
 import { getAvailableRobots } from "@/services/robotService";
 import * as signalR from "@microsoft/signalr";
 
 export default function AddTask() {
-
     // ===================== GLOBAL CSS =====================
     useEffect(() => {
         const css = document.createElement("link");
         css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
+        css.href =
+            "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
 
         const icons = document.createElement("link");
         icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
+        icons.href =
+            "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
 
         const font = document.createElement("link");
         font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
+        font.href =
+            "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
 
         document.head.appendChild(css);
         document.head.appendChild(icons);
@@ -51,6 +56,7 @@ export default function AddTask() {
     const [robots, setRobots] = useState([]);
     const [destinations, setDestinations] = useState([]);
     const [patients, setPatients] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [availableCompartments, setAvailableCompartments] = useState([]);
 
     const [form, setForm] = useState({
@@ -87,13 +93,13 @@ export default function AddTask() {
         return () => conn.stop();
     }, []);
 
-    // ===================== LOAD MAPS + PATIENTS =====================
-    // LOAD MAPS + PATIENTS + ROBOTS
+    // ===================== LOAD MAPS + PATIENTS + ROBOTS + CATEGORIES =====================
     useEffect(() => {
         async function load() {
             setMaps(await getAllMaps());
             setPatients(await getAllPatients());
-            setRobots(await getAvailableRobots());   // ⭐ Robot global
+            setRobots(await getAvailableRobots());
+            setCategories(await getAllCategories()); // ⭐ NEW
         }
         load();
     }, []);
@@ -108,11 +114,10 @@ export default function AddTask() {
 
         setDestinations(
             mapDetail.destinations ||
-            mapDetail.destinasions ||
-            mapDetail.Destinations ||
-            []
+                mapDetail.destinasions ||
+                mapDetail.Destinations ||
+                []
         );
-
     }
 
     // ===================== ROBOT SELECT =====================
@@ -146,7 +151,8 @@ export default function AddTask() {
                     destinationId: "",
                     patientId: "",
                     compartmentId: "",
-                    prescriptionPreview: null, // <-- NEW
+                    categoryId: "", // ⭐ NEW
+                    prescriptionPreview: null,
                 },
             ],
         }));
@@ -167,7 +173,7 @@ export default function AddTask() {
         });
     }
 
-    // ===================== LOAD PRESCRIPTION WHEN SELECT PATIENT =====================
+    // ===================== PRESCRIPTION PREVIEW =====================
     async function handleSelectPatient(patientId, idx) {
         updateStop(idx, "patientId", patientId);
 
@@ -176,7 +182,6 @@ export default function AddTask() {
             return;
         }
 
-        // Lấy đơn thuốc approved mới nhất
         const list = await getAllPrescriptions(patientId, "approved");
 
         if (list.length === 0) {
@@ -184,8 +189,8 @@ export default function AddTask() {
             return;
         }
 
-        const latest = list.sort((a, b) =>
-            new Date(b.createdAt) - new Date(a.createdAt)
+        const latest = list.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         )[0];
 
         updateStop(idx, "prescriptionPreview", latest);
@@ -204,6 +209,7 @@ export default function AddTask() {
                     destinationId: Number(s.destinationId),
                     patientId: Number(s.patientId),
                     compartmentId: Number(s.compartmentId),
+                    categoryId: Number(s.categoryId), // ⭐ NEW
                 })),
             };
 
@@ -224,7 +230,6 @@ export default function AddTask() {
                 <h4 className="title mb-3">Tạo nhiệm vụ mới</h4>
 
                 <div className="glass p-4">
-
                     {/* MAP */}
                     <div className="mb-3">
                         <label className="fw-semibold">Chọn map</label>
@@ -266,13 +271,32 @@ export default function AddTask() {
                             className="form-select"
                             value={form.priority}
                             onChange={(e) =>
-                                setForm((f) => ({ ...f, priority: Number(e.target.value) }))
+                                setForm((f) => ({
+                                    ...f,
+                                    priority: Number(e.target.value),
+                                }))
                             }
                         >
-                            <option value={0}>0 - Low</option>
-                            <option value={1}>1 - Normal</option>
-                            <option value={2}>2 - High</option>
+                            <option value={0}>0 - Bình thường</option>
+                            <option value={1}>1 - Khẩn cấp</option>
+                            <option value={2}>2 - Nguy cấp</option>
                         </select>
+                    </div>
+
+                    {/* START TIME */}
+                    <div className="mb-3">
+                        <label className="fw-semibold">Thời gian bắt đầu</label>
+                        <input
+                            type="datetime-local"
+                            className="form-control"
+                            value={form.scheduledStartAt}
+                            onChange={(e) =>
+                                setForm((f) => ({
+                                    ...f,
+                                    scheduledStartAt: e.target.value,
+                                }))
+                            }
+                        />
                     </div>
 
                     {/* ADD STOP */}
@@ -289,12 +313,14 @@ export default function AddTask() {
                     {/* STOP LIST */}
                     {form.taskStops.map((s, idx) => (
                         <div className="glass p-3 mb-3" key={idx}>
-
                             <div className="row g-3">
-
                                 <div className="col-2">
                                     <label>Thứ tự</label>
-                                    <input className="form-control" value={s.seqNo} disabled />
+                                    <input
+                                        className="form-control"
+                                        value={s.seqNo}
+                                        disabled
+                                    />
                                 </div>
 
                                 <div className="col-3">
@@ -303,12 +329,20 @@ export default function AddTask() {
                                         className="form-select"
                                         value={s.destinationId}
                                         onChange={(e) =>
-                                            updateStop(idx, "destinationId", e.target.value)
+                                            updateStop(
+                                                idx,
+                                                "destinationId",
+                                                e.target.value
+                                            )
                                         }
                                     >
-                                        <option value="">— chọn điểm đến —</option>
+                                        <option value="">
+                                            — chọn điểm đến —
+                                        </option>
                                         {destinations.map((d) => (
-                                            <option key={d.id} value={d.id}>{d.name}</option>
+                                            <option key={d.id} value={d.id}>
+                                                {d.name}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -319,12 +353,19 @@ export default function AddTask() {
                                         className="form-select"
                                         value={s.patientId}
                                         onChange={(e) =>
-                                            handleSelectPatient(e.target.value, idx)
+                                            handleSelectPatient(
+                                                e.target.value,
+                                                idx
+                                            )
                                         }
                                     >
-                                        <option value="">— chọn bệnh nhân —</option>
+                                        <option value="">
+                                            — chọn bệnh nhân —
+                                        </option>
                                         {patients.map((p) => (
-                                            <option key={p.id} value={p.id}>{p.fullName}</option>
+                                            <option key={p.id} value={p.id}>
+                                                {p.fullName}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -335,12 +376,45 @@ export default function AddTask() {
                                         className="form-select"
                                         value={s.compartmentId}
                                         onChange={(e) =>
-                                            updateStop(idx, "compartmentId", e.target.value)
+                                            updateStop(
+                                                idx,
+                                                "compartmentId",
+                                                e.target.value
+                                            )
                                         }
                                     >
-                                        <option value="">— chọn ngăn —</option>
+                                        <option value="">
+                                            — chọn ngăn —
+                                        </option>
                                         {availableCompartments.map((c) => (
-                                            <option key={c.id} value={c.id}>{c.compartmentCode}</option>
+                                            <option key={c.id} value={c.id}>
+                                                {c.compartmentCode}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* CATEGORY */}
+                                <div className="col-3">
+                                    <label>Loại ngăn</label>
+                                    <select
+                                        className="form-select"
+                                        value={s.categoryId}
+                                        onChange={(e) =>
+                                            updateStop(
+                                                idx,
+                                                "categoryId",
+                                                e.target.value
+                                            )
+                                        }
+                                    >
+                                        <option value="">
+                                            — chọn loại —
+                                        </option>
+                                        {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -359,21 +433,33 @@ export default function AddTask() {
                             {s.prescriptionPreview && (
                                 <div className="rx-box mt-3">
                                     <h6 className="fw-bold">
-                                        📄 Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
+                                        📄 Đơn thuốc:{" "}
+                                        {
+                                            s.prescriptionPreview
+                                                .prescriptionCode
+                                        }
                                     </h6>
 
-                                    {s.prescriptionPreview.items.map(item => (
-                                        <div key={item.id} className="mb-2">
-                                            <b>{item.medicineName}</b>
-                                            <div>Số lượng: {item.quantity}</div>
-                                            <div>Liều dùng: {item.dosage}</div>
-                                            <div>Hướng dẫn: {item.instructions}</div>
-                                            <hr />
-                                        </div>
-                                    ))}
+                                    {s.prescriptionPreview.items.map(
+                                        (item) => (
+                                            <div key={item.id} className="mb-2">
+                                                <b>{item.medicineName}</b>
+                                                <div>
+                                                    Số lượng: {item.quantity}
+                                                </div>
+                                                <div>
+                                                    Liều dùng: {item.dosage}
+                                                </div>
+                                                <div>
+                                                    Hướng dẫn:{" "}
+                                                    {item.instructions}
+                                                </div>
+                                                <hr />
+                                            </div>
+                                        )
+                                    )}
                                 </div>
                             )}
-
                         </div>
                     ))}
 
@@ -386,7 +472,11 @@ export default function AddTask() {
                         Bắt đầu nhiệm vụ
                     </button>
 
-                    {message && <div className="mt-3 text-center fw-bold">{message}</div>}
+                    {message && (
+                        <div className="mt-3 text-center fw-bold">
+                            {message}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

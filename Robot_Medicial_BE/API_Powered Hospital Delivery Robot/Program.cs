@@ -24,8 +24,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
 
 //  Swagger + Bearer
 builder.Services.AddSwaggerGen(options =>
@@ -86,11 +86,7 @@ builder.Services.AddAuthentication(options =>
 // CORS
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("CORSPolicy", 
-        builder => builder.AllowAnyHeader().
-        AllowAnyMethod().
-        AllowCredentials().
-        SetIsOriginAllowed((host) => true));
+    opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
 });
 
 // Repository

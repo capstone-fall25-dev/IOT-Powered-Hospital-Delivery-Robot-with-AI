@@ -11,12 +11,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     {
         private readonly ITaskRepository _repo;
         private readonly IRobotRepository _repoRobot;
+        private readonly IRobotCompartmentRepository _repoRobotCom;
         private readonly IHubContext<TaskHub> _taskHub;
 
-        public TaskService(ITaskRepository repo, IRobotRepository repoRobot, IHubContext<TaskHub> taskHub)
+        public TaskService(ITaskRepository repo, IRobotRepository repoRobot, IRobotCompartmentRepository repoRobotCom, IHubContext<TaskHub> taskHub)
         {
             _repo = repo;
             _repoRobot = repoRobot;
+            _repoRobotCom = repoRobotCom;
             _taskHub = taskHub;
         }
 
@@ -76,12 +78,39 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var comp = await _repo.GetCompartmentAsync(s.CompartmentId)
                         ?? throw new InvalidOperationException($"Khoang {s.CompartmentId} không tồn tại.");
 
+                    // ❗ Kiểm tra khoang có đang bận không
                     if (await _repo.IsCompartmentBusyAsync(s.CompartmentId))
                         throw new InvalidOperationException($"Khoang {s.CompartmentId} đang được sử dụng.");
+
+                    // ❗ KIỂM TRA PATIENT / CATEGORY LOGIC
+                    if (comp.PatientId != null)
+                    {
+                        // Khoang đang có bệnh nhân khác → không thể đổi bệnh nhân hoặc đổi category
+                        if (comp.PatientId != s.PatientId)
+                            throw new InvalidOperationException(
+                                $"Khoang {comp.Id} đang chứa bệnh nhân {comp.PatientId}, không thể đổi sang bệnh nhân {s.PatientId}."
+                            );
+
+                        if (comp.CategoryId != s.CategoryId)
+                            throw new InvalidOperationException(
+                                $"Khoang {comp.Id} đã được gán loại Category {comp.CategoryId}, không thể đổi sang Category {s.CategoryId}."
+                            );
+                    }
+                    else
+                    {
+                        // Khoang TRỐNG → được quyền đổi Category
+                        if (comp.CategoryId != s.CategoryId)
+                            await _repoRobotCom.AssignCategoryToCompartment(comp.Id, s.CategoryId);
+
+                        // Khoang TRỐNG → được quyền đổi Patient
+                        if (comp.PatientId != s.PatientId)
+                            await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
+                    }
 
                     var rx = await _repo.GetLatestPrescriptionForPatientAsync(s.PatientId)
                         ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc hợp lệ.");
 
+                    // Tạo stop
                     var stop = new TaskStop
                     {
                         TaskId = task.Id,
@@ -94,6 +123,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     };
                     stop = await _repo.CreateStopAsync(stop);
 
+                    // Tạo assignment
                     var desc = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
                     await _repo.CreateAssignmentAsync(new CompartmentAssignment
                     {
