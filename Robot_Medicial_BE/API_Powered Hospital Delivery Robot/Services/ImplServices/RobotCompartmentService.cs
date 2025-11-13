@@ -29,5 +29,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var updated = await _repository.UpdateStatusAsync(id, "locked");
             return updated != null ? _mapper.Map<RobotCompartmentResponseDto>(updated) : null;
         }
+
+        public async Task<IEnumerable<RobotCompartmentResponseDto>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId)
+        {
+            var compartments = await _repository.GetByCategoryAndRobotAsync(categoryId, robotId);
+            return _mapper.Map<IEnumerable<RobotCompartmentResponseDto>>(compartments);
+        }
     }
 }

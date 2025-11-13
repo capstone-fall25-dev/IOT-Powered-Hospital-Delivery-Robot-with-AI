@@ -182,10 +182,14 @@ if (app.Environment.IsDevelopment())
 app.UseSession();
 app.UseHttpsRedirection();
 app.UseCors("CORSPolicy");
+<<<<<<< HEAD
                    
+=======
+app.UseSession();
+>>>>>>> ad5b5ae0c5fecb39e860ea3089e2c98410ab10fe
 app.UseMiddleware<SingleDeviceMiddleware>();
-app.UseAuthentication();           
-app.UseAuthorization();            
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 // Map Hubs
