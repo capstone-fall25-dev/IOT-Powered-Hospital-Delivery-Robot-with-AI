@@ -22,6 +22,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     {
         public ulong Id { get; set; }
         public ulong MedicineId { get; set; }
+        public string? MedicineCode { get; set; }
         public string? MedicineName { get; set; }
         public int Quantity { get; set; }
         public string? Dosage { get; set; }

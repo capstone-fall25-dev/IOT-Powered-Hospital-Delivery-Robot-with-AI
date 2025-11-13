@@ -42,5 +42,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .Where(rc => rc.CategoryId == categoryId && rc.RobotId == robotId && rc.IsActive == true)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<RobotCompartment>> GetByRobotAsync(ulong robotId)
+        {
+            return await _context.RobotCompartments
+                .Include(rc => rc.Category)
+                .Include(rc => rc.Patient)
+                .Where(rc => rc.RobotId == robotId && rc.IsActive == true)
+                .ToListAsync();
+        }
     }
 }

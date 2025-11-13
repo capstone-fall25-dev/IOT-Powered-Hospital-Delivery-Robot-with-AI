@@ -2,15 +2,6 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
-    // Mở rộng TaskDto để include List<TaskStopDto> cho Create, hỗ trợ gán Prescription
-    public class CreateTaskDto : TaskDto  // Kế thừa từ TaskDto
-    {
-        public List<TaskStopDto> TaskStops { get; set; } = new List<TaskStopDto>();
-        public List<CompartmentAssignmentDto>? SuggestedCompartments { get; set; } = new List<CompartmentAssignmentDto>(); // Gợi ý dựa trên stops
-        public ulong? PrescriptionId { get; set; } // Mới: Gán đơn thuốc để auto-gán items
-        public DateTime? ScheduledStartAt { get; set; }
-    }
-
     // DTO cho assign prescription to task
     public class AssignPrescriptionDto
     {

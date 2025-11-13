@@ -36,12 +36,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public double? FreeThresh { get; set; } // 0-1
     }
 
-    // Output DTO (include robots sử dụng map)
     public class MapResponseDto
     {
         public ulong Id { get; set; }
         public string MapName { get; set; } = null!;
         public string? ImageName { get; set; }
+
         public int? Width { get; set; }
         public int? Height { get; set; }
         public double? Resolution { get; set; }
@@ -52,10 +52,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public bool? Negate { get; set; }
         public double? OccupiedThresh { get; set; }
         public double? FreeThresh { get; set; }
+
         public DateTime CreatedAt { get; set; }
+
         public byte[]? ImageData { get; set; }
-        public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>(); // Robots dùng map này
-        public IEnumerable<DestinationDto> Destinasion { get; set; } = new List<DestinationDto>();
+
+        public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>();
+        public List<DestinationResponseDto> Destinations { get; set; } = new();
     }
 
     public class MapUploadDto
