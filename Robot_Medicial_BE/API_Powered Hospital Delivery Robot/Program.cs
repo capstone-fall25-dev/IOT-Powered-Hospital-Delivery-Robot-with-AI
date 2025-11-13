@@ -86,11 +86,7 @@ builder.Services.AddAuthentication(options =>
 // CORS
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("CORSPolicy", 
-        builder => builder.AllowAnyHeader().
-        AllowAnyMethod().
-        AllowCredentials().
-        SetIsOriginAllowed((host) => true));
+    opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
 });
 
 // Repository
