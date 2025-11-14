@@ -10,5 +10,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public bool IsActive { get; set; }
         public ulong? PatientId { get; set; }
         public ulong? CategoryId { get; set; }
+        public string? CategoryName { get; set; }
     }
 }
