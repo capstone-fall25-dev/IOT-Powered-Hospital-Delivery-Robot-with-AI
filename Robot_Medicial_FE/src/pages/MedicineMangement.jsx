@@ -30,26 +30,6 @@ export default function MedicinesManagement() {
     const [medicineHistory, setMedicineHistory] = useState([]);
 
     useEffect(() => {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
-
-        const icons = document.createElement("link");
-        icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
-
-        const font = document.createElement("link");
-        font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
-
-        const js = document.createElement("script");
-        js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true;
-        document.body.appendChild(js);
-
         getAllMedicines()
             .then((medicines) => {
                 const mapped = medicines.map((m) => ({
@@ -58,24 +38,21 @@ export default function MedicinesManagement() {
                     name: m.name,
                     unit: m.unit,
                     stockQuantity: m.stockQuantity,
-                    expiryDate: m.expiryDate ? new Date(m.expiryDate).toLocaleDateString("vi-VN") : "-",
+                    expiryDate: m.expiryDate
+                        ? new Date(m.expiryDate).toLocaleDateString("vi-VN")
+                        : "-",
                     status: m.status === 0 ? "Sẵn sàng" : "Hết hạn",
                     description: m.description || "-",
                 }));
+
                 setRows(mapped);
             })
             .catch((err) => {
                 console.error("Lỗi khi lấy danh sách thuốc:", err);
                 alert("Không thể tải danh sách thuốc");
             });
-
-        return () => {
-            document.head.removeChild(css);
-            document.head.removeChild(icons);
-            document.head.removeChild(font);
-            document.body.removeChild(js);
-        };
     }, []);
+
 
     const filtered = useMemo(() => {
         return rows.filter(

@@ -32,26 +32,6 @@ export default function PatientsManagement() {
     const [medicineHistory, setMedicineHistory] = useState([]);
 
     useEffect(() => {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
-
-        const icons = document.createElement("link");
-        icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
-
-        const font = document.createElement("link");
-        font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
-
-        const js = document.createElement("script");
-        js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true;
-        document.body.appendChild(js);
-
         // Fetch patients
         getAllPatients()
             .then((patients) => {
@@ -59,28 +39,33 @@ export default function PatientsManagement() {
                     id: p.id,
                     patientCode: p.patientCode,
                     fullName: p.fullName,
-                    gender: p.gender === "male" ? "Nam" : p.gender === "female" ? "Nữ" : "Khác",
-                    dob: p.dob ? new Date(p.dob).toLocaleDateString("vi-VN") : "-",
+                    gender:
+                        p.gender === "male"
+                            ? "Nam"
+                            : p.gender === "female"
+                                ? "Nữ"
+                                : "Khác",
+                    dob: p.dob
+                        ? new Date(p.dob).toLocaleDateString("vi-VN")
+                        : "-",
                     department: p.department,
                     roomName: p.roomName || "-",
                     phone: p.phone || "-",
-                    status: p.status === "active" ? "Đang điều trị" : "Đã xuất viện",
+                    status:
+                        p.status === "active"
+                            ? "Đang điều trị"
+                            : "Đã xuất viện",
                     createdAt: new Date(p.createdAt).toLocaleString("vi-VN"),
                 }));
+
                 setRows(mapped);
             })
             .catch((err) => {
                 console.error("Lỗi khi lấy dữ liệu bệnh nhân:", err);
                 alert("Không thể tải danh sách bệnh nhân");
             });
-
-        return () => {
-            document.head.removeChild(css);
-            document.head.removeChild(icons);
-            document.head.removeChild(font);
-            document.body.removeChild(js);
-        };
     }, []);
+
 
     const filtered = useMemo(() => {
         return rows.filter(

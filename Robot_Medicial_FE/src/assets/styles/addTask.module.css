@@ -1,0 +1,59 @@
+:root {
+    --teal: #4CE1C6;
+    --ink: #0b1324;
+}
+
+.page {
+    font-family: Inter;
+    color: #0b1324;
+    background: #f6faf9;
+    min-height: 100vh;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    border-radius: 24px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+    padding: 1rem;
+}
+
+.btnTeal {
+    background: var(--teal);
+    font-weight: 700;
+    color: #052a2b;
+}
+
+.btnTeal:hover {
+    filter: brightness(1.05);
+}
+
+.title {
+    font-weight: 900;
+    color: #0b1432;
+    margin-bottom: 1rem;
+}
+
+.rxBox {
+    background: #f8f9fa;
+    border-left: 4px solid var(--teal);
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 6px;
+}
+
+.mb3 {
+    margin-bottom: 1rem;
+}
+
+.mb2 {
+    margin-bottom: 0.5rem;
+}
+
+.mt3 {
+    margin-top: 1rem;
+}
+
+.textEnd {
+    text-align: end;
+}

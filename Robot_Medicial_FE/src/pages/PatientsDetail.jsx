@@ -11,34 +11,13 @@ export default function PatientDetail() {
     const [reason, setReason] = useState("");
     const [dischargeLoading, setDischargeLoading] = useState(false);
 
-    // 🧩 Load dữ liệu bệnh nhân
     useEffect(() => {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
-
-        const icons = document.createElement("link");
-        icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
-
-        const font = document.createElement("link");
-        font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
-
         patientService
             .getPatientById(id)
             .then((data) => setForm(data))
             .catch(() => alert("Không thể tải thông tin bệnh nhân"));
-
-        return () => {
-            document.head.removeChild(css);
-            document.head.removeChild(icons);
-            document.head.removeChild(font);
-        };
     }, [id]);
+
 
     if (!form)
         return (
