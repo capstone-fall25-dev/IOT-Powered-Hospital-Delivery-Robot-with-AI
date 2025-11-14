@@ -12,15 +12,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public TasksController(ITaskService service) => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TaskResponseDto>>> GetAll([FromQuery] ulong? robotId, [FromQuery] string? status, [FromQuery] string? priority)
+        public async Task<ActionResult<IEnumerable<TaskListItemDto>>> GetAll(
+            [FromQuery] ulong? robotId,
+            [FromQuery] string? status,
+            [FromQuery] string? priority)
         {
-            var filter = new TaskFilterDto { RobotId = robotId, Status = status, Priority = priority };
+            var filter = new TaskFilterDto
+            {
+                RobotId = robotId,
+                Status = status,
+                Priority = priority
+            };
+
             var data = await _service.GetAllAsync(filter);
             return Ok(data);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<TaskResponseDto>> GetById(ulong id)
+        public async Task<ActionResult<TaskDetailDto>> GetById(ulong id)
         {
             var result = await _service.GetByIdAsync(id);
             return result == null ? NotFound("Không tìm thấy nhiệm vụ.") : Ok(result);

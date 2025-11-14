@@ -1,57 +1,74 @@
+/* src/assets/styles/robotDashboard.module.css */
+
 :root {
-    --teal: #4CE1C6;
-    --ink: #0f172a;
+  --teal: #4CE1C6;
+  --ink: #0f172a;
 }
 
 .page {
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    color: #0b1324;
-    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
-        radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
-        linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
-    min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: #0b1324;
+  background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+              radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+              linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+  min-height: 100vh;
 }
 
 .glass {
-    background: rgba(255, 255, 255, .92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, .85);
-    box-shadow: 0 16px 48px rgba(15, 23, 42, .08);
-    border-radius: 22px;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, .08);
+  border-radius: 22px;
 }
 
 .kpi {
-    border-radius: 18px;
+  border-radius: 18px;
 }
 
 .title {
-    font-weight: 900;
-    color: #0b1432;
+  font-weight: 900;
+  color: #0b1432;
 }
 
 .btnTeal {
-    background: var(--teal);
-    border: none;
-    color: #052a2b;
-    font-weight: 800;
+  background: var(--teal);
+  border: none;
+  color: #052a2b;
+  font-weight: 800;
 }
 
 .btnTeal:hover {
-    filter: brightness(1.05);
+  filter: brightness(1.05);
 }
 
 .badgeSoft {
-    background: rgba(20, 226, 193, .18);
-    color: #0b3e3c;
-    border: 1px solid rgba(20, 226, 193, .35);
+  background: rgba(20, 226, 193, .18);
+  color: #0b3e3c;
+  border: 1px solid rgba(20, 226, 193, .35);
 }
 
-.table thead th {
-    background: #e9f6f3;
+.table :global(thead th) {
+  background: #e9f6f3;
 }
 
-.task-table-wrapper {
-    max-height: calc(100vh - 400px);
-    overflow-y: auto;
+@keyframes blink {
+  50% { opacity: 0.25; }
+}
+
+.blink {
+  animation: blink 1s infinite;
+  font-weight: 700;
+}
+
+.blinkGreen {
+  color: #16a34a !important; /* xanh lá */
+}
+
+.blinkRed {
+  color: #dc2626 !important; /* đỏ */
+}
+
+.blinkYellow {
+  color: #f59e0b !important; /* vàng */
 }
