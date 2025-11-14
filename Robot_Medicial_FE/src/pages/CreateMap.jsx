@@ -14,31 +14,6 @@ export default function RobotLiveConsole() {
   ]);
   const [mapName, setMapName] = useState("");
 
-  // ==========================================================
-  // ⚙️ Load Bootstrap + Leaflet
-  // ==========================================================
-  useEffect(() => {
-    const css = document.createElement("link");
-    css.rel = "stylesheet";
-    css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-    document.head.appendChild(css);
-
-    const leafletCss = document.createElement("link");
-    leafletCss.rel = "stylesheet";
-    leafletCss.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(leafletCss);
-
-    const leafletJs = document.createElement("script");
-    leafletJs.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    leafletJs.defer = true;
-    document.body.appendChild(leafletJs);
-
-    return () => {
-      document.head.removeChild(css);
-      document.head.removeChild(leafletCss);
-      document.body.removeChild(leafletJs);
-    };
-  }, []);
 
   // ==========================================================
   // 🔗 Kết nối Hub: RobotCamera + RobotPosition

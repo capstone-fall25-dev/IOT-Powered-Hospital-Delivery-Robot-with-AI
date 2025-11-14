@@ -2,21 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPatient } from "@/services/patientService";
 import { getAllRooms } from "@/services/roomService";
+import styles from "@/assets/styles/createPatient.module.css";
 
 export default function CreatePatient() {
     const navigate = useNavigate();
-
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .form-label{font-weight:600;color:#0f172a}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-    `}</style>
-    );
 
     const [form, setForm] = useState({
         patientCode: "",
@@ -35,35 +24,6 @@ export default function CreatePatient() {
     const [rooms, setRooms] = useState([]);
     const [error, setError] = useState("");
 
-    // Load CSS
-    useEffect(() => {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
-
-        const icons = document.createElement("link");
-        icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
-
-        const font = document.createElement("link");
-        font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
-
-        const js = document.createElement("script");
-        js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true;
-        document.body.appendChild(js);
-
-        return () => {
-            document.head.removeChild(css);
-            document.head.removeChild(icons);
-            document.head.removeChild(font);
-            document.body.removeChild(js);
-        };
-    }, []);
 
     // Gọi API lấy danh sách phòng
     useEffect(() => {
@@ -127,12 +87,11 @@ export default function CreatePatient() {
     };
 
     return (
-        <div className="page">
-            {styles}
+        <div className={styles.page}>
             <div className="container py-5">
                 <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
                     <div className="d-flex align-items-center gap-2">
-                        <span className="chip"><i className="bi bi-person-plus-fill me-1"></i></span>
+                        <span className={styles.chip}><i className="bi bi-person-plus-fill me-1"></i></span>
                         <h4 className="mb-0 fw-bold">Thêm mới bệnh nhân</h4>
                     </div>
                     <button className="btn btn-outline-secondary rounded-pill" onClick={() => navigate("/patients")}>
@@ -140,7 +99,7 @@ export default function CreatePatient() {
                     </button>
                 </div>
 
-                <div className="glass p-4 p-md-5">
+                <div className={styles.glass + " p-4 p-md-5"}>
                     {error && <div className="alert alert-danger text-center">{error}</div>}
 
                     <form onSubmit={handleSubmit} className="row g-3">

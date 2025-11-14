@@ -1,0 +1,289 @@
+/* src/assets/styles/landing.module.css */
+
+:root {
+  --teal: #4CE1C6;
+  --teal-dark: #16b2a0;
+  --ink: #0f172a;
+}
+
+/* GLASS EFFECT */
+.glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  border-radius: 4px;
+}
+
+.shadowSoft {
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.06);
+}
+
+/* NAVBAR */
+.navbarBrand {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.appBadge {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0ea5a5, #14e2c1);
+  color: #fff;
+  font-weight: 800;
+}
+
+/* NAVBAR SCROLL EFFECT */
+.navbar {
+  transition: all 0.3s ease-in-out;
+}
+
+.scrolled {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  margin: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.scrolled :global(.navbar-brand),
+.scrolled :global(.nav-link) {
+  transition: all 0.2s ease;
+}
+
+/* ACTIVE NAV LINK */
+:global(.nav-link) {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+:global(.nav-link.active) {
+  color: var(--teal) !important;
+  font-weight: 600;
+}
+
+:global(.nav-link.active)::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--teal);
+  border-radius: 1px;
+}
+
+.navbarToggler {
+  background-color: rgba(20, 226, 193, 0.2);
+  border-radius: 10px;
+}
+
+.navbarTogglerIcon {
+  filter: invert(1);
+}
+
+/* USER AVATAR & LOGIN */
+.userAvatar {
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  border: 2px solid #14e2c1;
+}
+
+.linkLogin {
+  background: linear-gradient(120deg, #14e2c1, #0ea5a5);
+  border: none;
+  color: #052a2b;
+  font-weight: 700;
+}
+
+.linkLogin:hover {
+  filter: brightness(1.05);
+}
+
+/* HERO */
+.hero h1 {
+  font-weight: 900;
+  font-size: clamp(2rem, 3.5vw + 1rem, 4rem);
+  line-height: 1.05;
+  color: #0b1432;
+}
+
+.hero :global(.accent) {
+  color: var(--teal);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.hero :global(.sub) {
+  color: #1f2a44;
+  opacity: 0.9;
+}
+
+.ctaPrimary {
+  background: var(--teal);
+  border: none;
+  color: #052a2b;
+  font-weight: 700;
+}
+
+.ctaPrimary:hover {
+  background: #39d7bf;
+  color: #052a2b;
+}
+
+.ctaOutline {
+  border-color: #bdece4;
+  color: #0d3b3a;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(20, 226, 193, 0.15);
+  color: #0d3b3a;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* FEATURES */
+.vehicleCard {
+  min-height: 280px;
+}
+
+.vehicleCard h3 {
+  font-weight: 800;
+}
+
+.vehicleCard img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.rounded2xl {
+  border-radius: 8px;
+}
+
+/* HEADINGS */
+:global(.section-heading) {
+  font-weight: 800;
+  color: #0b1432;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+:global(.section-subheading) {
+  font-weight: 600;
+  color: #1f2a44;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+:global(.card-heading) {
+  font-weight: 800;
+  color: #0b1432;
+  margin-bottom: 0.5rem;
+}
+
+:global(.contact-heading) {
+  font-weight: 700;
+  color: #0b1432;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+/* TEAM MEMBERS */
+:global(.member) :global(.avatar) {
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+:global(.member) h6 {
+  font-weight: 700;
+}
+
+:global(.member) .glass {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+/* CONTACT */
+:global(.contact-card) {
+  border-radius: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2rem !important;
+}
+
+/* FOOTER */
+footer {
+  color: #1f2a44;
+}
+
+.muted {
+  opacity: 0.85;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+  .hero {
+    text-align: center;
+  }
+  
+  .hero :global(.col-lg-6:first-child) {
+    order: 2;
+  }
+  
+  .hero :global(.col-lg-6:last-child) {
+    order: 1;
+  }
+  
+  .scrolled {
+    max-width: 100%;
+    border-radius: 0;
+  }
+  
+  :global(.contact-heading) {
+    text-align: center;
+  }
+  
+  :global(.nav-link.active)::after {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+  
+  .hero :global(.sub) {
+    font-size: 1rem;
+  }
+  
+  :global(.member) :global(.avatar) {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .glass {
+    padding: 1.25rem;
+  }
+  
+  .vehicleCard img {
+    height: auto;
+  }
+  
+  :global(.contact-card) {
+    padding: 1.5rem !important;
+  }
+}

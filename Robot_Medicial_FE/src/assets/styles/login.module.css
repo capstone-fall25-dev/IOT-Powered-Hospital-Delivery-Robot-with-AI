@@ -1,0 +1,71 @@
+:root {
+    --teal: #4CE1C6;
+    --ink: #0f172a;
+}
+
+.glass {
+    background: rgba(255, 255, 255, .80);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, .75);
+    box-shadow: 0 16px 48px rgba(15, 23, 42, .10);
+}
+
+.rounded2xl {
+    border-radius: 22px;
+}
+
+.btnTeal {
+    background: var(--teal);
+    border: none;
+    color: #052a2b;
+    font-weight: 800;
+}
+
+.btnTeal:hover {
+    filter: brightness(1.05);
+}
+
+.topAccent {
+    height: 4px;
+    background: linear-gradient(90deg, #0ea5a5, #4CE1C6);
+    border-radius: 22px 22px 0 0;
+}
+
+.fieldIcon {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #677483;
+    pointer-events: none;
+    margin-top: 18px;
+
+}
+
+.brandBadge {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    color: white;
+    font-weight: 900;
+    background: linear-gradient(135deg, #0ea5a5, #14e2c1);
+}
+
+.muted {
+    color: #3f556e;
+    opacity: .9;
+}
+
+.eyeIcon {
+    position: absolute;
+    right: 0.9rem;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    color: #555;
+}

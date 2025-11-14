@@ -1,53 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getUserById } from "@/services/userService";
+import styles from '@/assets/styles/doctorEdit.module.css'; // import CSS module
 
 export default function DoctorEdit() {
     const { userId } = useParams();
     const [user, setUser] = useState(null);
     const [showPwd, setShowPwd] = useState(false);
-
-    // Load Bootstrap/Icons/Fonts
-    useEffect(() => {
-        const css = document.createElement("link");
-        css.rel = "stylesheet";
-        css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-        document.head.appendChild(css);
-
-        const icons = document.createElement("link");
-        icons.rel = "stylesheet";
-        icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-        document.head.appendChild(icons);
-
-        const font = document.createElement("link");
-        font.rel = "stylesheet";
-        font.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap";
-        document.head.appendChild(font);
-
-        const js = document.createElement("script");
-        js.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js";
-        js.defer = true;
-        document.body.appendChild(js);
-
-        return () => {
-            document.head.removeChild(css);
-            document.head.removeChild(icons);
-            document.head.removeChild(font);
-            document.body.removeChild(js);
-        };
-    }, []);
-
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 20%,#e9f3f1 60%,#e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:20px}
-      .rounded-2xl{border-radius:22px}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .section-title{font-weight:800;color:#0b1432}
-    `}</style>
-    );
 
     // Load user từ API
     useEffect(() => {
@@ -103,15 +62,14 @@ export default function DoctorEdit() {
     if (!user) return <div>Đang tải dữ liệu...</div>;
 
     return (
-        <div className="page">
-            {styles}
+        <div className={styles.page}>
 
             <div className="container-lg py-3 py-md-4">
                 <a href="/doctor" className="btn btn-outline-secondary btn-sm rounded-pill mb-3">
                     <i className="bi bi-arrow-left me-1"></i> Quay lại danh sách
                 </a>
                 <div className="d-flex align-items-center justify-content-between mb-2">
-                    <h4 className="section-title mb-0">Cập nhật thông tin người dùng</h4>
+                    <h4 className={styles.sectionTitle + " mb-0"}>Cập nhật thông tin người dùng</h4>
                     <span className={`badge ${user.isActive ? 'text-bg-success' : 'text-bg-secondary'}`}>
                         {user.isActive ? 'Active' : 'Inactive'}
                     </span>
@@ -120,7 +78,7 @@ export default function DoctorEdit() {
 
                 <div className="row g-3 g-lg-4">
                     <div className="col-lg-8">
-                        <div className="glass p-3 p-md-4 rounded-2xl mb-3">
+                        <div className={`${styles.glass} p-3 p-md-4 ${styles.rounded2xl} mb-3`}>
                             <div className="row g-3">
                                 <div className="col-md-12">
                                     <label className="form-label">Tên đầy đủ</label>
@@ -152,14 +110,14 @@ export default function DoctorEdit() {
                                 </div>
 
                                 <div className="col-12 d-flex justify-content-end gap-2">
-                                    <button className="btn btn-teal rounded-pill" onClick={save}><i className="bi bi-save2 me-1"></i> Lưu thay đổi</button>
+                                    <button className={`${styles.btnTeal} rounded-pill`} onClick={save}><i className="bi bi-save2 me-1"></i> Lưu thay đổi</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="col-lg-4">
-                        <div className="glass p-3 p-md-4 rounded-2xl mb-3">
+                        <div className={`${styles.glass} p-3 p-md-4 ${styles.rounded2xl} mb-3`}>
                             <div className="form-check form-switch">
                                 <input className="form-check-input" id="active" type="checkbox" name="isActive" checked={user.isActive} onChange={handleChange} />
                                 <label htmlFor="active" className="form-check-label">Kích hoạt tài khoản</label>
