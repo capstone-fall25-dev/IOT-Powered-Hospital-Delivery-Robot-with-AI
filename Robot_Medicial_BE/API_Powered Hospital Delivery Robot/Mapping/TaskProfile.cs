@@ -60,7 +60,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                     src.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
                     {
                         Id = i.Id,
-                        MedicineId = i.MedicineId,
                         MedicineName = i.Medicine.Name,
                         Quantity = i.Quantity,
                         Dosage = i.Dosage,

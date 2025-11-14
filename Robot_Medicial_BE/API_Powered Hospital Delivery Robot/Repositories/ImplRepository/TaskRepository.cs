@@ -9,21 +9,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
     public class TaskRepository : ITaskRepository
     {
         private readonly RobotManagerContext _context;
-        public TaskRepository(RobotManagerContext context) => _context = context;
 
-        public async Task<IEnumerable<Models.Entities.Task>> GetAllAsync(TaskFilterDto? filter)
+        public TaskRepository(RobotManagerContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<Models.Entities.Task>> GetListAsync(TaskFilterDto? filter)
         {
             var q = _context.Tasks
                 .Include(t => t.Robot)
                 .Include(t => t.AssignedByNavigation)
                 .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Patient)
+                .Include(t => t.TaskStops)
                     .ThenInclude(s => s.CompartmentAssignments)
-                        .ThenInclude(a => a.Compartment)
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Destination)
                 .AsQueryable();
 
-            if (filter?.RobotId != null) q = q.Where(t => t.RobotId == filter.RobotId);
-            if (!string.IsNullOrEmpty(filter?.Status)) q = q.Where(t => t.Status == filter.Status);
-            if (!string.IsNullOrEmpty(filter?.Priority)) q = q.Where(t => t.Priority == filter.Priority);
+            if (filter?.RobotId != null)
+                q = q.Where(t => t.RobotId == filter.RobotId);
+
+            if (!string.IsNullOrEmpty(filter?.Status))
+                q = q.Where(t => t.Status == filter.Status);
+
+            if (!string.IsNullOrEmpty(filter?.Priority))
+                q = q.Where(t => t.Priority == filter.Priority);
 
             return await q.OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
@@ -31,15 +43,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         public async Task<Models.Entities.Task?> GetByIdAsync(ulong id)
         {
             return await _context.Tasks
+
+                // Robot + Map + Người giao
                 .Include(t => t.Robot)
-                .Include(t => t.AssignedByNavigation) 
+                .Include(t => t.Map)
+                .Include(t => t.AssignedByNavigation)
+
+                // Stops
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Destination)
+
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Patient)
+
+                // Assignment + Compartment
                 .Include(t => t.TaskStops)
                     .ThenInclude(s => s.CompartmentAssignments)
                         .ThenInclude(a => a.Compartment)
+                            .ThenInclude(c => c.Category)
+
+                // Prescription FULL
                 .Include(t => t.TaskStops)
                     .ThenInclude(s => s.Patient)
-                .Include(t => t.TaskStops)
-                    .ThenInclude(s => s.Destination)
+                        .ThenInclude(p => p.Prescriptions!)
+                            .ThenInclude(rx => rx.PrescriptionItems!)
+                                .ThenInclude(i => i.Medicine)
+
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
@@ -94,7 +123,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             => _context.Maps.FirstOrDefaultAsync(m => m.Id == id);
 
         public Task<RobotCompartment?> GetCompartmentAsync(ulong id)
-            => _context.RobotCompartments.FirstOrDefaultAsync(c => c.Id == id);
+               => _context.RobotCompartments
+                   .Include(c => c.Category)
+                   .FirstOrDefaultAsync(c => c.Id == id);
 
         public async Task<bool> IsCompartmentBusyAsync(ulong id)
         {

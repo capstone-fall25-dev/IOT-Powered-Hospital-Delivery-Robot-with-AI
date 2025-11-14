@@ -15,11 +15,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IPatientRepository _repoPatient;
         private readonly IHubContext<TaskHub> _taskHub;
 
-        public TaskService(ITaskRepository repo,
-                   IRobotRepository repoRobot,
-                   IRobotCompartmentRepository repoRobotCom,
-                   IPatientRepository repoPatient,
-                   IHubContext<TaskHub> taskHub)
+        public TaskService(
+            ITaskRepository repo,
+            IRobotRepository repoRobot,
+            IRobotCompartmentRepository repoRobotCom,
+            IPatientRepository repoPatient,
+            IHubContext<TaskHub> taskHub)
         {
             _repo = repo;
             _repoRobot = repoRobot;
@@ -28,16 +29,40 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _taskHub = taskHub;
         }
 
-        public async Task<IEnumerable<TaskResponseDto>> GetAllAsync(TaskFilterDto? filter)
+        public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter)
         {
-            var tasks = await _repo.GetAllAsync(filter);
-            return tasks.Select(MapToResponse);
+            var tasks = await _repo.GetListAsync(filter);
+
+            return tasks.Select(t => new TaskListItemDto
+            {
+                Id = t.Id,
+                RobotName = t.Robot?.Name ?? "",
+                AssignedBy = t.AssignedByNavigation?.FullName ?? "",
+                Status = t.Status,
+                Priority = Enum.TryParse<TaskPriority>(t.Priority, out var p) ? p : TaskPriority.Normal,
+                CreatedAt = t.CreatedAt,
+                ScheduledStartAt = t.ScheduledStartAt,
+
+                TotalStops = t.TaskStops.Count,
+                FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
+
+                Patients = t.TaskStops
+                    .GroupBy(s => s.PatientId)
+                    .Select(g => new PatientStopSummaryDto
+                    {
+                        PatientName = g.First().Patient?.FullName ?? "",
+                        MedicineSummary = string.Join("; ", g
+                            .SelectMany(s => s.CompartmentAssignments)
+                            .Select(a => a.ItemDesc)
+                        )
+                    }).ToList()
+            });
         }
 
-        public async Task<TaskResponseDto?> GetByIdAsync(ulong id)
+        public async Task<TaskDetailDto?> GetByIdAsync(ulong id)
         {
-            var t = await _repo.GetByIdAsync(id);
-            return t == null ? null : MapToResponse(t);
+            var task = await _repo.GetByIdAsync(id);
+            return task == null ? null : MapToDetail(task);
         }
 
         public async Task<TaskResponseDto> CreateAsync(CreateTaskDto dto, ulong currentUserId)
@@ -262,7 +287,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
                                 {
                                     Id = i.Id,
-                                    MedicineId = i.MedicineId,
                                     MedicineCode = i.Medicine.MedicineCode,
                                     MedicineName = i.Medicine.Name,
                                     Quantity = i.Quantity,
@@ -273,6 +297,75 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             : null
                     };
                 }).ToList()
+            };
+        }
+
+        private TaskDetailDto MapToDetail(Models.Entities.Task task)
+        {
+            return new TaskDetailDto
+            {
+                Id = task.Id,
+                RobotName = task.Robot?.Name ?? "",
+                Status = task.Status,
+                Priority = Enum.TryParse<TaskPriority>(task.Priority, out var p) ? p : TaskPriority.Normal,
+                CreatedAt = task.CreatedAt,
+                ScheduledStartAt = task.ScheduledStartAt,
+                AssignedByEmail = task.AssignedByNavigation?.Email,
+                AssignedByFullName = task.AssignedByNavigation?.FullName,
+                MapName = task.Map?.MapName,
+
+                Stops = task.TaskStops
+                    .OrderBy(s => s.SeqNo)
+                    .Select(s =>
+                    {
+                        var assignment = s.CompartmentAssignments.FirstOrDefault();
+
+                        // Lấy đơn thuốc newest của bệnh nhân (đã include trong repository)
+                        var rx = s.Patient?.Prescriptions?
+                            .OrderByDescending(p => p.CreatedAt)
+                            .FirstOrDefault();
+
+                        return new TaskDetailStopDto
+                        {
+                            SeqNo = s.SeqNo,
+
+                            // DESTINATION
+                            DestinationName = s.Destination?.Name ?? "",
+
+                            // PATIENT
+                            PatientName = s.Patient?.FullName ?? "",
+                            PatientCode = s.Patient?.PatientCode ?? "",
+                            RoomNumber = s.Patient?.RoomNumber,
+                            Department = s.Patient?.Department,
+
+                            // COMPARTMENT
+                            CompartmentCode = assignment?.Compartment?.CompartmentCode ?? "",
+                            CompartmentStatus = assignment?.Compartment?.Status ?? "",
+                            CompartmentCategory = assignment?.Compartment?.Category?.Name,
+
+                            // ASSIGNMENT
+                            ItemDesc = assignment?.ItemDesc ?? "",
+                            AssignmentStatus = assignment?.Status ?? "",
+
+                            // PRESCRIPTION (FULL)
+                            Prescription = rx == null ? null : new PrescriptionFullDto
+                            {
+                                PrescriptionCode = rx.PrescriptionCode,
+                                CreatedAt = rx.CreatedAt ?? DateTime.MinValue,     // tránh lỗi nullable
+                                Status = rx.Status,
+
+                                Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
+                                {
+                                    Id = i.Id,
+                                    MedicineName = i.Medicine.Name,
+                                    MedicineCode = i.Medicine.MedicineCode,
+                                    Quantity = i.Quantity,
+                                    Dosage = i.Dosage,
+                                    Instructions = i.Instructions
+                                }).ToList()
+                            }
+                        };
+                    }).ToList()
             };
         }
     }
