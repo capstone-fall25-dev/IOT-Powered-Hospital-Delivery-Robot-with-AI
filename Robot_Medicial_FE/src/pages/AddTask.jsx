@@ -1,4 +1,3 @@
-// ===================== IMPORTS =====================
 import { useEffect, useState } from "react";
 import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
@@ -67,7 +66,6 @@ export default function AddTask() {
         load();
     }, []);
 
-    // ===================== MAP SELECT =====================
     async function handleSelectMap(mapId) {
         setForm((f) => ({ ...f, mapId }));
 
@@ -85,7 +83,6 @@ export default function AddTask() {
         );
     }
 
-    // ===================== ROBOT SELECT =====================
     async function handleSelectRobot(robotId) {
         setForm((f) => ({
             ...f,
@@ -103,7 +100,6 @@ export default function AddTask() {
         setBaseCompartments(data);
     }
 
-    // ===================== STOP HANDLERS =====================
     function addStop() {
         const nextSeq = form.taskStops.length + 1;
         setForm((f) => ({
@@ -125,10 +121,7 @@ export default function AddTask() {
     }
 
     function removeStop(idx) {
-        setForm((f) => ({
-            ...f,
-            taskStops: f.taskStops.filter((_, i) => i !== idx),
-        }));
+        setForm(f => ({ ...f, taskStops: f.taskStops.filter((_, i) => i !== idx) }));
     }
 
     async function updateStop(idx, key, value) {
@@ -153,30 +146,17 @@ export default function AddTask() {
         setForm((f) => ({ ...f, taskStops: clone }));
     }
 
-    // ===================== PRESCRIPTION PREVIEW =====================
     async function handleSelectPatient(patientId, idx) {
         updateStop(idx, "patientId", patientId);
-
-        if (!patientId) {
-            updateStop(idx, "prescriptionPreview", null);
-            return;
-        }
+        if (!patientId) return updateStop(idx, "prescriptionPreview", null);
 
         const list = await getAllPrescriptions(patientId, "approved");
+        if (list.length === 0) return updateStop(idx, "prescriptionPreview", null);
 
-        if (list.length === 0) {
-            updateStop(idx, "prescriptionPreview", null);
-            return;
-        }
-
-        const latest = list.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        )[0];
-
+        const latest = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         updateStop(idx, "prescriptionPreview", latest);
     }
 
-    // ===================== SUBMIT =====================
     async function startMission() {
         try {
             const payload = {
@@ -184,7 +164,7 @@ export default function AddTask() {
                 robotId: Number(form.robotId),
                 priority: Number(form.priority),
                 scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
-                stops: form.taskStops.map((s) => ({
+                stops: form.taskStops.map(s => ({
                     seqNo: s.seqNo,
                     destinationId: Number(s.destinationId),
                     patientId: Number(s.patientId),
@@ -283,11 +263,7 @@ export default function AddTask() {
                     </div>
 
                     <div className="text-end mb-3">
-                        <button
-                            className="btn btn-outline-secondary btn-sm"
-                            onClick={addStop}
-                            disabled={!canAddStop}
-                        >
+                        <button className="btn btn-outline-secondary btn-sm" onClick={addStop} disabled={!canAddStop}>
                             + Thêm điểm dừng
                         </button>
                     </div>
@@ -321,11 +297,7 @@ export default function AddTask() {
                                         }
                                     >
                                         <option value="">— chọn điểm đến —</option>
-                                        {destinations.map((d) => (
-                                            <option key={d.id} value={d.id}>
-                                                {d.name}
-                                            </option>
-                                        ))}
+                                        {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
                                 </div>
 
@@ -340,11 +312,7 @@ export default function AddTask() {
                                         }
                                     >
                                         <option value="">— chọn bệnh nhân —</option>
-                                        {patients.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.fullName}
-                                            </option>
-                                        ))}
+                                        {patients.map(p => <option key={p.id} value={p.id}>{p.fullName}</option>)}
                                     </select>
                                 </div>
 
@@ -446,9 +414,7 @@ export default function AddTask() {
                         Bắt đầu nhiệm vụ
                     </button>
 
-                    {message && (
-                        <div className="mt-3 text-center fw-bold">{message}</div>
-                    )}
+                    {message && <div className="mt-3 text-center fw-bold">{message}</div>}
                 </div>
             </div>
         </div>
