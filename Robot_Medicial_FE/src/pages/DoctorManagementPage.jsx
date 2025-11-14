@@ -10,9 +10,9 @@ export default function DoctorManagement() {
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
     const [specFilter, setSpecFilter] = useState("all");
-    const [sort, setSort] = useState({ key: "name", dir: "asc" });
     const [toDelete, setToDelete] = useState(null);
 
+    // Load users
     useEffect(() => {
         getAllUsers()
             .then(users => {
@@ -42,10 +42,34 @@ export default function DoctorManagement() {
         window.bootstrap?.Modal.getOrCreateInstance("#confirm").show();
     }
 
+    // Filtered rows
+    const filteredRows = useMemo(() => {
+        return rows.filter(r => {
+            // search filter
+            const matchesQ = q
+                ? r.fullName.toLowerCase().includes(q.toLowerCase()) ||
+                r.email.toLowerCase().includes(q.toLowerCase())
+                : true;
+
+            // status filter
+            const matchesStatus =
+                status === "all" ? true :
+                    status === "active" ? r.isActive :
+                        !r.isActive;
+
+            // spec/role filter
+            const matchesSpec =
+                specFilter === "all" ? true : r.role === specFilter;
+
+            return matchesQ && matchesStatus && matchesSpec;
+        });
+    }, [rows, q, status, specFilter]);
+
     return (
         <div className={styles.page}>
             <div className="container-fluid py-4">
                 <div className="container-lg">
+                    {/* HEADER */}
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
                             <span className={styles.chip}><i className="bi bi-person-lines-fill me-1"></i></span>
@@ -58,13 +82,14 @@ export default function DoctorManagement() {
                         </div>
                     </div>
 
+                    {/* FILTER TOOLBAR */}
                     <div className={`${styles.glass} ${styles.rounded2xl} p-3 p-md-4 mb-3 toolbar`}>
                         <div className="row g-2 align-items-end">
                             <div className="col-md-4">
                                 <label className="form-label">Tìm kiếm</label>
                                 <input
                                     className="form-control"
-                                    placeholder="Tên, email, bệnh viện..."
+                                    placeholder="Tên, email..."
                                     value={q}
                                     onChange={e => setQ(e.target.value)}
                                 />
@@ -77,8 +102,17 @@ export default function DoctorManagement() {
                                     <option value="suspended">Tạm dừng</option>
                                 </select>
                             </div>
+                            <div className="col-md-3">
+                                <label className="form-label">Vai trò</label>
+                                <select className="form-select" value={specFilter} onChange={e => setSpecFilter(e.target.value)}>
+                                    <option value="all">Tất cả</option>
+                                    <option value="doctor">Doctor</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="nurse">Nurse</option>
+                                </select>
+                            </div>
                             <div className="col-md-2 text-md-end">
-                                <label className="form-label d-block"> </label>
+                                <label className="form-label d-block">&nbsp;</label>
                                 <button
                                     className="btn btn-light rounded-pill w-100"
                                     onClick={() => { setQ(''); setStatus('all'); setSpecFilter('all'); }}
@@ -89,6 +123,7 @@ export default function DoctorManagement() {
                         </div>
                     </div>
 
+                    {/* TABLE */}
                     <div className={`${styles.glass} ${styles.rounded2xl} p-2 p-md-3`}>
                         <div className="table-responsive">
                             <table className="table align-middle">
@@ -105,7 +140,7 @@ export default function DoctorManagement() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r, idx) => (
+                                    {filteredRows.map((r, idx) => (
                                         <tr key={r.id}>
                                             <td>{idx + 1}</td>
                                             <td>{r.fullName}</td>
@@ -140,7 +175,7 @@ export default function DoctorManagement() {
                                             </td>
                                         </tr>
                                     ))}
-                                    {rows.length === 0 && (
+                                    {filteredRows.length === 0 && (
                                         <tr>
                                             <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu</td>
                                         </tr>
@@ -149,6 +184,7 @@ export default function DoctorManagement() {
                             </table>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

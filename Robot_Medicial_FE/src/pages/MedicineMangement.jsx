@@ -1,25 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllMedicines } from "@/services/medicineService";
+import styles from '@/assets/styles/medicinesManagement.module.css';
 
 export default function MedicinesManagement() {
     const navigate = useNavigate();
-
-    const styles = (
-        <style>{`
-            :root{--teal:#4CE1C6;--ink:#0f172a}
-            .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-            .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
-            .rounded-2xl{border-radius:24px}
-            .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-            .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-            .btn-teal:hover{filter:brightness(1.05)}
-            .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
-            .table thead th{white-space:nowrap}
-            .table tbody td{vertical-align:middle}
-            .toolbar .form-control, .toolbar .form-select{border-radius:12px}
-        `}</style>
-    );
 
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState("");
@@ -38,13 +23,10 @@ export default function MedicinesManagement() {
                     name: m.name,
                     unit: m.unit,
                     stockQuantity: m.stockQuantity,
-                    expiryDate: m.expiryDate
-                        ? new Date(m.expiryDate).toLocaleDateString("vi-VN")
-                        : "-",
+                    expiryDate: m.expiryDate ? new Date(m.expiryDate).toLocaleDateString("vi-VN") : "-",
                     status: m.status === 0 ? "Sẵn sàng" : "Hết hạn",
                     description: m.description || "-",
                 }));
-
                 setRows(mapped);
             })
             .catch((err) => {
@@ -52,7 +34,6 @@ export default function MedicinesManagement() {
                 alert("Không thể tải danh sách thuốc");
             });
     }, []);
-
 
     const filtered = useMemo(() => {
         return rows.filter(
@@ -62,28 +43,25 @@ export default function MedicinesManagement() {
         );
     }, [rows, q, status]);
 
-
-
     return (
-        <div className="page">
-            {styles}
+        <div className={styles.page}>
             <div className="container-fluid py-4">
                 <div className="container-lg">
                     {/* Header */}
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
-                            <span className="chip"><i className="bi bi-box-seam me-1"></i></span>
+                            <span className={styles.chip}><i className="bi bi-box-seam me-1"></i></span>
                             <h4 className="mb-0 fw-bold">Kho thuốc</h4>
                         </div>
                         <div>
-                            <button className="btn btn-teal rounded-pill" onClick={() => navigate("/medicines/add")}>
+                            <button className={`btn ${styles.btnTeal} rounded-pill`} onClick={() => navigate("/medicines/add")}>
                                 <i className="bi bi-plus-lg me-1"></i> Thêm mới
                             </button>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="glass rounded-2xl p-3 p-md-4 mb-3 toolbar">
+                    <div className={`glass ${styles.glass} ${styles.rounded2xl} p-3 p-md-4 mb-3 toolbar`}>
                         <div className="row g-2 align-items-end">
                             <div className="col-md-4">
                                 <label className="form-label">Tìm kiếm</label>
@@ -118,7 +96,7 @@ export default function MedicinesManagement() {
                     </div>
 
                     {/* Table */}
-                    <div className="glass rounded-2xl p-2 p-md-3">
+                    <div className={`glass ${styles.glass} ${styles.rounded2xl} p-2 p-md-3`}>
                         <div className="table-responsive">
                             <table className="table align-middle">
                                 <thead>
@@ -144,20 +122,18 @@ export default function MedicinesManagement() {
                                             <td>{r.stockQuantity}</td>
                                             <td>{r.expiryDate}</td>
                                             <td>
-                                                <span
-                                                    className={`badge ${r.status === "Sẵn sàng" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger"}`}
-                                                >
+                                                <span className={`badge ${r.status === "Sẵn sàng" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger"}`}>
                                                     {r.status}
                                                 </span>
                                             </td>
                                             <td>{r.description}</td>
                                             <td className="text-end">
-                                                <button className="btn btn-outline-primary btn-sm" onClick={() => (navigate(`/medicines/edit/${r.id}`))}>
+                                                <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/medicines/edit/${r.id}`)}>
                                                     Sửa
                                                 </button>
                                             </td>
                                             <td className="text-end">
-                                                <button className="btn btn-outline-danger btn-sm" onClick={() => (navigate(`/medicines/edit/${r.id}`))}>
+                                                <button className="btn btn-outline-danger btn-sm" onClick={() => navigate(`/medicines/edit/${r.id}`)}>
                                                     Khóa
                                                 </button>
                                             </td>
@@ -175,7 +151,7 @@ export default function MedicinesManagement() {
                         </div>
                     </div>
 
-                    {/* --- Modal Lịch sử thuốc --- */}
+                    {/* Modal */}
                     {showModal && (
                         <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                             <div className="modal-dialog modal-lg modal-dialog-centered">

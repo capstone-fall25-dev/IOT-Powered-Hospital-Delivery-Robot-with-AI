@@ -1,63 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllPatients } from "@/services/patientService";
-import { getMedicineHistory } from "@/services/patientService"; // thêm import API
+import { getAllPatients, getMedicineHistory } from "@/services/patientService";
+import styles from '@/assets/styles/patientsManagement.module.css';
 
 export default function PatientsManagement() {
     const navigate = useNavigate();
-
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
-      .rounded-2xl{border-radius:24px}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
-      .table thead th{white-space:nowrap}
-      .table tbody td{vertical-align:middle}
-      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
-    `}</style>
-    );
 
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
 
-    // Modal state
     const [showModal, setShowModal] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [medicineHistory, setMedicineHistory] = useState([]);
 
     useEffect(() => {
-        // Fetch patients
         getAllPatients()
             .then((patients) => {
                 const mapped = patients.map((p) => ({
                     id: p.id,
                     patientCode: p.patientCode,
                     fullName: p.fullName,
-                    gender:
-                        p.gender === "male"
-                            ? "Nam"
-                            : p.gender === "female"
-                                ? "Nữ"
-                                : "Khác",
-                    dob: p.dob
-                        ? new Date(p.dob).toLocaleDateString("vi-VN")
-                        : "-",
+                    gender: p.gender === "male" ? "Nam" : p.gender === "female" ? "Nữ" : "Khác",
+                    dob: p.dob ? new Date(p.dob).toLocaleDateString("vi-VN") : "-",
                     department: p.department,
                     roomName: p.roomName || "-",
                     phone: p.phone || "-",
-                    status:
-                        p.status === "active"
-                            ? "Đang điều trị"
-                            : "Đã xuất viện",
+                    status: p.status === "active" ? "Đang điều trị" : "Đã xuất viện",
                     createdAt: new Date(p.createdAt).toLocaleString("vi-VN"),
                 }));
-
                 setRows(mapped);
             })
             .catch((err) => {
@@ -66,17 +37,14 @@ export default function PatientsManagement() {
             });
     }, []);
 
-
     const filtered = useMemo(() => {
         return rows.filter(
             (r) =>
-                (status === "all" || r.status === (status === "active" ? "Đang điều trị" : "Đã xuất viện")) &&
-                (q === "" ||
-                    [r.fullName, r.patientCode, r.department, r.roomName].join(" ").toLowerCase().includes(q.toLowerCase()))
+                status === "all" || (status === "active" ? r.status === "Đang điều trị" : r.status === "Đã xuất viện") &&
+                (q === "" || [r.fullName, r.patientCode, r.department, r.roomName].join(" ").toLowerCase().includes(q.toLowerCase()))
         );
     }, [rows, q, status]);
 
-    // --- Open modal và load lịch sử thuốc
     const handleViewMedicineHistory = async (patient) => {
         setSelectedPatient(patient);
         try {
@@ -90,27 +58,25 @@ export default function PatientsManagement() {
     };
 
     return (
-        <div className="page">
-            {styles}
+        <div className={styles.page}>
             <div className="container-fluid py-4">
                 <div className="container-lg">
+
                     {/* Header */}
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
-                            <span className="chip">
-                                <i className="bi bi-people-fill me-1"></i>
-                            </span>
+                            <span className={styles.chip}><i className="bi bi-people-fill me-1"></i></span>
                             <h4 className="mb-0 fw-bold">Quản lý bệnh nhân</h4>
                         </div>
                         <div>
-                            <button className="btn btn-teal rounded-pill" onClick={() => navigate("/patients/add")}>
+                            <button className={`btn ${styles.btnTeal} rounded-pill`} onClick={() => navigate("/patients/add")}>
                                 <i className="bi bi-plus-lg me-1"></i> Thêm mới
                             </button>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="glass rounded-2xl p-3 p-md-4 mb-3 toolbar">
+                    <div className={`glass ${styles.glass} ${styles.rounded2xl} p-3 p-md-4 mb-3 toolbar`}>
                         <div className="row g-2 align-items-end">
                             <div className="col-md-4">
                                 <label className="form-label">Tìm kiếm</label>
@@ -137,10 +103,7 @@ export default function PatientsManagement() {
                                 <label className="form-label d-block"> </label>
                                 <button
                                     className="btn btn-light rounded-pill w-100"
-                                    onClick={() => {
-                                        setQ("");
-                                        setStatus("all");
-                                    }}
+                                    onClick={() => { setQ(""); setStatus("all"); }}
                                 >
                                     <i className="bi bi-x-circle me-1"></i> Xóa lọc
                                 </button>
@@ -149,9 +112,9 @@ export default function PatientsManagement() {
                     </div>
 
                     {/* Table */}
-                    <div className="glass rounded-2xl p-2 p-md-3">
+                    <div className={`glass ${styles.glass} ${styles.rounded2xl} p-2 p-md-3`}>
                         <div className="table-responsive">
-                            <table className="table align-middle">
+                            <table className="table align-middle ">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -179,30 +142,16 @@ export default function PatientsManagement() {
                                             <td>{r.roomName}</td>
                                             <td>{r.phone}</td>
                                             <td>
-                                                <span
-                                                    className={`badge ${r.status === "Đang điều trị"
-                                                        ? "bg-success-subtle text-success"
-                                                        : "bg-secondary-subtle text-secondary"
-                                                        }`}
-                                                >
+                                                <span className={`badge ${r.status === "Đang điều trị" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary"}`}>
                                                     {r.status}
                                                 </span>
                                             </td>
                                             <td>
-                                                <button
-                                                    className="btn btn-outline-primary btn-sm"
-                                                    onClick={() => handleViewMedicineHistory(r)}
-                                                >
-                                                    Xem
-                                                </button>
+                                                <button className="btn btn-outline-primary btn-sm" onClick={() => handleViewMedicineHistory(r)}>Xem</button>
                                             </td>
                                             <td className="text-end">
                                                 <div className="btn-group btn-group-sm">
-                                                    <button
-                                                        className="btn btn-outline-info"
-                                                        onClick={() => navigate(`/patient/${r.id}`)}
-                                                        title="Xem chi tiết"
-                                                    >
+                                                    <button className="btn btn-outline-info" onClick={() => navigate(`/patient/${r.id}`)} title="Xem chi tiết">
                                                         <i className="bi bi-eye"></i>
                                                     </button>
                                                 </div>
@@ -211,9 +160,7 @@ export default function PatientsManagement() {
                                     ))}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={11} className="text-center text-muted py-4">
-                                                Không có dữ liệu
-                                            </td>
+                                            <td colSpan={11} className="text-center text-muted py-4">Không có dữ liệu</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -221,7 +168,7 @@ export default function PatientsManagement() {
                         </div>
                     </div>
 
-                    {/* --- Modal Lịch sử đơn thuốc --- */}
+                    {/* Modal Lịch sử đơn thuốc */}
                     {showModal && (
                         <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                             <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -258,7 +205,6 @@ export default function PatientsManagement() {
                                             </table>
                                         )}
                                     </div>
-
                                     <div className="modal-footer">
                                         <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Đóng</button>
                                     </div>
