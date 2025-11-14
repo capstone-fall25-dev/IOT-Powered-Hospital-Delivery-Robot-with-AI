@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllRobots } from "@/services/robotService";
 import { getAllTasks } from "@/services/taskService";
-import styles from "@/assets/styles/robotDashboard.module.css"; // import CSS
+import styles from "../assets/styles/robotDashboard.module.css";
 
 export default function RobotDashboard() {
     const navigate = useNavigate();
@@ -26,6 +26,9 @@ export default function RobotDashboard() {
         in_progress: "Đang tiến hành"
     };
 
+    // -------------------------
+    // LOAD ROBOTS
+    // -------------------------
     useEffect(() => {
         async function fetchRobots() {
             try {
@@ -45,22 +48,43 @@ export default function RobotDashboard() {
         fetchRobots();
     }, []);
 
+    // -------------------------
+    // LOAD TASKS
+    // -------------------------
     useEffect(() => {
         async function fetchTasks() {
             try {
                 const data = await getAllTasks();
-                const activeTasks = data.filter(t => t.status !== "completed" && t.status !== "canceled");
-                const formatted = activeTasks.map(t => ({
-                    id: t.id,
-                    robotName: t.robotName,
-                    assignedBy: t.assignedByUsername,
-                    status: statusMap[t.status] || t.status,
-                    createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
-                    updatedAt: new Date(t.updatedAt).toLocaleString("vi-VN"),
-                    totalErrors: t.totalErrors ?? 0,
-                    totalDurationS: t.totalDurationS ? `${Math.round(t.totalDurationS / 60)} phút` : "—",
-                    priority: t.priority === 1 ? "Cao" : "Thường",
-                }));
+                const activeTasks = data.filter(
+                    t => t.status !== "completed" && t.status !== "canceled"
+                );
+
+                const formatted = activeTasks.map(t => {
+                    const patientCount = t.patients?.length || 0;
+                    const firstPatient = t.patients?.[0]?.patientName || "—";
+                    const medicineSummary = t.patients?.map(p => p.medicineSummary).join("; ") || "—";
+
+                    return {
+                        id: t.id,
+                        robotName: t.robotName,
+                        assignedBy: t.assignedBy,
+                        status: statusMap[t.status] || t.status,
+                        createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
+                        scheduledStartAt: t.scheduledStartAt
+                            ? new Date(t.scheduledStartAt).toLocaleString("vi-VN")
+                            : "—",
+                        totalStops: t.totalStops,
+                        firstDestination: t.firstDestination || "—",
+                        patientCount,
+                        firstPatient,
+                        medicineSummary,
+                        priority:
+                            t.priority === 2 ? "Khẩn cấp" :
+                            t.priority === 1 ? "Cao" :
+                            "Thường"
+                    };
+                });
+
                 setTasks(formatted);
             } catch (err) {
                 console.error("Lỗi khi load tasks:", err);
@@ -69,18 +93,31 @@ export default function RobotDashboard() {
         fetchTasks();
     }, []);
 
+    // -------------------------
+    // PAGINATION
+    // -------------------------
     const totalPages = Math.max(1, Math.ceil(tasks.length / tasksPerPage));
-    const displayedTasks = tasks.slice((currentPage - 1) * tasksPerPage, currentPage * tasksPerPage);
+
+    const displayedTasks = tasks.slice(
+        (currentPage - 1) * tasksPerPage,
+        currentPage * tasksPerPage
+    );
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) setCurrentPage(page);
     };
 
+    // ============================================================================
+    //                                RENDER
+    // ============================================================================
     return (
         <div className={styles.page}>
             <div className="container-fluid py-3 py-lg-4">
                 <div className="container-x">
-                    {/* --- Trạng Thái Hiện Tại --- */}
+
+                    {/* ================================================
+                        TRẠNG THÁI HIỆN TẠI
+                    ================================================= */}
                     <h5 className="fw-bold mb-3">Trạng Thái Hiện Tại</h5>
                     <div className="row g-4 mb-4">
                         {[
@@ -96,7 +133,7 @@ export default function RobotDashboard() {
                             { label: statusMap.offline, value: robots.filter(r => r.status === statusMap.offline).length, icon: "slash-circle" },
                         ].map((k, i) => (
                             <div className="col-6 col-md-4 col-xl-2" key={i}>
-                                <div className={`${styles.glass} ${styles.kpi} p-3 d-flex align-items-center gap-3`} style={{ minWidth: "220px" }}>
+                                <div className={`${styles.glass} p-3 ${styles.kpi} d-flex align-items-center gap-3`} style={{ minWidth: "220px" }}>
                                     <span className={`${styles.badgeSoft} rounded-3 p-2`}>
                                         <i className={`bi bi-${k.icon}`}></i>
                                     </span>
@@ -109,105 +146,147 @@ export default function RobotDashboard() {
                         ))}
                     </div>
 
-                    {/* --- Tiến Trình Nhiệm Vụ --- */}
-                    <div className="row g-3">
-                        <div className="col-lg-12">
-                            <div className={`${styles.glass} p-2 p-md-3`}>
-                                <div className="d-flex align-items-center justify-content-between mb-2">
-                                    <h6 className={styles.title + " mb-0"}>Tiến Trình Nhiệm Vụ</h6>
-                                    <div className="d-flex gap-2">
-                                        <button className={`${styles.btnTeal} btn btn-sm`} onClick={() => navigate("/addtasks")}>
-                                            <i className="bi bi-plus-lg me-1"></i> Thêm Nhiệm Vụ
-                                        </button>
-                                        <button className={`${styles.btnTeal} btn btn-sm`} onClick={() => navigate("/history-mission")}>
-                                            Lịch sử hoạt động
-                                        </button>
-                                    </div>
-                                </div>
+                    {/* ================================================
+                        BẢNG TIẾN TRÌNH NHIỆM VỤ
+                    ================================================= */}
+                    <div className={`${styles.glass} p-2 p-md-3`}>
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                            <h6 className={`${styles.title} mb-0`}>Tiến Trình Nhiệm Vụ</h6>
 
-                                <div className="table-responsive">
-                                    <table className="table align-middle mb-0" style={{ minHeight: "600px" }}>
-                                        <thead>
-                                            <tr>
-                                                <th>Tên robot</th>
-                                                <th>Người giao</th>
-                                                <th>Trạng thái</th>
-                                                <th>Độ ưu tiên</th>
-                                                <th>Lỗi</th>
-                                                <th>Thời lượng</th>
-                                                <th>Thời gian tạo</th>
-                                                <th>Thời gian cập nhật</th>
-                                                <th className="text-end"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody style={{ height: "600px" }}>
-                                            {displayedTasks.length > 0 ? (
-                                                <>
-                                                    {displayedTasks.map((t) => (
-                                                        <tr key={t.id}>
-                                                            <td>{t.robotName}</td>
-                                                            <td>{t.assignedBy}</td>
-                                                            <td>
-                                                                <span className="badge bg-warning-subtle text-warning border">
-                                                                    {t.status}
-                                                                </span>
-                                                            </td>
-                                                            <td>{t.priority}</td>
-                                                            <td>{t.totalErrors}</td>
-                                                            <td>{t.totalDurationS}</td>
-                                                            <td>{t.createdAt}</td>
-                                                            <td>{t.updatedAt}</td>
-                                                            <td className="text-end">
-                                                                <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/robot-tasks`)}>
-                                                                    Theo dõi
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-
-                                                    {Array.from({ length: Math.max(0, 10 - displayedTasks.length) }).map((_, i) => (
-                                                        <tr key={`empty-${i}`}>
-                                                            <td colSpan="9" style={{ height: "48px" }}></td>
-                                                        </tr>
-                                                    ))}
-                                                </>
-                                            ) : (
-                                                Array.from({ length: 10 }).map((_, i) => (
-                                                    <tr key={`empty-${i}`}>
-                                                        {i === 0 ? (
-                                                            <td colSpan="9" className="text-center text-muted py-3">
-                                                                Không có nhiệm vụ nào đang hoạt động
-                                                            </td>
-                                                        ) : (
-                                                            <td colSpan="9" style={{ height: "48px" }}></td>
-                                                        )}
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className="d-flex justify-content-center mt-3">
-                                    <nav>
-                                        <ul className="pagination mb-0">
-                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                                <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>«</button>
-                                            </li>
-                                            {[...Array(totalPages)].map((_, i) => (
-                                                <li key={i} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
-                                                    <button className="page-link" onClick={() => handlePageChange(i + 1)}>{i + 1}</button>
-                                                </li>
-                                            ))}
-                                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                                                <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>»</button>
-                                            </li>
-                                        </ul>
-                                    </nav>
-                                </div>
-
+                            <div className="d-flex gap-2">
+                                <button className={`btn ${styles.btnTeal} btn-sm`} onClick={() => navigate("/addtasks")}>
+                                    <i className="bi bi-plus-lg me-1"></i> Thêm Nhiệm Vụ
+                                </button>
+                                <button className={`btn ${styles.btnTeal} btn-sm`} onClick={() => navigate("/history-mission")}>
+                                    Lịch sử hoạt động
+                                </button>
                             </div>
                         </div>
+
+                        <div className="table-responsive">
+                            <table className="table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Nhiệm vụ</th>
+                                        <th>Người giao</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ưu tiên</th>
+                                        <th>Ngày tạo</th>
+                                        <th className="text-end"></th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {displayedTasks.map(t => {
+                                        // =============================
+                                        // TÍNH MÀU HIỆU ỨNG CHO scheduledStartAt
+                                        // =============================
+
+                                        let blinkClass = "";
+                                        if (t.scheduledStartAt && t.scheduledStartAt !== "—") {
+                                            const now = new Date();
+                                            const start = new Date(t.scheduledStartAt);
+                                            const diffMs = start - now;
+                                            const diffMin = diffMs / 1000 / 60;
+
+                                            if (diffMin <= 0) {
+                                                // Đã quá giờ khởi hành
+                                                blinkClass = `${styles.blink} ${styles.blinkYellow}`;
+                                            } else if (diffMin <= 1) {
+                                                // Dưới 1 phút → ĐỎ
+                                                blinkClass = `${styles.blink} ${styles.blinkRed}`;
+                                            } else {
+                                                // Trước 1 phút → XANH
+                                                blinkClass = `${styles.blink} ${styles.blinkGreen}`;
+                                            }
+                                        }
+
+                                        return (
+                                            <tr key={t.id}>
+                                                <td>
+                                                    <div className="fw-bold">#{t.id} — {t.robotName}</div>
+
+                                                    <div className={`small ${blinkClass}`}>
+                                                        <strong>Bắt đầu lúc:</strong> {t.scheduledStartAt}
+                                                    </div>
+
+                                                    <div className="small text-muted">
+                                                        <strong>Điểm dừng:</strong> {t.firstDestination}
+                                                        {t.totalStops > 1 && <> (+{t.totalStops - 1})</>}
+                                                    </div>
+
+                                                    <div className="small text-muted">
+                                                        <strong>Bệnh nhân:</strong> {t.firstPatient}
+                                                        {t.patientCount > 1 && <> (và {t.patientCount - 1} bệnh nhân khác)</>}
+                                                    </div>
+
+                                                    <div className="small text-muted">
+                                                        <strong>Ghi chú:</strong> {t.medicineSummary}
+                                                    </div>
+                                                </td>
+
+                                                <td>{t.assignedBy}</td>
+
+                                                <td>
+                                                    <span className="badge bg-warning-subtle text-warning border">
+                                                        {t.status}
+                                                    </span>
+                                                </td>
+
+                                                <td>{t.priority}</td>
+                                                <td>{t.createdAt}</td>
+
+                                                <td className="text-end">
+                                                    <div className="d-flex gap-1 justify-content-end">
+                                                        <button
+                                                            className="btn btn-outline-secondary btn-sm"
+                                                            onClick={() => navigate(`/robot-tasks`)}
+                                                        >
+                                                            Theo dõi
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-outline-primary btn-sm"
+                                                            onClick={() => navigate(`/task-detail/${t.id}`)}
+                                                        >
+                                                            Xem thêm
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+
+                            </table>
+                        </div>
+
+                        {/* PAGINATION */}
+                        <div className="d-flex justify-content-center mt-3">
+                            <nav>
+                                <ul className="pagination mb-0">
+                                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
+                                            «
+                                        </button>
+                                    </li>
+
+                                    {[...Array(totalPages)].map((_, i) => (
+                                        <li key={i} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
+                                            <button className="page-link" onClick={() => handlePageChange(i + 1)}>
+                                                {i + 1}
+                                            </button>
+                                        </li>
+                                    ))}
+
+                                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                                        <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
+                                            »
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
                     </div>
                 </div>
             </div>

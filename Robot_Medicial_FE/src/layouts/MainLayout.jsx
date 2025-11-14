@@ -7,21 +7,20 @@ const MainLayout = ({ children }) => {
         <div className="main-layout">
             <Header />
             <Sidebar />
-            <div className="main-content container-fluid pt-5 mt-4">
+            <main className="page-wrapper main-content container-fluid pt-5 mt-4">
                 {children}
-            </div>
+            </main>
 
-            {/* CSS inline cho dễ chỉnh */}
+            {/* CSS inline cho responsive và tích hợp - dựa hoàn toàn vào Sidebar CSS cho desktop */}
             <style jsx="true">{`
                 .main-layout {
                     display: flex;
                     flex-direction: row;
                 }
 
-                /* Sidebar luôn nằm bên trái, content bên phải */
-                .main-content {
+                /* Không override background/margin ở đây, để Sidebar CSS xử lý .page-wrapper */
+                .page-wrapper.main-content {
                     flex: 1;
-                    margin-left: 240px; /* chiều rộng sidebar */
                     transition: margin-left 0.3s ease;
                 }
 
@@ -31,51 +30,118 @@ const MainLayout = ({ children }) => {
                         flex-direction: column;
                     }
 
-                    .main-content {
-                        margin-left: 0;
-                        padding-top: 4.5rem; /* chừa chỗ cho header */
+                    .page-wrapper.main-content {
+                        margin-left: 0 !important;
+                        padding-top: 4.5rem; /* Chừa chỗ cho header */
                     }
 
                     .sidebar {
-                        width: 100%;
-                        display: flex;
-                        flex-direction: row;
-                        justify-content: space-around;
+                        width: 100% !important;
+                        height: auto !important;
+                        position: relative !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        border-right: none !important;
+                        display: flex !important;
+                        flex-direction: row !important;
+                        justify-content: space-around !important;
                         border-bottom: 1px solid #e0e0e0;
                         background: white;
                         padding: 0.5rem 0;
+                        margin: 0;
+                    }
+
+                    .sidebar ul {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        width: 100% !important;
+                        justify-content: space-around !important;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .sidebar li {
+                        margin: 0 0.5rem !important;
+                        padding: 0.5rem !important;
+                        flex: 1 !important;
+                        text-align: center !important;
+                        justify-content: center !important;
+                    }
+
+                    .sidebar .logo {
+                        display: none !important; /* Ẩn logo toggle trên tablet */
+                    }
+
+                    .sidebar .footer {
+                        display: none !important;
                     }
                 }
 
                 /* ---------- MOBILE (<= 768px) ---------- */
                 @media (max-width: 768px) {
-                    .main-content {
-                        margin-left: 0;
+                    .page-wrapper.main-content {
+                        margin-left: 0 !important;
                         padding: 1rem;
                         padding-top: 5rem;
                     }
 
-                    /* Sidebar thu gọn */
+                    /* Sidebar bottom bar cho mobile */
                     .sidebar {
-                        position: fixed;
-                        bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        background: white;
-                        box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-                        display: flex;
-                        justify-content: space-around;
-                        padding: 0.5rem 0;
-                        z-index: 1000;
+                        position: fixed !important;
+                        bottom: 0 !important;
+                        left: 0 !important;
+                        top: auto !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        border-radius: 0 !important;
+                        box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
+                        border-right: none !important;
+                        display: flex !important;
+                        flex-direction: row !important;
+                        justify-content: space-around !important;
+                        padding: 0.5rem 0 !important;
+                        z-index: 1000 !important;
+                        background: white !important;
+                        margin: 0;
                     }
 
-                    /* Header cố định trên cùng */
+                    .sidebar ul {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        width: 100% !important;
+                        justify-content: space-around !important;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .sidebar li {
+                        margin: 0 !important;
+                        padding: 0.5rem !important;
+                        flex: 1 !important;
+                        text-align: center !important;
+                        justify-content: center !important;
+                        gap: 0 !important;
+                    }
+
+                    .sidebar li span {
+                        display: none !important; /* Chỉ icon trên mobile */
+                    }
+
+                    .sidebar .logo {
+                        display: none !important;
+                    }
+
+                    .sidebar .footer {
+                        display: none !important;
+                    }
+
+                    /* Header fixed */
                     header {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        z-index: 1001;
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        z-index: 1001 !important;
                     }
                 }
             `}</style>
