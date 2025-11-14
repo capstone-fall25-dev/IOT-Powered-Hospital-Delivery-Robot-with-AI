@@ -4,7 +4,8 @@ import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import {
-    getCompartmentsByRobot,
+    getUnlockedCompartments,
+    getCompartmentsByRobotAndCategory,
     getAllCategories,
 } from "@/services/robotCompartmentService";
 import { getAllPrescriptions } from "@/services/prescriptionServices";
@@ -121,7 +122,6 @@ export default function AddTask() {
     const [destinations, setDestinations] = useState([]);
     const [patients, setPatients] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [availableCompartments, setAvailableCompartments] = useState([]);
 
     const [form, setForm] = useState({
         mapId: "",
@@ -132,6 +132,7 @@ export default function AddTask() {
     });
 
     const [message, setMessage] = useState("");
+    const [baseCompartments, setBaseCompartments] = useState([]);
 
     const canAddStop = form.robotId;
     const canStart = form.robotId && form.taskStops.length > 0;
@@ -157,7 +158,7 @@ export default function AddTask() {
         return () => conn.stop();
     }, []);
 
-    // ===================== LOAD MAPS + PATIENTS + ROBOTS + CATEGORIES =====================
+    // ===================== LOAD DATA =====================
     useEffect(() => {
         async function load() {
             setMaps(await getAllMaps());
@@ -172,10 +173,12 @@ export default function AddTask() {
     async function handleSelectMap(mapId) {
         setForm((f) => ({ ...f, mapId }));
 
-        if (!mapId) return;
+        if (!mapId) {
+            setDestinations([]);
+            return;
+        }
 
         const mapDetail = await getMapById(mapId);
-
         setDestinations(
             mapDetail.destinations ||
             mapDetail.destinasions ||
@@ -186,24 +189,25 @@ export default function AddTask() {
 
     // ===================== ROBOT SELECT =====================
     async function handleSelectRobot(robotId) {
-        setForm((f) => ({ ...f, robotId }));
+        setForm((f) => ({
+            ...f,
+            robotId,
+            taskStops: [], // reset stop khi đổi robot
+        }));
 
         if (!robotId) {
-            setAvailableCompartments([]);
+            setBaseCompartments([]);
             return;
         }
 
-        const comps = await getCompartmentsByRobot(robotId);
-
-        const filtered = comps.filter((x) => x.status === "unlocked");
-
-        setAvailableCompartments(filtered);
+        // lấy tất cả compartment unlocked của robot
+        const data = await getUnlockedCompartments(robotId);
+        setBaseCompartments(data);
     }
 
     // ===================== STOP HANDLERS =====================
     function addStop() {
         const nextSeq = form.taskStops.length + 1;
-
         setForm((f) => ({
             ...f,
             taskStops: [
@@ -212,10 +216,11 @@ export default function AddTask() {
                     seqNo: nextSeq,
                     destinationId: "",
                     patientId: "",
-                    compartmentId: "",
                     categoryId: "",
-                    customName: "",
+                    compartmentId: "",
                     prescriptionPreview: null,
+                    customName: "",
+                    itemDesc: "" 
                 },
             ],
         }));
@@ -228,12 +233,26 @@ export default function AddTask() {
         }));
     }
 
-    function updateStop(idx, key, value) {
-        setForm((f) => {
-            const clone = [...f.taskStops];
-            clone[idx][key] = value;
-            return { ...f, taskStops: clone };
-        });
+    async function updateStop(idx, key, value) {
+        const clone = [...form.taskStops];
+        clone[idx][key] = value;
+
+        // Nếu đổi category → load lại compartment theo API
+        if (key === "categoryId") {
+            clone[idx].compartmentId = "";
+
+            if (value) {
+                const comps = await getCompartmentsByRobotAndCategory(
+                    form.robotId,
+                    value
+                );
+                clone[idx].filteredCompartments = comps;
+            } else {
+                clone[idx].filteredCompartments = [];
+            }
+        }
+
+        setForm((f) => ({ ...f, taskStops: clone }));
     }
 
     // ===================== PRESCRIPTION PREVIEW =====================
@@ -274,12 +293,12 @@ export default function AddTask() {
                     compartmentId: Number(s.compartmentId),
                     categoryId: Number(s.categoryId),
                     customName: s.customName ?? "",
+                    itemDesc: s.itemDesc ?? "" 
                 })),
             };
 
-            const created = await createTask(payload);
-            setMessage(`🎉 Tạo nhiệm vụ thành công! ID = ${created.id}`);
-
+            await createTask(payload);
+            setMessage("🎉 Tạo nhiệm vụ thành công!");
             setForm((f) => ({ ...f, taskStops: [] }));
         } catch (err) {
             setMessage(`❌ Lỗi: ${err.response?.data || err.message}`);
@@ -290,13 +309,14 @@ export default function AddTask() {
     return (
         <div className="page">
             {styles}
+
             <div className="container-lg py-4">
                 <h4 className="title mb-3">Tạo nhiệm vụ mới</h4>
 
                 <div className="glass p-4">
-                    {/* MAP + ROBOT IN ONE ROW */}
+
+                    {/* MAP + ROBOT */}
                     <div className="row mb-3">
-                        {/* MAP */}
                         <div className="col-md-6 mb-3">
                             <label className="section-label">Chọn map</label>
                             <select
@@ -313,7 +333,6 @@ export default function AddTask() {
                             </select>
                         </div>
 
-                        {/* ROBOT */}
                         <div className="col-md-6 mb-3">
                             <label className="section-label">Chọn robot</label>
                             <select
@@ -331,9 +350,8 @@ export default function AddTask() {
                         </div>
                     </div>
 
-                    {/* PRIORITY + START TIME IN ONE ROW */}
+                    {/* PRIORITY + TIME */}
                     <div className="row mb-3">
-                        {/* PRIORITY */}
                         <div className="col-md-6 mb-3">
                             <label className="section-label">Độ ưu tiên</label>
                             <select
@@ -352,7 +370,6 @@ export default function AddTask() {
                             </select>
                         </div>
 
-                        {/* START TIME */}
                         <div className="col-md-6 mb-3">
                             <label className="section-label">Thời gian bắt đầu</label>
                             <input
@@ -369,7 +386,6 @@ export default function AddTask() {
                         </div>
                     </div>
 
-                    {/* ADD STOP */}
                     <div className="text-end mb-3">
                         <button
                             className="btn btn-outline-secondary btn-sm"
@@ -383,8 +399,6 @@ export default function AddTask() {
                     {/* STOP LIST */}
                     {form.taskStops.map((s, idx) => (
                         <div className="stop-card mb-3" key={idx}>
-
-                            {/* NÚT X GÓC PHẢI */}
                             <button
                                 className="btn-close-circle"
                                 onClick={() => removeStop(idx)}
@@ -394,12 +408,13 @@ export default function AddTask() {
 
                             <div className="row g-3">
 
-                                {/* ROW 1 */}
+                                {/* ORDER */}
                                 <div className="col-md-2">
                                     <label className="section-label">Thứ tự</label>
                                     <input className="form-control" value={s.seqNo} disabled />
                                 </div>
 
+                                {/* DEST */}
                                 <div className="col-md-5">
                                     <label className="section-label">Điểm đến</label>
                                     <select
@@ -418,6 +433,7 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
+                                {/* PATIENT */}
                                 <div className="col-md-5">
                                     <label className="section-label">Bệnh nhân</label>
                                     <select
@@ -436,25 +452,7 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                {/* ROW 2 */}
-                                <div className="col-md-4">
-                                    <label className="section-label">Ngăn chứa</label>
-                                    <select
-                                        className="form-select"
-                                        value={s.compartmentId}
-                                        onChange={(e) =>
-                                            updateStop(idx, "compartmentId", e.target.value)
-                                        }
-                                    >
-                                        <option value="">— chọn —</option>
-                                        {availableCompartments.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.compartmentCode}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
+                                {/* CATEGORY */}
                                 <div className="col-md-4">
                                     <label className="section-label">Loại ngăn</label>
                                     <select
@@ -466,19 +464,43 @@ export default function AddTask() {
                                     >
                                         <option value="">— chọn loại —</option>
                                         {categories.map((c) => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* COMPARTMENT — disable until category selected */}
+                                <div className="col-md-4">
+                                    <label className="section-label">Ngăn chứa</label>
+                                    <select
+                                        className="form-select"
+                                        value={s.compartmentId}
+                                        disabled={!s.categoryId}
+                                        onChange={(e) =>
+                                            updateStop(idx, "compartmentId", e.target.value)
+                                        }
+                                    >
+                                        <option value="">
+                                            {s.categoryId
+                                                ? "— chọn ngăn —"
+                                                : "Chọn loại ngăn trước —"}
+                                        </option>
+
+                                        {(s.filteredCompartments || []).map((c) => (
                                             <option key={c.id} value={c.id}>
-                                                {c.name}
+                                                {c.compartmentCode}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
 
+                                {/* CUSTOM TEXT */}
                                 <div className="col-md-4">
-                                    <label className="section-label">Ghi chú riêng (tùy chọn)</label>
+                                    <label className="section-label">Ghi chú riêng</label>
                                     <input
                                         type="text"
                                         className="form-control"
-                                        placeholder="VD: Giao ngay – bệnh nhân khó thở..."
+                                        placeholder="VD: Giao ngay – bệnh nhân..."
                                         value={s.customName}
                                         onChange={(e) =>
                                             updateStop(idx, "customName", e.target.value)
@@ -487,7 +509,7 @@ export default function AddTask() {
                                 </div>
                             </div>
 
-                            {/* PRESCRIPTION PREVIEW */}
+                            {/* PRESCRIPTION */}
                             {s.prescriptionPreview && (
                                 <div className="rx-box mt-3">
                                     <h6 className="fw-bold">
@@ -503,12 +525,23 @@ export default function AddTask() {
                                             <hr />
                                         </div>
                                     ))}
+
+                                    {/* 👇 NEW: ItemDesc input placed in prescription box */}
+                                    <div className="mt-3">
+                                        <label className="section-label">Mô tả vật phẩm (tùy chọn)</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
+                                            value={s.itemDesc}
+                                            onChange={(e) => updateStop(idx, "itemDesc", e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>
                     ))}
 
-                    {/* SUBMIT */}
                     <button
                         className="btn btn-teal w-100 mt-3 py-2"
                         disabled={!canStart}
