@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 {
@@ -22,5 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Prescription?> GetLatestPrescriptionForPatientAsync(ulong patientId);
         Task<Prescription?> GetPrescriptionByCodeAsync(string code);
         System.Threading.Tasks.Task UpdateRobotStatusAsync(ulong robotId, string status);
+
+        Task<IDbContextTransaction> BeginTransactionAsync();
     }
 }

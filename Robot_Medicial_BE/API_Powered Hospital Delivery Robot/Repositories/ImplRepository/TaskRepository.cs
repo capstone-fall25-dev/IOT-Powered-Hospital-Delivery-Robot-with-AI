@@ -2,6 +2,7 @@
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
@@ -130,6 +131,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             robot.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
         }
     }
 }
