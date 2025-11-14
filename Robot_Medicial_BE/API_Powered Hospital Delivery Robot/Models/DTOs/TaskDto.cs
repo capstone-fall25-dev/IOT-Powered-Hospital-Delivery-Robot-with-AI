@@ -44,6 +44,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         [Required(ErrorMessage = "Phải chọn loại ngăn chứa.")]
         public ulong CategoryId { get; set; }
+
+        public string? CustomName { get; set; }
     }
 
     public class UpdateTaskDto

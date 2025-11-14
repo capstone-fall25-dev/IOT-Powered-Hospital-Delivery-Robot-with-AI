@@ -12,13 +12,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly ITaskRepository _repo;
         private readonly IRobotRepository _repoRobot;
         private readonly IRobotCompartmentRepository _repoRobotCom;
+        private readonly IPatientRepository _repoPatient;
         private readonly IHubContext<TaskHub> _taskHub;
 
-        public TaskService(ITaskRepository repo, IRobotRepository repoRobot, IRobotCompartmentRepository repoRobotCom, IHubContext<TaskHub> taskHub)
+        public TaskService(ITaskRepository repo,
+                   IRobotRepository repoRobot,
+                   IRobotCompartmentRepository repoRobotCom,
+                   IPatientRepository repoPatient,
+                   IHubContext<TaskHub> taskHub)
         {
             _repo = repo;
             _repoRobot = repoRobot;
             _repoRobotCom = repoRobotCom;
+            _repoPatient = repoPatient;
             _taskHub = taskHub;
         }
 
@@ -36,42 +42,45 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<TaskResponseDto> CreateAsync(CreateTaskDto dto, ulong currentUserId)
         {
-            var map = await _repo.GetMapAsync(dto.MapId)
-                ?? throw new InvalidOperationException("Bản đồ không tồn tại.");
-
-            var robot = await _repo.GetRobotAsync(dto.RobotId)
-                ?? throw new InvalidOperationException("Robot không tồn tại.");
-
-            // BƯỚC 1: TỰ ĐỘNG CẬP NHẬT MAP CHO ROBOT
-            if (robot.MapId != dto.MapId)
-            {
-                var updated = await _repoRobot.AssignMapToRobotAsync(robot.Id, dto.MapId);
-                if (updated == null)
-                    throw new InvalidOperationException("Không thể gán map mới cho robot.");
-            }
-
-            // BƯỚC 2: Ngăn robot đang vận hành bị gán thêm task. Robot chỉ nhận task nếu at_station
-            if (robot.Status != "at_station")
-                throw new InvalidOperationException(
-                    $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', KHÔNG thể nhận nhiệm vụ mới. Robot chỉ có thể nhận task khi đang 'at_station'."
-                );
-
-            // ===== Bước 3: tạo Task ở trạng thái pending =====
-            var task = new Models.Entities.Task
-            {
-                MapId = dto.MapId,
-                RobotId = dto.RobotId,
-                AssignedBy = currentUserId,
-                Status = "pending",
-                Priority = dto.Priority.ToString(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                ScheduledStartAt = dto.ScheduledStartAt
-            };
-            task = await _repo.CreateAsync(task);
+            // 🧨 BẮT ĐẦU TRANSACTION
+            using var transaction = await _repo.BeginTransactionAsync();
 
             try
             {
+                var map = await _repo.GetMapAsync(dto.MapId)
+                ?? throw new InvalidOperationException("Bản đồ không tồn tại.");
+
+                var robot = await _repo.GetRobotAsync(dto.RobotId)
+                    ?? throw new InvalidOperationException("Robot không tồn tại.");
+
+                // BƯỚC 1: TỰ ĐỘNG CẬP NHẬT MAP CHO ROBOT
+                if (robot.MapId != dto.MapId)
+                {
+                    var updated = await _repoRobot.AssignMapToRobotAsync(robot.Id, dto.MapId);
+                    if (updated == null)
+                        throw new InvalidOperationException("Không thể gán map mới cho robot.");
+                }
+
+                // BƯỚC 2: Ngăn robot đang vận hành bị gán thêm task. Robot chỉ nhận task nếu at_station
+                if (robot.Status != "at_station")
+                    throw new InvalidOperationException(
+                        $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', KHÔNG thể nhận nhiệm vụ mới. Robot chỉ có thể nhận task khi đang 'at_station'."
+                    );
+
+                // ===== Bước 3: tạo Task ở trạng thái pending =====
+                var task = new Models.Entities.Task
+                {
+                    MapId = dto.MapId,
+                    RobotId = dto.RobotId,
+                    AssignedBy = currentUserId,
+                    Status = "pending",
+                    Priority = dto.Priority.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    ScheduledStartAt = dto.ScheduledStartAt
+                };
+                task = await _repo.CreateAsync(task);
+
                 // ===== Bước 4: tạo Stop + gán Compartment =====
                 foreach (var s in dto.Stops.OrderBy(x => x.SeqNo))
                 {
@@ -107,8 +116,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
                     }
 
+                    // ===== LẤY ĐƠN THUỐC =====
                     var rx = await _repo.GetLatestPrescriptionForPatientAsync(s.PatientId)
                         ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc hợp lệ.");
+
+                    var patient = await _repoPatient.GetByIdAsync(s.PatientId)
+                        ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
+
+                    // ===== AUTO NAME FORMAT =====
+                    string autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
+
+                    var itemList = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                    autoName += $" - {itemList}";
+
+                    // Nếu CustomName null hoặc empty → dùng autoName
+                    string finalName = string.IsNullOrWhiteSpace(s.CustomName) ? autoName : s.CustomName!.Trim();
 
                     // Tạo stop
                     var stop = new TaskStop
@@ -117,6 +139,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         SeqNo = s.SeqNo,
                         DestinationId = s.DestinationId,
                         PatientId = s.PatientId,
+                        CustomName = finalName,
                         Status = "pending",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
@@ -144,6 +167,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 robot.Status = "transporting";
                 await _repo.UpdateRobotStatusAsync(robot.Id, robot.Status);
 
+                await transaction.CommitAsync(); // 🔥 COMMIT
+
                 var result = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(result!);
 
@@ -154,8 +179,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
             catch (Exception ex)
             {
-                // rollback robot về trạng thái an toàn
-                await _repo.UpdateRobotStatusAsync(robot.Id, "at_station");
+                await transaction.RollbackAsync(); // 🔥 ROLLBACK nếu lỗi
                 throw new InvalidOperationException($"Tạo nhiệm vụ thất bại: {ex.Message}");
             }
         }

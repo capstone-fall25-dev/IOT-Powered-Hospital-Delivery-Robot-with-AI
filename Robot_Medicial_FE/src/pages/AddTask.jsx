@@ -43,12 +43,76 @@ export default function AddTask() {
     const styles = (
         <style>{`
         :root{--teal:#4CE1C6;--ink:#0b1324}
-        .page{font-family:Inter;color:#0b1324;background:#f6faf9;min-height:100vh}
-        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-radius:24px;box-shadow:0 16px 48px rgba(15,23,42,.08)}
-        .btn-teal{background:var(--teal);font-weight:700}
-        .title{font-weight:900;color:#0b1432}
-        .rx-box{background:#f8f9fa;border-left:4px solid #4CE1C6;padding:10px;margin-top:10px;border-radius:6px;}
-        `}</style>
+        body { background:#f6faf9; }
+        .page{font-family:Inter;color:var(--ink);background:#f6faf9;min-height:100vh}
+        .glass{
+            background:rgba(255,255,255,.94);
+            backdrop-filter:blur(12px);
+            border-radius:20px;
+            box-shadow:0 10px 40px rgba(15,23,42,.08);
+            padding:20px 25px;
+        }
+        .btn-teal{
+            background:var(--teal)!important;
+            color:#fff!important;
+            font-weight:700;
+            border:none;
+        }
+        .title{
+            font-weight:900;
+            font-size:28px;
+            color:#0b1432;
+        }
+        .stop-card{
+            border-left:5px solid var(--teal);
+            background:white;
+            border-radius:16px;
+            padding:18px;
+            box-shadow:0 6px 20px rgba(0,0,0,.06);
+        }
+        .rx-box{
+            background:#f8f9fa;
+            border-left:4px solid var(--teal);
+            padding:10px;
+            margin-top:10px;
+            border-radius:6px;
+        }
+        .section-label{
+            font-size:15px;
+            font-weight:600;
+            color:#0b1432;
+        }
+
+        .stop-card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 20px;
+            position: relative;
+            border-left: 4px solid var(--teal);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+
+        .btn-close-circle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            background: #d9534f;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .btn-close-circle:hover {
+            background: #c9302c;
+        }
+    `}</style>
     );
 
     // ===================== STATE =====================
@@ -99,7 +163,7 @@ export default function AddTask() {
             setMaps(await getAllMaps());
             setPatients(await getAllPatients());
             setRobots(await getAvailableRobots());
-            setCategories(await getAllCategories()); // ⭐ NEW
+            setCategories(await getAllCategories());
         }
         load();
     }, []);
@@ -114,9 +178,9 @@ export default function AddTask() {
 
         setDestinations(
             mapDetail.destinations ||
-                mapDetail.destinasions ||
-                mapDetail.Destinations ||
-                []
+            mapDetail.destinasions ||
+            mapDetail.Destinations ||
+            []
         );
     }
 
@@ -131,9 +195,7 @@ export default function AddTask() {
 
         const comps = await getCompartmentsByRobot(robotId);
 
-        const filtered = comps.filter(
-            (x) => x.status === "unlocked" || x.status === "empty"
-        );
+        const filtered = comps.filter((x) => x.status === "unlocked");
 
         setAvailableCompartments(filtered);
     }
@@ -151,7 +213,8 @@ export default function AddTask() {
                     destinationId: "",
                     patientId: "",
                     compartmentId: "",
-                    categoryId: "", // ⭐ NEW
+                    categoryId: "",
+                    customName: "",
                     prescriptionPreview: null,
                 },
             ],
@@ -209,7 +272,8 @@ export default function AddTask() {
                     destinationId: Number(s.destinationId),
                     patientId: Number(s.patientId),
                     compartmentId: Number(s.compartmentId),
-                    categoryId: Number(s.categoryId), // ⭐ NEW
+                    categoryId: Number(s.categoryId),
+                    customName: s.customName ?? "",
                 })),
             };
 
@@ -230,77 +294,83 @@ export default function AddTask() {
                 <h4 className="title mb-3">Tạo nhiệm vụ mới</h4>
 
                 <div className="glass p-4">
-                    {/* MAP */}
-                    <div className="mb-3">
-                        <label className="fw-semibold">Chọn map</label>
-                        <select
-                            className="form-select"
-                            value={form.mapId}
-                            onChange={(e) => handleSelectMap(e.target.value)}
-                        >
-                            <option value="">— chọn map —</option>
-                            {maps.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                    {m.id} • {m.mapName}
-                                </option>
-                            ))}
-                        </select>
+                    {/* MAP + ROBOT IN ONE ROW */}
+                    <div className="row mb-3">
+                        {/* MAP */}
+                        <div className="col-md-6 mb-3">
+                            <label className="section-label">Chọn map</label>
+                            <select
+                                className="form-select"
+                                value={form.mapId}
+                                onChange={(e) => handleSelectMap(e.target.value)}
+                            >
+                                <option value="">— chọn map —</option>
+                                {maps.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.id} • {m.mapName}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* ROBOT */}
+                        <div className="col-md-6 mb-3">
+                            <label className="section-label">Chọn robot</label>
+                            <select
+                                className="form-select"
+                                value={form.robotId}
+                                onChange={(e) => handleSelectRobot(e.target.value)}
+                            >
+                                <option value="">— chọn robot —</option>
+                                {robots.map((r) => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.id} • {r.name} (Pin {r.batteryPercent}%)
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {/* ROBOT */}
-                    <div className="mb-3">
-                        <label className="fw-semibold">Chọn robot</label>
-                        <select
-                            className="form-select"
-                            value={form.robotId}
-                            onChange={(e) => handleSelectRobot(e.target.value)}
-                        >
-                            <option value="">— chọn robot —</option>
-                            {robots.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                    {r.id} • {r.name} (Pin {r.batteryPercent}%)
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    {/* PRIORITY + START TIME IN ONE ROW */}
+                    <div className="row mb-3">
+                        {/* PRIORITY */}
+                        <div className="col-md-6 mb-3">
+                            <label className="section-label">Độ ưu tiên</label>
+                            <select
+                                className="form-select"
+                                value={form.priority}
+                                onChange={(e) =>
+                                    setForm((f) => ({
+                                        ...f,
+                                        priority: Number(e.target.value),
+                                    }))
+                                }
+                            >
+                                <option value={0}>0 - Bình thường</option>
+                                <option value={1}>1 - Khẩn cấp</option>
+                                <option value={2}>2 - Nguy cấp</option>
+                            </select>
+                        </div>
 
-                    {/* PRIORITY */}
-                    <div className="mb-3">
-                        <label className="fw-semibold">Độ ưu tiên</label>
-                        <select
-                            className="form-select"
-                            value={form.priority}
-                            onChange={(e) =>
-                                setForm((f) => ({
-                                    ...f,
-                                    priority: Number(e.target.value),
-                                }))
-                            }
-                        >
-                            <option value={0}>0 - Bình thường</option>
-                            <option value={1}>1 - Khẩn cấp</option>
-                            <option value={2}>2 - Nguy cấp</option>
-                        </select>
-                    </div>
-
-                    {/* START TIME */}
-                    <div className="mb-3">
-                        <label className="fw-semibold">Thời gian bắt đầu</label>
-                        <input
-                            type="datetime-local"
-                            className="form-control"
-                            value={form.scheduledStartAt}
-                            onChange={(e) =>
-                                setForm((f) => ({
-                                    ...f,
-                                    scheduledStartAt: e.target.value,
-                                }))
-                            }
-                        />
+                        {/* START TIME */}
+                        <div className="col-md-6 mb-3">
+                            <label className="section-label">Thời gian bắt đầu</label>
+                            <input
+                                type="datetime-local"
+                                className="form-control"
+                                value={form.scheduledStartAt}
+                                onChange={(e) =>
+                                    setForm((f) => ({
+                                        ...f,
+                                        scheduledStartAt: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
                     </div>
 
                     {/* ADD STOP */}
-                    <div className="text-end mb-2">
+                    <div className="text-end mb-3">
                         <button
                             className="btn btn-outline-secondary btn-sm"
                             onClick={addStop}
@@ -312,33 +382,34 @@ export default function AddTask() {
 
                     {/* STOP LIST */}
                     {form.taskStops.map((s, idx) => (
-                        <div className="glass p-3 mb-3" key={idx}>
+                        <div className="stop-card mb-3" key={idx}>
+
+                            {/* NÚT X GÓC PHẢI */}
+                            <button
+                                className="btn-close-circle"
+                                onClick={() => removeStop(idx)}
+                            >
+                                ×
+                            </button>
+
                             <div className="row g-3">
-                                <div className="col-2">
-                                    <label>Thứ tự</label>
-                                    <input
-                                        className="form-control"
-                                        value={s.seqNo}
-                                        disabled
-                                    />
+
+                                {/* ROW 1 */}
+                                <div className="col-md-2">
+                                    <label className="section-label">Thứ tự</label>
+                                    <input className="form-control" value={s.seqNo} disabled />
                                 </div>
 
-                                <div className="col-3">
-                                    <label>Điểm đến</label>
+                                <div className="col-md-5">
+                                    <label className="section-label">Điểm đến</label>
                                     <select
                                         className="form-select"
                                         value={s.destinationId}
                                         onChange={(e) =>
-                                            updateStop(
-                                                idx,
-                                                "destinationId",
-                                                e.target.value
-                                            )
+                                            updateStop(idx, "destinationId", e.target.value)
                                         }
                                     >
-                                        <option value="">
-                                            — chọn điểm đến —
-                                        </option>
+                                        <option value="">— chọn điểm đến —</option>
                                         {destinations.map((d) => (
                                             <option key={d.id} value={d.id}>
                                                 {d.name}
@@ -347,21 +418,16 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                <div className="col-3">
-                                    <label>Bệnh nhân</label>
+                                <div className="col-md-5">
+                                    <label className="section-label">Bệnh nhân</label>
                                     <select
                                         className="form-select"
                                         value={s.patientId}
                                         onChange={(e) =>
-                                            handleSelectPatient(
-                                                e.target.value,
-                                                idx
-                                            )
+                                            handleSelectPatient(e.target.value, idx)
                                         }
                                     >
-                                        <option value="">
-                                            — chọn bệnh nhân —
-                                        </option>
+                                        <option value="">— chọn bệnh nhân —</option>
                                         {patients.map((p) => (
                                             <option key={p.id} value={p.id}>
                                                 {p.fullName}
@@ -370,22 +436,17 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                <div className="col-3">
-                                    <label>Ngăn chứa</label>
+                                {/* ROW 2 */}
+                                <div className="col-md-4">
+                                    <label className="section-label">Ngăn chứa</label>
                                     <select
                                         className="form-select"
                                         value={s.compartmentId}
                                         onChange={(e) =>
-                                            updateStop(
-                                                idx,
-                                                "compartmentId",
-                                                e.target.value
-                                            )
+                                            updateStop(idx, "compartmentId", e.target.value)
                                         }
                                     >
-                                        <option value="">
-                                            — chọn ngăn —
-                                        </option>
+                                        <option value="">— chọn —</option>
                                         {availableCompartments.map((c) => (
                                             <option key={c.id} value={c.id}>
                                                 {c.compartmentCode}
@@ -394,23 +455,16 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                {/* CATEGORY */}
-                                <div className="col-3">
-                                    <label>Loại ngăn</label>
+                                <div className="col-md-4">
+                                    <label className="section-label">Loại ngăn</label>
                                     <select
                                         className="form-select"
                                         value={s.categoryId}
                                         onChange={(e) =>
-                                            updateStop(
-                                                idx,
-                                                "categoryId",
-                                                e.target.value
-                                            )
+                                            updateStop(idx, "categoryId", e.target.value)
                                         }
                                     >
-                                        <option value="">
-                                            — chọn loại —
-                                        </option>
+                                        <option value="">— chọn loại —</option>
                                         {categories.map((c) => (
                                             <option key={c.id} value={c.id}>
                                                 {c.name}
@@ -419,13 +473,17 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                <div className="col-1 d-flex align-items-end">
-                                    <button
-                                        className="btn btn-danger btn-sm"
-                                        onClick={() => removeStop(idx)}
-                                    >
-                                        X
-                                    </button>
+                                <div className="col-md-4">
+                                    <label className="section-label">Ghi chú riêng (tùy chọn)</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="VD: Giao ngay – bệnh nhân khó thở..."
+                                        value={s.customName}
+                                        onChange={(e) =>
+                                            updateStop(idx, "customName", e.target.value)
+                                        }
+                                    />
                                 </div>
                             </div>
 
@@ -433,31 +491,18 @@ export default function AddTask() {
                             {s.prescriptionPreview && (
                                 <div className="rx-box mt-3">
                                     <h6 className="fw-bold">
-                                        📄 Đơn thuốc:{" "}
-                                        {
-                                            s.prescriptionPreview
-                                                .prescriptionCode
-                                        }
+                                        📄 Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
                                     </h6>
 
-                                    {s.prescriptionPreview.items.map(
-                                        (item) => (
-                                            <div key={item.id} className="mb-2">
-                                                <b>{item.medicineName}</b>
-                                                <div>
-                                                    Số lượng: {item.quantity}
-                                                </div>
-                                                <div>
-                                                    Liều dùng: {item.dosage}
-                                                </div>
-                                                <div>
-                                                    Hướng dẫn:{" "}
-                                                    {item.instructions}
-                                                </div>
-                                                <hr />
-                                            </div>
-                                        )
-                                    )}
+                                    {s.prescriptionPreview.items.map((item) => (
+                                        <div key={item.id} className="mb-2">
+                                            <b>{item.medicineName}</b>
+                                            <div>Số lượng: {item.quantity}</div>
+                                            <div>Liều dùng: {item.dosage}</div>
+                                            <div>Hướng dẫn: {item.instructions}</div>
+                                            <hr />
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -465,7 +510,7 @@ export default function AddTask() {
 
                     {/* SUBMIT */}
                     <button
-                        className="btn btn-teal w-100"
+                        className="btn btn-teal w-100 mt-3 py-2"
                         disabled={!canStart}
                         onClick={startMission}
                     >
@@ -473,9 +518,7 @@ export default function AddTask() {
                     </button>
 
                     {message && (
-                        <div className="mt-3 text-center fw-bold">
-                            {message}
-                        </div>
+                        <div className="mt-3 text-center fw-bold">{message}</div>
                     )}
                 </div>
             </div>
