@@ -46,6 +46,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong CategoryId { get; set; }
 
         public string? CustomName { get; set; }
+
+        public string? ItemDesc { get; set; }
     }
 
     public class UpdateTaskDto

@@ -87,38 +87,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var comp = await _repo.GetCompartmentAsync(s.CompartmentId)
                         ?? throw new InvalidOperationException($"Khoang {s.CompartmentId} không tồn tại.");
 
-                    // ❗ Kiểm tra khoang có đang bận không
+                    // Kiểm tra khoang có đang bận không
                     if (await _repo.IsCompartmentBusyAsync(s.CompartmentId))
                         throw new InvalidOperationException($"Khoang {s.CompartmentId} đang được sử dụng.");
 
-                    // ❗ KIỂM TRA PATIENT / CATEGORY LOGIC
-                    if (comp.PatientId != null)
+                    // Compartment locked => không được chọn
+                    if (comp.Status == "locked")
                     {
-                        // Khoang đang có bệnh nhân khác → không thể đổi bệnh nhân hoặc đổi category
-                        if (comp.PatientId != s.PatientId)
-                            throw new InvalidOperationException(
-                                $"Khoang {comp.Id} đang chứa bệnh nhân {comp.PatientId}, không thể đổi sang bệnh nhân {s.PatientId}."
-                            );
-
-                        if (comp.CategoryId != s.CategoryId)
-                            throw new InvalidOperationException(
-                                $"Khoang {comp.Id} đã được gán loại Category {comp.CategoryId}, không thể đổi sang Category {s.CategoryId}."
-                            );
+                        throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
                     }
-                    else
-                    {
-                        // Khoang TRỐNG → được quyền đổi Category
-                        if (comp.CategoryId != s.CategoryId)
-                            await _repoRobotCom.AssignCategoryToCompartment(comp.Id, s.CategoryId);
 
-                        // Khoang TRỐNG → được quyền đổi Patient
-                        if (comp.PatientId != s.PatientId)
-                            await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
+                    // Nếu compartment đã có Category → bắt buộc phải trùng với Category đã chọn
+                    if (comp.CategoryId != null && comp.CategoryId != s.CategoryId)
+                    {
+                        throw new InvalidOperationException(
+                            $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}, không thể chọn Category {s.CategoryId}."
+                        );
+                    }
+
+                    // Nếu compartment chưa có Category → cho phép gán
+                    if (comp.CategoryId == null)
+                    {
+                        await _repoRobotCom.AssignCategoryToCompartment(comp.Id, s.CategoryId);
+                    }
+
+                    // Nếu compartment đã có bệnh nhân → phải trùng bệnh nhân
+                    if (comp.PatientId != null && comp.PatientId != s.PatientId)
+                    {
+                        throw new InvalidOperationException(
+                            $"Khoang {comp.CompartmentCode} đang chứa bệnh nhân ID = {comp.PatientId}, không thể đổi sang bệnh nhân {s.PatientId}."
+                        );
+                    }
+
+                    // Nếu chưa có bệnh nhân → gán mới
+                    if (comp.PatientId == null)
+                    {
+                        await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
                     }
 
                     // ===== LẤY ĐƠN THUỐC =====
                     var rx = await _repo.GetLatestPrescriptionForPatientAsync(s.PatientId)
-                        ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc hợp lệ.");
+                    ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc hợp lệ.");
 
                     var patient = await _repoPatient.GetByIdAsync(s.PatientId)
                         ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
@@ -147,13 +156,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     stop = await _repo.CreateStopAsync(stop);
 
                     // Tạo assignment
-                    var desc = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                    // Nếu FE nhập itemDesc → dùng FE
+                    // Nếu không → Auto generate theo prescription
+                    string itemDesc;
+                    if (!string.IsNullOrWhiteSpace(s.ItemDesc))
+                    {
+                        itemDesc = s.ItemDesc.Trim();
+                    }
+                    else
+                    {
+                        var auto = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                        itemDesc = $"RX#{rx.PrescriptionCode}: {auto}";
+                    }
+
                     await _repo.CreateAssignmentAsync(new CompartmentAssignment
                     {
                         TaskId = task.Id,
                         StopId = stop.Id,
                         CompartmentId = s.CompartmentId,
-                        ItemDesc = $"RX#{rx.PrescriptionCode}: {desc}",
+                        ItemDesc = itemDesc,
                         Status = "pending",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
