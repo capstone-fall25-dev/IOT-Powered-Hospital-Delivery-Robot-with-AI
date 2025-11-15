@@ -94,7 +94,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // Lưu compartments
             await _robotCompartmentRepository.CreateManyAsync(compartments);
 
-           
+
             var response = new RobotResponseDto
             {
                 Id = createdRobot.Id,
@@ -104,10 +104,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 BatteryPercent = createdRobot.BatteryPercent,
                 Compartments = createdRobot.RobotCompartments.Select(c => new CompartmentDto
                 {
-                   
-                   Code = c.CompartmentCode,
-                   CategoryId = c.CategoryId
-                    
+
+                    Code = c.CompartmentCode,
+                    CategoryId = c.CategoryId
+
                 }).ToList()
 
 
@@ -126,8 +126,66 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<RobotResponseDto?> GetByIdAsync(ulong id)
         {
-            var robot = await _robotRepository.GetByIdAsync(id, includeCompartments: true, includeTasks: true);
-            return robot != null ? _mapper.Map<RobotResponseDto>(robot) : null;
+            var robot = await _robotRepository.GetByIdAsync(id, includeCompartments: true, includeTasks: true, includeTaskStops: true);
+
+            if (robot == null)
+                return null;
+
+            return new RobotResponseDto
+            {
+                Id = robot.Id,
+                Code = robot.Code ?? string.Empty,
+                Name = robot.Name,
+                Status = robot.Status ?? "Unknown",
+                BatteryPercent = robot.BatteryPercent,
+                Latitude = robot.Latitude,
+                Longitude = robot.Longitude,
+                ProgressOverallPct = robot.ProgressOverallPct,
+                ProgressLegPct = robot.ProgressLegPct,
+                IsMicOn = robot.IsMicOn,
+                EtaDeliveryAt = robot.EtaDeliveryAt,
+                EtaReturnAt = robot.EtaReturnAt,
+                ErrorCountSession = robot.ErrorCountSession,
+                LastHeartbeatAt = robot.LastHeartbeatAt,
+
+                MapId = robot.MapId,
+                Compartments = robot.RobotCompartments.Select(c => new CompartmentDto
+                {
+
+                    Code = c.CompartmentCode,
+                    CategoryId = c.CategoryId
+
+                }).ToList(),
+
+                Tasks = robot
+                .Tasks
+                .
+
+                Select(t => new TaskResponseDto
+                {
+                    Id = t.Id,
+                    Status = t.Status,
+                    RobotName = robot.Name,
+
+                    Stops = t.TaskStops?
+                    .OrderBy(ts => ts.SeqNo)
+                    .Select(ts => new TaskStopResponseDto
+                    {
+                        SeqNo = ts.SeqNo,
+                        PatientName = ts.Patient?.FullName,
+                        DestinationName = ts.CustomName,
+
+
+
+                    })
+                    .ToList() ?? new List<TaskStopResponseDto>()
+
+                }).ToList(),
+
+
+
+
+            };
         }
 
         public async Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto dto)

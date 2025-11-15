@@ -47,13 +47,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await _context.Robots.FirstOrDefaultAsync(r => r.Code == code);
         }
 
-        public async Task<Robot?> GetByIdAsync(ulong id, bool includeCompartments = false, bool includeTasks = false)
+        public async Task<Robot?> GetByIdAsync(
+      ulong id,
+      bool includeCompartments = false,
+      bool includeTasks = false,
+      bool includeTaskStops = false)
         {
             var query = _context.Robots.AsQueryable();
+
+            // Include Compartments
             if (includeCompartments)
                 query = query.Include(r => r.RobotCompartments);
+
+            // Include Tasks
             if (includeTasks)
+            {
                 query = query.Include(r => r.Tasks);
+
+                // Include TaskStops nếu cần
+                if (includeTaskStops)
+                {
+                    query = query.Include(r => r.Tasks)
+                                 .ThenInclude(t => t.TaskStops);
+
+                }
+            }
+
             return await query.FirstOrDefaultAsync(r => r.Id == id);
         }
 
