@@ -20,7 +20,11 @@ import CreatePatient from "@/pages/CreatePatient";
 import RoomFleetCards from "@/pages/RoomManagement";
 import MedicineListPage from "@/pages/MedicineMangement";
 import PrescriptionManagement from "@/pages/PrescriptionsManagement";
+
 import CreateRobot from "@/pages/CreateRobot";  
+
+=======
+import RunMap from "@/pages/RunMap";
 
 // 🗺️ Thêm import mới
 import CreateMap from "@/pages/CreateMap";
@@ -48,6 +52,7 @@ const routes = [
 
   // 🗺️ Trang tạo bản đồ mới (Live Mapping)
   { path: "/create-map", element: <MainLayout><CreateMap /></MainLayout> },
+    { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
 
   // 👩‍⚕️ Patients & Medicines
   { path: "/patients", element: <MainLayout><PatientsManagement /></MainLayout> },

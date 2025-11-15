@@ -11,9 +11,9 @@ from geometry_msgs.msg import Twist
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 import threading
 from rclpy.qos import QoSProfile
-
-
-HUB_URL = "http://localhost:5170/hubs/robotposition"  # ✅ Đúng Hub backend
+from get_api_url import get_api
+BASE_URL = get_api()
+HUB_URL = f"{BASE_URL}/hubs/robotposition"  # ✅ Đúng Hub backend
 
 MAX_LINEAR_VEL = 0.22
 MAX_ANGULAR_VEL = 2.84

@@ -57,6 +57,7 @@ def generate_launch_description():
     ld.add_action(stream_map_node)
     ld.add_action(control_robot_node)
     ld.add_action(map_api_node)
+    ld.add_action(goto_pose_node)
 
     return ld
     

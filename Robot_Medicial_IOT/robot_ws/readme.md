@@ -44,7 +44,11 @@ ros2 launch robot_navigation bringup_launch.py
 ros2 launch robot_driver  driver_launch.py
 
 ros2 launch robot_navigation rviz_view_launch.py (xem map)
-
+```
+### launch API
+```
+ros2 launch robot_api launch_test.py
+```
 
 ```
 
@@ -104,9 +108,9 @@ sudo systemctl restart slam_launch
 ## 🧹 3. Dừng tất cả dịch vụ
 ```bash
 sudo systemctl stop robot_driver
-sudo systemctl stop robot_api
 sudo systemctl stop navigation
 sudo systemctl stop slam_launch
+sudo systemctl stop robot_api
 
 ```
 
@@ -131,4 +135,23 @@ sudo journalctl -u slam_launch -f
 ```bash
 chmod +x restart_service.sh
 ./restart_service.sh
+
+./stop_all.sh
+```
+
+
+## simulation
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+ros2 launch turtlebot3_navigation2 navigation2.launch.py use_sim_time:=True
+
+
+## check point
+ros2 topic echo /clicked_point 
+
+## run map on rviz
+```bash
+
+ros2 launch turtlebot3_navigation2 navigation2.launch.py use_sim_time:=True map:=/home/tungduong/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map/my_map_.yaml
+
+
 ```

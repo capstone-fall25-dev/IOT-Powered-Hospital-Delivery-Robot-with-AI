@@ -116,7 +116,7 @@ class STM32Driver(Node):
         self.declare_parameter('wheel_base', 0.26)                   # Distance between wheel centers in meters (left to right)
         
         # System Configuration Parameters  
-        self.declare_parameter('debug_mode', False)                  # Enable verbose logging and debug output
+        self.declare_parameter('debug_mode', True)                  # Enable verbose logging and debug output
         self.declare_parameter('data_rate_hz', 25.0)                # Serial data processing frequency (Hz) - affects responsiveness vs CPU load
         
         # Sensor Fusion Parameters

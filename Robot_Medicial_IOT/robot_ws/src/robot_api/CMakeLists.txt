@@ -25,6 +25,7 @@ endif()
 install(DIRECTORY
   launch
   scripts
+  config
   DESTINATION share/${PROJECT_NAME}
   
 )
@@ -37,6 +38,8 @@ install(PROGRAMS
   scripts/map_api.py
   scripts/stream_map_api.py
   scripts/control_robot_api.py
+  scripts/get_api_url.py
+  scripts/control_robot_status.py
   DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()
