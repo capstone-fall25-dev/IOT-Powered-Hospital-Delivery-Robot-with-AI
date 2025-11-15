@@ -13,98 +13,69 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             _context = context;
         }
 
-        public async Task<PrescriptionItem> AddItemToPrescriptionAsync(ulong prescriptionId, PrescriptionItem item)
+        public async Task<IEnumerable<Prescription>> GetAllAsync(ulong? patientId, string? status)
         {
-            var prescription = await _context.Prescriptions.FindAsync(prescriptionId);
-            if (prescription == null)
-            {
-                throw new InvalidOperationException("Prescription not found");
-            }
+            var q = _context.Prescriptions.AsQueryable();
 
-            item.PrescriptionId = prescriptionId;
-            _context.PrescriptionItems.Add(item);
-            await _context.SaveChangesAsync();
-            return item;
-        }
-
-        public async Task<bool> AssignPrescriptionToTaskAsync(ulong prescriptionId, ulong taskId)
-        {
-            var prescription = await _context.Prescriptions.FindAsync(prescriptionId);
-            if (prescription == null)
-            {
-                return false;
-            }
-
-            var taskPatientAssignment = new TaskPatientAssignment
-            {
-                TaskId = taskId,
-                PatientId = prescription.PatientId
-            };
-
-            _context.TaskPatientAssignments.Add(taskPatientAssignment);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<Prescription> CreateAsync(Prescription prescription)
-        {
-            _context.Prescriptions.Add(prescription);
-            await _context.SaveChangesAsync();
-            return prescription;
-        }
-
-        public async Task<IEnumerable<Prescription>> GetAllAsync(ulong? patientId = null, string? status = null)
-        {
-            var query = _context.Prescriptions.AsQueryable();
             if (patientId.HasValue)
-            {
-                query = query.Where(p => p.PatientId == patientId.Value);
-            }
+                q = q.Where(x => x.PatientId == patientId);
 
             if (!string.IsNullOrEmpty(status))
-            {
-                query = query.Where(p => p.Status == status);
-            }
+                q = q.Where(x => x.Status == status);
 
-            return await query.Include(p => p.Patient).Include(p => p.PrescriptionItems).ToListAsync();
-        }
-
-        public async Task<Prescription?> GetByCodeAsync(string prescriptionCode)
-        {
-            return await _context.Prescriptions.FirstOrDefaultAsync(p => p.PrescriptionCode == prescriptionCode);
+            return await q.Include(x => x.Patient).Include(x => x.PrescriptionItems).ThenInclude(i => i.Medicine).ToListAsync();
         }
 
         public async Task<Prescription?> GetByIdAsync(ulong id, bool includeItems = false, bool includePatient = false)
         {
             var query = _context.Prescriptions.AsQueryable();
+
             if (includeItems)
-            {
-                query = query.Include(p => p.PrescriptionItems).ThenInclude(i => i.Medicine);
-            }
+                query = query
+                    .Include(p => p.PrescriptionItems)
+                        .ThenInclude(i => i.Medicine);
 
             if (includePatient)
-            {
                 query = query.Include(p => p.Patient);
-            }
 
             return await query.FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async Task<Prescription?> UpdateAsync(ulong id, Prescription prescription)
+        public async Task<Prescription?> GetByCodeAsync(string code)
+            => await _context.Prescriptions.FirstOrDefaultAsync(x => x.PrescriptionCode == code);
+
+        public async Task<Prescription> CreateAsync(Prescription pres)
         {
-            var existing = await _context.Prescriptions.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
-
-            existing.PrescriptionCode = prescription.PrescriptionCode;
-            existing.PatientId = prescription.PatientId;
-            existing.UsersId = prescription.UsersId;
-            existing.Status = prescription.Status;
-
+            _context.Prescriptions.Add(pres);
             await _context.SaveChangesAsync();
-            return existing;
+            return pres;
+        }
+
+        public async Task<Prescription?> UpdateAsync(Prescription pres)
+        {
+            _context.Prescriptions.Update(pres);
+            await _context.SaveChangesAsync();
+            return pres;
+        }
+
+        public async Task<bool> SoftDeleteAsync(ulong id)
+        {
+            var pres = await _context.Prescriptions.FindAsync(id);
+            if (pres == null) return false;
+
+            pres.Status = "canceled";
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RestoreAsync(ulong id)
+        {
+            var pres = await _context.Prescriptions.FindAsync(id);
+            if (pres == null) return false;
+
+            pres.Status = "pending";
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

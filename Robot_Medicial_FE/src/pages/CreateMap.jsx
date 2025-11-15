@@ -240,7 +240,7 @@ export default function RobotLiveConsole() {
       <div className="container-xxl py-3 py-lg-4">
         <div className="row g-3">
           {/* LEFT: CAMERA + MAP (10 phần) */}
-          <div className="col-lg-10">
+          <div className="col-lg-9">
             {/* Camera */}
             <div className="glass p-3 mb-3">
               <div className="d-flex justify-content-between mb-2">
@@ -289,7 +289,7 @@ export default function RobotLiveConsole() {
           </div>
 
           {/* RIGHT: CONTROL + LOGS (2 phần) */}
-          <div className="col-lg-2">
+          <div className="col-lg-3">
             <div className="glass p-3 h-100 d-flex flex-column control-panel" style={{ minHeight: "600px" }}>
               {/* CONTROL PANEL */}
               <div className="mb-3">
@@ -358,7 +358,7 @@ export default function RobotLiveConsole() {
               </div>
 
               {/* LOGS - Dưới điều khiển */}
-              <div className="mt-auto border-top pt-2">
+              <div className="mt-3 border-top pt-2">
                 <div className="d-flex justify-content-between mb-1 align-items-center">
                   <div className="fw-bold small">Nhật ký</div>
                   <button

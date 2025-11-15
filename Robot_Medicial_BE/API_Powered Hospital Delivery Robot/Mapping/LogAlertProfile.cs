@@ -24,11 +24,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
             CreateMap<Alert, AlertResponseDto>();
 
-            // PrescriptionItem
-            CreateMap<PrescriptionItemDto, PrescriptionItem>();
-            CreateMap<PrescriptionItem, PrescriptionItemResponseDto>()
-                .ForMember(dest => dest.MedicineName, opt => opt.MapFrom(src => src.Medicine != null ? src.Medicine.Name : null));
-
             // ReportDamagedMedicineResponse - Map from AlertResponseDto (since alertResponse is DTO)
             CreateMap<AlertResponseDto, ReportDamagedMedicineResponseDto>()
                 .ForMember(dest => dest.AlertId, opt => opt.MapFrom(src => src.Id))

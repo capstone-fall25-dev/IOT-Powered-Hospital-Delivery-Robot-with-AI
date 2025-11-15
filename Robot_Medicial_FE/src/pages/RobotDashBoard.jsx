@@ -240,7 +240,7 @@ export default function RobotDashboard() {
                                                     <div className="d-flex gap-1 justify-content-end">
                                                         <button
                                                             className="btn btn-outline-secondary btn-sm"
-                                                            onClick={() => navigate(`/robot-tasks`)}
+                                                            onClick={() => navigate(`/run-map`)}
                                                         >
                                                             Theo dõi
                                                         </button>

@@ -4,12 +4,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 {
     public interface IPrescriptionRepository
     {
-        Task<IEnumerable<Prescription>> GetAllAsync(ulong? patientId = null, string? status = null);
+        Task<IEnumerable<Prescription>> GetAllAsync(ulong? patientId, string? status);
         Task<Prescription?> GetByIdAsync(ulong id, bool includeItems = false, bool includePatient = false);
-        Task<Prescription?> GetByCodeAsync(string prescriptionCode);
-        Task<Prescription> CreateAsync(Prescription prescription);
-        Task<Prescription?> UpdateAsync(ulong id, Prescription prescription);
-        Task<PrescriptionItem> AddItemToPrescriptionAsync(ulong prescriptionId, PrescriptionItem item);
-        Task<bool> AssignPrescriptionToTaskAsync(ulong prescriptionId, ulong taskId); // Gán vào TaskPatientAssignment
+        Task<Prescription?> GetByCodeAsync(string code);
+        Task<Prescription> CreateAsync(Prescription pres);
+        Task<Prescription?> UpdateAsync(Prescription pres);
+        Task<bool> SoftDeleteAsync(ulong id);
+        Task<bool> RestoreAsync(ulong id);
     }
 }

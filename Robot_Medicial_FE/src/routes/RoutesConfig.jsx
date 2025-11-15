@@ -4,6 +4,7 @@ import MainLayout from "@/layouts/MainLayout";
 import RobotManagement from "@/pages/RobotManagement";
 import RobotDashBoard from "@/pages/RobotDashBoard";
 import TaskDetail from "@/pages/TaskDetail";
+import EditTask from "../pages/EditTask";
 import DoctorProfileProvisionForm from "@/pages/DoctorProfileProvisionForm";
 import DoctorManagementPage from "@/pages/DoctorManagementPage";
 import RobotDetailMisson from "@/pages/RobotDetailMisson";
@@ -20,9 +21,10 @@ import CreatePatient from "@/pages/CreatePatient";
 import RoomFleetCards from "@/pages/RoomManagement";
 import MedicineListPage from "@/pages/MedicineMangement";
 import PrescriptionManagement from "@/pages/PrescriptionsManagement";
-
+import PrescriptionCreate from "@/pages/PrescriptionCreate";
+import PrescriptionEdit from "@/pages/PrescriptionEdit";
+import PrescriptionDetail from "@/pages/PrescriptionDetail";
 import CreateRobot from "@/pages/CreateRobot";  
-
 
 import RunMap from "@/pages/RunMap";
 
@@ -36,6 +38,7 @@ const routes = [
   { path: "/team", element: <MainLayout><RobotManagement /></MainLayout> },
   { path: "/dashboard", element: <MainLayout><RobotDashBoard /></MainLayout> },
   { path: "/task-detail/:id", element: <MainLayout><TaskDetail /></MainLayout> },
+  { path: "/task-edit/:id", element: <MainLayout><EditTask /></MainLayout> },
   { path: "/doctor", element: <MainLayout><DoctorManagementPage /></MainLayout> },
   { path: "/robot-tasks", element: <MainLayout><RobotDetailMisson /></MainLayout> },
   { path: "/addtasks", element: <MainLayout><AddTask /></MainLayout> },
@@ -52,7 +55,7 @@ const routes = [
 
   // 🗺️ Trang tạo bản đồ mới (Live Mapping)
   { path: "/create-map", element: <MainLayout><CreateMap /></MainLayout> },
-    { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
+  { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
 
   // 👩‍⚕️ Patients & Medicines
   { path: "/patients", element: <MainLayout><PatientsManagement /></MainLayout> },
@@ -61,7 +64,10 @@ const routes = [
   { path: "/rooms/all", element: <MainLayout><RoomFleetCards /></MainLayout> },
   { path: "/medicines", element: <MainLayout><MedicineListPage /></MainLayout> },
   { path: "/prescriptions", element: <MainLayout><PrescriptionManagement /></MainLayout> },
-   { path: "/createRobot", element: <MainLayout><CreateRobot /></MainLayout> },
+  { path: "/prescriptions/add", element: <MainLayout><PrescriptionCreate /></MainLayout> },
+  { path: "/prescriptions/:id/edit", element: <MainLayout><PrescriptionEdit /></MainLayout> },
+  { path: "/prescriptions/:id", element: <MainLayout><PrescriptionDetail /></MainLayout> },
+  { path: "/createRobot", element: <MainLayout><CreateRobot /></MainLayout> },
 ];
 
 export default routes;
