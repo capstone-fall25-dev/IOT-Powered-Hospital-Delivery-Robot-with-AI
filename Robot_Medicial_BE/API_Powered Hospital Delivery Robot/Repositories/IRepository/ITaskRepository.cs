@@ -31,5 +31,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         System.Threading.Tasks.Task UpdateRobotStatusAsync(ulong robotId, string status);
 
         Task<IDbContextTransaction> BeginTransactionAsync();
+
+        Task<int> SaveChangesAsync();
     }
 }

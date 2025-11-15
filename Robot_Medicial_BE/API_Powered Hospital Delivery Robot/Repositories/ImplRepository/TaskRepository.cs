@@ -168,5 +168,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             return await _context.Database.BeginTransactionAsync();
         }
+
+        public async Task<int> SaveChangesAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
     }
 }

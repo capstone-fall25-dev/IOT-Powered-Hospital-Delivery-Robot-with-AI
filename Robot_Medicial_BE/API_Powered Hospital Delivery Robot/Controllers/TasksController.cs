@@ -46,6 +46,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
+        [HttpGet("{id}/edit")]
+        public async Task<ActionResult<TaskEditDto>> GetEditData(ulong id)
+        {
+            var task = await _service.GetEditDataAsync(id);
+            if (task == null)
+                return NotFound("Không tìm thấy nhiệm vụ.");
+
+            return Ok(task);
+        }
+
+
         [HttpPut("{id}")]
         public async Task<ActionResult<TaskResponseDto>> Update(ulong id, [FromBody] UpdateTaskDto dto)
         {

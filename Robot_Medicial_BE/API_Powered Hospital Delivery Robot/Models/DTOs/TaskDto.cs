@@ -59,8 +59,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class UpdateTaskDto
     {
-        public string? Status { get; set; }
+        // Cho phép đổi robot / map / priority / giờ bắt đầu
+        public ulong? RobotId { get; set; }
+        public ulong? MapId { get; set; }
         public TaskPriority? Priority { get; set; }
+        public DateTime? ScheduledStartAt { get; set; }
+
+        // nếu cần vẫn cho phép đổi status (ví dụ cancel)
+        public string? Status { get; set; }
+
+        // Danh sách điểm dừng cần update (optional)
+        public List<UpdateTaskStopDto>? Stops { get; set; }
+    }
+
+    public class UpdateTaskStopDto
+    {
+        // Id stop hiện tại trong DB
+        public ulong StopId { get; set; }
+
+        public int SeqNo { get; set; }
+        public ulong DestinationId { get; set; }
+        public ulong PatientId { get; set; }
+        public ulong CompartmentId { get; set; }
+        public ulong CategoryId { get; set; }
+
+        public string? CustomName { get; set; }
+        public string? ItemDesc { get; set; }
     }
 
     // =====================================
@@ -201,4 +225,30 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PrescriptionItemResponseDto> Items { get; set; } = new();
     }
 
+    public class TaskEditDto
+    {
+        public ulong Id { get; set; }
+        public ulong MapId { get; set; }
+        public ulong RobotId { get; set; }
+
+        public TaskPriority Priority { get; set; }
+        public DateTime? ScheduledStartAt { get; set; }
+
+        public List<TaskEditStopDto> Stops { get; set; } = new();
+    }
+
+    public class TaskEditStopDto
+    {
+        public ulong StopId { get; set; }
+        public int SeqNo { get; set; }
+
+        public ulong DestinationId { get; set; }
+        public ulong PatientId { get; set; }
+
+        public ulong CategoryId { get; set; }
+        public ulong CompartmentId { get; set; }
+
+        public string? CustomName { get; set; }
+        public string? ItemDesc { get; set; }
+    }
 }
