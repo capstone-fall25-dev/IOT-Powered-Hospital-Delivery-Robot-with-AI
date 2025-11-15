@@ -11,12 +11,14 @@ import base64
 import os
 import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
+from get_api_url import get_api
 
+BASE_URL = get_api()
 # 🌐 Hub backend ASP.NET
-HUB_URL = "http://localhost:5170/hubs/robotposition"
+HUB_URL = f"{BASE_URL}/hubs/robotposition"
 
 # 🌐 REST API upload map
-MAP_API_URL = "http://localhost:5170/api/MapsUpload/json"
+MAP_API_URL = f"{BASE_URL}/api/MapsUpload/json"
 
 # 🗺️ Map folder path
 MAP_FOLDER = os.path.expanduser(

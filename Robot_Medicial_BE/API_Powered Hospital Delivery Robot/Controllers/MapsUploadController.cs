@@ -23,37 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         // ============================================================
-        // POST: /api/MapsUpload
-        // Upload map mới (từ ROS2 hoặc client)
-        // ============================================================
-        [HttpPost]
-        public async Task<ActionResult<MapResponseDto>> Upload([FromForm] MapUploadDto mapDto, IFormFile? imageFile)
-        {
-            try
-            {
-                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024)
-                    return BadRequest("Image file too large (max 10MB)");
-
-                var created = await _uploadService.UploadAsync(mapDto, imageFile);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-        // ============================================================
-        // POST: /api/MapsUpload/json
-        // Upload map từ ROS2 (JSON + base64 image)
+        // POST /api/MapsUpload/json  → ROS2 gửi map
         // ============================================================
         [HttpPost("json")]
         public async Task<ActionResult<MapResponseDto>> UploadJson([FromBody] MapUploadJsonDto mapJsonDto)
@@ -65,14 +35,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 if (!string.IsNullOrEmpty(mapJsonDto.ImageBase64))
                 {
                     var bytes = Convert.FromBase64String(mapJsonDto.ImageBase64);
-                    var stream = new MemoryStream(bytes);
-                    imageFile = new FormFile(stream, 0, bytes.Length, "imageFile", mapJsonDto.ImageName ?? "map.png");
+                    imageFile = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "image", mapJsonDto.ImageName);
                 }
 
                 var dto = new MapUploadDto
                 {
                     MapName = mapJsonDto.MapName,
-                    Mode = mapJsonDto.Mode,
                     Resolution = mapJsonDto.Resolution,
                     OriginX = mapJsonDto.OriginX,
                     OriginY = mapJsonDto.OriginY,
@@ -85,108 +53,85 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 var created = await _uploadService.UploadAsync(dto, imageFile);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, ex.Message);
             }
         }
 
         // ============================================================
-        // GET: /api/MapsUpload/{id}
-        // Lấy thông tin map theo ID
+        // GET /api/MapsUpload/{id}
         // ============================================================
         [HttpGet("{id}")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
             var map = await _mapService.GetByIdAsync(id);
             if (map == null)
-                return NotFound($"Map with ID {id} not found.");
+                return NotFound();
 
             return Ok(map);
         }
 
         // ============================================================
-        // GET: /api/MapsUpload/{id}/image
-        // Trả về ảnh map (convert .pgm → .png chính xác)
+        // GET /api/MapsUpload/{id}/image  → Convert PGM → PNG đúng chuẩn
         // ============================================================
-        [HttpGet("{id}/image")]
-        public async Task<IActionResult> GetImage(ulong id)
+     [HttpGet("{id}/image")]
+public async Task<IActionResult> GetImage(ulong id)
+{
+    var map = await _mapService.GetByIdAsync(id);
+    if (map == null || map.ImageData == null)
+        return NotFound();
+
+    var name = map.ImageName ?? "map.png";
+
+    try
+    {
+        // Nếu không phải .pgm thì trả luôn (PNG đã lưu sẵn)
+        if (!name.EndsWith(".pgm", StringComparison.OrdinalIgnoreCase))
+            return File(map.ImageData, "image/png", name);
+
+        using var ms = new MemoryStream(map.ImageData);
+        using var br = new BinaryReader(ms, Encoding.ASCII);
+
+        string magic = ReadLine(br);
+        if (magic != "P5")
+            throw new Exception("Invalid PGM");
+
+        string line;
+        do { line = ReadLine(br); }
+        while (line.StartsWith("#"));
+
+        var parts = line.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+        int width = int.Parse(parts[0]);
+        int height = int.Parse(parts[1]);
+
+        int maxVal = int.Parse(ReadLine(br)); // không dùng nhưng phải đọc
+
+        var raw = br.ReadBytes(width * height);
+
+        using var img = new Image<L8>(width, height);
+
+        // ❗ KHÔNG flip Y nữa – giữ nguyên như PGM gốc
+        for (int y = 0; y < height; y++)
         {
-            var map = await _mapService.GetByIdAsync(id);
-            if (map == null || map.ImageData == null)
-                return NotFound("Map image not found.");
-
-            var imageName = map.ImageName ?? "map.png";
-
-            try
+            for (int x = 0; x < width; x++)
             {
-                // ✅ Nếu là file .pgm → chuyển sang PNG
-                if (imageName.EndsWith(".pgm", StringComparison.OrdinalIgnoreCase))
-                {
-                    using var ms = new MemoryStream(map.ImageData);
-                    using var br = new BinaryReader(ms, Encoding.ASCII, leaveOpen: true);
-
-                    // --- Đọc header PGM ---
-                    string magic = ReadLine(br);
-                    if (magic != "P5")
-                        throw new InvalidDataException("Invalid PGM format");
-
-                    // --- Bỏ qua dòng comment nếu có ---
-                    string line;
-                    do { line = ReadLine(br); } while (line.StartsWith("#"));
-
-                    // --- Kích thước ảnh ---
-                    var sizeParts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    int width = int.Parse(sizeParts[0]);
-                    int height = int.Parse(sizeParts[1]);
-
-                    // --- Max value (thường là 255) ---
-                    int maxVal = int.Parse(ReadLine(br));
-
-                    // --- Đọc pixel data nhị phân chính xác ---
-                    var pixelData = br.ReadBytes(width * height);
-
-                    // --- Tạo ảnh grayscale đúng hướng ---
-                    using var image = new Image<L8>(width, height);
-                    for (int y = 0; y < height; y++)
-                    {
-                        for (int x = 0; x < width; x++)
-                        {
-                            // ✅ Đảo trục Y theo chuẩn ROS (ROS lưu từ dưới → trên)
-                        //    var val = pixelData[(height - y - 1) * width + x];
-                            var val = pixelData[y * width + x];
-                            image[x, y] = new L8(val);
-                        }
-                    }
-
-                    // --- Xuất PNG ---
-                    using var outStream = new MemoryStream();
-                    await image.SaveAsync(outStream, new PngEncoder());
-                    outStream.Position = 0;
-
-                    return File(outStream.ToArray(), "image/png", imageName.Replace(".pgm", ".png"));
-                }
-
-                // ✅ Nếu là PNG thì trả trực tiếp
-                return File(map.ImageData, "image/png", imageName);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Failed to process image: {ex.Message}");
+                img[x, y] = new L8(raw[y * width + x]);
             }
         }
 
-        // ============================================================
-        // 🔧 Hàm phụ trợ đọc dòng trong BinaryReader
-        // ============================================================
+        using var output = new MemoryStream();
+        img.Save(output, new PngEncoder());
+        var pngName = name.Replace(".pgm", ".png");
+        return File(output.ToArray(), "image/png", pngName);
+    }
+    catch (Exception e)
+    {
+        return StatusCode(500, e.Message);
+    }
+}
+
+
         private static string ReadLine(BinaryReader br)
         {
             List<byte> bytes = new();
