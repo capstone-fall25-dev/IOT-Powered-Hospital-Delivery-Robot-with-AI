@@ -20,7 +20,12 @@ import CreatePatient from "@/pages/CreatePatient";
 import RoomFleetCards from "@/pages/RoomManagement";
 import MedicineListPage from "@/pages/MedicineMangement";
 import PrescriptionManagement from "@/pages/PrescriptionsManagement";
+
+import CreateRobot from "@/pages/CreateRobot";  
+
+=======
 import RunMap from "@/pages/RunMap";
+
 // 🗺️ Thêm import mới
 import CreateMap from "@/pages/CreateMap";
 
@@ -56,6 +61,7 @@ const routes = [
   { path: "/rooms/all", element: <MainLayout><RoomFleetCards /></MainLayout> },
   { path: "/medicines", element: <MainLayout><MedicineListPage /></MainLayout> },
   { path: "/prescriptions", element: <MainLayout><PrescriptionManagement /></MainLayout> },
+   { path: "/createRobot", element: <MainLayout><CreateRobot /></MainLayout> },
 ];
 
 export default routes;

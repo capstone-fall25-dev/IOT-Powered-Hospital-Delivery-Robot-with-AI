@@ -5,7 +5,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
     public class RobotDto
     {
-        public ulong Id { get; set; }
+        //public ulong Id { get; set; }
 
         [Required]
         [StringLength(32)]
