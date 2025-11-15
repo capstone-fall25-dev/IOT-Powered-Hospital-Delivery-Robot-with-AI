@@ -1,0 +1,81 @@
+/* src/assets/styles/roomFleetCards.module.css */
+:root {
+  --teal: #4CE1C6;
+  --ink: #0f172a;
+}
+
+.page {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: #0b1324;
+  background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+              radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+              linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+  min-height: 100vh;
+}
+
+.title {
+  font-weight: 900;
+  color: #0b1432;
+}
+
+.btnTeal {
+  background: var(--teal);
+  border: none;
+  color: #052a2b;
+  font-weight: 800;
+  border-radius: 5px; /* Gần vuông 95% - bo tròn rất nhẹ */
+  transition: all 0.2s ease;
+}
+
+.btnTeal:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px); /* Hiệu ứng nâng nhẹ */
+  box-shadow: 0 4px 12px rgba(76, 225, 198, 0.3);
+}
+
+.roomCard {
+  background: #0e1a2b;
+  color: #eef7f5;
+  border: 1px solid rgba(255, 255, 255, 0.06); /* Border mỏng */
+  border-radius: 5px; /* Gần vuông 95% - bo tròn rất nhẹ */
+  box-shadow: 0 8px 22px rgba(2, 6, 23, .18);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.roomCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(2, 6, 23, .22);
+  border-color: rgba(76, 225, 198, 0.2); /* Thay đổi border khi hover */
+}
+
+.muted {
+  color: #cfe9e5;
+  opacity: 0.85;
+}
+
+/* Tùy chỉnh input search */
+.searchInput {
+  border-radius: 5px !important; /* Gần vuông 95% */
+  border: 1px solid rgba(0, 0, 0, 0.1) !important; /* Border mỏng hơn */
+}
+
+/* No rooms message */
+.noRooms {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Responsive grid for cards */
+@media (max-width: 768px) {
+  .roomCard {
+    border-radius: 2px; /* Gần vuông hơn trên mobile */
+    margin-bottom: 1rem;
+  }
+  
+  .searchInput {
+    width: 100% !important;
+  }
+}
