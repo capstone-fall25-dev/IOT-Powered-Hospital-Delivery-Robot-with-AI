@@ -32,7 +32,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         [HttpDelete("categories/{id}")]
         public async Task<IActionResult> DeleteCategory(ulong id)
-            => Ok(await _service.DeleteCategoryAsync(id));
+        {
+            try
+            {
+                await _service.DeleteCategoryAsync(id);
+                return Ok(new { message = "Category deleted successfully" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
 
         // ================= MEDICINE =======================
         [HttpGet("list")]

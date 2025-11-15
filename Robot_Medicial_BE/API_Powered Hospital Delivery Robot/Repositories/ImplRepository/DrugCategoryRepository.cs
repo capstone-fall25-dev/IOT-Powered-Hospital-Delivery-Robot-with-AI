@@ -41,10 +41,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<bool> DeleteAsync(ulong id)
         {
-            var cat = await _ctx.DrugCategories.FindAsync(id);
-            if (cat == null) return false;
+            var category = await _ctx.DrugCategories
+                .Include(c => c.Medicines)
+                .FirstOrDefaultAsync(c => c.Id == id);
 
-            _ctx.DrugCategories.Remove(cat);
+            if (category == null)
+                throw new InvalidOperationException("Category not found");
+
+            if (category.Medicines.Any())
+                throw new InvalidOperationException("Cannot delete category because it is being used by medicines.");
+
+            _ctx.DrugCategories.Remove(category);
             await _ctx.SaveChangesAsync();
             return true;
         }

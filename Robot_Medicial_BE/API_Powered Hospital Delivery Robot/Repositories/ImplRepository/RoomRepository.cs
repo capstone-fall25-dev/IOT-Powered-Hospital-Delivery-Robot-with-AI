@@ -22,12 +22,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<IEnumerable<Room>> GetAllAsync()
         {
-            return await _context.Rooms.ToListAsync();
+            return await _context.Rooms
+                .Include(r => r.Patients)
+                .ToListAsync();
         }
 
         public async Task<Room?> GetByIdAsync(ulong id)
         {
-            return await _context.Rooms.FirstOrDefaultAsync(r => r.Id == id);
+            return await _context.Rooms
+                .Include(r => r.Patients)
+                .FirstOrDefaultAsync(r => r.Id == id);
         }
 
         public async Task<Room?> UpdateAsync(ulong id, Room room)
@@ -45,6 +49,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             await _context.SaveChangesAsync();
             return existing;
+        }
+
+        public async Task<bool> DeleteAsync(ulong id)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Patients)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (room == null)
+                throw new InvalidOperationException("Không tìm thấy phòng.");
+
+            if (room.Patients.Any())
+                throw new InvalidOperationException("Không thể xóa phòng vì vẫn còn bệnh nhân đang ở trong phòng này.");
+
+            _context.Rooms.Remove(room);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

@@ -14,6 +14,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             _context = context;
         }
 
+        public async Task<bool> ExistsRoomAsync(ulong roomId)
+            => await _context.Rooms.AnyAsync(r => r.Id == roomId);
+
         public async Task<Patient> CreateAsync(Patient patient)
         {
             _context.Patients.Add(patient);
@@ -21,84 +24,95 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return patient;
         }
 
-        public async Task<Patient?> DischargeAsync(ulong id)
-        {
-            var patient = await _context.Patients.FindAsync(id);
-            if (patient == null)
-            {
-                return null;
-            }
-
-            patient.Status = "discharged";
-            patient.RoomId = null; // Null room
-            patient.RoomNumber = null;
-            await _context.SaveChangesAsync();
-            return patient;
-        }
-
         public async Task<IEnumerable<Patient>> GetAllAsync()
         {
-            return await _context.Patients.Include(p => p.Room).ToListAsync();
+            return await _context.Patients
+                .Include(p => p.Room)
+                .ToListAsync();
         }
 
-        public async Task<Patient?> GetByCodeAsync(string patientCode)
+        public async Task<IEnumerable<Patient>> FilterAsync(PatientFilterDto f)
         {
-            return await _context.Patients.FirstOrDefaultAsync(p => p.PatientCode == patientCode);
+            var q = _context.Patients.Include(p => p.Room).AsQueryable();
+
+            if (!string.IsNullOrEmpty(f.Keyword))
+                q = q.Where(p =>
+                    p.FullName.Contains(f.Keyword) ||
+                    p.PatientCode.Contains(f.Keyword) ||
+                    (p.Department != null && p.Department.Contains(f.Keyword)) ||
+                    (p.Room!.RoomName != null && p.Room.RoomName.Contains(f.Keyword)));
+
+            if (!string.IsNullOrEmpty(f.Status))
+                q = q.Where(p => p.Status == f.Status);
+
+            return await q
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
         }
 
         public async Task<Patient?> GetByIdAsync(ulong id, bool includeRoom = false, bool includePrescriptions = false)
         {
-            var query = _context.Patients.AsQueryable();
+            IQueryable<Patient> q = _context.Patients;
+
             if (includeRoom)
-            {
-                query = query.Include(p => p.Room);
-            }
+                q = q.Include(p => p.Room);
 
             if (includePrescriptions)
-            {
-                query = query.Include(p => p.Prescriptions).ThenInclude(pr => pr.PrescriptionItems).ThenInclude(m=>m.Medicine);
-            }
+                q = q.Include(p => p.Prescriptions)
+                     .ThenInclude(pr => pr.PrescriptionItems)
+                     .ThenInclude(i => i.Medicine);
 
-            return await query.FirstOrDefaultAsync(p => p.Id == id);
+            return await q.FirstOrDefaultAsync(p => p.Id == id);
         }
 
-        public async Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong patientId)
+        public async Task<Patient?> GetByCodeAsync(string code)
+            => await _context.Patients.FirstOrDefaultAsync(p => p.PatientCode == code);
+
+        public async Task<Patient?> UpdateAsync(ulong id, Patient patient)
+        {
+            var ex = await _context.Patients.FindAsync(id);
+            if (ex == null) return null;
+
+            _context.Entry(ex).CurrentValues.SetValues(patient);
+            await _context.SaveChangesAsync();
+
+            return ex;
+        }
+
+        public async Task<Patient?> DischargeAsync(ulong id, string? reason)
+        {
+            var patient = await _context.Patients.FindAsync(id);
+            if (patient == null) return null;
+
+            patient.Status = "discharged";
+            patient.RoomId = null;
+            patient.RoomNumber = null;
+
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                // Format: FullName (Reason)
+                patient.FullName = $"{patient.FullName} ({reason})";
+            }
+
+            await _context.SaveChangesAsync();
+            return patient;
+        }
+
+        public async Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong id)
         {
             return await _context.PrescriptionItems
                 .Include(i => i.Medicine)
-                .Where(i => i.Prescription.PatientId == patientId)
+                .Where(i => i.Prescription.PatientId == id)
                 .GroupBy(i => i.Medicine.Name)
                 .Select(g => new PatientMedicineHistoryDto
                 {
                     MedicineName = g.Key,
-                    TotalPrescribedQuantity = g.Sum(i => i.Quantity),
+                    Dosage = g.First().Dosage,
                     LastPrescribedAt = g.Max(i => i.Prescription.CreatedAt),
-                    Dosage = g.First().Dosage
+                    TotalPrescribedQuantity = g.Sum(i => i.Quantity)
                 })
-                .OrderByDescending(h => h.LastPrescribedAt)
+                .OrderByDescending(x => x.LastPrescribedAt)
                 .ToListAsync();
-        }
-
-        public async Task<Patient?> UpdateAsync(ulong id, Patient patient)
-        {
-            var existing = await _context.Patients.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
-
-            existing.PatientCode = patient.PatientCode;
-            existing.FullName = patient.FullName;
-            existing.Gender = patient.Gender;
-            existing.Dob = patient.Dob;
-            existing.Address = patient.Address;
-            existing.Phone = patient.Phone;
-            existing.Department = patient.Department;
-            existing.RoomNumber = patient.RoomNumber;
-            existing.RoomId = patient.RoomId;
-
-            await _context.SaveChangesAsync();
-            return existing;
         }
     }
 }
