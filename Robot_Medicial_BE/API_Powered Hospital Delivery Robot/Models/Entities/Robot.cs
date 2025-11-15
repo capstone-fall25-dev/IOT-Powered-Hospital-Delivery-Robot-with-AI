@@ -17,6 +17,8 @@ public partial class Robot
 {
     [Key]
     [Column("id")]
+
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public ulong Id { get; set; }
 
     [Column("code")]
