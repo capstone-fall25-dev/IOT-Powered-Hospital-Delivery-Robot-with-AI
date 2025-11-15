@@ -7,37 +7,69 @@ import cv2
 import base64
 import requests
 import time
+from get_api_url import get_api
+
+BASE_URL = get_api()
 
 class WebcamPublisher(Node):
     def __init__(self):
         super().__init__('webcam_publisher')
+
         self.image_pub = self.create_publisher(Image, '/camera/image_raw', 10)
         self.info_pub = self.create_publisher(CameraInfo, '/camera/camera_info', 10)
         self.bridge = CvBridge()
 
-        # 🎥 Mở webcam
-        self.cap = cv2.VideoCapture(2)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap = None
+        self.last_connect_attempt = 0
 
-        if not self.cap.isOpened():
-            self.get_logger().error("❌ Không thể mở webcam.")
-            return
+        self.api_url = f"{BASE_URL}/api/RobotCamera/SendFrame"
+        self.get_logger().info("📷 Khởi tạo WebcamPublisher...")
 
-        # 🌐 API backend để gửi frame
-        self.api_url = "http://localhost:5170/api/RobotCamera/SendFrame"
-        self.get_logger().info(f"✅ Webcam đã mở. Gửi frame tới API: {self.api_url}")
-
-        # Gửi ảnh 10 FPS
+        # Timer chạy 30 FPS
         self.timer = self.create_timer(1.0 / 30.0, self.publish_frame)
 
+    # ------------------------------------------------------
+    # 🔄 Hàm thử kết nối webcam (tự động reconnect)
+    # ------------------------------------------------------
+    def try_open_camera(self):
+        now = time.time()
+        if now - self.last_connect_attempt < 2:
+            return False  # tránh spam mở camera
+        self.last_connect_attempt = now
+
+        self.get_logger().info("🔄 Đang thử mở webcam...")
+
+        for i in range(10):
+            cap = cv2.VideoCapture(i)
+            if cap.isOpened():
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                self.cap = cap
+                self.get_logger().info(f"✅ Webcam mở thành công tại index {i}")
+                return True
+
+        self.get_logger().warn("❌ Không tìm thấy camera. Chờ kết nối lại...")
+        return False
+
+    # ------------------------------------------------------
+    # 🎥 Publish frame + reconnect logic
+    # ------------------------------------------------------
     def publish_frame(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            self.get_logger().warning("⚠️ Không đọc được frame.")
+        # Nếu camera chưa mở → thử lại
+        if self.cap is None or not self.cap.isOpened():
+            self.try_open_camera()
             return
 
-        # 🔄 Lật ngược ảnh (nếu camera bị ngược)
+        ret, frame = self.cap.read()
+
+        # Nếu đọc fail → thử reconnect
+        if not ret:
+            self.get_logger().warn("⚠️ Không đọc được frame. Thử mở lại camera...")
+            self.cap.release()
+            self.cap = None
+            return
+
+        # 🔄 Lật ảnh nếu camera ngược
         frame = cv2.rotate(frame, cv2.ROTATE_180)
 
         # --- ROS2 publish ---
@@ -58,25 +90,27 @@ class WebcamPublisher(Node):
         cam_info.p = [fx, 0, cx, 0, 0, fy, cy, 0, 0, 0, 1, 0]
         self.info_pub.publish(cam_info)
 
-        # --- Chuyển frame sang Base64 ---
+        # --- Encode Base64 ---
         _, buffer = cv2.imencode('.jpg', frame)
         jpg_as_text = base64.b64encode(buffer).decode('utf-8')
 
-        # --- Dữ liệu JSON đúng format với API .NET ---
         data = {
-            "Image_b64": jpg_as_text,  # ✅ Đúng tên property C# mong đợi
+            "Image_b64": jpg_as_text,
             "FrameId": "cam_main",
-            "Timestamp": int(time.time() * 1000)  # ✅ Unix time dạng milliseconds
+            "Timestamp": int(time.time() * 1000)
         }
 
-        # --- Gửi lên API ---
         try:
-            response = requests.post(self.api_url, json=data, timeout=0.5)
-        except requests.exceptions.RequestException as e:
-            self.get_logger().error(f"❌ Không gửi được API: {e}")
+            requests.post(self.api_url, json=data, timeout=0.5)
+        except requests.exceptions.RequestException:
+            pass  # không spam log
 
+    # ------------------------------------------------------
+    # 🔚 Cleanup
+    # ------------------------------------------------------
     def destroy_node(self):
-        self.cap.release()
+        if self.cap:
+            self.cap.release()
         cv2.destroyAllWindows()
         super().destroy_node()
 

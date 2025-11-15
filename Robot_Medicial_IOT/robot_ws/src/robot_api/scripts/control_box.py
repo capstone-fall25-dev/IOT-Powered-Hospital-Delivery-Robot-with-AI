@@ -6,9 +6,11 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-
+from get_api_url import get_api
 # ⚙️ Địa chỉ Hub backend ASP.NET (đổi khi chạy trên server thật)
-HUB_URL = "http://localhost:5170/hubs/robotposition"
+BASE_URL = get_api()
+print(BASE_URL)
+HUB_URL = f"{BASE_URL}/hubs/robotposition"
 
 class CompartmentSignalSubscriber(Node):
     def __init__(self):

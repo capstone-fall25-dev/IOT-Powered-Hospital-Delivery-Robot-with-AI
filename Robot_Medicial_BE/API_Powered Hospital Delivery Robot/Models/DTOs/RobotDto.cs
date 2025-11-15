@@ -9,7 +9,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         [Required]
         [StringLength(32)]
-        public string Code { get; set; } = null!; // Unique
+        public string? Code { get; set; } = null!; // Unique
 
         [StringLength(128)]
         public string? Name { get; set; }
@@ -36,6 +36,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public int ErrorCountSession { get; set; } = 0;
 
         public ulong? MapId { get; set; } // FK to maps
+
+        public List<CompartmentDto> Compartments { get; set; }
+    }
+
+    public class CompartmentDto
+    {
+        public string? Name { get; set; }
+        public string? Code { get; set; }
+        public bool IsLocked { get; set; }
+        public bool IsActice { get; set; }
+        public ulong? CategoryId { get; set; }
     }
 
     // Output DTO (include compartments, tasks)
@@ -58,7 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public ulong? MapId { get; set; }
-        public IEnumerable<RobotCompartment> Compartments { get; set; } = new List<RobotCompartment>();
+
+
+        public List<CompartmentDto> Compartments { get; set; }
         public IEnumerable<TaskResponseDto> Tasks { get; set; } = new List<TaskResponseDto>(); // Nhiệm vụ hiện tại
     }
 

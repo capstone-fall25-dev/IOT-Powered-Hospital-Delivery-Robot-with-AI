@@ -101,5 +101,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async System.Threading.Tasks.Task CreateManyAsync(IEnumerable<RobotCompartment> compartments)
+        {
+            _context.RobotCompartments.AddRange(compartments);
+            await _context.SaveChangesAsync();
+        }
     }
 }

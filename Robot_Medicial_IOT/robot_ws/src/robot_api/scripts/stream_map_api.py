@@ -11,7 +11,8 @@ from signalrcore.hub_connection_builder import HubConnectionBuilder
 from rclpy.qos import ReliabilityPolicy, DurabilityPolicy, QoSProfile
 from PIL import Image
 import io
-
+from get_api_url import get_api
+BASE_URL = get_api()
 
 class MapSignalRStreamer(Node):
     def __init__(self):
@@ -20,8 +21,8 @@ class MapSignalRStreamer(Node):
         # =========================
         # 🔧 CONFIG
         # =========================
-        self.api_url = "http://localhost:5170/api/RobotMode/map-update"
-        self.hub_url = "http://localhost:5170/hubs/robotposition"
+        self.api_url = f"{BASE_URL}/api/RobotMode/map-update"
+        self.hub_url = f"{BASE_URL}/hubs/robotposition"
         self.send_interval_sec = 1.0           # send every 1 second
         self.http_timeout_sec = 5
         self.max_retry = 2

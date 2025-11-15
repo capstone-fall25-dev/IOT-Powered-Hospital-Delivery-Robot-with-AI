@@ -5,7 +5,8 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 import math, threading, requests
 from signalrcore.hub_connection_builder import HubConnectionBuilder
-
+from get_api_url import get_api
+BASE_URL = get_api()
 
 class RobotModePositionStreamer(Node):
     def __init__(self):
@@ -13,8 +14,8 @@ class RobotModePositionStreamer(Node):
 
         # --- CONFIG ---
         self.robot_id = 1
-        self.hub_url = "http://localhost:5170/hubs/robotposition"
-        self.api_url = "http://localhost:5170/api/RobotMode/update-position"
+        self.hub_url = f"{BASE_URL}/hubs/robotposition"
+        self.api_url = f"{BASE_URL}/api/RobotMode/update-position"
 
         # --- State ---
         self.current_x = None
@@ -28,7 +29,7 @@ class RobotModePositionStreamer(Node):
         self.start_signalr_connection()
 
         # --- Timer (send position every 2s) ---
-        self.timer = self.create_timer(2.0, self.send_position_if_active)
+        self.timer = self.create_timer(1.0, self.send_position_if_active)
 
         self.get_logger().info("🤖 RobotModePositionStreamer initialized.")
 
@@ -81,14 +82,14 @@ class RobotModePositionStreamer(Node):
             self.sub = None
 
         # choose topic based on mode
-        if mode == "mapping":
-            self.sub = self.create_subscription(
-                Odometry, '/odom', self.odom_callback, 10
-            )
-            self.mapping_active = True
-            self.get_logger().info("🗺️ [Mapping] Subscribed to /odom topic")
+        # if mode == "mapping":
+        #     self.sub = self.create_subscription(
+        #         Odometry, '/odom', self.odom_callback, 10
+        #     )
+        #     self.mapping_active = True
+        #     self.get_logger().info("🗺️ [Mapping] Subscribed to /odom topic")
 
-        elif mode in ("run_map", "save_map"):
+        if mode in ("run_map", "save_map","mapping"):
             self.sub = self.create_subscription(
                 PoseWithCovarianceStamped, '/amcl_pose', self.amcl_callback, 10
             )
@@ -131,7 +132,7 @@ class RobotModePositionStreamer(Node):
         try:
             res = requests.post(self.api_url, json=payload, timeout=3)
             if res.status_code == 200:
-                # self.get_logger().info(f"📍 Sent position → {payload}")
+                self.get_logger().info(f"📍 Sent position → {payload}")
                 pass
             else:
                 self.get_logger().warn(f"⚠️ HTTP {res.status_code}: {res.text}")

@@ -132,12 +132,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 if (_currentMode != "mapping")
                 {
-                    _logger.LogWarning("🚫 Map update ignored — current mode is '{Mode}'", _currentMode);
+                  //  _logger.LogWarning("🚫 Map update ignored — current mode is '{Mode}'", _currentMode);
                     return Ok(new { status = "ignored", reason = "not in mapping mode" });
                 }
 
                 await _hubContext.Clients.All.SendAsync("ReceiveMapUpdate", map);
-                _logger.LogInformation("🗺️ [Mapping] Map frame received (w={Width}, h={Height})", map.Width, map.Height);
+              //  _logger.LogInformation("🗺️ [Mapping] Map frame received (w={Width}, h={Height})", map.Width, map.Height);
 
                 return Ok(new { status = "received", width = map.Width, height = map.Height });
             }
