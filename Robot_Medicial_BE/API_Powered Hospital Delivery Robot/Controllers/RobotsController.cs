@@ -34,13 +34,40 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(robot);
         }
 
+        
+        // [Authorize(Roles = "admin")]
         [HttpPost]
-       // [Authorize(Roles = "admin")]
         public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
-            var created = await _service.CreateAsync(robotDto);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            try
+            {
+                var created = await _service.CreateAsync(robotDto);
+
+                return CreatedAtAction(nameof(GetById),
+                    new { id = created.Id },
+                    created);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // lỗi như: Robot code already exists
+                return Conflict(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                // lỗi như: Battery percent must be between 0 and 100
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // lỗi không xác định
+                return StatusCode(500, new
+                {
+                    message = "Internal server error",
+                    detail = ex.Message
+                });
+            }
         }
+
 
         // ✅ ROS gửi trạng thái (không cần token)
         [HttpPost("update-status")]
