@@ -7,7 +7,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<IEnumerable<DrugCategory>> GetAllAsync();
         Task<DrugCategory?> GetByIdAsync(ulong id);
         Task<DrugCategory?> GetByNameAsync(string name);
-        Task<DrugCategory> CreateAsync(DrugCategory category);
-        Task<DrugCategory?> UpdateAsync(ulong id, DrugCategory category);
+        Task<DrugCategory> CreateAsync(DrugCategory cat);
+        Task<DrugCategory?> UpdateAsync(ulong id, DrugCategory cat);
+        Task<bool> DeleteAsync(ulong id);
     }
 }

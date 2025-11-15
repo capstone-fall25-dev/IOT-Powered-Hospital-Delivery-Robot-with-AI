@@ -8,80 +8,103 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     public class MedicineService : IMedicineService
     {
-        private readonly IMedicineRepository _repository;
+        private readonly IMedicineRepository _medRepo;
+        private readonly IDrugCategoryRepository _catRepo;
         private readonly IMapper _mapper;
 
-        public MedicineService(IMedicineRepository repository, IMapper mapper)
+        public MedicineService(IMedicineRepository m, IDrugCategoryRepository c, IMapper mapper)
         {
-            _repository = repository;
+            _medRepo = m;
+            _catRepo = c;
             _mapper = mapper;
         }
 
-        public async Task<MedicineResponseDto> CreateAsync(MedicineDto medicineDto)
+        // CATEGORY ================================
+        public async Task<IEnumerable<CategoryResponseDto>> GetAllCategoriesAsync()
         {
-            var existing = await _repository.GetByCodeAsync(medicineDto.MedicineCode);
-            if (existing != null)
+            var list = await _catRepo.GetAllAsync();
+            return _mapper.Map<IEnumerable<CategoryResponseDto>>(list);
+        }
+
+        public async Task<CategoryResponseDto?> GetCategoryByIdAsync(ulong id)
+        {
+            var c = await _catRepo.GetByIdAsync(id);
+            return c == null ? null : _mapper.Map<CategoryResponseDto>(c);
+        }
+
+        public async Task<CategoryResponseDto> CreateCategoryAsync(CategoryCreateDto dto)
+        {
+            var exists = await _catRepo.GetByNameAsync(dto.Name);
+            if (exists != null)
+                throw new InvalidOperationException("Category name already exists.");
+
+            var created = await _catRepo.CreateAsync(_mapper.Map<DrugCategory>(dto));
+            return _mapper.Map<CategoryResponseDto>(created);
+        }
+
+        public async Task<CategoryResponseDto?> UpdateCategoryAsync(ulong id, CategoryUpdateDto dto)
+        {
+            var existing = await _catRepo.GetByIdAsync(id)
+                ?? throw new InvalidOperationException("Category not found.");
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
             {
-                throw new InvalidOperationException("Medicine code already exists");
+                var dup = await _catRepo.GetByNameAsync(dto.Name);
+                if (dup != null && dup.Id != id)
+                    throw new InvalidOperationException("Category name already used.");
+
+                existing.Name = dto.Name;
             }
 
-            var medicine = _mapper.Map<Medicine>(medicineDto);
-            medicine.CreatedAt = DateTime.UtcNow;
+            await _catRepo.UpdateAsync(id, existing);
+            return _mapper.Map<CategoryResponseDto>(existing);
+        }
 
-            var created = await _repository.CreateAsync(medicine);
+        public async Task<bool> DeleteCategoryAsync(ulong id)
+            => await _catRepo.DeleteAsync(id);
+
+        // MEDICINE ====================================
+        public async Task<IEnumerable<MedicineResponseDto>> GetAllMedicinesAsync()
+        {
+            var list = await _medRepo.GetAllAsync();
+            return _mapper.Map<IEnumerable<MedicineResponseDto>>(list);
+        }
+
+        public async Task<MedicineResponseDto?> GetMedicineByIdAsync(ulong id)
+        {
+            var m = await _medRepo.GetByIdAsync(id);
+            return m == null ? null : _mapper.Map<MedicineResponseDto>(m);
+        }
+
+        public async Task<MedicineResponseDto> CreateMedicineAsync(MedicineCreateDto dto)
+        {
+            var exists = await _medRepo.GetByCodeAsync(dto.MedicineCode);
+            if (exists != null)
+                throw new InvalidOperationException("Medicine code already exists.");
+
+            var created = await _medRepo.CreateAsync(_mapper.Map<Medicine>(dto));
             return _mapper.Map<MedicineResponseDto>(created);
         }
 
-        public async Task<IEnumerable<MedicineResponseDto>> GetAllAsync(ulong? categoryId = null, MedicineStatus? status = null)
+        public async Task<MedicineResponseDto?> UpdateMedicineAsync(ulong id, MedicineUpdateDto dto)
         {
-            var medicines = await _repository.GetAllAsync(categoryId, status);
-            return _mapper.Map<IEnumerable<MedicineResponseDto>>(medicines);
-        }
+            var m = await _medRepo.GetByIdAsync(id)
+                ?? throw new InvalidOperationException("Medicine not found.");
 
-        public async Task<MedicineResponseDto?> GetByIdAsync(ulong id)
-        {
-            var medicine = await _repository.GetByIdAsync(id);
-            return medicine != null ? _mapper.Map<MedicineResponseDto>(medicine) : null;
-        }
-
-        public async Task<ScanExpiredResponseDto> ScanExpiredAsync(bool flagOnly = true)
-        {
-            var response = await _repository.ScanAndFlagExpiredAsync(flagOnly);
-            return response;
-        }
-
-        public async Task<int> RemoveExpiredAsync()
-        {
-            return await _repository.RemoveExpiredAsync();
-        }
-
-        public async Task<MedicineResponseDto?> UpdateAsync(ulong id, MedicineDto medicineDto)
-        {
-            var existing = await _repository.GetByIdAsync(id);
-            if (existing == null)
+            if (!string.IsNullOrWhiteSpace(dto.MedicineCode))
             {
-                throw new InvalidOperationException("Medicine not found");
+                var dup = await _medRepo.GetByCodeAsync(dto.MedicineCode);
+                if (dup != null && dup.Id != id)
+                    throw new InvalidOperationException("Medicine code already used.");
             }
 
-            if (medicineDto.MedicineCode != existing.MedicineCode)
-            {
-                var codeExisting = await _repository.GetByCodeAsync(medicineDto.MedicineCode);
-                if (codeExisting != null)
-                {
-                    throw new InvalidOperationException("Medicine code already exists");
-                }
-            }
+            _mapper.Map(dto, m);
+            var updated = await _medRepo.UpdateAsync(id, m);
 
-            var medicine = _mapper.Map<Medicine>(medicineDto);
-            medicine.Id = id;
-
-            var updated = await _repository.UpdateAsync(id, medicine);
-            return updated != null ? _mapper.Map<MedicineResponseDto>(updated) : null;
+            return updated == null ? null : _mapper.Map<MedicineResponseDto>(updated);
         }
 
-        public async Task<IEnumerable<MedicineStockReportDto>> GetStockReportAsync(int threshold = 10)
-        {
-            return await _repository.GetStockReportAsync(threshold);
-        }
+        public Task<bool> DeleteMedicineAsync(ulong id)
+            => _medRepo.DeleteAsync(id);
     }
 }

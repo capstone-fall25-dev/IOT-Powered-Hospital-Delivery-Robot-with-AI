@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/medicine")]
     [ApiController]
     public class MedicinesController : ControllerBase
     {
@@ -17,97 +17,42 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách thuốc (lọc categoryId/status)
-        [HttpGet]
-      //  [Authorize(Roles = "pharmacist, doctor")]
-        public async Task<ActionResult<IEnumerable<MedicineResponseDto>>> GetAll([FromQuery] ulong? categoryId = null, [FromQuery] string? status = null)
-        {
-            var medicines = await _service.GetAllAsync(categoryId, status == null ? null : (MedicineStatus?)Enum.Parse(typeof(MedicineStatus), status));
-            return Ok(medicines);
-        }
+        // ================= CATEGORY =========================
+        [HttpGet("categories")]
+        public async Task<IActionResult> GetCategories()
+            => Ok(await _service.GetAllCategoriesAsync());
 
-        // Lấy chi tiết thuốc 
+        [HttpPost("categories")]
+        public async Task<IActionResult> CreateCategory(CategoryCreateDto dto)
+            => Ok(await _service.CreateCategoryAsync(dto));
+
+        [HttpPut("categories/{id}")]
+        public async Task<IActionResult> UpdateCategory(ulong id, CategoryUpdateDto dto)
+            => Ok(await _service.UpdateCategoryAsync(id, dto));
+
+        [HttpDelete("categories/{id}")]
+        public async Task<IActionResult> DeleteCategory(ulong id)
+            => Ok(await _service.DeleteCategoryAsync(id));
+
+        // ================= MEDICINE =======================
+        [HttpGet("list")]
+        public async Task<IActionResult> GetMedicines()
+            => Ok(await _service.GetAllMedicinesAsync());
+
         [HttpGet("{id}")]
-        [Authorize(Roles = "pharmacist, doctor")]
-        public async Task<ActionResult<MedicineResponseDto>> GetById(ulong id)
-        {
-            var medicine = await _service.GetByIdAsync(id);
-            if (medicine == null) return NotFound();
-            return Ok(medicine);
-        }
+        public async Task<IActionResult> GetMedicine(ulong id)
+            => Ok(await _service.GetMedicineByIdAsync(id));
 
-        // Tạo thuốc mới (validate unique code) - UC 17: Register New Medicine (Medicine Management)
         [HttpPost]
-       // [Authorize(Roles = "pharmacist")]
-        public async Task<ActionResult<MedicineResponseDto>> Create(MedicineDto medicineDto)
-        {
-            try
-            {
-                var created = await _service.CreateAsync(medicineDto);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        public async Task<IActionResult> CreateMedicine(MedicineCreateDto dto)
+            => Ok(await _service.CreateMedicineAsync(dto));
 
-        // Cập nhật thông tin thuốc (validate unique code) - UC 18: Update Medicine Information (Medicine Management)
         [HttpPut("{id}")]
-      //  [Authorize(Roles = "pharmacist")]
-        public async Task<ActionResult<MedicineResponseDto>> Update(ulong id, MedicineDto medicineDto)
-        {
-            try
-            {
-                var updated = await _service.UpdateAsync(id, medicineDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        public async Task<IActionResult> UpdateMedicine(ulong id, MedicineUpdateDto dto)
+            => Ok(await _service.UpdateMedicineAsync(id, dto));
 
-        // Scan thuốc hết hạn (flag expired or clear stock)
-        [HttpPost("scan-expired")]
-       // [Authorize(Roles = "pharmacist")]
-        public async Task<ActionResult<ScanExpiredResponseDto>> ScanExpired([FromBody] ScanExpiredDto scanDto)
-        {
-            try
-            {
-                var response = await _service.ScanExpiredAsync(scanDto.FlagOnly);
-                return Ok(response);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // Xóa thuốc hết hạn (hard delete) - UC 19: Remove Expired Medicines (Medicine Management)
-        [HttpDelete("remove-expired")]
-     //   [Authorize(Roles = "pharmacist")]
-        public async Task<ActionResult<int>> RemoveExpired()
-        {
-            try
-            {
-                var count = await _service.RemoveExpiredAsync();
-                return Ok(count);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // Tạo báo cáo tồn kho thuốc (shortages/trends dispensed last month) - UC 20: Generate Medicine Stock Report (Medicine Management)
-        [HttpGet("stock-report")]
-      //  [Authorize(Roles = "pharmacist")]
-        public async Task<ActionResult<IEnumerable<MedicineStockReportDto>>> GetStockReport([FromQuery] int threshold = 10)
-        {
-            var reports = await _service.GetStockReportAsync(threshold);
-            return Ok(reports);
-        }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteMedicine(ulong id)
+            => Ok(await _service.DeleteMedicineAsync(id));
     }
 }
