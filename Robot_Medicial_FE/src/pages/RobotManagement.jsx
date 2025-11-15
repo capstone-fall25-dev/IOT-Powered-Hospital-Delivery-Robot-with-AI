@@ -45,6 +45,7 @@ export default function RobotFleetCards() {
                 const data = await getAllRobots();
                 const formatted = data.map((r) => ({
                     id: r.code,
+                    code: r.id,
                     name: r.name,
                     battery: r.batteryPercent ?? 0,
                     mission: r.progressOverallPct ?? 0,
@@ -130,7 +131,7 @@ export default function RobotFleetCards() {
                         <div className="col-12 col-sm-6 col-lg-3" key={r.id}>
                             <div
                                 className="robot-card p-3 h-100"
-                                onClick={() => navigate(`/robot-detail/${r.id}`)}
+                                onClick={() => navigate(`/robot-detail/${r.code}`)}
                             >
                                 <div className="fw-bold mb-1">{r.id}</div>
                                 <div className="mb-2">
