@@ -4,12 +4,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
     public interface IMedicineService
     {
-        Task<IEnumerable<MedicineResponseDto>> GetAllAsync(ulong? categoryId = null, MedicineStatus? status = null);
-        Task<MedicineResponseDto?> GetByIdAsync(ulong id);
-        Task<MedicineResponseDto> CreateAsync(MedicineDto medicineDto);
-        Task<MedicineResponseDto?> UpdateAsync(ulong id, MedicineDto medicineDto);
-        Task<ScanExpiredResponseDto> ScanExpiredAsync(bool flagOnly = true);
-        Task<int> RemoveExpiredAsync();
-        Task<IEnumerable<MedicineStockReportDto>> GetStockReportAsync(int threshold = 10);
+        // CATEGORY
+        Task<IEnumerable<CategoryResponseDto>> GetAllCategoriesAsync();
+        Task<CategoryResponseDto?> GetCategoryByIdAsync(ulong id);
+        Task<CategoryResponseDto> CreateCategoryAsync(CategoryCreateDto dto);
+        Task<CategoryResponseDto?> UpdateCategoryAsync(ulong id, CategoryUpdateDto dto);
+        Task<bool> DeleteCategoryAsync(ulong id);
+
+        // MEDICINE
+        Task<IEnumerable<MedicineResponseDto>> GetAllMedicinesAsync();
+        Task<MedicineResponseDto?> GetMedicineByIdAsync(ulong id);
+        Task<MedicineResponseDto> CreateMedicineAsync(MedicineCreateDto dto);
+        Task<MedicineResponseDto?> UpdateMedicineAsync(ulong id, MedicineUpdateDto dto);
+        Task<bool> DeleteMedicineAsync(ulong id);
     }
 }

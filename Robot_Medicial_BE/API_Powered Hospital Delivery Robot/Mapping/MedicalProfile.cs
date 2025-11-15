@@ -28,16 +28,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.TotalVisits,
                     opt => opt.MapFrom(src => src.Prescriptions.Count))
                 .ForMember(dest => dest.TotalMedicinesPrescribed,
-                    opt => opt.MapFrom(src => src.Prescriptions
-                        .Where(p => p.PrescriptionItems != null)
+                    opt => opt.MapFrom(src =>
+                        src.Prescriptions
                         .SelectMany(p => p.PrescriptionItems)
                         .Where(i => i.Medicine != null)
                         .Select(i => i.Medicine.Name)
                         .Distinct()
                         .Count()))
                 .ForMember(dest => dest.LastVisit,
-                    opt => opt.MapFrom(src => src.Prescriptions
-                        .OrderByDescending(p => p.CreatedAt)
+                    opt => opt.MapFrom(src =>
+                        src.Prescriptions.OrderByDescending(p => p.CreatedAt)
                         .Select(p => p.CreatedAt)
                         .FirstOrDefault()))
                 .ForMember(dest => dest.CurrentRoom,
@@ -45,28 +45,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
 
 
             // ===========================
-            // DRUG CATEGORY
+            // DRUG CATEGORY (NEW DTOs)
             // ===========================
-            CreateMap<DrugCategoryDto, DrugCategory>();
-            CreateMap<DrugCategory, DrugCategoryResponseDto>();
+            CreateMap<CategoryCreateDto, DrugCategory>();
+            CreateMap<CategoryUpdateDto, DrugCategory>();
+
+            CreateMap<DrugCategory, CategoryResponseDto>();
+
 
             // ===========================
-            // MEDICINE
+            // MEDICINE (NEW DTOs)
             // ===========================
-            CreateMap<MedicineDto, Medicine>();
+            CreateMap<MedicineCreateDto, Medicine>();
+            CreateMap<MedicineUpdateDto, Medicine>()
+                .ForAllMembers(opt => opt.Condition((src, dest, val) => val != null));
+
             CreateMap<Medicine, MedicineResponseDto>()
                 .ForMember(dest => dest.CategoryName,
                     opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
 
 
             // ===========================
-            // PRESCRIPTION (Response only)
+            // PRESCRIPTION
             // ===========================
             CreateMap<Prescription, PrescriptionResponseDto>()
                 .ForMember(dest => dest.PatientName,
                     opt => opt.MapFrom(src => src.Patient.FullName))
                 .ForMember(dest => dest.Items,
                     opt => opt.MapFrom(src => src.PrescriptionItems));
+
 
             // ===========================
             // PRESCRIPTION ITEM
@@ -76,6 +83,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                     opt => opt.MapFrom(src => src.Medicine != null ? src.Medicine.MedicineCode : null))
                 .ForMember(dest => dest.MedicineName,
                     opt => opt.MapFrom(src => src.Medicine != null ? src.Medicine.Name : null));
+
 
             // ===========================
             // ROOM

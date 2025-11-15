@@ -6,47 +6,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
     public class DrugCategoryRepository : IDrugCategoryRepository
     {
-        private readonly RobotManagerContext _context;
+        private readonly RobotManagerContext _ctx;
 
-        public DrugCategoryRepository(RobotManagerContext context)
+        public DrugCategoryRepository(RobotManagerContext ctx)
         {
-            _context = context;
-        }
-
-        public async Task<DrugCategory> CreateAsync(DrugCategory category)
-        {
-            _context.DrugCategories.Add(category);
-            await _context.SaveChangesAsync();
-            return category;
+            _ctx = ctx;
         }
 
         public async Task<IEnumerable<DrugCategory>> GetAllAsync()
-        {
-            return await _context.DrugCategories.ToListAsync();
-        }
+            => await _ctx.DrugCategories.ToListAsync();
 
         public async Task<DrugCategory?> GetByIdAsync(ulong id)
-        {
-            return await _context.DrugCategories.FirstOrDefaultAsync(c => c.Id == id);
-        }
+            => await _ctx.DrugCategories.FindAsync(id);
 
         public async Task<DrugCategory?> GetByNameAsync(string name)
+            => await _ctx.DrugCategories.FirstOrDefaultAsync(c => c.Name == name);
+
+        public async Task<DrugCategory> CreateAsync(DrugCategory cat)
         {
-            return await _context.DrugCategories.FirstOrDefaultAsync(c => c.Name == name);
+            _ctx.DrugCategories.Add(cat);
+            await _ctx.SaveChangesAsync();
+            return cat;
         }
 
-        public async Task<DrugCategory?> UpdateAsync(ulong id, DrugCategory category)
+        public async Task<DrugCategory?> UpdateAsync(ulong id, DrugCategory cat)
         {
-            var existing = await _context.DrugCategories.FindAsync(id);
-            if (existing == null)
-            {
-                return null;
-            }
+            var existing = await _ctx.DrugCategories.FindAsync(id);
+            if (existing == null) return null;
 
-            existing.Name = category.Name;
-
-            await _context.SaveChangesAsync();
+            existing.Name = cat.Name;
+            await _ctx.SaveChangesAsync();
             return existing;
+        }
+
+        public async Task<bool> DeleteAsync(ulong id)
+        {
+            var cat = await _ctx.DrugCategories.FindAsync(id);
+            if (cat == null) return false;
+
+            _ctx.DrugCategories.Remove(cat);
+            await _ctx.SaveChangesAsync();
+            return true;
         }
     }
 }
