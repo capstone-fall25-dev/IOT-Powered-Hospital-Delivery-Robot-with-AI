@@ -79,7 +79,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             // Report damaged in item
-            await _itemRepository.ReportDamagedAsync(prescriptionItemId, reason, description);
             var alert = new Alert
             {
                 RobotId = task.RobotId, // Use robot from task

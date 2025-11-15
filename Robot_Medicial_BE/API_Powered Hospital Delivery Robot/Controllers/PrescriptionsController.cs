@@ -11,102 +11,61 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     [ApiController]
     public class PrescriptionsController : ControllerBase
     {
-        private readonly IPrescriptionService _service;
+        private readonly IPrescriptionService _presService;
+        private readonly IPrescriptionItemService _itemService;
 
-        public PrescriptionsController(IPrescriptionService service)
+        public PrescriptionsController(
+            IPrescriptionService presService,
+            IPrescriptionItemService itemService)
         {
-            _service = service;
+            _presService = presService;
+            _itemService = itemService;
         }
 
-        // Lấy danh sách đơn thuốc (lọc theo patientId/status) 
+        // ===================== PRESCRIPTION CRUD =====================
+
         [HttpGet]
-        // [Authorize]
-        public async Task<ActionResult<IEnumerable<PrescriptionResponseDto>>> GetAll([FromQuery] ulong? patientId = null, [FromQuery] string? status = null)
-        {
-            var prescriptions = await _service.GetAllAsync(patientId, status);
-            return Ok(prescriptions);
-        }
+        public async Task<IActionResult> GetAll([FromQuery] ulong? patientId, [FromQuery] string? status)
+            => Ok(await _presService.GetAllAsync(patientId, status));
 
-        // Lấy chi tiết đơn thuốc (include PatientName/UserEmail/Items) 
         [HttpGet("{id}")]
-        // [Authorize]
-        public async Task<ActionResult<PrescriptionResponseDto>> GetById(ulong id)
+        public async Task<IActionResult> GetById(ulong id)
         {
-            var prescription = await _service.GetByIdAsync(id);
-            if (prescription == null) return NotFound();
-            return Ok(prescription);
+            var result = await _presService.GetByIdAsync(id);
+            return result == null ? NotFound() : Ok(result);
         }
 
-        // Tạo đơn thuốc mới (auto add items, set user=currentUser) - UC 21: Create Prescription (Prescription Management)
         [HttpPost]
-        [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<PrescriptionResponseDto>> Create(PrescriptionDto prescriptionDto)
+        public async Task<IActionResult> Create(PrescriptionCreateDto dto)
+            => Ok(await _presService.CreateAsync(dto));
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(ulong id, PrescriptionUpdateDto dto)
+            => Ok(await _presService.UpdateAsync(id, dto));
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> SoftDelete(ulong id)
+            => Ok(await _presService.SoftDeleteAsync(id));
+
+        [HttpPatch("{id}/restore")]
+        public async Task<IActionResult> Restore(ulong id)
+            => Ok(await _presService.RestoreAsync(id));
+
+        // ===================== PRESCRIPTION ITEM CRUD =====================
+
+        [HttpPost("{id}/items")]
+        public async Task<IActionResult> AddItem(ulong id, PrescriptionItemCreateDto dto)
         {
-            try
-            {
-                var currentUserId = GetCurrentUserId(); 
-                var created = await _service.CreateAsync(prescriptionDto, currentUserId);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            dto.PrescriptionId = id;
+            return Ok(await _itemService.CreateAsync(dto));
         }
 
-        // Cập nhật status đơn thuốc (pending/approved/dispensed/canceled) 
-        [HttpPatch("{id}/status/{status}")]
-        // [Authorize]
-        public async Task<ActionResult<PrescriptionResponseDto>> UpdateStatus(ulong id, string status)
-        {
-            try
-            {
-                var updated = await _service.UpdateStatusAsync(id, status);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        [HttpPut("items/{itemId}")]
+        public async Task<IActionResult> UpdateItem(ulong itemId, PrescriptionItemUpdateDto dto)
+            => Ok(await _itemService.UpdateAsync(itemId, dto));
 
-        // Thêm item vào đơn thuốc (validate stock) 
-        [HttpPost("{prescriptionId}/items")]
-        [Authorize(Roles = "pharmacist, doctor")]
-        public async Task<ActionResult<PrescriptionItemResponseDto>> AddItem(ulong prescriptionId, PrescriptionItemDto itemDto)
-        {
-            try
-            {
-                var created = await _service.AddItemAsync(prescriptionId, itemDto);
-                return CreatedAtAction("GetItem", new { id = created.Id }, created);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // Assign đơn thuốc vào task (create TaskPatientAssignment, auto assign items to compartments)  - UC 10: Creates Task by Prescription (Task Management)
-        [HttpPost("{prescriptionId}/assign-task/{taskId}")]
-        public async Task<ActionResult<AssignPrescriptionResponseDto>> AssignToTask(ulong prescriptionId, ulong taskId)
-        {
-            try
-            {
-                var response = await _service.AssignToTaskAsync(prescriptionId, taskId);
-                return Ok(response);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        private ulong GetCurrentUserId()
-        {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (claim == null) throw new UnauthorizedAccessException("User ID not found in token");
-            return ulong.Parse(claim.Value);
-        }
+        [HttpDelete("items/{itemId}")]
+        public async Task<IActionResult> DeleteItem(ulong itemId)
+            => Ok(await _itemService.DeleteAsync(itemId));
     }
 }

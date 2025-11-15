@@ -9,169 +9,121 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     public class PrescriptionService : IPrescriptionService
     {
-        private readonly IPrescriptionRepository _repository;
-        private readonly IPrescriptionItemRepository _itemRepository;
+        private readonly IPrescriptionRepository _repo;
+        private readonly IPrescriptionItemRepository _itemRepo;
+        private readonly IPatientRepository _patientRepo;
+        private readonly IMedicineRepository _medicineRepo;
         private readonly IMapper _mapper;
-        private readonly IPatientRepository _patientRepository;
-        private readonly IUserRepository _userRepository;
-        private readonly IMedicineRepository _medicineRepository;
-        private readonly ITaskRepository _taskRepository;
-        private readonly ICompartmentAssignmentRepository _compartmentAssignmentRepository;
 
-        public PrescriptionService(IPrescriptionRepository repository, IPrescriptionItemRepository itemRepository, IMapper mapper, 
-            IPatientRepository patientRepository, IUserRepository userRepository, IMedicineRepository medicineRepository, ITaskRepository taskRepository, ICompartmentAssignmentRepository compartmentAssignmentRepository)
+        public PrescriptionService(
+            IPrescriptionRepository repo,
+            IPrescriptionItemRepository itemRepo,
+            IPatientRepository patientRepo,
+            IMedicineRepository medicineRepo,
+            IMapper mapper)
         {
-            _repository = repository;
-            _itemRepository = itemRepository;
+            _repo = repo;
+            _itemRepo = itemRepo;
+            _patientRepo = patientRepo;
+            _medicineRepo = medicineRepo;
             _mapper = mapper;
-            _patientRepository = patientRepository;
-            _userRepository = userRepository;
-            _medicineRepository = medicineRepository;
-            _taskRepository = taskRepository;
-            _compartmentAssignmentRepository = compartmentAssignmentRepository;
         }
 
-        public async Task<PrescriptionItemResponseDto> AddItemAsync(ulong prescriptionId, PrescriptionItemDto itemDto)
+        // ---------------- CREATE PRESCRIPTION ------------------
+        public async Task<PrescriptionResponseDto> CreateAsync(PrescriptionCreateDto dto)
         {
-            var prescription = await _repository.GetByIdAsync(prescriptionId);
-            if (prescription == null)
+            if (await _repo.GetByCodeAsync(dto.PrescriptionCode) != null)
+                throw new InvalidOperationException("Mã đơn thuốc đã tồn tại.");
+
+            var patient = await _patientRepo.GetByIdAsync(dto.PatientId)
+                ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
+
+            var pres = new Prescription
             {
-                throw new InvalidOperationException("Prescription not found");
-            }
-
-            var medicine = await _medicineRepository.GetByIdAsync(itemDto.MedicineId);
-            if (medicine == null)
-            {
-                throw new InvalidOperationException("Medicine not found");
-            }
-
-            if (medicine.StockQuantity < itemDto.Quantity)
-            {
-                throw new InvalidOperationException("Insufficient stock");
-            }
-
-            var item = _mapper.Map<PrescriptionItem>(itemDto);
-            item.PrescriptionId = prescriptionId;
-
-            var created = await _itemRepository.CreateAsync(item);
-            return _mapper.Map<PrescriptionItemResponseDto>(created);
-        }
-
-        public async Task<AssignPrescriptionResponseDto> AssignToTaskAsync(ulong prescriptionId, ulong taskId)
-        {
-            var prescription = await _repository.GetByIdAsync(prescriptionId, includeItems: true);
-            if (prescription == null)
-            {
-                throw new InvalidOperationException("Prescription not found");
-            }
-
-            if (prescription.Status != "approved")
-            {
-                throw new InvalidOperationException("Prescription must be approved");
-            }
-
-            var task = await _taskRepository.GetByIdAsync(taskId);
-            if (task == null || task.Status != "pending")
-            {
-                throw new InvalidOperationException("Task must be pending");
-            }
-
-            // Gán patient vào task
-            var success = await _repository.AssignPrescriptionToTaskAsync(prescriptionId, taskId);
-            if (!success)
-            {
-                throw new InvalidOperationException("Failed to assign");
-            }
-
-            // Gán items vào compartment assignments (tự động gán nếu có available)
-            var assignedCount = 0;
-            var availableAssignments = await _compartmentAssignmentRepository.GetAllAsync(taskId, "pending");
-            foreach (var item in prescription.PrescriptionItems)
-            {
-                var assignment = availableAssignments.FirstOrDefault(a => a.Status == "pending");
-                if (assignment != null)
-                {
-                    assignment.ItemDesc = $"{item.Quantity} x {item.Medicine.Name} ({item.Dosage})";
-                    assignment.Status = "loaded"; // Auto-loaded sau gán
-                    await _compartmentAssignmentRepository.UpdateAsync(assignment.Id, assignment);
-                    assignedCount++;
-                }
-            }
-
-            return new AssignPrescriptionResponseDto
-            {
-                TaskId = taskId,
-                PrescriptionId = prescriptionId,
-                PrescriptionCode = prescription.PrescriptionCode,
-                PatientId = prescription.PatientId,
-                PatientName = prescription.Patient.FullName,
-                AssignedItemsCount = assignedCount,
-                Message = $"Assigned {assignedCount}/{prescription.PrescriptionItems.Count} items to task compartments"
+                PrescriptionCode = dto.PrescriptionCode,
+                PatientId = dto.PatientId,
+                CreatedAt = DateTime.UtcNow,
+                Status = "pending"
             };
+
+            var created = await _repo.CreateAsync(pres);
+
+            // ---------- Nếu có items thì tạo luôn ----------
+            foreach (var itemDto in dto.Items)
+            {
+                var medicine = await _medicineRepo.GetByIdAsync(itemDto.MedicineId)
+                    ?? throw new InvalidOperationException("Thuốc không tồn tại.");
+
+                var item = new PrescriptionItem
+                {
+                    PrescriptionId = created.Id,
+                    MedicineId = itemDto.MedicineId,
+                    Quantity = itemDto.Quantity,
+                    Dosage = itemDto.Dosage,
+                    Instructions = itemDto.Instructions
+                };
+
+                await _itemRepo.CreateAsync(item);
+            }
+
+            var full = await _repo.GetByIdAsync(created.Id, includeItems: true);
+            return _mapper.Map<PrescriptionResponseDto>(full);
         }
 
-        public async Task<PrescriptionResponseDto> CreateAsync(PrescriptionDto prescriptionDto, ulong currentUserId)
-        {
-            var existing = await _repository.GetByCodeAsync(prescriptionDto.PrescriptionCode);
-            if (existing != null)
-            {
-                throw new InvalidOperationException("Prescription code already exists");
-            }
-
-            var patient = await _patientRepository.GetByIdAsync(prescriptionDto.PatientId);
-            if (patient == null)
-            {
-                throw new InvalidOperationException("Patient not found");
-            }
-
-            var user = await _userRepository.GetByIdAsync(currentUserId);
-            if (user == null)
-            {
-                throw new InvalidOperationException($"User with ID {currentUserId} not found");
-            }
-
-            var prescription = _mapper.Map<Prescription>(prescriptionDto);
-            prescription.UsersId = currentUserId;
-            prescription.CreatedAt = DateTime.UtcNow;
-
-            var createdPrescription = await _repository.CreateAsync(prescription);
-
-            // Tạo items
-            foreach (var itemDto in prescriptionDto.Items)
-            {
-                var item = _mapper.Map<PrescriptionItem>(itemDto);
-                item.PrescriptionId = createdPrescription.Id;
-                await _itemRepository.CreateAsync(item);
-            }
-
-            var fullPrescription = await _repository.GetByIdAsync(createdPrescription.Id, includeItems: true, includePatient: true);
-            return _mapper.Map<PrescriptionResponseDto>(fullPrescription);
-        }
-
-        public async Task<IEnumerable<PrescriptionResponseDto>> GetAllAsync(ulong? patientId = null, string? status = null)
-        {
-            var prescriptions = await _repository.GetAllAsync(patientId, status);
-            return _mapper.Map<IEnumerable<PrescriptionResponseDto>>(prescriptions);
-        }
-
+        // ---------------- GET BY ID ------------------
         public async Task<PrescriptionResponseDto?> GetByIdAsync(ulong id)
         {
-            var prescription = await _repository.GetByIdAsync(id, includeItems: true, includePatient: true);
-            return prescription != null ? _mapper.Map<PrescriptionResponseDto>(prescription) : null;
+            var pres = await _repo.GetByIdAsync(id, includeItems: true);
+            return pres == null ? null : _mapper.Map<PrescriptionResponseDto>(pres);
         }
 
-        public async Task<PrescriptionResponseDto?> UpdateStatusAsync(ulong id, string status)
+        // ---------------- GET ALL ------------------
+        public async Task<IEnumerable<PrescriptionResponseDto>> GetAllAsync(ulong? patientId, string? status)
         {
-            var prescription = await _repository.GetByIdAsync(id);
-            if (prescription == null)
+            var list = await _repo.GetAllAsync(patientId, status);
+            return _mapper.Map<IEnumerable<PrescriptionResponseDto>>(list);
+        }
+
+        // ---------------- UPDATE ------------------
+        public async Task<PrescriptionResponseDto> UpdateAsync(ulong id, PrescriptionUpdateDto dto)
+        {
+            var pres = await _repo.GetByIdAsync(id, includeItems: true)
+                ?? throw new InvalidOperationException("Không tìm thấy đơn thuốc.");
+
+            if (!string.IsNullOrWhiteSpace(dto.PrescriptionCode))
             {
-                throw new InvalidOperationException("Prescription not found");
+                var exist = await _repo.GetByCodeAsync(dto.PrescriptionCode);
+                if (exist != null && exist.Id != id)
+                    throw new InvalidOperationException("Mã đơn thuốc đã tồn tại.");
+
+                pres.PrescriptionCode = dto.PrescriptionCode!;
             }
 
-            prescription.Status = status;
-            var updated = await _repository.UpdateAsync(id, prescription);
+            if (dto.PatientId.HasValue)
+            {
+                var patient = await _patientRepo.GetByIdAsync(dto.PatientId.Value)
+                    ?? throw new InvalidOperationException("Bệnh nhân không tồn tại.");
 
-            return updated != null ? _mapper.Map<PrescriptionResponseDto>(updated) : null;
+                pres.PatientId = dto.PatientId.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Status))
+                pres.Status = dto.Status;
+
+            var updated = await _repo.UpdateAsync(pres);
+            return _mapper.Map<PrescriptionResponseDto>(updated);
+        }
+
+        // ---------------- SOFT DELETE ------------------
+        public async Task<bool> SoftDeleteAsync(ulong id)
+        {
+            return await _repo.SoftDeleteAsync(id);
+        }
+
+        // ---------------- RESTORE ------------------
+        public async Task<bool> RestoreAsync(ulong id)
+        {
+            return await _repo.RestoreAsync(id);
         }
     }
 }
