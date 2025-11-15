@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
@@ -13,16 +14,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMapper _mapper;
         private readonly ILogRepository _logRepository;
         private readonly IAlertService _alertService;
+        private readonly IRobotCompartmentRepository _robotCompartmentRepository;
 
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
-        public RobotService(IRobotRepository robotRepository, IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService)
+        public RobotService(IRobotRepository robotRepository,
+            IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService, IRobotCompartmentRepository robotCompartmentRepository)
         {
             _robotRepository = robotRepository;
             _mapper = mapper;
             _mapRepository = mapRepository;
             _logRepository = logRepository;
             _alertService = alertService;
+            _robotCompartmentRepository = robotCompartmentRepository;
         }
 
         public async Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId)
@@ -68,13 +72,51 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (robotDto.BatteryPercent < 0 || robotDto.BatteryPercent > 100)
                 throw new ArgumentException("Battery percent must be between 0 and 100");
 
+            // map robot từ DTO
             var robot = _mapper.Map<Robot>(robotDto);
+
             robot.Status = "completed";
             robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.UtcNow;
 
-            var created = await _robotRepository.CreateAsync(robot);
-            return _mapper.Map<RobotResponseDto>(created);
+            // Lưu robot trước
+            var createdRobot = await _robotRepository.CreateAsync(robot);
+
+            // tạo compartments
+            var compartments = robotDto.Compartments.Select((c, index) => new RobotCompartment
+            {
+                RobotId = createdRobot.Id,
+                CompartmentCode = $"C{index + 1:000}",
+                Status = c.IsLocked ? "locked" : "unlocked",
+                CategoryId = c.CategoryId,
+                IsActive = true
+            }).ToList();
+
+            // Lưu compartments
+            await _robotCompartmentRepository.CreateManyAsync(compartments);
+
+           
+            var response = new RobotResponseDto
+            {
+                Id = createdRobot.Id,
+                Code = createdRobot.Code,
+                Name = createdRobot.Name,
+                Status = createdRobot.Status,
+                BatteryPercent = createdRobot.BatteryPercent,
+                Compartments = createdRobot.RobotCompartments.Select(c => new CompartmentDto
+                {
+                   
+                   Code = c.CompartmentCode,
+                   CategoryId = c.CategoryId
+                    
+                }).ToList()
+
+
+            };
+
+            return response;
+
         }
+
 
         public async Task<IEnumerable<RobotResponseDto>> GetAllAsync(string? status = null)
         {
