@@ -378,7 +378,7 @@ export default function RobotLiveConsole() {
         <div className="row g-3">
 
           {/* LEFT CONTROL */}
-          <div className="col-lg-3">
+          <div className="col-lg-4">
             <div className="glass p-3 h-100">
               <h6 className="fw-bold mb-3">⚙ Điều khiển</h6>
 
@@ -419,40 +419,8 @@ export default function RobotLiveConsole() {
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
 
-          {/* CENTER CAM + MAP */}
-          <div className="col-lg-6">
-            <div className="glass p-3 mb-3">
-              <div className="d-flex justify-content-between mb-2">
-                <div>🎥 Camera</div>
-                <span className="badge bg-info text-dark">{status}</span>
-              </div>
-
-              <div className="video-box">
-                {cameraFrame ? (
-                  <img src={cameraFrame} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                ) : "Đang chờ khung hình..."}
-              </div>
-            </div>
-
-            <div className="glass p-3">
-              <div className="d-flex justify-content-between mb-2">
-                <div>🗺️ Bản đồ</div>
-                <div className="input-group input-group-sm" style={{maxWidth:"60%"}}>
-                  <input className="form-control" placeholder="Tên map" value={mapName} onChange={(e)=>setMapName(e.target.value)} />
-                  <button className="btn btn-success" onClick={saveMap}>💾</button>
-                </div>
-              </div>
-
-              <div id="map" className="map-box"></div>
-            </div>
-          </div>
-
-          {/* RIGHT DEST + LOGS */}
-          <div className="col-lg-3">
-            <div className="glass p-3 h-100">
+                  {/* RIGHT DEST + LOGS */}
               <h6 className="fw-bold mb-2">📍 Điểm đến</h6>
 
               <select
@@ -506,6 +474,36 @@ export default function RobotLiveConsole() {
 
             </div>
           </div>
+
+          {/* CENTER CAM + MAP */}
+          <div className="col-lg-8">
+            <div className="glass p-3 mb-3">
+              <div className="d-flex justify-content-between mb-2">
+                <div>🎥 Camera</div>
+                <span className="badge bg-info text-dark">{status}</span>
+              </div>
+
+              <div className="video-box">
+                {cameraFrame ? (
+                  <img src={cameraFrame} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                ) : "Đang chờ khung hình..."}
+              </div>
+            </div>
+
+            <div className="glass p-3">
+              <div className="d-flex justify-content-between mb-2">
+                <div>🗺️ Bản đồ</div>
+                <div className="input-group input-group-sm" style={{maxWidth:"60%"}}>
+                  <input className="form-control" placeholder="Tên map" value={mapName} onChange={(e)=>setMapName(e.target.value)} />
+                  <button className="btn btn-success" onClick={saveMap}>💾</button>
+                </div>
+              </div>
+
+              <div id="map" className="map-box"></div>
+            </div>
+          </div>
+
+      
 
         </div>
       </div>

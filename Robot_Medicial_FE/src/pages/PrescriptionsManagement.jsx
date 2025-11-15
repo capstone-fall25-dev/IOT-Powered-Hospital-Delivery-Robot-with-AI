@@ -1,68 +1,115 @@
+// src/pages/PrescriptionManagement.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllPrescriptions } from "@/services/prescriptionServices";
+import { getAllPrescriptions, softDeletePrescription, restorePrescription } from "@/services/prescriptionServices";
+
+const styles = (
+    <style>{`
+      :root{--teal:#4CE1C6;--ink:#0f172a}
+      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
+      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:5px}
+      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
+      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
+      .btn-teal:hover{filter:brightness(1.05)}
+      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
+      .table thead th{white-space:nowrap}
+      .table tbody td{vertical-align:middle}
+    `}</style>
+);
+
+const statusLabel = (status) => {
+    switch (status) {
+        case "pending": return "Chờ duyệt";
+        case "approved": return "Đã duyệt";
+        case "dispensed": return "Đã cấp phát";
+        case "canceled": return "Đã hủy";
+        default: return status;
+    }
+};
+
+const statusBadgeClass = (status) => {
+    switch (status) {
+        case "pending": return "bg-warning-subtle text-warning";
+        case "approved": return "bg-success-subtle text-success";
+        case "dispensed": return "bg-primary-subtle text-primary";
+        case "canceled": return "bg-secondary-subtle text-secondary";
+        default: return "bg-light text-dark";
+    }
+};
 
 export default function PrescriptionManagement() {
     const navigate = useNavigate();
 
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:24px}
-      .rounded-2xl{border-radius:24px}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .badge-soft{background:rgba(20,226,193,.18);color:#0b3e3c}
-      .table thead th{white-space:nowrap}
-      .table tbody td{vertical-align:middle}
-      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
-    `}</style>
-    );
-
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
-
-    // Modal
-    const [showModal, setShowModal] = useState(false);
-    const [selectedPrescription, setSelectedPrescription] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        getAllPrescriptions()
-            .then((prescriptions) => {
-                const mapped = prescriptions.map((p) => ({
-                    id: p.id,
-                    prescriptionCode: p.prescriptionCode,
-                    patientName: p.patientName,
-                    status: p.status === "approved" ? "Đã duyệt" : "Đã cấp phát",
-                    createdAt: new Date(p.createdAt).toLocaleString("vi-VN"),
-                    items: p.items,
-                }));
-
-                setRows(mapped);
-            })
-            .catch((err) => {
+        async function load() {
+            try {
+                const data = await getAllPrescriptions();
+                setRows(data);
+            } catch (err) {
                 console.error("Lỗi khi tải danh sách đơn thuốc:", err);
                 alert("Không thể tải danh sách đơn thuốc");
-            });
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
     }, []);
 
-
     const filtered = useMemo(() => {
-        return rows.filter(
-            (r) =>
-                (status === "all" || r.status === (status === "approved" ? "Đã duyệt" : "Chờ duyệt")) &&
-                (q === "" || [r.prescriptionCode, r.patientName].join(" ").toLowerCase().includes(q.toLowerCase()))
-        );
+        return rows.filter((r) => {
+            const matchStatus =
+                status === "all" ? true : r.status === status;
+            const keyword = q.trim().toLowerCase();
+            const matchSearch =
+                keyword === "" ||
+                [r.prescriptionCode, r.patientName]
+                    .filter(Boolean)
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(keyword);
+
+            return matchStatus && matchSearch;
+        });
     }, [rows, q, status]);
+
+    const handleSoftDelete = async (id) => {
+        if (!window.confirm("Bạn có chắc muốn hủy đơn thuốc này?")) return;
+        try {
+            await softDeletePrescription(id);
+            setRows((prev) =>
+                prev.map((p) =>
+                    p.id === id ? { ...p, status: "canceled" } : p
+                )
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Không thể hủy đơn thuốc");
+        }
+    };
+
+    const handleRestore = async (id) => {
+        try {
+            const res = await restorePrescription(id);
+            setRows((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, status: res.status } : p))
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Không thể khôi phục đơn thuốc");
+        }
+    };
 
     return (
         <div className="page">
             {styles}
             <div className="container-fluid py-4">
                 <div className="container-lg">
+
                     {/* Header */}
                     <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <div className="d-flex align-items-center gap-2">
@@ -80,7 +127,7 @@ export default function PrescriptionManagement() {
                     </div>
 
                     {/* Filters */}
-                    <div className="glass rounded-2xl p-3 p-md-4 mb-3 toolbar">
+                    <div className="glass p-3 p-md-4 mb-3 toolbar">
                         <div className="row g-2 align-items-end">
                             <div className="col-md-4">
                                 <label className="form-label">Tìm kiếm</label>
@@ -93,10 +140,16 @@ export default function PrescriptionManagement() {
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label">Trạng thái</label>
-                                <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                                <select
+                                    className="form-select"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                >
                                     <option value="all">Tất cả</option>
-                                    <option value="approved">Đã duyệt</option>
                                     <option value="pending">Chờ duyệt</option>
+                                    <option value="approved">Đã duyệt</option>
+                                    <option value="dispensed">Đã cấp phát</option>
+                                    <option value="canceled">Đã hủy</option>
                                 </select>
                             </div>
                             <div className="col-md-2 text-md-end">
@@ -112,94 +165,95 @@ export default function PrescriptionManagement() {
                     </div>
 
                     {/* Table */}
-                    <div className="glass rounded-2xl p-2 p-md-3">
-                        <div className="table-responsive">
-                            <table className="table align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Mã đơn</th>
-                                        <th>Bệnh nhân</th>
-                                        <th>Trạng thái</th>
-                                        <th>Ngày tạo</th>
-                                        <th className="text-end">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((r, idx) => (
-                                        <tr key={r.id}>
-                                            <td>{idx + 1}</td>
-                                            <td>{r.prescriptionCode}</td>
-                                            <td>{r.patientName}</td>
-                                            <td>
-                                                <span className={`badge ${r.status === "Đã duyệt"
-                                                    ? "bg-success-subtle text-success"
-                                                    : "bg-warning-subtle text-warning"
-                                                    }`}>
-                                                    {r.status}
-                                                </span>
-                                            </td>
-                                            <td>{r.createdAt}</td>
-                                            <td className="text-end">
-                                                <button className="btn btn-outline-primary btn-sm" onClick={() => { setSelectedPrescription(r); setShowModal(true); }}>
-                                                    Xem
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filtered.length === 0 && (
+                    <div className="glass p-2 p-md-3">
+                        {loading ? (
+                            <div className="text-center py-4">Đang tải...</div>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table align-middle">
+                                    <thead>
                                         <tr>
-                                            <td colSpan={6} className="text-center text-muted py-4">
-                                                Không có dữ liệu
-                                            </td>
+                                            <th>#</th>
+                                            <th>Mã đơn</th>
+                                            <th>Bệnh nhân</th>
+                                            <th>Thuốc</th>
+                                            <th>Trạng thái</th>
+                                            <th>Ngày tạo</th>
+                                            <th className="text-end">Thao tác</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((r, idx) => {
+                                            const medicineSummary =
+                                                (r.items || [])
+                                                    .map((i) => i.medicineName || i.medicineCode)
+                                                    .filter(Boolean)
+                                                    .slice(0, 3)
+                                                    .join(", ") +
+                                                ((r.items || []).length > 3 ? "..." : "");
 
-                    {/* Modal xem items */}
-                    {showModal && selectedPrescription && (
-                        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                            <div className="modal-dialog modal-lg modal-dialog-centered">
-                                <div className="modal-content">
-                                    <div className="modal-header">
-                                        <h5 className="modal-title">Chi tiết đơn - {selectedPrescription.prescriptionCode}</h5>
-                                        <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-                                    </div>
-                                    <div className="modal-body">
-                                        <table className="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Tên thuốc</th>
-                                                    <th>Số lượng</th>
-                                                    <th>Liều lượng</th>
-                                                    <th>Hướng dẫn</th>
+                                            return (
+                                                <tr key={r.id}>
+                                                    <td>{idx + 1}</td>
+                                                    <td>{r.prescriptionCode}</td>
+                                                    <td>{r.patientName}</td>
+                                                    <td style={{ maxWidth: 260 }}>
+                                                        <small className="text-muted">
+                                                            {medicineSummary || "—"}
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <span className={`badge ${statusBadgeClass(r.status)}`}>
+                                                            {statusLabel(r.status)}
+                                                        </span>
+                                                    </td>
+                                                    <td>{new Date(r.createdAt).toLocaleString("vi-VN")}</td>
+                                                    <td className="text-end">
+                                                        <div className="btn-group">
+                                                            <button
+                                                                className="btn btn-outline-secondary btn-sm"
+                                                                onClick={() => navigate(`/prescriptions/${r.id}`)}
+                                                            >
+                                                                Xem
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-outline-primary btn-sm"
+                                                                onClick={() => navigate(`/prescriptions/${r.id}/edit`)}
+                                                            >
+                                                                Sửa
+                                                            </button>
+                                                            {r.status !== "canceled" ? (
+                                                                <button
+                                                                    className="btn btn-outline-danger btn-sm"
+                                                                    onClick={() => handleSoftDelete(r.id)}
+                                                                >
+                                                                    Hủy
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    className="btn btn-outline-success btn-sm"
+                                                                    onClick={() => handleRestore(r.id)}
+                                                                >
+                                                                    Khôi phục
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selectedPrescription.items.map((item, i) => (
-                                                    <tr key={i}>
-                                                        <td>{i + 1}</td>
-                                                        <td>{item.medicineName || "-"}</td>
-                                                        <td>{item.quantity}</td>
-                                                        <td>{item.dosage}</td>
-                                                        <td>{item.instructions}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="modal-footer">
-                                        <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Đóng</button>
-                                    </div>
-                                </div>
+                                            );
+                                        })}
+                                        {filtered.length === 0 && !loading && (
+                                            <tr>
+                                                <td colSpan={7} className="text-center text-muted py-4">
+                                                    Không có dữ liệu
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                    )}
-
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

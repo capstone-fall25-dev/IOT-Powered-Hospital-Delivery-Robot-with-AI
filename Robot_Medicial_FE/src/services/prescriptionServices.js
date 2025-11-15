@@ -1,73 +1,78 @@
+// src/services/prescriptionServices.js
+import axios from "axios";
 import { API_CONFIG } from "@/utils/apiConfig";
 
-const BASE_URL = `${API_CONFIG.API_BASE}`;
+// ========== PRESCRIPTION ==========
 
-// --- Lấy danh sách đơn thuốc (có thể lọc theo patientId và status)
-export async function getAllPrescriptions(patientId = null, status = null) {
-    let url = new URL(`${BASE_URL}/prescriptions`);
-    if (patientId) url.searchParams.append("patientId", patientId);
-    if (status) url.searchParams.append("status", status);
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Lỗi khi lấy danh sách đơn thuốc");
-    return res.json();
-}
-
-// --- Lấy chi tiết một đơn thuốc theo id
-export async function getPrescriptionById(id) {
-    const res = await fetch(`${BASE_URL}/prescriptions/${id}`);
-    if (!res.ok) throw new Error("Lỗi khi lấy chi tiết đơn thuốc");
-    return res.json();
-}
-
-// --- Tạo đơn thuốc mới
-export async function createPrescription(prescriptionDto) {
-    const res = await fetch(`${BASE_URL}/prescriptions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prescriptionDto),
+// GET: danh sách đơn (có thể filter theo patientId, status)
+export const getAllPrescriptions = async (filters = {}) => {
+    const res = await axios.get(`${API_CONFIG.API_BASE}/prescriptions`, {
+        params: {
+            patientId: filters.patientId || undefined,
+            status: filters.status || undefined,
+        },
     });
-    if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Lỗi khi tạo đơn thuốc mới");
-    }
-    return res.json();
-}
+    return res.data; // PrescriptionResponseDto[]
+};
 
-// --- Cập nhật trạng thái đơn thuốc
-export async function updatePrescriptionStatus(id, status) {
-    const res = await fetch(`${BASE_URL}/prescriptions/${id}/status/${status}`, {
-        method: "PATCH",
-    });
-    if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Lỗi khi cập nhật trạng thái đơn thuốc");
-    }
-    return res.json();
-}
+// GET: chi tiết đơn
+export const getPrescriptionById = async (id) => {
+    const res = await axios.get(`${API_CONFIG.API_BASE}/prescriptions/${id}`);
+    return res.data; // PrescriptionResponseDto
+};
 
-// --- Thêm item vào đơn thuốc
-export async function addPrescriptionItem(prescriptionId, itemDto) {
-    const res = await fetch(`${BASE_URL}/prescriptions/${prescriptionId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(itemDto),
-    });
-    if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Lỗi khi thêm item vào đơn thuốc");
-    }
-    return res.json();
-}
+// POST: tạo đơn (chỉ tạo prescription, chưa thêm items)
+export const createPrescription = async (dto) => {
+    // dto: { prescriptionCode, patientId }
+    const res = await axios.post(`${API_CONFIG.API_BASE}/prescriptions`, dto);
+    return res.data; // PrescriptionResponseDto
+};
 
-// --- Assign đơn thuốc vào task
-export async function assignPrescriptionToTask(prescriptionId, taskId) {
-    const res = await fetch(`${BASE_URL}/prescriptions/${prescriptionId}/assign-task/${taskId}`, {
-        method: "POST",
-    });
-    if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Lỗi khi assign đơn thuốc vào task");
-    }
-    return res.json();
-}
+// PUT: update đơn (code/patient/status)
+export const updatePrescription = async (id, dto) => {
+    // dto: { prescriptionCode?, patientId?, status? }
+    const res = await axios.put(`${API_CONFIG.API_BASE}/prescriptions/${id}`, dto);
+    return res.data; // PrescriptionResponseDto
+};
+
+// DELETE: soft delete (status = canceled)
+export const softDeletePrescription = async (id) => {
+    const res = await axios.delete(`${API_CONFIG.API_BASE}/prescriptions/${id}`);
+    return res.data; // true/false or PrescriptionResponseDto (tùy BE)
+};
+
+// PATCH: restore (status từ canceled → pending)
+export const restorePrescription = async (id) => {
+    const res = await axios.patch(`${API_CONFIG.API_BASE}/prescriptions/${id}/restore`);
+    return res.data; // PrescriptionResponseDto
+};
+
+// ========== PRESCRIPTION ITEMS ==========
+
+// POST: thêm item vào đơn
+export const addPrescriptionItem = async (prescriptionId, dto) => {
+    // dto: { medicineId, quantity, dosage, instructions }
+    const res = await axios.post(
+        `${API_CONFIG.API_BASE}/prescriptions/${prescriptionId}/items`,
+        dto
+    );
+    return res.data; // PrescriptionItemResponseDto
+};
+
+// PUT: update item
+export const updatePrescriptionItem = async (itemId, dto) => {
+    // dto: { medicineId, quantity, dosage, instructions }
+    const res = await axios.put(
+        `${API_CONFIG.API_BASE}/prescriptions/items/${itemId}`,
+        dto
+    );
+    return res.data; // PrescriptionItemResponseDto
+};
+
+// DELETE: xóa item khỏi đơn
+export const deletePrescriptionItem = async (itemId) => {
+    const res = await axios.delete(
+        `${API_CONFIG.API_BASE}/prescriptions/items/${itemId}`
+    );
+    return res.data; // bool
+};
