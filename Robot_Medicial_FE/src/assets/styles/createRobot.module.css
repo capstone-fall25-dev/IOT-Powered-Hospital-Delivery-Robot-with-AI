@@ -1,0 +1,89 @@
+/* createRobot.module.css */
+
+/* ===== Page container ===== */
+.page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #e0f7fa, #ffffff);
+    font-family: 'Roboto', sans-serif;
+}
+
+/* ===== Glassmorphism form ===== */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+}
+
+/* ===== Header chip ===== */
+.chip {
+    background-color: #26a69a; /* teal */
+    color: white;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+/* ===== Input & Select styling ===== */
+.form-control,
+.form-select {
+    border-radius: 12px;
+    border: 1px solid #b2dfdb;
+    padding: 8px 12px;
+    transition: 0.2s;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #26a69a;
+    box-shadow: 0 0 0 2px rgba(38, 166, 154, 0.2);
+    outline: none;
+}
+
+/* ===== Buttons ===== */
+.btn-teal {
+    background-color: #26a69a;
+    color: white;
+    border: none;
+    transition: 0.2s;
+}
+
+.btn-teal:hover {
+    background-color: #00796b;
+    color: white;
+}
+
+/* Outline buttons */
+.btn-outline-secondary {
+    border-radius: 50px;
+    border-color: #bdbdbd;
+    color: #424242;
+    transition: 0.2s;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #e0f2f1;
+}
+
+/* ===== Form spacing ===== */
+.row.g-3 > .col-md-4,
+.row.g-3 > .col-md-6,
+.row.g-3 > .col-md-8,
+.row.g-3 > .col-12 {
+    margin-bottom: 16px;
+}
+
+/* ===== Responsive adjustments ===== */
+@media (max-width: 768px) {
+    .page {
+        padding: 1rem;
+    }
+
+    .glass {
+        padding: 2rem 1rem;
+    }
+}
