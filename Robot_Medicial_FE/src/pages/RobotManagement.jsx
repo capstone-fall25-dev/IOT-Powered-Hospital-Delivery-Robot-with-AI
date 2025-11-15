@@ -119,7 +119,7 @@ export default function RobotFleetCards() {
                             <option value="sansang">Sẵn sàng</option>
                             <option value="khonghoatdong">Không hoạt động</option>
                         </select>
-                        <button className="btn btn-teal">
+                        <button className="btn btn-teal"onClick={() => navigate(`/createRobot`)}>
                             <i className="bi bi-plus-lg me-1"></i> Thêm robot
                         </button>
                     </div>

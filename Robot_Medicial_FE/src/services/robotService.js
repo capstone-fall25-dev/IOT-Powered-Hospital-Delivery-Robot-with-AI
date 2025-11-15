@@ -3,6 +3,9 @@ import axios from "axios";
 
 
 import { API_CONFIG } from "@/utils/apiConfig";
+
+
+const BASE_URL = `${API_CONFIG.API_BASE}/Robots`;
 // 1. Lấy danh sách robot, optional filter status
 export const getAllRobots = async (status) => {
     const params = status ? { status } : {};
@@ -12,13 +15,13 @@ export const getAllRobots = async (status) => {
 
 // 2. Lấy chi tiết robot theo ID
 export const getRobotById = async (id) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/${id}`);
+    const res = await axios.get(`${BASE_URL}/${id}`);
     return res.data;
 };
 
 // 3. Tạo robot mới
 export const createRobot = async (robotDto) => {
-    const res = await axios.post(API_CONFIG.API_BASE, robotDto);
+    const res = await axios.post(BASE_URL, robotDto);
     return res.data;
 };
 
