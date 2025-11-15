@@ -25,6 +25,11 @@ export const createTask = async (dto) => {
     return res.data; // TaskResponseDto
 };
 
+export const getTaskEditData = async (id) => {
+    const res = await axios.get(`${API_CONFIG.API_BASE}/tasks/${id}/edit`);
+    return res.data;
+};
+
 // 4. Cập nhật task (status / priority...)
 export const updateTask = async (id, dto) => {
     const res = await axios.put(`${API_CONFIG.API_BASE}/tasks/${id}`, dto);

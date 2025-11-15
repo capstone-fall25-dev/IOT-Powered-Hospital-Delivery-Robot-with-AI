@@ -53,7 +53,7 @@ export default function TaskDetail() {
     if (!task) return <div className="text-center mt-5">Đang tải dữ liệu...</div>;
 
     const handleEdit = () => {
-        navigate(`/tasks/${id}/edit`);
+        navigate(`/task-edit/${task.id}`);
     };
 
     const handleBack = () => {

@@ -4,6 +4,7 @@ import MainLayout from "@/layouts/MainLayout";
 import RobotManagement from "@/pages/RobotManagement";
 import RobotDashBoard from "@/pages/RobotDashBoard";
 import TaskDetail from "@/pages/TaskDetail";
+import EditTask from "../pages/EditTask";
 import DoctorProfileProvisionForm from "@/pages/DoctorProfileProvisionForm";
 import DoctorManagementPage from "@/pages/DoctorManagementPage";
 import RobotDetailMisson from "@/pages/RobotDetailMisson";
@@ -31,6 +32,7 @@ const routes = [
   { path: "/team", element: <MainLayout><RobotManagement /></MainLayout> },
   { path: "/dashboard", element: <MainLayout><RobotDashBoard /></MainLayout> },
   { path: "/task-detail/:id", element: <MainLayout><TaskDetail /></MainLayout> },
+  { path: "/task-edit/:id", element: <MainLayout><EditTask /></MainLayout> },
   { path: "/doctor", element: <MainLayout><DoctorManagementPage /></MainLayout> },
   { path: "/robot-tasks", element: <MainLayout><RobotDetailMisson /></MainLayout> },
   { path: "/addtasks", element: <MainLayout><AddTask /></MainLayout> },
