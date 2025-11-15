@@ -39,22 +39,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var tasks = await _repo.GetListAsync(filter);
 
-            return tasks.Select(t => new TaskListItemDto
-            {
-                Id = t.Id,
-                RobotName = t.Robot?.Name ?? "",
-                AssignedBy = t.AssignedByNavigation?.FullName ?? "",
-                Status = t.Status,
-                Priority = Enum.TryParse<TaskPriority>(t.Priority, out var p) ? p : TaskPriority.Normal,
-                CreatedAt = t.CreatedAt,
-                ScheduledStartAt = t.ScheduledStartAt,
-                StartedAt = t.StartedAt,
-                TotalStops = t.TaskStops.Count,
-                FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
+            return tasks
+            .OrderByDescending(t => t.Id)
+                .Select(t => new TaskListItemDto
+                {
+                    Id = t.Id,
+                    RobotName = t.Robot?.Name ?? "",
+                    AssignedBy = t.AssignedByNavigation?.FullName ?? "",
+                    Status = t.Status,
+                    Priority = Enum.TryParse<TaskPriority>(t.Priority, out var p) ? p : TaskPriority.Normal,
+                    CreatedAt = t.CreatedAt,
+                    ScheduledStartAt = t.ScheduledStartAt,
+                    StartedAt = t.StartedAt,
+                    TotalStops = t.TaskStops.Count,
+                    FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
 
-                Patients = t.TaskStops
+                    Patients = t.TaskStops
                     .GroupBy(s => s.PatientId)
-                    .Select(g => 
+                    .Select(g =>
                     {
                         var firstStop = g.First();
                         var itemDescs = g
@@ -63,7 +65,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             .Where(desc => !string.IsNullOrWhiteSpace(desc))
                             .ToList();
                         var itemDesc = itemDescs.Any() ? string.Join("; ", itemDescs) : null;
-                        
+
                         return new PatientStopSummaryDto
                         {
                             PatientName = firstStop.Patient?.FullName ?? "",
@@ -72,7 +74,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             ItemDesc = itemDesc
                         };
                     }).ToList()
-            });
+                });
         }
 
         // ======================================================================
@@ -360,7 +362,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     task.Priority = dto.Priority.Value.ToString();
 
                 // Nếu task đã cancel và user thay đổi scheduledStartAt → cho phép sử dụng lại task
-                bool isReactivatingCanceledTask = task.Status.ToLower() == "canceled" && 
+                bool isReactivatingCanceledTask = task.Status.ToLower() == "canceled" &&
                                                    dto.ScheduledStartAt.HasValue &&
                                                    dto.ScheduledStartAt.Value != task.ScheduledStartAt;
 
@@ -449,7 +451,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 {
                     // Lấy danh sách stopId từ dto để xác định stop nào bị xóa
                     var stopIdsInDto = dto.Stops.Where(s => s.StopId > 0).Select(s => s.StopId).ToList();
-                    
+
                     // Xóa các stop không có trong dto (đã bị xóa ở frontend)
                     var stopsToDelete = task.TaskStops.Where(s => !stopIdsInDto.Contains(s.Id)).ToList();
                     foreach (var stopToDelete in stopsToDelete)
@@ -467,7 +469,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     foreach (var sDto in dto.Stops)
                     {
                         TaskStop stop;
-                        
+
                         // Nếu stopId = 0 → tạo stop mới
                         if (sDto.StopId == 0)
                         {
@@ -482,7 +484,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 CreatedAt = DateTime.Now,
                                 UpdatedAt = DateTime.Now
                             };
-                            
+
                             stop = await _repo.CreateStopAsync(stop);
                             task.TaskStops.Add(stop);
                         }
@@ -788,15 +790,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s =>
                 {
                     var assign = s.CompartmentAssignments.FirstOrDefault();
-                    
+
                     // Lấy CategoryId và CompartmentId từ assignment
                     ulong categoryId = 0;
                     ulong compartmentId = 0;
-                    
+
                     if (assign != null)
                     {
                         compartmentId = assign.CompartmentId;
-                        
+
                         // Ưu tiên lấy CategoryId từ CompartmentAssignment (giữ lại khi task bị cancel)
                         if (assign.CategoryId.HasValue && assign.CategoryId.Value > 0)
                         {
@@ -894,21 +896,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return false;
 
             var categoryName = category.Name.ToLower().Trim();
-            
+
             // Kiểm tra các từ khóa liên quan đến thuốc (mở rộng danh sách)
-            var medicineKeywords = new[] { 
-                "thuốc", 
-                "medicine", 
-                "drug", 
-                "medication", 
-                "dược phẩm", 
+            var medicineKeywords = new[] {
+                "thuốc",
+                "medicine",
+                "drug",
+                "medication",
+                "dược phẩm",
                 "pharmaceutical",
                 "dược",
                 "med",
                 "rx",
                 "prescription"
             };
-            
+
             return medicineKeywords.Any(keyword => categoryName.Contains(keyword));
         }
 

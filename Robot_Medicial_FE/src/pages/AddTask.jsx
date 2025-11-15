@@ -49,6 +49,7 @@ export default function AddTask() {
   const [destinations, setDestinations] = useState([]);
   const [patients, setPatients] = useState([]);
   const [categories, setCategories] = useState([]);
+  const MAX_STOPS = 10;
 
   const [form, setForm] = useState({
     mapId: "",
@@ -299,6 +300,11 @@ export default function AddTask() {
   // ADD STOP
   // ============================================================
   function addStop() {
+    if (form.taskStops.length >= MAX_STOPS) {
+      showToast("warning", "Chỉ được tối đa 10 điểm dừng cho mỗi nhiệm vụ.");
+      return;
+    }
+
     const nextSeq = form.taskStops.length + 1;
 
     setForm((f) => ({
@@ -712,7 +718,7 @@ export default function AddTask() {
                 <button
                   className={styles.btnAddStop}
                   onClick={addStop}
-                  disabled={!canAddStop}
+                  disabled={!canAddStop || form.taskStops.length >= MAX_STOPS}
                 >
                   <i className="bi bi-plus-circle me-2"></i>
                   Thêm điểm dừng
