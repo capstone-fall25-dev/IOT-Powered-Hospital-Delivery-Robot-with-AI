@@ -160,7 +160,7 @@ export default function Sidebar() {
           <li onClick={() => navigate("/doctor")}><i className="bi bi-people"></i><span>Người dùng</span></li>
           <li onClick={() => navigate("/dashboard")}><i className="bi bi-list-task"></i><span>Nhiệm vụ</span></li>
           <li onClick={() => navigate("/viewlistmap")}><i className="bi bi-map"></i><span>Bản đồ</span></li>
-          <li onClick={() => navigate("/rooms/all")}><i className="bi bi-hospital"></i><span>Phòng bệnh</span></li>
+          <li onClick={() => navigate("/rooms")}><i className="bi bi-hospital"></i><span>Phòng bệnh</span></li>
           <li onClick={() => navigate("/prescriptions")}><i className="bi bi-file-medical"></i><span>Đơn thuốc</span></li>
           <li onClick={() => navigate("/medicines")}><i className="bi bi-box-seam"></i><span>Kho thuốc</span></li>
         </ul>

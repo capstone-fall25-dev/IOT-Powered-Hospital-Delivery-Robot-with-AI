@@ -6,11 +6,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
     public interface IPatientRepository
     {
         Task<IEnumerable<Patient>> GetAllAsync();
+        Task<IEnumerable<Patient>> FilterAsync(PatientFilterDto filter);
+
         Task<Patient?> GetByIdAsync(ulong id, bool includeRoom = false, bool includePrescriptions = false);
-        Task<Patient?> GetByCodeAsync(string patientCode);
+
+        Task<Patient?> GetByCodeAsync(string code);
+
+        Task<bool> ExistsRoomAsync(ulong roomId);
+
         Task<Patient> CreateAsync(Patient patient);
         Task<Patient?> UpdateAsync(ulong id, Patient patient);
-        Task<Patient?> DischargeAsync(ulong id);
-        Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong patientId);
+
+        Task<Patient?> DischargeAsync(ulong id, string? reason);
+
+        Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong id);
     }
 }

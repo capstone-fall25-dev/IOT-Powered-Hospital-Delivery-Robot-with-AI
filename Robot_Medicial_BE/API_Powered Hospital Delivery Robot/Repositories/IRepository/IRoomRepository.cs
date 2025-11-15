@@ -8,5 +8,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Room?> GetByIdAsync(ulong id);
         Task<Room> CreateAsync(Room room);
         Task<Room?> UpdateAsync(ulong id, Room room);
+        Task<bool> DeleteAsync(ulong id);
     }
 }

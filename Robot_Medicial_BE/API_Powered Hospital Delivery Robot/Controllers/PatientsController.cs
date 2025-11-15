@@ -1,7 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
@@ -17,33 +15,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả patient (include Room) 
+        // GET ALL
         [HttpGet]
-        //[Authorize(Roles = "doctor")]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetAll()
         {
-            var patients = await _service.GetAllAsync();
-            return Ok(patients);
+            return Ok(await _service.GetAllAsync());
         }
 
-        // Lấy thông tin chi tiết patient (include Room/Prescriptions.Items) - UC 30: View Patient Profile (Patient Management)
+        // FILTER
+        [HttpPost("filter")]
+        public async Task<ActionResult<IEnumerable<PatientResponseDto>>> Filter(PatientFilterDto filter)
+        {
+            return Ok(await _service.FilterAsync(filter));
+        }
+
+        // GET BY ID
         [HttpGet("{id}")]
-       // [Authorize(Roles = "doctor")]
         public async Task<ActionResult<PatientResponseDto>> GetById(ulong id)
         {
-            var patient = await _service.GetByIdAsync(id);
-            if (patient == null) return NotFound();
-            return Ok(patient);
+            var res = await _service.GetByIdAsync(id);
+            return res == null ? NotFound() : Ok(res);
         }
 
-        // Tạo patient mới (validate unique code) - UC 28: Create New Patient (Patient Management)
+        // CREATE
         [HttpPost]
-       // [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<PatientResponseDto>> Create(PatientDto patientDto)
+        public async Task<ActionResult> Create(PatientCreateDto dto)
         {
             try
             {
-                var created = await _service.CreateAsync(patientDto);
+                var created = await _service.CreateAsync(dto);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (InvalidOperationException ex)
@@ -52,16 +52,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin patient (validate unique code, room/department) - UC 29: Update Patient (Patient Management)
+        // UPDATE
         [HttpPut("{id}")]
-    //    [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<PatientResponseDto>> Update(ulong id, PatientDto patientDto)
+        public async Task<ActionResult> Update(ulong id, PatientUpdateDto dto)
         {
             try
             {
-                var updated = await _service.UpdateAsync(id, patientDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
+                var updated = await _service.UpdateAsync(id, dto);
+                return updated == null ? NotFound() : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -69,53 +67,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Discharge patient (set status="discharged", null RoomId/RoomNumber, log reason) - UC 32: Patient Discharge Management (Patient Management)
+        // DISCHARGE
         [HttpPatch("{id}/discharge")]
-    //    [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id)
+        public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id, [FromBody] DischargeDto dto)
         {
-            try
-            {
-                var updated = await _service.DischargeAsync(id);
-                if (updated == null) return NotFound();
-                return Ok(updated);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var updated = await _service.DischargeAsync(id, dto.Reason);
+            if (updated == null) return NotFound();
+
+            return Ok(updated);
         }
 
-        // Theo dõi lịch sử thuốc của bệnh nhân - UC 31: Track Patient Medicine History (Patient Management)
+        // MEDICINE HISTORY
         [HttpGet("{id}/medicine-history")]
-     //   [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<IEnumerable<PatientMedicineHistoryDto>>> GetMedicineHistory(ulong id)
+        public async Task<ActionResult> History(ulong id)
         {
-            try
-            {
-                var history = await _service.GetMedicineHistoryAsync(id);
-                return Ok(history);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _service.GetMedicineHistoryAsync(id));
         }
 
-        // UC 33: Generate Patient Reports (Patient Management)
+        // REPORT
         [HttpGet("{id}/report")]
-  //      [Authorize(Roles = "doctor")]
-        public async Task<ActionResult<PatientReportDto>> GetReport(ulong id)
+        public async Task<ActionResult> Report(ulong id)
         {
-            try
-            {
-                var report = await _service.GetReportAsync(id);
-                return Ok(report);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return Ok(await _service.GetReportAsync(id));
         }
     }
 }

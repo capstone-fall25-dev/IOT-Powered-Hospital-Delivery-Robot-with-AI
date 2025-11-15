@@ -23,5 +23,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public decimal? Latitude { get; set; }
         public ulong? MapId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int PatientCount { get; set; }
+        public List<PatientInRoomDto> Patients { get; set; } = new();
+    }
+
+    public class PatientInRoomDto
+    {
+        public ulong Id { get; set; }
+        public string PatientCode { get; set; } = "";
+        public string FullName { get; set; } = "";
+        public string Gender { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTime? CreatedAt { get; set; }
+    }
+
+    public class PatientMoveRoomDto
+    {
+        public ulong NewRoomId { get; set; }
     }
 }
