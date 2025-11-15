@@ -31,14 +31,20 @@
 }
 
 .btn-teal {
-    background: var(--teal);
+    background: #14e2c1;
     border: none;
     color: #052a2b;
-    font-weight: 800;
+    font-weight: 600;
 }
 
 .btn-teal:hover {
-    filter: brightness(1.05);
+    background: #12cead;
+    color: #052a2b;
+}
+
+.btn-teal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .badge-soft {
@@ -49,4 +55,68 @@
 .toolbar .form-control,
 .toolbar .form-select {
     border-radius: 12px;
+}
+
+/* Form controls styling */
+.glass .form-control,
+.glass .form-select,
+.glass textarea {
+    border-radius: 12px;
+    border: 1px solid rgba(11, 19, 36, 0.1);
+    padding: 0.65rem 1rem;
+    transition: all 0.2s ease;
+    color: #0b1324;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.glass .form-control:focus,
+.glass .form-select:focus,
+.glass textarea:focus {
+    border-color: rgba(20, 226, 193, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(20, 226, 193, 0.15);
+    color: #0b1324;
+}
+
+.glass .form-label {
+    color: #0b1324;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Category Table Specific Styles */
+.categoryTable {
+    margin-bottom: 0;
+}
+
+.categoryTable thead th {
+    background: rgba(20, 226, 193, 0.08);
+    border-bottom: 2px solid rgba(20, 226, 193, 0.2);
+    color: #0b1324 !important;
+    font-weight: 600;
+    padding: 1rem;
+}
+
+.categoryTable tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #0b1324 !important;
+    border-bottom: 1px solid rgba(11, 19, 36, 0.08);
+}
+
+.categoryTable tbody tr:hover {
+    background: rgba(20, 226, 193, 0.05);
+}
+
+.categoryTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Table text colors - CRITICAL for visibility */
+.table {
+    color: #0b1324;
+}
+
+.table th,
+.table td {
+    color: #0b1324 !important;
 }

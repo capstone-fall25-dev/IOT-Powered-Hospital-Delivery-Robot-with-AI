@@ -1,34 +1,44 @@
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import MainLayout from "@/layouts/MainLayout";
-import RobotManagement from "@/pages/RobotManagement";
+
 import RobotDashBoard from "@/pages/RobotDashBoard";
+import AddTask from "@/pages/AddTask";
 import TaskDetail from "@/pages/TaskDetail";
 import EditTask from "../pages/EditTask";
+
 import DoctorProfileProvisionForm from "@/pages/DoctorProfileProvisionForm";
 import DoctorManagementPage from "@/pages/DoctorManagementPage";
 import RobotDetailMisson from "@/pages/RobotDetailMisson";
-import AddTask from "@/pages/AddTask";
+
 import UserProfile from "@/pages/UserDetail";
-import RobotDetail from "@/pages/RobotDetail";
+
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import RobotMissionHistory from "@/pages/MissionHistory";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import PatientsManagement from "@/pages/PatientManagement";
-import ProjectMapListView from "@/pages/ViewListMap";
+
 import PatientDetail from "@/pages/PatientsDetail";
 import CreatePatient from "@/pages/CreatePatient";
 import RoomFleetCards from "@/pages/RoomManagement";
+
 import MedicineListPage from "@/pages/MedicineMangement";
+import MedicineCreate from "@/pages/MedicineCreate";
+import MedicineDetail from "@/pages/MedicineDetail";
+import MedicineEdit from "@/pages/MedicineEdit";
+import MedicineCategoryList from "@/pages/MedicineCategoryList";
+
 import PrescriptionManagement from "@/pages/PrescriptionsManagement";
 import PrescriptionCreate from "@/pages/PrescriptionCreate";
 import PrescriptionEdit from "@/pages/PrescriptionEdit";
 import PrescriptionDetail from "@/pages/PrescriptionDetail";
+
+import RobotManagement from "@/pages/RobotManagement";
 import CreateRobot from "@/pages/CreateRobot";  
+import RobotDetail from "@/pages/RobotDetail";
 
+import ProjectMapListView from "@/pages/ViewListMap";
 import RunMap from "@/pages/RunMap";
-
-// 🗺️ Thêm import mới
 import CreateMap from "@/pages/CreateMap";
 
 const routes = [
@@ -62,11 +72,18 @@ const routes = [
   { path: "/patient/:id", element: <MainLayout><PatientDetail /></MainLayout> },
   { path: "/patients/add", element: <MainLayout><CreatePatient /></MainLayout> },
   { path: "/rooms/all", element: <MainLayout><RoomFleetCards /></MainLayout> },
+
   { path: "/medicines", element: <MainLayout><MedicineListPage /></MainLayout> },
+  { path: "/medicines/add", element: <MainLayout><MedicineCreate /></MainLayout> },
+  { path: "/medicines/:id", element: <MainLayout><MedicineDetail /></MainLayout> },
+  { path: "/medicines/edit/:id", element: <MainLayout><MedicineEdit /></MainLayout> },
+  { path: "/categories", element: <MainLayout><MedicineCategoryList /></MainLayout> },
+
   { path: "/prescriptions", element: <MainLayout><PrescriptionManagement /></MainLayout> },
   { path: "/prescriptions/add", element: <MainLayout><PrescriptionCreate /></MainLayout> },
   { path: "/prescriptions/:id/edit", element: <MainLayout><PrescriptionEdit /></MainLayout> },
   { path: "/prescriptions/:id", element: <MainLayout><PrescriptionDetail /></MainLayout> },
+
   { path: "/createRobot", element: <MainLayout><CreateRobot /></MainLayout> },
 ];
 

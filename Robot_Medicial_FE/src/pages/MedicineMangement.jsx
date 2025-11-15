@@ -1,26 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllMedicines } from "@/services/medicineService";
+import { getAllMedicines, getAllCategories, deleteMedicine } from "@/services/medicineService";
 import styles from '@/assets/styles/medicinesManagement.module.css';
 
 export default function MedicinesManagement() {
     const navigate = useNavigate();
 
     const [rows, setRows] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
 
     const [showModal, setShowModal] = useState(false);
     const [selectedMedicine, setSelectedMedicine] = useState(null);
     const [medicineHistory, setMedicineHistory] = useState([]);
 
     useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = () => {
         getAllMedicines()
             .then((medicines) => {
                 const mapped = medicines.map((m) => ({
                     id: m.id,
                     medicineCode: m.medicineCode,
                     name: m.name,
+                    categoryName: m.categoryName || "-",
+                    categoryId: m.categoryId,
                     unit: m.unit,
                     stockQuantity: m.stockQuantity,
                     expiryDate: m.expiryDate ? new Date(m.expiryDate).toLocaleDateString("vi-VN") : "-",
@@ -33,15 +41,35 @@ export default function MedicinesManagement() {
                 console.error("Lỗi khi lấy danh sách thuốc:", err);
                 alert("Không thể tải danh sách thuốc");
             });
-    }, []);
+
+        getAllCategories()
+            .then(setCategories)
+            .catch((err) => {
+                console.error("Lỗi khi lấy danh mục:", err);
+            });
+    };
+
+    const handleDelete = async (id, name) => {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa thuốc "${name}"?`)) return;
+        
+        try {
+            await deleteMedicine(id);
+            alert("Xóa thuốc thành công!");
+            loadData();
+        } catch (err) {
+            console.error("Lỗi khi xóa thuốc:", err);
+            alert("Không thể xóa thuốc");
+        }
+    };
 
     const filtered = useMemo(() => {
         return rows.filter(
             (r) =>
                 (status === "all" || r.status === status) &&
-                (q === "" || [r.name, r.medicineCode, r.description].join(" ").toLowerCase().includes(q.toLowerCase()))
+                (categoryFilter === "all" || r.categoryId === Number(categoryFilter)) &&
+                (q === "" || [r.name, r.medicineCode, r.description, r.categoryName].join(" ").toLowerCase().includes(q.toLowerCase()))
         );
-    }, [rows, q, status]);
+    }, [rows, q, status, categoryFilter]);
 
     return (
         <div className={styles.page}>
@@ -53,8 +81,17 @@ export default function MedicinesManagement() {
                             <span className={styles.chip}><i className="bi bi-box-seam me-1"></i></span>
                             <h4 className="mb-0 fw-bold">Kho thuốc</h4>
                         </div>
-                        <div>
-                            <button className={`btn ${styles.btnTeal} rounded-pill`} onClick={() => navigate("/medicines/add")}>
+                        <div className="d-flex gap-2 flex-wrap">
+                            <button 
+                                className={`btn btn-outline-secondary rounded-pill`} 
+                                onClick={() => navigate("/categories")}
+                            >
+                                <i className="bi bi-grid me-1"></i> Quản lý danh mục
+                            </button>
+                            <button 
+                                className={`btn ${styles.btnTeal} rounded-pill`} 
+                                onClick={() => navigate("/medicines/add")}
+                            >
                                 <i className="bi bi-plus-lg me-1"></i> Thêm mới
                             </button>
                         </div>
@@ -72,9 +109,28 @@ export default function MedicinesManagement() {
                                     onChange={(e) => setQ(e.target.value)}
                                 />
                             </div>
-                            <div className="col-md-3">
+                            <div className="col-md-2">
+                                <label className="form-label">Danh mục</label>
+                                <select 
+                                    className="form-select" 
+                                    value={categoryFilter} 
+                                    onChange={(e) => setCategoryFilter(e.target.value)}
+                                >
+                                    <option value="all">Tất cả</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.categoryName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="col-md-2">
                                 <label className="form-label">Trạng thái</label>
-                                <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                                <select 
+                                    className="form-select" 
+                                    value={status} 
+                                    onChange={(e) => setStatus(e.target.value)}
+                                >
                                     <option value="all">Tất cả</option>
                                     <option value="Sẵn sàng">Sẵn sàng</option>
                                     <option value="Hết hạn">Hết hạn</option>
@@ -87,6 +143,7 @@ export default function MedicinesManagement() {
                                     onClick={() => {
                                         setQ("");
                                         setStatus("all");
+                                        setCategoryFilter("all");
                                     }}
                                 >
                                     <i className="bi bi-x-circle me-1"></i> Xóa lọc
@@ -104,6 +161,7 @@ export default function MedicinesManagement() {
                                         <th>#</th>
                                         <th>Mã thuốc</th>
                                         <th>Tên thuốc</th>
+                                        <th>Danh mục</th>
                                         <th>Đơn vị</th>
                                         <th>Số lượng tồn</th>
                                         <th>Hạn sử dụng</th>
@@ -118,6 +176,7 @@ export default function MedicinesManagement() {
                                             <td>{idx + 1}</td>
                                             <td>{r.medicineCode}</td>
                                             <td>{r.name}</td>
+                                            <td>{r.categoryName}</td>
                                             <td>{r.unit}</td>
                                             <td>{r.stockQuantity}</td>
                                             <td>{r.expiryDate}</td>
@@ -128,20 +187,36 @@ export default function MedicinesManagement() {
                                             </td>
                                             <td>{r.description}</td>
                                             <td className="text-end">
-                                                <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/medicines/edit/${r.id}`)}>
-                                                    Sửa
-                                                </button>
-                                            </td>
-                                            <td className="text-end">
-                                                <button className="btn btn-outline-danger btn-sm" onClick={() => navigate(`/medicines/edit/${r.id}`)}>
-                                                    Khóa
-                                                </button>
+                                                <div className="d-flex gap-1 justify-content-end">
+                                                    <button 
+                                                        className="btn btn-outline-info btn-sm" 
+                                                        onClick={() => navigate(`/medicines/${r.id}`)}
+                                                        title="Xem chi tiết"
+                                                    >
+                                                        <i className="bi bi-eye"></i>
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-outline-primary btn-sm" 
+                                                        onClick={() => navigate(`/medicines/edit/${r.id}`)}
+                                                        title="Sửa"
+                                                    >
+                                                        <i className="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-outline-danger btn-sm" 
+                                                        onClick={() => handleDelete(r.id, r.name)}
+                                                        title="Xóa"
+                                                    >
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} className="text-center text-muted py-4">
+                                            <td colSpan={10} className="text-center text-muted py-4">
+                                                <i className="bi bi-inbox fs-1 d-block mb-2"></i>
                                                 Không có dữ liệu
                                             </td>
                                         </tr>
@@ -157,7 +232,7 @@ export default function MedicinesManagement() {
                             <div className="modal-dialog modal-lg modal-dialog-centered">
                                 <div className="modal-content">
                                     <div className="modal-header">
-                                        <h5 className="modal-title">Lịch sử thuốc - {selectedMedicine.name}</h5>
+                                        <h5 className="modal-title">Lịch sử thuốc - {selectedMedicine?.name}</h5>
                                         <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                     </div>
                                     <div className="modal-body">
