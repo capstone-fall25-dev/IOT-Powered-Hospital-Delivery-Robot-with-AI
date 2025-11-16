@@ -1,91 +1,93 @@
-
 import { API_CONFIG } from "@/utils/apiConfig";
-// Lấy tất cả users
+
 export async function getAllUsers() {
     try {
         const res = await fetch(`${API_CONFIG.API_BASE}/users`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
         });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     } catch (err) {
-        console.error('Lỗi khi gọi API get-all users:', err);
+        console.error("Lỗi API getAllUsers:", err);
         throw err;
     }
 }
 
-// Lấy user theo ID
 export async function getUserById(id) {
     if (!id) throw new Error("User ID is required");
     try {
         const res = await fetch(`${API_CONFIG.API_BASE}/users/${id}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
         });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     } catch (err) {
-        console.error(`Lỗi khi gọi API get-user/${id}:`, err);
+        console.error(`Lỗi API getUserById(${id}):`, err);
         throw err;
     }
 }
 
-// Tạo user mới
 export async function createUser(userDto) {
     try {
         const res = await fetch(`${API_CONFIG.API_BASE}/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(userDto)
         });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     } catch (err) {
-        console.error('Lỗi khi gọi API create-user:', err);
+        console.error("Lỗi API createUser:", err);
         throw err;
     }
 }
 
-// Cập nhật user
 export async function updateUser(id, userDto) {
     if (!id) throw new Error("User ID is required");
     try {
         const res = await fetch(`${API_CONFIG.API_BASE}/users/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(userDto)
         });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     } catch (err) {
-        console.error(`Lỗi khi gọi API update-user/${id}:`, err);
+        console.error(`Lỗi API updateUser(${id}):`, err);
         throw err;
     }
 }
 
-// Kích hoạt user
 export async function activateUser(id) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`${API_CONFIG.API_BASE}/users/${id}/activate`, { method: 'PATCH' });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const res = await fetch(`${API_CONFIG.API_BASE}/users/${id}/activate`, {
+            method: "PATCH"
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return true;
     } catch (err) {
-        console.error(`Lỗi khi gọi API activate-user/${id}:`, err);
+        console.error(`Lỗi API activateUser(${id}):`, err);
         throw err;
     }
 }
 
-// Vô hiệu hóa user
 export async function deactivateUser(id) {
     if (!id) throw new Error("User ID is required");
     try {
-        const res = await fetch(`${API_BASE}/users/${id}/deactivate`, { method: 'PATCH' });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const res = await fetch(`${API_CONFIG.API_BASE}/users/${id}/deactivate`, {
+            method: "PATCH"
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return true;
     } catch (err) {
-        console.error(`Lỗi khi gọi API deactivate-user/${id}:`, err);
+        console.error(`Lỗi API deactivateUser(${id}):`, err);
         throw err;
     }
+}
+
+export async function toggleActive(id, active) {
+    return active ? deactivateUser(id) : activateUser(id); // Đổi logic: nếu đang active thì deactivate (khóa), ngược lại activate (mở)
 }
