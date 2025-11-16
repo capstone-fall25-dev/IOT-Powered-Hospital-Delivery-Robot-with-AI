@@ -4,7 +4,6 @@ export const API_CONFIG = {
     // API_BASE1: "http://localhost:5170",
      API_BASE1: "http://160.187.229.40:5000",
 };
-};
 
 export async function apiFetch(url, options = {}) {
     try {
