@@ -10,8 +10,6 @@ services:
       MYSQL_DATABASE: robotmanager
     volumes:
       - mysql_data:/var/lib/mysql
-      # ✅ Tạo script init SQL
-      - ./mysql-init:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
     
@@ -25,7 +23,7 @@ services:
       - mysql
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=robotmanager;user=root;password=1239
+      - ConnectionStrings__DefaultConnection="server=160.187.229.40;port=3306;database=robotmanager;user=root;password=1239;"
     ports:
       - "5000:5000"
 
