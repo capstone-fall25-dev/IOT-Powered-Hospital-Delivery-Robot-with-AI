@@ -2,8 +2,7 @@ name: 🚀 Deploy to VPS
 
 on:
   push:
-    branches:
-    - main
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -12,15 +11,15 @@ jobs:
     steps:
     - name: 🧭 Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.PERSONAL_TOKEN }}
 
-    - name: 🚀 Build and deploy with Docker Compose
+    - name: 🚀 Pull latest code from GitHub
       run: |
-        cd /home/runner/app/IOT-Powered-Hospital-Delivery-Robot-with-AI
+        cd /home/runner-user/IOT-Powered-Hospital-Delivery-Robot-with-AI
         git fetch --all
         git reset --hard origin/main
-        docker compose down
-        docker compose build --no-cache
-        docker compose up -d
+
+    - name: 🐳 Rebuild and restart Docker Compose
+      run: |
+        cd /home/runner-user/IOT-Powered-Hospital-Delivery-Robot-with-AI
+        docker compose down -v
+        docker compose up -d --build
