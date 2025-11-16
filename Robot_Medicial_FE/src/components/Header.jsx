@@ -53,7 +53,7 @@ const Header = () => {
                         </Dropdown.Toggle>
 
                         <Dropdown.Menu className="shadow-sm border-0">
-                            <Dropdown.Item onClick={() => navigate("/user-detail")}>
+                            <Dropdown.Item onClick={() => navigate("/user-profile")}>
                                 <i className="bi bi-person-circle me-2"></i> Thông tin người dùng
                             </Dropdown.Item>
                             <Dropdown.Divider />

@@ -1,178 +1,224 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-export default function UserProfile() {
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+    getUserById,
+    activateUser,
+    deactivateUser
+} from "@/services/userService";
 
+import styles from "@/assets/styles/userManagement.module.css";
+
+export default function UserDetail() {
+    const { userId } = useParams();
     const navigate = useNavigate();
-    const [model, setModel] = useState({
-        fullName: "Bác sĩ Nguyễn Văn A",
-        email: "doctor@example.com",
-        phone: "0901234567",
-        org: "Bệnh viện Trung ương",
-        bio: "Luôn tận tâm vì sức khỏe bệnh nhân.",
-        expYears: 10,
-        specialties: ["Hồi sức", "Ngoại tổng quát", "Sản - Phụ khoa", "Nội khoa", "Tim mạch"],
-        activeSpecs: new Set(["Hồi sức", "Nội khoa", "Tim mạch"]),
-    });
 
-    const [avatar, setAvatar] = useState(null);
-    const [saving, setSaving] = useState(false);
-    const [toast, setToast] = useState("");
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [toggling, setToggling] = useState(false);
 
-    const fileRef = useRef(null);
+    useEffect(() => {
+        loadUser();
+    }, [userId]);
 
-    function handleChange(e) {
-        const { name, value } = e.target;
-        setModel((prev) => ({
-            ...prev,
-            [name]: name === "expYears" ? Number(value) : value,
-        }));
-    }
-
-    function toggleSpec(s) {
-        setModel((prev) => {
-            const next = new Set(prev.activeSpecs);
-            if (next.has(s)) next.delete(s);
-            else next.add(s);
-            return { ...prev, activeSpecs: next };
-        });
-    }
-
-    function onPickFile() {
-        fileRef.current?.click();
-    }
-
-    function onFile(e) {
-        const f = e.target.files?.[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => setAvatar(reader.result);
-        reader.readAsDataURL(f);
-    }
-
-    function isValid() {
-        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(model.email);
-        const phoneOk = /^\d{9,11}$/.test(model.phone.trim());
-        return emailOk && phoneOk && model.fullName.trim().length > 3;
-    }
-
-    async function onSave() {
-        if (!isValid()) {
-            setToast("❗ Vui lòng kiểm tra lại thông tin bắt buộc.");
-            return;
+    async function loadUser() {
+        try {
+            const data = await getUserById(userId);
+            setUser(data);
+        } catch (err) {
+            alert("Không thể tải thông tin user");
+        } finally {
+            setLoading(false);
         }
-        setSaving(true);
-        setToast("");
-        await new Promise((r) => setTimeout(r, 900)); // mô phỏng API
-        setSaving(false);
-        setToast("✅ Đã lưu thông tin thành công!");
     }
 
+    async function handleToggleStatus() {
+        if (!user) return;
+
+        const active = user.isActive;
+        const confirmText = active
+            ? "Bạn có chắc chắn muốn vô hiệu hoá tài khoản này?"
+            : "Bạn có chắc chắn muốn kích hoạt tài khoản này?";
+
+        if (!window.confirm(confirmText)) return;
+
+        try {
+            setToggling(true);
+
+            if (active) await deactivateUser(user.id);
+            else await activateUser(user.id);
+
+            await loadUser();
+        } catch (err) {
+            alert("Thao tác thất bại");
+        } finally {
+            setToggling(false);
+        }
+    }
+
+    if (loading)
+        return (
+            <div className="text-center mt-5">
+                <div className="spinner-border text-success"></div>
+                <p>Đang tải dữ liệu...</p>
+            </div>
+        );
+
+    if (!user)
+        return (
+            <div className="text-center text-danger mt-5">
+                Không tìm thấy người dùng!
+            </div>
+        );
 
     return (
-        <div style={{
-            fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-            minHeight: '100vh',
-            background: `radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),
-                  radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),
-                  linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%)`
-        }}>
-            <style>{`
-        :root{--teal:#4CE1C6;--ink:#0f172a}
-        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);}
-        .rounded-2xl{border-radius:22px}
-        .title{font-weight:800; letter-spacing:.2px; color:#0b1432}
-        .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-        .btn-teal:hover{filter:brightness(1.05)}
-        .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-        .avatar{width:104px;height:104px;border-radius:999px;background:#eaf7f4;display:grid;place-items:center;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.08)}
-        .avatar img{width:100%;height:100%;object-fit:cover}
-        .spec{border:1px dashed rgba(15,23,42,.12)}
-        .spec.active{border:1px solid rgba(20,226,193,.55); background:rgba(20,226,193,.18)}
-      `}</style>
+        <div className={`${styles.page} py-5 d-flex justify-content-center`}>
+            <div className={`${styles.glass} p-5`} style={{ maxWidth: 900, width: "95%" }}>
 
-            <div className="container py-4 py-md-5">
-                <div className="glass rounded-2xl p-3 p-md-4 p-lg-5">
-                    {/* Header */}
-                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className="chip"><i className="bi bi-person-gear me-1"></i> Hồ sơ</span>
-                            <h4 className="title mb-0">Thông Tin Người Dùng</h4>
-                        </div>
-                        <button className="btn btn-outline-secondary rounded-pill" onClick={() => navigate("/change-password")}><i className="bi bi-shield-lock me-1"></i> Đổi Mật Khẩu</button>
+                {/* HEADER */}
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h3 className="fw-bold">
+                        <i className="bi bi-person-badge text-primary me-2"></i>
+                        Chi tiết người dùng
+                    </h3>
+
+                    <button
+                        className={`${styles.btnTeal} btn rounded-pill px-3`}
+                        onClick={() => navigate("/user")}
+                    >
+                        <i className="bi bi-arrow-left-circle me-1"></i> Quay lại
+                    </button>
+                </div>
+
+                {/* USER CARD */}
+                <div className="row g-4">
+
+                    <div className="col-md-6">
+                        <label className="fw-semibold">Họ tên</label>
+                        <div className="form-control">{user.fullName}</div>
                     </div>
 
-                    <div className="row g-4">
-                        {/* Left: Avatar */}
-                        <div className="col-lg-3">
-                            <div className="d-flex flex-column align-items-center gap-2">
-                                <div className="avatar">
-                                    {avatar ? <img src={avatar} alt="avatar" /> : <i className="bi bi-person fs-1 text-muted"></i>}
-                                </div>
-                                <div className="text-center small text-muted">Ảnh đại diện giúp hồ sơ chuyên nghiệp hơn.</div>
-                                <div className="d-flex gap-2">
-                                    <button className="btn btn-light rounded-pill" onClick={onPickFile}><i className="bi bi-upload me-1"></i> Thay ảnh</button>
-                                    {avatar && <button className="btn btn-outline-danger rounded-pill" onClick={() => setAvatar(null)}><i className="bi bi-x-circle me-1"></i> Gỡ</button>}
-                                </div>
-                                <input ref={fileRef} type="file" accept="image/*" className="d-none" onChange={onFile} />
-                            </div>
-                        </div>
+                    <div className="col-md-6">
+                        <label className="fw-semibold">Email</label>
+                        <div className="form-control">{user.email}</div>
+                    </div>
 
-                        {/* Right: Form */}
-                        <div className="col-lg-9">
-                            <div className="row g-3">
-                                <div className="col-md-6">
-                                    <label className="form-label">Họ và tên</label>
-                                    <input name="fullName" className="form-control" value={model.fullName} onChange={handleChange} placeholder="Nhập họ và tên" />
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label">Email</label>
-                                    <input name="email" type="email" className="form-control" value={model.email} onChange={handleChange} placeholder="email@benhvien.vn" />
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label">Số điện thoại</label>
-                                    <input name="phone" className="form-control" value={model.phone} onChange={handleChange} placeholder="09xxxxxxxx" />
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="form-label">Nơi công tác</label>
-                                    <input name="org" className="form-control" value={model.org} onChange={handleChange} placeholder="Tên bệnh viện" />
-                                </div>
+                    <div className="col-md-4">
+                        <label className="fw-semibold">Vai trò</label>
+                        <div className="form-control text-capitalize">{user.role}</div>
+                    </div>
 
-                                <div className="col-12">
-                                    <label className="form-label">Chuyên khoa</label>
-                                    <div className="d-flex flex-wrap gap-2">
-                                        {model.specialties.map(s => (
-                                            <button key={s} type="button" className={`btn btn-sm rounded-pill ${model.activeSpecs.has(s) ? 'btn-success spec active' : 'btn-light spec'}`} onClick={() => toggleSpec(s)}>
-                                                {s}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="col-12">
-                                    <label className="form-label">Tiểu sử</label>
-                                    <textarea name="bio" rows={3} className="form-control" value={model.bio} onChange={handleChange} placeholder="Mô tả ngắn về bản thân" />
-                                </div>
-
-                                <div className="col-md-4">
-                                    <label className="form-label">Số năm kinh nghiệm</label>
-                                    <input name="expYears" type="number" min={0} className="form-control" value={model.expYears} onChange={handleChange} />
-                                </div>
-                            </div>
-
-                            <div className="d-flex justify-content-end mt-4">
-                                <button disabled={!isValid() || saving} className="btn btn-teal rounded-pill px-4" onClick={onSave}>
-                                    {saving ? <span className="spinner-border spinner-border-sm me-2" role="status"></span> : <i className="bi bi-save2 me-1"></i>}
-                                    Lưu Thông Tin
-                                </button>
-                            </div>
-
-                            {toast && (
-                                <div className="alert alert-success mt-3 py-2"><i className="bi bi-check2-circle me-2"></i>{toast}</div>
+                    <div className="col-md-4">
+                        <label className="fw-semibold">Trạng thái</label>
+                        <div className="form-control">
+                            {user.isActive ? (
+                                <span className="text-success fw-bold">Hoạt động</span>
+                            ) : (
+                                <span className="text-danger fw-bold">Tạm dừng</span>
                             )}
                         </div>
                     </div>
+
+                    <div className="col-md-4">
+                        <label className="fw-semibold">Online</label>
+                        <div className="form-control">
+                            {user.isOnline ? (
+                                <span className="text-success">
+                                    <i className="bi bi-circle-fill me-1"></i> Đang hoạt động
+                                </span>
+                            ) : (
+                                <span className="text-secondary">
+                                    <i className="bi bi-circle me-1"></i> Offline
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="col-md-6">
+                        <label className="fw-semibold">Ngày tạo</label>
+                        <div className="form-control">
+                            {new Date(user.createdAt).toLocaleString("vi-VN")}
+                        </div>
+                    </div>
+
+                    <div className="col-md-6">
+                        <label className="fw-semibold">Cập nhật lần cuối</label>
+                        <div className="form-control">
+                            {new Date(user.updatedAt).toLocaleString("vi-VN")}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ACTION BUTTONS */}
+                <div className="d-flex justify-content-end gap-3 mt-4">
+
+                    <button
+                        className="btn btn-outline-secondary rounded-pill"
+                        onClick={() => navigate(`/user-detail/${user.id}`)}
+                    >
+                        <i className="bi bi-pencil-square me-1"></i> Chỉnh sửa
+                    </button>
+
+                    <button
+                        className="btn btn-danger rounded-pill"
+                        onClick={handleToggleStatus}
+                        disabled={toggling}
+                    >
+                        {toggling ? (
+                            <span className="spinner-border spinner-border-sm"></span>
+                        ) : user.isActive ? (
+                            <>
+                                <i className="bi bi-lock me-1"></i> Vô hiệu hóa
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-unlock me-1"></i> Kích hoạt
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {/* TASK LIST */}
+                <div className="mt-5">
+                    <h5 className="fw-bold mb-3">
+                        <i className="bi bi-list-task text-success me-2"></i>
+                        Nhiệm vụ đã giao
+                    </h5>
+
+                    {user.tasks && user.tasks.length > 0 ? (
+                        <ul className="list-group">
+                            {user.tasks.map((t) => (
+                                <li key={t.id} className="list-group-item">
+                                    {t.title}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted">Không có nhiệm vụ nào.</p>
+                    )}
+                </div>
+
+                {/* SESSIONS */}
+                <div className="mt-4">
+                    <h5 className="fw-bold mb-3">
+                        <i className="bi bi-wifi text-primary me-2"></i>
+                        Phiên hoạt động
+                    </h5>
+
+                    {user.activeSessions && user.activeSessions.length > 0 ? (
+                        <ul className="list-group">
+                            {user.activeSessions.map((s) => (
+                                <li key={s.id} className="list-group-item">
+                                    <b>Đăng nhập:</b> {new Date(s.createdAt).toLocaleString("vi-VN")}  
+                                    <br />
+                                    <b>Hết hạn:</b> {new Date(s.expiresAt).toLocaleString("vi-VN")}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted">Không có phiên hoạt động.</p>
+                    )}
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

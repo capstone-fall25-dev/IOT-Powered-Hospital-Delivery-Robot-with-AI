@@ -8,15 +8,17 @@ import MainLayout from "@/layouts/MainLayout";
 // ============================================
 // IMPORTS - AUTHENTICATION & USER
 // ============================================
-import UserProfile from "@/pages/UserDetail";
+import UserProfile from "@/pages/UserProfile";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 
 // ============================================
-// IMPORTS - QUẢN LÝ BÁC SĨ (DOCTOR MANAGEMENT)
+// IMPORTS - 
 // ============================================
-import DoctorProfileProvisionForm from "@/pages/DoctorProfileProvisionForm";
-import DoctorManagementPage from "@/pages/DoctorManagementPage";
+import UserDetail from "@/pages/UserDetail";
+import UserManagementPage from "@/pages/UserManagementPage";
+import UserCreate from "@/pages/UserCreate";
+import UserEdit from "@/pages/UserEdit";
 
 // ============================================
 // IMPORTS - QUẢN LÝ BỆNH NHÂN (PATIENT MANAGEMENT)
@@ -95,13 +97,15 @@ const routes = [
   // ============================================
   // 👤 USER PROFILE
   // ============================================
-  { path: "/user-detail", element: <MainLayout><UserProfile /></MainLayout> },
+  { path: "/user-profile", element: <MainLayout><UserProfile /></MainLayout> },
 
   // ============================================
-  // 👨‍⚕️ DOCTOR MANAGEMENT
+  // 👨‍⚕️ User MANAGEMENT
   // ============================================
-  { path: "/doctor", element: <MainLayout><DoctorManagementPage /></MainLayout> },
-  { path: "/doctor-profile/:userId", element: <MainLayout><DoctorProfileProvisionForm /></MainLayout> },
+  { path: "/users", element: <MainLayout><UserManagementPage /></MainLayout> },
+  { path: "/user-detail/:userId", element: <MainLayout><UserDetail /></MainLayout> },
+  { path: "/users/create", element: <MainLayout><UserCreate /></MainLayout> },
+  { path: "/users/edit/:userId", element: <MainLayout><UserEdit /></MainLayout> },
 
   // ============================================
   // 👥 PATIENT MANAGEMENT

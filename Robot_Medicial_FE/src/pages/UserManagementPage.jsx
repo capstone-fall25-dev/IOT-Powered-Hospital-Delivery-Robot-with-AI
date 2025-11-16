@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllUsers } from '@/services/userService';
-import styles from '@/assets/styles/doctorManagement.module.css'; // import CSS module
+import { getAllUsers, toggleActive } from '@/services/userService';
+import styles from '@/assets/styles/userManagement.module.css'; // import CSS module
 
-export default function DoctorManagement() {
+export default function UserManagementPage() {
     const navigate = useNavigate();
 
     const [rows, setRows] = useState([]);
@@ -11,36 +11,63 @@ export default function DoctorManagement() {
     const [status, setStatus] = useState("all");
     const [specFilter, setSpecFilter] = useState("all");
     const [toDelete, setToDelete] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     // Load users
     useEffect(() => {
-        getAllUsers()
-            .then(users => {
-                const mapped = users.map(u => ({
-                    id: u.id,
-                    fullName: u.fullName,
-                    email: u.email,
-                    role: u.role,
-                    isActive: u.isActive,
-                    isOnline: u.isOnline,
-                    createdAt: new Date(u.createdAt).toLocaleString("vi-VN"),
-                }));
-                setRows(mapped);
-            })
-            .catch(err => {
-                console.error("Lỗi khi lấy dữ liệu users:", err);
-                alert("Không thể tải danh sách người dùng");
-            });
+        loadUsers();
     }, []);
 
+    const loadUsers = async () => {
+        setLoading(true);
+        try {
+            const users = await getAllUsers();
+            const mapped = users.map(u => ({
+                id: u.id,
+                fullName: u.fullName,
+                email: u.email,
+                role: u.role,
+                isActive: u.isActive,
+                isOnline: u.isOnline,
+                createdAt: new Date(u.createdAt).toLocaleString("vi-VN"),
+            }));
+            setRows(mapped);
+        } catch (err) {
+            console.error("Lỗi khi lấy dữ liệu users:", err);
+            alert("Không thể tải danh sách người dùng");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     function openEdit(row) {
-        navigate(`/doctor-profile/${row.id}`);
+        navigate(`/users/edit/${row.id}`);
     }
 
     function confirmDelete(row) {
         setToDelete(row);
-        window.bootstrap?.Modal.getOrCreateInstance("#confirm").show();
+        // Giả sử bạn có modal #confirm, nếu không thì gọi trực tiếp handleToggle
+        if (window.bootstrap?.Modal) {
+            window.bootstrap?.Modal.getOrCreateInstance("#confirm").show();
+        } else {
+            // Fallback: gọi trực tiếp nếu không có modal
+            handleToggleActive(row);
+        }
     }
+
+    const handleToggleActive = async (row) => {
+        try {
+            await toggleActive(row.id, row.isActive);
+            await loadUsers(); // Refresh list
+            alert(row.isActive ? "Người dùng đã được khóa thành công." : "Người dùng đã được kích hoạt thành công.");
+        } catch (err) {
+            console.error("Lỗi khi toggle trạng thái:", err);
+            alert("Không thể thay đổi trạng thái người dùng");
+        }
+    };
+
+    // Nếu có modal confirm, thêm event listener hoặc onConfirm handler để gọi handleToggleActive(toDelete)
+    // Ví dụ: trong modal, button confirm onClick={() => { handleToggleActive(toDelete); window.bootstrap.Modal.getInstance("#confirm").hide(); setToDelete(null); }}
 
     // Filtered rows
     const filteredRows = useMemo(() => {
@@ -76,7 +103,7 @@ export default function DoctorManagement() {
                             <h4 className="mb-0 fw-bold">Quản lý người dùng</h4>
                         </div>
                         <div className="d-flex gap-2">
-                            <button className={`${styles.btnTeal} rounded-pill`} onClick={() => navigate("/doctor-profile")}>
+                            <button className={`${styles.btnTeal} rounded-pill px-3 py-2`} onClick={() => navigate("/users/create")}>
                                 <i className="bi bi-plus-lg me-1"></i> Thêm mới
                             </button>
                         </div>
@@ -136,11 +163,19 @@ export default function DoctorManagement() {
                                         <th>Trạng thái</th>
                                         <th>Online</th>
                                         <th>Ngày tạo</th>
-                                        <th className="text-end">Hành động</th>
+                                        <th>Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredRows.map((r, idx) => (
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={8} className="text-center text-muted py-4">
+                                                <div className="spinner-border" role="status">
+                                                    <span className="visually-hidden">Loading...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : filteredRows.map((r, idx) => (
                                         <tr key={r.id}>
                                             <td>{idx + 1}</td>
                                             <td>{r.fullName}</td>
@@ -157,25 +192,45 @@ export default function DoctorManagement() {
                                             </td>
                                             <td>
                                                 {r.isOnline ? (
-                                                    <i className="bi bi-circle-fill text-success"></i>
+                                                    <i className="bi bi-check-circle-fill text-success"></i>
                                                 ) : (
-                                                    <i className="bi bi-circle text-muted"></i>
+                                                    <i className="bi bi-x-circle-fill text-danger"></i>
                                                 )}
                                             </td>
                                             <td>{r.createdAt}</td>
-                                            <td className="text-end">
+                                            <td className="">
                                                 <div className="btn-group btn-group-sm">
-                                                    <button className="btn btn-outline-secondary" onClick={() => openEdit(r)}>
+
+                                                    {/* VIEW DETAIL */}
+                                                    <button
+                                                        className="btn btn-outline-info"
+                                                        onClick={() => navigate(`/user-detail/${r.id}`)}
+                                                    >
+                                                        <i className="bi bi-eye-fill"></i> Xem
+                                                    </button>
+
+                                                    {/* EDIT */}
+                                                    <button
+                                                        className="btn btn-outline-secondary"
+                                                        onClick={() => openEdit(r)}
+                                                    >
                                                         <i className="bi bi-pencil"></i> Sửa
                                                     </button>
-                                                    <button className="btn btn-outline-danger" onClick={() => confirmDelete(r)}>
-                                                        <i className="bi bi-file-lock"></i> Khóa
+
+                                                    {/* ACTIVE / DEACTIVATE */}
+                                                    <button
+                                                        className={`btn ${r.isActive ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                                                        onClick={() => confirmDelete(r)}
+                                                    >
+                                                        <i className={`bi ${r.isActive ? 'bi-lock-fill' : 'bi-unlock-fill'}`}></i>
+                                                        {r.isActive ? ' Khóa' : ' Mở'}
                                                     </button>
+
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
-                                    {filteredRows.length === 0 && (
+                                    {loading === false && filteredRows.length === 0 && (
                                         <tr>
                                             <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu</td>
                                         </tr>

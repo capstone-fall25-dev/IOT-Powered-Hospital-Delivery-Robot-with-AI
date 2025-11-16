@@ -6,7 +6,8 @@
 .page {
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #0b1324;
-    background: radial-gradient(900px 500px at 20% 10%, rgba(76, 225, 198, .16), transparent 60%),
+    background: 
+        radial-gradient(900px 500px at 20% 10%, rgba(76, 225, 198, .16), transparent 60%),
         radial-gradient(800px 400px at 85% 8%, rgba(76, 225, 198, .12), transparent 60%),
         linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
     min-height: 100vh;
@@ -18,11 +19,11 @@
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, .85);
     box-shadow: 0 18px 56px rgba(15, 23, 42, .08);
-    border-radius: 20px;
+    border-radius: 24px;
 }
 
 .rounded2xl {
-    border-radius: 22px;
+    border-radius: 24px;
 }
 
 .btnTeal {
@@ -30,13 +31,143 @@
     border: none;
     color: #052a2b;
     font-weight: 800;
+    transition: all 0.2s ease;
 }
 
 .btnTeal:hover {
     filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(76, 225, 198, 0.3);
 }
 
 .sectionTitle {
     font-weight: 800;
     color: #0b1432;
+}
+
+/* Form Enhancements */
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.form-control,
+.form-select {
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.15s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 0.2rem rgba(76, 225, 198, 0.15);
+    outline: none;
+}
+
+.form-control-lg {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.1rem;
+}
+
+.input-group .form-control {
+    border-radius: 12px 0 0 12px;
+}
+
+.input-group .btn {
+    border-radius: 0 12px 12px 0;
+}
+
+/* Switch Toggle */
+.form-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    border-radius: 2em;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: var(--teal);
+    border-color: var(--teal);
+}
+
+/* Progress Bar for Password Strength */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #e5e7eb;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+/* Badges for Status */
+.status-badge {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-badge.bg-success {
+    background-color: rgba(34, 197, 94, 0.1) !important;
+    color: #059669 !important;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-badge.bg-secondary {
+    background-color: rgba(107, 114, 128, 0.1) !important;
+    color: #6b7280 !important;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+/* Sidebar Card */
+.sidebar-card {
+    border-radius: 24px;
+    min-height: 100%;
+}
+
+.sidebar-card h5 {
+    color: #0b1432;
+    font-weight: 700;
+    border-bottom: 2px solid rgba(76, 225, 198, 0.2);
+}
+
+/* Form Text Helpers */
+.form-text {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Loading Spinner in Page */
+.loading-spinner {
+    color: var(--teal);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .glass,
+    .rounded2xl {
+        border-radius: 16px;
+        margin: 0 -1rem;
+        padding: 1rem;
+    }
+    
+    .input-group .btn {
+        border-radius: 0 0 0 0; /* Adjust for mobile */
+    }
+    
+    .btnTeal {
+        width: 100%;
+        justify-content: center;
+    }
 }
