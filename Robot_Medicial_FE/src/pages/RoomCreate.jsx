@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createRoom } from "@/services/roomService";
+import styles from "../assets/styles/roomForm.module.css";
 
 export default function RoomCreate() {
     const navigate = useNavigate();
@@ -30,134 +31,138 @@ export default function RoomCreate() {
     }
 
     return (
-        <>
+        <div className={styles.page}>
+            <div className="container-xl py-4">
 
-            {/* CSS riêng cho trang Create */}
-            <style>{`
-                .page-title {
-                    font-weight: 800;
-                    letter-spacing: -0.3px;
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                }
-
-                .create-card {
-                    border-radius: 20px;
-                    padding: 28px;
-                    background: rgba(255,255,255,0.78);
-                    border: 1px solid rgba(255,255,255,0.45);
-                    backdrop-filter: blur(8px);
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-                    transition: .25s;
-                }
-
-                .create-card:hover {
-                    transform: translateY(-2px);
-                }
-
-                .form-label {
-                    font-weight: 600;
-                    color: #334155;
-                }
-
-                .medical-input {
-                    border-radius: 12px !important;
-                    padding: 12px 14px;
-                    border: 1px solid #d1d5db;
-                }
-
-                .btn-create {
-                    padding: 10px 22px;
-                    border-radius: 12px;
-                    font-weight: 600;
-                }
-
-                .btn-back {
-                    padding: 10px 20px;
-                    border-radius: 10px;
-                }
-            `}</style>
-
-            <div className="container py-4 fadeIn">
-
-                {/* HEADER */}
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                    <h3 className="page-title">
-                        <i className="bi bi-hospital"></i> Thêm phòng mới
+                {/* =================== HEADER ==================== */}
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+                    <h3 className={styles.pageTitle}>
+                        <i className="bi bi-plus-circle"></i>
+                        Thêm phòng mới
                     </h3>
 
-                    <button className="btn btn-outline-secondary btn-back"
+                    <button 
+                        className={styles.btnBack}
                         onClick={() => navigate("/rooms")}
                     >
-                        <i className="bi bi-arrow-left"></i> Quay lại
+                        <i className="bi bi-arrow-left"></i>
+                        Quay lại
                     </button>
                 </div>
 
-                {/* FORM */}
-                <div className="create-card">
-
+                {/* =================== FORM CARD ==================== */}
+                <div className={styles.createCard}>
                     <form onSubmit={handleSubmit}>
 
+                        {/* Thông tin cơ bản */}
+                        <div className={styles.sectionTitle}>
+                            <i className="bi bi-info-circle"></i>
+                            Thông tin cơ bản
+                        </div>
+
                         {/* Tên phòng */}
-                        <div className="mb-3">
-                            <label className="form-label">Tên phòng</label>
+                        <div className="mb-4">
+                            <label className={`form-label ${styles.formLabel}`}>
+                                Tên phòng
+                                <span className={styles.required}>*</span>
+                            </label>
                             <input
-                                className="form-control medical-input"
+                                type="text"
+                                className={`form-control ${styles.formInput}`}
                                 value={form.roomName}
                                 onChange={e => setForm({ ...form, roomName: e.target.value })}
                                 required
-                                placeholder="Nhập tên phòng (VD: A101)"
+                                placeholder="Nhập tên phòng (VD: Phòng A101, ICU-02...)"
                             />
+                            <div className={styles.helperText}>
+                                <i className="bi bi-lightbulb me-1"></i>
+                                Tên phòng nên ngắn gọn và dễ nhớ
+                            </div>
+                        </div>
+
+                        {/* Vị trí */}
+                        <div className={styles.sectionTitle}>
+                            <i className="bi bi-geo-alt"></i>
+                            Vị trí trên bản đồ
                         </div>
 
                         {/* Latitude - Longitude */}
                         <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Latitude</label>
+                            <div className="col-md-6 mb-4">
+                                <label className={`form-label ${styles.formLabel}`}>
+                                    Latitude (Vĩ độ)
+                                </label>
                                 <input
-                                    className="form-control medical-input"
+                                    type="text"
+                                    className={`form-control ${styles.formInput}`}
                                     value={form.latitude}
                                     onChange={e => setForm({ ...form, latitude: e.target.value })}
                                     placeholder="VD: 21.028511"
                                 />
+                                <div className={styles.helperText}>
+                                    Tọa độ vĩ độ của phòng
+                                </div>
                             </div>
 
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Longitude</label>
+                            <div className="col-md-6 mb-4">
+                                <label className={`form-label ${styles.formLabel}`}>
+                                    Longitude (Kinh độ)
+                                </label>
                                 <input
-                                    className="form-control medical-input"
+                                    type="text"
+                                    className={`form-control ${styles.formInput}`}
                                     value={form.longitude}
                                     onChange={e => setForm({ ...form, longitude: e.target.value })}
                                     placeholder="VD: 105.804817"
                                 />
+                                <div className={styles.helperText}>
+                                    Tọa độ kinh độ của phòng
+                                </div>
                             </div>
                         </div>
 
                         {/* Map ID */}
-                        <div className="mb-3">
-                            <label className="form-label">Map ID</label>
+                        <div className="mb-4">
+                            <label className={`form-label ${styles.formLabel}`}>
+                                Map ID
+                            </label>
                             <input
-                                className="form-control medical-input"
+                                type="number"
+                                className={`form-control ${styles.formInput}`}
                                 value={form.mapId}
                                 onChange={e => setForm({ ...form, mapId: e.target.value })}
-                                placeholder="Nhập Map ID (nếu có)"
+                                placeholder="Nhập Map ID (tùy chọn)"
                             />
+                            <div className={styles.helperText}>
+                                <i className="bi bi-map me-1"></i>
+                                ID của bản đồ mà phòng thuộc về
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="d-flex justify-content-end mt-4">
-                            <button className="btn btn-primary btn-create">
+                        <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                            <button 
+                                type="button"
+                                className={styles.btnBack}
+                                onClick={() => navigate("/rooms")}
+                            >
+                                <i className="bi bi-x-circle me-1"></i>
+                                Hủy
+                            </button>
+                            
+                            <button 
+                                type="submit"
+                                className={styles.btnCreate}
+                            >
                                 <i className="bi bi-check-circle me-1"></i>
                                 Tạo phòng
                             </button>
                         </div>
 
                     </form>
-
                 </div>
 
             </div>
-        </>
+        </div>
     );
 }

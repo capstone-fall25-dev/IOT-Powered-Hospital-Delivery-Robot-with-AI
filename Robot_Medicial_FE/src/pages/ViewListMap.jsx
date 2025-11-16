@@ -45,6 +45,22 @@ export default function ProjectMapListView() {
         pointer-events:none;
         box-shadow:0 8px 20px rgba(15,23,42,.35);
       }
+
+      .btn-outline-teal { 
+      color: var(--teal); 
+      border-color: rgba(76,225,198,.3) !important; 
+      transition: all 0.2s ease-in-out;
+    }
+    .btn-outline-teal:hover { 
+      background: rgba(76,225,198,.1) !important; 
+      color: #052a2b !important; 
+      border-color: var(--teal) !important;
+      transform: translateY(-1px); /* Nâng nhẹ khi hover */
+      box-shadow: 0 4px 12px rgba(76,225,198,.2) !important;
+    }
+    .btn-outline-teal:active { 
+      transform: translateY(0); /* Trở về khi click */
+    }
     `}</style>
   );
 
@@ -391,21 +407,50 @@ export default function ProjectMapListView() {
             {/* Sidebar */}
             <div className="col-lg-4 col-xl-3">
               <div
-                className="glass p-2 rounded-2xl h-100"
+                className="glass p-3 rounded-3 h-100"
                 style={{ maxHeight: "78vh", overflowY: "auto" }}
               >
                 <ul className="list-group list-group-flush">
                   {maps.map((m) => (
                     <li
                       key={m.id}
-                      className={`list-group-item ${
-                        selectedMap?.id === m.id ? "list-active" : ""
+                      className={`list-group-item list-group-item-action px-3 py-3 mb-2 rounded-2 border-0 shadow-sm transition-all ${
+                        selectedMap?.id === m.id ? "list-active bg-teal-soft shadow-md" : "hover-bg-light"
                       }`}
                       style={{ cursor: "pointer" }}
                       onClick={() => setSelectedMap(m)}
                     >
-                      <b>{m.mapName}</b> <br />
-                      <small>ID: {m.id}</small>
+                      <div className="d-flex flex-column gap-2">
+                        {/* Header: Icon + Title */}
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="flex-shrink-0">
+                            <i className={`bi bi-map text-teal fs-3 opacity-75`}></i>
+                          </div>
+                          <div className="flex-grow-1">
+                            <h6 className="fw-bold mb-0 text-truncate" style={{ fontSize: "1.1em" }}>
+                              {m.nameMapFE || m.mapName}
+                            </h6>
+                          </div>
+                        </div>
+                        
+                        {/* Footer: ROS Label + Detail Button */}
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                          <small className="map-name-ros text-muted flex-grow-1">
+                            <i className="bi bi-robot me-1"></i>
+                            ROS: {m.mapName}
+                          </small>
+                          <button
+                            className="btn btn-sm btn-outline-teal border-0 px-3 py-1 rounded-pill shadow-sm ms-auto"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Ngăn click item
+                              navigate(`/maps/${m.id}`); // Route detail, điều chỉnh nếu cần
+                            }}
+                            title="Xem chi tiết bản đồ"
+                          >
+                            <i className="bi bi-eye me-1"></i> Chi tiết
+                          </button>
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>

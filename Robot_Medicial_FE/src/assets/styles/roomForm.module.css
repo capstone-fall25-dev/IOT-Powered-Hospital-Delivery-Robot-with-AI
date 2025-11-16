@@ -1,0 +1,170 @@
+/* src/assets/styles/roomCreate.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    min-height: 100vh;
+}
+
+/* Header Section */
+.pageTitle {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pageTitle i {
+    color: var(--teal-dark);
+    font-size: 1.5rem;
+}
+
+/* Buttons */
+.btnCreate {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.65rem 1.5rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btnCreate:hover {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnBack {
+    border: 1.5px solid rgba(13, 148, 136, 0.3);
+    color: var(--teal-dark);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btnBack:hover {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.5);
+    color: var(--teal-dark);
+}
+
+/* Create Card */
+.createCard {
+    border-radius: 5px;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.createCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.6) 0%, rgba(8, 145, 178, 0.6) 100%);
+}
+
+/* Form Elements */
+.formLabel {
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.formInput {
+    border-radius: 5px !important;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    font-size: 1rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.formInput:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.formInput::placeholder {
+    color: #94a3b8;
+}
+
+/* Form Section Title */
+.sectionTitle {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0f172a;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(13, 148, 136, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sectionTitle i {
+    color: var(--teal-dark);
+}
+
+/* Helper Text */
+.helperText {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+/* Required Indicator */
+.required {
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pageTitle {
+        font-size: 1.4rem;
+    }
+
+    .createCard {
+        padding: 1.5rem;
+    }
+
+    .btnCreate,
+    .btnBack {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+
+    .formInput {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}

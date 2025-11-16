@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -17,11 +18,16 @@ export default function Sidebar() {
     setIsCollapsed(!isCollapsed);
   };
 
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
+
   return (
-    <div className="sidebar glass p-4 d-flex flex-column justify-content-between">
+    <div className="sidebar glass d-flex flex-column">
       <style>{`
         :root {
           --teal: #4CE1C6;
+          --teal-dark: #0d9488;
           --ink: #0f172a;
         }
 
@@ -34,7 +40,6 @@ export default function Sidebar() {
           transition: margin-left 0.2s ease-in-out;
         }
 
-        /* Target trực tiếp .page-wrapper (vì nó ở trên main-content) */
         .page-wrapper {
           margin-left: 250px;
           transition: margin-left 0.2s ease-in-out;
@@ -47,44 +52,91 @@ export default function Sidebar() {
         .sidebar {
           width: 250px;
           height: 100vh;
-          background: rgba(255,255,255,0.9);
+          background: rgba(255,255,255,0.95);
           backdrop-filter: blur(14px);
-          border-right: 1px solid rgba(255,255,255,0.85);
+          border-right: 1px solid rgba(13, 148, 136, 0.15);
           box-shadow: 4px 0 25px rgba(15,23,42,0.08);
           border-radius: 0 24px 24px 0;
           position: fixed;
           top: 0;
           left: 0;
-          transition: width 0.2s ease-in-out, border-radius 0.2s ease-in-out;
-          z-index: 999; /* Đảm bảo sidebar trên header nếu cần */
+          transition: width 0.2s ease-in-out, border-radius 0.2s ease-in-out, padding 0.2s ease-in-out;
+          z-index: 999;
+          overflow: hidden;
+          padding: 1rem;
         }
 
         body.sidebar-collapsed .sidebar {
           width: 60px;
           border-radius: 0;
+          padding: 0.5rem 0.4rem;
+        }
+
+        /* Phần logo - cố định không scroll */
+        .sidebar-header {
+          flex-shrink: 0;
+          padding-bottom: 1rem;
+          margin-top: 1rem;
         }
 
         .sidebar .logo {
           font-weight: 800;
-          font-size: 1.4rem;
+          font-size: 1.2rem;
           color: var(--ink);
           text-align: center;
-          margin-bottom: 2rem;
+          margin-bottom: 1rem;
           cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 8px;
-          transition: background-color 0.2s ease-in-out;
+          padding: 0.8rem;
+          border-radius: 12px;
+          transition: all 0.2s ease-in-out;
           display: flex;
           align-items: center;
           justify-content: center;
+          background: linear-gradient(135deg, rgba(13, 148, 136, 0.78) 0%, rgba(8, 145, 178, 0.78) 100%);
+          color: white;
+        }
+
+        body.sidebar-collapsed .sidebar .logo {
+          margin-bottom: 0.5rem;
+          padding: 0.6rem;
         }
 
         .sidebar .logo:hover {
-          background-color: rgba(76,225,198,0.15);
+          transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(13, 148, 136, 0.28);
         }
 
         .sidebar .logo i {
           font-size: 1.8rem;
+        }
+
+        body.sidebar-collapsed .sidebar .logo i {
+          font-size: 1.5rem;
+        }
+
+        /* Phần menu - có scroll */
+        .sidebar-content {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-right: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+          background: rgba(13, 148, 136, 0.3);
+          border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+          background: rgba(13, 148, 136, 0.5);
         }
 
         .sidebar ul {
@@ -94,59 +146,100 @@ export default function Sidebar() {
         }
 
         .sidebar li {
-          padding: 0.8rem 1rem;
+          padding: 0.9rem 1rem;
           border-radius: 12px;
-          margin: 0.3rem 0;
+          margin: 0.4rem 0;
           cursor: pointer;
           transition: all 0.2s ease-in-out;
           font-weight: 600;
-          color: #0b1324;
+          color: #334155;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
+          position: relative;
         }
 
         .sidebar li:hover {
-          background-color: rgba(76,225,198,0.15);
-          color: var(--teal);
+          background: linear-gradient(135deg, rgba(13, 148, 136, 0.07) 0%, rgba(8, 145, 178, 0.05) 100%);
+          color: var(--teal-dark);
+          transform: translateX(5px);
+        }
+
+        .sidebar li.active {
+          background: linear-gradient(135deg, rgba(13, 148, 136, 0.78) 0%, rgba(8, 145, 178, 0.78) 100%);
+          color: white;
+          box-shadow: 0 4px 12px rgba(13, 148, 136, 0.22);
+        }
+
+        .sidebar li.active:hover {
+          transform: translateX(0);
         }
 
         .sidebar li i {
-          font-size: 1.2rem;
-          min-width: 20px;
+          font-size: 1.3rem;
+          min-width: 24px;
+          text-align: center;
         }
 
         .sidebar li span {
           transition: opacity 0.2s ease-in-out;
+          font-size: 0.95rem;
         }
 
+        /* Collapsed state - Hình vuông sát lề trái */
         body.sidebar-collapsed .sidebar li {
           justify-content: center;
-          padding: 0.8rem 0.5rem;
+          padding: 0.65rem;
           gap: 0;
+          margin: 0.35rem 0;
+          width: 100%;
+          height: auto;
+          display: flex;
+          align-items: center;
+        }
+
+        body.sidebar-collapsed .sidebar li:hover {
+          transform: translateX(0);
+          transform: scale(1.05);
         }
 
         body.sidebar-collapsed .sidebar li span {
           display: none;
         }
 
-        .sidebar .footer {
-          text-align: center;
-          font-size: 0.9rem;
-          opacity: 0.7;
-          transition: opacity 0.2s ease-in-out;
+        body.sidebar-collapsed .sidebar li i {
+          font-size: 1.2rem;
         }
 
-        body.sidebar-collapsed .sidebar .footer {
+        /* Footer - cố định */
+        .sidebar-footer {
+          flex-shrink: 0;
+          text-align: center;
+          font-size: 0.85rem;
+          color: #64748b;
+          padding: 1rem 0.5rem 0.5rem;
+          border-top: 1px solid rgba(13, 148, 136, 0.15);
+          transition: opacity 0.2s ease-in-out;
+          margin-top: 1rem;
+        }
+
+        .sidebar-footer strong {
+          color: var(--teal-dark);
+          font-weight: 700;
+        }
+
+        body.sidebar-collapsed .sidebar-footer {
           opacity: 0;
           height: 0;
           margin: 0;
           padding: 0;
           overflow: hidden;
+          border: none;
         }
       `}</style>
 
-      <div>
+      {/* Header - Cố định */}
+      <div className="sidebar-header">
         <div className="logo mt-5" onClick={toggleSidebar}>
           {isCollapsed ? (
             <i className="bi bi-list"></i>
@@ -154,20 +247,75 @@ export default function Sidebar() {
             <i className="bi bi-hospital"></i>
           )}
         </div>
+      </div>
+
+      {/* Content - Có scroll */}
+      <div className="sidebar-content">
         <ul>
-          <li onClick={() => navigate("/team")}><i className="bi bi-robot"></i><span>Robot</span></li>
-          <li onClick={() => navigate("/patients")}><i className="bi bi-person-lines-fill"></i><span>Bệnh nhân</span></li>
-          <li onClick={() => navigate("/users")}><i className="bi bi-people"></i><span>Người dùng</span></li>
-          <li onClick={() => navigate("/dashboard")}><i className="bi bi-list-task"></i><span>Nhiệm vụ</span></li>
-          <li onClick={() => navigate("/viewlistmap")}><i className="bi bi-map"></i><span>Bản đồ</span></li>
-          <li onClick={() => navigate("/rooms")}><i className="bi bi-hospital"></i><span>Phòng bệnh</span></li>
-          <li onClick={() => navigate("/prescriptions")}><i className="bi bi-file-medical"></i><span>Đơn thuốc</span></li>
-          <li onClick={() => navigate("/medicines")}><i className="bi bi-box-seam"></i><span>Kho thuốc</span></li>
+          <li 
+            onClick={() => navigate("/dashboard")}
+            className={isActive("/dashboard") ? "active" : ""}
+          >
+            <i className="bi bi-list-task"></i>
+            <span>Nhiệm vụ</span>
+          </li>
+          <li 
+            onClick={() => navigate("/team")}
+            className={isActive("/team") ? "active" : ""}
+          >
+            <i className="bi bi-robot"></i>
+            <span>Robot</span>
+          </li>
+          <li 
+            onClick={() => navigate("/viewlistmap")}
+            className={isActive("/viewlistmap") ? "active" : ""}
+          >
+            <i className="bi bi-map"></i>
+            <span>Bản đồ</span>
+          </li>
+          <li 
+            onClick={() => navigate("/users")}
+            className={isActive("/users") ? "active" : ""}
+          >
+            <i className="bi bi-people"></i>
+            <span>Người dùng</span>
+          </li>
+          <li 
+            onClick={() => navigate("/patients")}
+            className={isActive("/patients") ? "active" : ""}
+          >
+            <i className="bi bi-person-lines-fill"></i>
+            <span>Bệnh nhân</span>
+          </li>
+          <li 
+            onClick={() => navigate("/rooms")}
+            className={isActive("/rooms") ? "active" : ""}
+          >
+            <i className="bi bi-hospital"></i>
+            <span>Phòng bệnh</span>
+          </li>
+          <li 
+            onClick={() => navigate("/prescriptions")}
+            className={isActive("/prescriptions") ? "active" : ""}
+          >
+            <i className="bi bi-file-medical"></i>
+            <span>Đơn thuốc</span>
+          </li>
+          <li 
+            onClick={() => navigate("/medicines")}
+            className={isActive("/medicines") ? "active" : ""}
+          >
+            <i className="bi bi-box-seam"></i>
+            <span>Kho thuốc</span>
+          </li>
         </ul>
       </div>
 
-      <div className="footer">
-        <small>© 2025 SEP490_G35</small>
+      {/* Footer - Cố định */}
+      <div className="sidebar-footer">
+        <strong>Robot Y Tế</strong>
+        <br />
+        <small>© 2025 Thông Minh</small>
       </div>
     </div>
   );
