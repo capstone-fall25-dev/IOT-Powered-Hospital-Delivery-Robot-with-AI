@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllRobots } from "@/services/robotService";
 
+
 export default function RobotFleetCards() {
     const navigate = useNavigate();
+
 
     const styles = (
         <style>{`
@@ -23,7 +25,8 @@ export default function RobotFleetCards() {
     `}</style>
     );
 
-    // Map trạng thái từ API sang badge status
+
+    // Map trạng thái từ API sang badge status (thêm map cho detail consistency)
     const statusMap = {
         transporting: "dangvanchuyen",
         awaiting_handover: "chobangiao",
@@ -33,19 +36,23 @@ export default function RobotFleetCards() {
         charging: "sac",
         needs_attention: "chobangiao",
         offline: "khonghoatdong",
+        manual_control: "dangdieukhien",  // ✅ Thêm nếu cần
     };
+
 
     const [robots, setRobots] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
+
 
     useEffect(() => {
         async function fetchRobots() {
             try {
                 const data = await getAllRobots();
                 const formatted = data.map((r) => ({
-                    id: r.code,
-                    code: r.id,
+
+                    id: r.id,  // ✅ Numeric ID cho navigate/fetch (ví dụ: 1)
+                    code: r.code,  // ✅ String code cho display/search
                     name: r.name,
                     battery: r.batteryPercent ?? 0,
                     mission: r.progressOverallPct ?? 0,
@@ -59,15 +66,17 @@ export default function RobotFleetCards() {
         fetchRobots();
     }, []);
 
+
     const filtered = useMemo(
         () =>
             robots.filter(
                 (r) =>
                     (status === "all" || r.status === status) &&
-                    r.id.toLowerCase().includes(q.toLowerCase())
+                    r.code.toLowerCase().includes(q.toLowerCase())  // ✅ Tìm theo code, không phải id
             ),
         [robots, q, status]
     );
+
 
     function statusBadge(s) {
         switch (s) {
@@ -120,30 +129,34 @@ export default function RobotFleetCards() {
                             <option value="sansang">Sẵn sàng</option>
                             <option value="khonghoatdong">Không hoạt động</option>
                         </select>
-                        <button className="btn btn-teal"onClick={() => navigate(`/createRobot`)}>
+
+                        <button className="btn btn-teal" onClick={() => navigate(`/createRobot`)}>
                             <i className="bi bi-plus-lg me-1"></i> Thêm robot
                         </button>
                     </div>
                 </div>
 
+
                 <div className="row g-3">
                     {filtered.map((r) => (
-                        <div className="col-12 col-sm-6 col-lg-3" key={r.id}>
+                        <div className="col-12 col-sm-6 col-lg-3" key={r.id}>  {/* ✅ Key dùng numeric id */}
                             <div
                                 className="robot-card p-3 h-100"
-                                onClick={() => navigate(`/robot-detail/${r.code}`)}
+
+                                onClick={() => navigate(`/robot-detail/${r.id}`)}  // ✅ Navigate dùng numeric id (ví dụ: /robot-detail/1)
                             >
-                                <div className="fw-bold mb-1">{r.id}</div>
+                                <div className="fw-bold mb-1">{r.code}</div>  {/* ✅ Display code */}
                                 <div className="mb-2">
                                     <div className="d-flex align-items-center gap-2">
                                         <i className="bi bi-battery-half"></i>
                                         <span className="muted">Ắc quy: {r.battery}%</span>
                                     </div>
                                 </div>
-                                <div className="progress-bar" style={{ width: `${r.mission}%` }}></div>
+                                <div className="progress progress-dark" style={{ height: '8px' }}>  {/* ✅ Fix progress class */}
+                                    <div className="progress-bar" style={{ width: `${r.mission}%` }}></div>
+                                </div>
                                 {statusBadge(r.status)}
                             </div>
-
                         </div>
                     ))}
                     {filtered.length === 0 && (
@@ -154,3 +167,4 @@ export default function RobotFleetCards() {
         </div>
     );
 }
+

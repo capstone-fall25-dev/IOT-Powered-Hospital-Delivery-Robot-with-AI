@@ -92,7 +92,7 @@ export default function RobotLiveConsole() {
 
     const icon = L.divIcon({
       className: "robot-marker",
-      html: `<div style="transform:rotate(${pos.theta}rad);font-size:22px;">🤖</div>`,
+      html: `<div style="transform:rotate(${pos.theta}rad);font-size:12px;">🤖</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });

@@ -630,7 +630,8 @@ class STM32Driver(Node):
                 # Validate input
                 if math.isnan(raw_value) or raw_value <= 0:
                     continue  # Skip invalid readings
-                    
+                if raw_value <= 0.3:
+                    pass
                 # Create Range message
                 msg = Range()
                 msg.header.stamp = current_time.to_msg()

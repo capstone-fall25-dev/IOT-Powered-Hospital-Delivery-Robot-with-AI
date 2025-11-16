@@ -53,7 +53,7 @@ sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 
 echo "⚙️ Bật auto-start khi khởi động..."
-sudo systemctl enable $SERVICE_NAME
+# sudo systemctl enable $SERVICE_NAME
 
 # ===========================================================
 # 3️⃣ Hướng dẫn sử dụng
