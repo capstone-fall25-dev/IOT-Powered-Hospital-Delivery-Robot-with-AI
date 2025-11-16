@@ -214,6 +214,7 @@ DROP TABLE IF EXISTS `maps`;
 CREATE TABLE `maps` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `map_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name_map_FE` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `image_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `width` int DEFAULT NULL,
   `height` int DEFAULT NULL,
@@ -721,4 +722,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-16 14:09:13
+-- Dump completed on 2025-11-16 14:25:20
