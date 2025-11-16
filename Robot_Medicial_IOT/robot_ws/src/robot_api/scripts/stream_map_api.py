@@ -99,7 +99,7 @@ class MapSignalRStreamer(Node):
                     mode = item.get("mode")
             if mode:
                 self.current_mode = mode
-                self.get_logger().info(f"🔄 Current mode set to: {self.current_mode}")
+                # self.get_logger().info(f"🔄 Current mode set to: {self.current_mode}")
         except Exception as e:
             self.get_logger().warn(f"⚠️ Failed to process hub command: {e}")
 

@@ -1,21 +1,20 @@
 // src/services/robotService.js
 import axios from "axios";
-
-
 import { API_CONFIG } from "@/utils/apiConfig";
 
-
 const BASE_URL = `${API_CONFIG.API_BASE}/Robots`;
+
 // 1. Lấy danh sách robot, optional filter status
 export const getAllRobots = async (status) => {
     const params = status ? { status } : {};
-    const res = await axios.get(`${API_CONFIG.API_BASE}/robots`, { params });
+    const res = await axios.get(`${BASE_URL}`, { params }); 
     return res.data;
 };
 
-// 2. Lấy chi tiết robot theo ID
+// 2. Lấy chi tiết robot theo ID (numeric)
 export const getRobotById = async (id) => {
-    const res = await axios.get(`${BASE_URL}/${id}`);
+
+    const res = await axios.get(`${BASE_URL}/${id}`);  
     return res.data;
 };
 
@@ -27,24 +26,24 @@ export const createRobot = async (robotDto) => {
 
 // 4. Cập nhật status robot
 export const updateRobotStatus = async (id, status) => {
-    const res = await axios.patch(`${API_CONFIG.API_BASE}/${id}/status`, { status });
+    const res = await axios.patch(`${BASE_URL}/${id}/status`, { status });
     return res.data;
 };
 
 // 5. Assign map cho robot
 export const assignRobotMap = async (robotId, mapId) => {
-    const res = await axios.put(`${API_CONFIG.API_BASE}/${robotId}/assign-map/${mapId}`);
+    const res = await axios.put(`${BASE_URL}/${robotId}/assign-map/${mapId}`);
     return res.data;
 };
 
 // 6. Cập nhật vị trí robot
 export const updateRobotPosition = async (id, positionDto) => {
-    const res = await axios.patch(`${API_CONFIG.API_BASE}/${id}/position`, positionDto);
+    const res = await axios.patch(`${BASE_URL}/${id}/position`, positionDto);
     return res.data;
 };
 
-// ⭐ API new: lấy robot at_station
+// 7. Lấy robot at_station
 export const getAvailableRobots = async () => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/robots/available`);
+    const res = await axios.get(`${BASE_URL}/available`);
     return res.data;
 };

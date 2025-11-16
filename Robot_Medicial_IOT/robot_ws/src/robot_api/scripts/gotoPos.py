@@ -141,6 +141,7 @@ class TableNavigator(Node):
             x, y, name = pos["x"], pos["y"], pos["name"]
             pose = self.create_pose(x, y)
             self.publish_navigation_status("IN_PROGRESS", name)
+            self.get_logger().info(f"Go to position: {pose}")
             self.navigator.goToPose(pose)
             time.sleep(0.5)
 
