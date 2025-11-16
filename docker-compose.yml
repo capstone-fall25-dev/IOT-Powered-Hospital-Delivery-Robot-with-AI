@@ -13,11 +13,10 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1239"]
-      interval: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 30s
 
   backend:
     build:
@@ -27,10 +26,10 @@ services:
     restart: always
     depends_on:
       mysql:
-        condition: service_healthy   # ← Quan trọng: đợi MySQL healthy
+        condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=robotmanager;User=root;Password=1239;
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: server=mysql;port=3306;database=robotmanager;user=root;password=1239
     ports:
       - "5000:5000"
 
@@ -41,7 +40,8 @@ services:
     container_name: hospital_frontend
     restart: always
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "8080:80"
 
