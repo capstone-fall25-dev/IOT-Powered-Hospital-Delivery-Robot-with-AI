@@ -7,7 +7,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<IEnumerable<MapResponseDto>> GetAllAsync();
         Task<MapResponseDto?> GetByIdAsync(ulong id);
         Task<MapResponseDto> CreateAsync(MapDto mapDto, IFormFile? imageFile = null); // Hỗ trợ upload
-        Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto, IFormFile? imageFile = null);
+        //Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto, IFormFile? imageFile = null);
         Task<AlertResponseDto> ReportMapErrorAsync(MapErrorDto dto);
+        Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto);
     }
 }
