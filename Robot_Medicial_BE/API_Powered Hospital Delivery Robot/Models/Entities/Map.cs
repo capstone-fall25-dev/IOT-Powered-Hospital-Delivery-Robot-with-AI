@@ -18,6 +18,10 @@ public partial class Map
     [StringLength(255)]
     public string MapName { get; set; } = null!;
 
+    [Column("name_map_FE")]
+    [StringLength(255)]
+    public string? NameMapFE { get; set; }
+
     [Column("image_name")]
     [StringLength(255)]
     public string? ImageName { get; set; }

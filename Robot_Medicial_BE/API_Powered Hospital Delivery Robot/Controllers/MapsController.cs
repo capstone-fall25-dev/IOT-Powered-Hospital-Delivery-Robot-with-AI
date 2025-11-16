@@ -28,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(maps);
         }
 
-        // Lấy chi tiết map (include Robots) - UC 26: Track Robot Movement on Map (Map Management)
+        // Lấy chi tiết map (include Robots) 
         [HttpGet("{id}")]
       //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
@@ -50,17 +50,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return File(map.ImageData, "image/png", imageName);
         }
 
-        // Tạo map mới (upload image, validate thresh) 
+        // Tạo map mới (upload image, validate thresh)
         [HttpPost]
-        //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> Create([FromForm] MapDto mapDto, IFormFile? imageFile)
         {
+            // 🔍 DEBUG LOG: Kiểm tra binding
+            Console.WriteLine($"Bound MapName: '{mapDto?.MapName}'");
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return BadRequest(new { Message = "Validation failed", Errors = errors });
+            }
+
             try
             {
-                // Validate file nếu có
-                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024) // 10MB limit
+                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024)
                     return BadRequest("Image file too large (max 10MB)");
-
                 var created = await _service.CreateAsync(mapDto, imageFile);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
@@ -74,17 +80,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật map 
+        // Cập nhật map (UC3: Edit Map Information - chỉ sửa các trường cho phép, không image)
         [HttpPut("{id}")]
         // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromForm] MapDto mapDto, IFormFile? imageFile)
+        public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromBody] MapDto mapDto)  // Sử dụng [FromBody] vì không có file
         {
             try
             {
-                if (imageFile != null && imageFile.Length > 10 * 1024 * 1024)
-                    return BadRequest("Image file too large (max 10MB)");
-
-                var updated = await _service.UpdateAsync(id, mapDto, imageFile);
+                var updated = await _service.UpdateAsync(id, mapDto);
                 if (updated == null) return NotFound();
                 return Ok(updated);
             }

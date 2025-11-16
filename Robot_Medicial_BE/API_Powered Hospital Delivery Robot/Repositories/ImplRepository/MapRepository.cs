@@ -37,30 +37,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         // 📋 Lấy toàn bộ maps
         // -------------------------------
         public async Task<IEnumerable<Map>> GetAllAsync()
-{
-    return await _context.Maps
-        .AsNoTracking()
-        .Include(m => m.Robots)
-        .Include(m => m.Destinations) // ✅ Thêm include Destinations
-        .ToListAsync();
-}
+        {
+            return await _context.Maps
+                .AsNoTracking()
+                .Include(m => m.Robots)
+                .Include(m => m.Destinations) 
+                .ToListAsync();
+        }
 
         // -------------------------------
         // 🔍 Lấy map theo ID (tuỳ chọn include robot)
         // -------------------------------
-    
-public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
-{
-    var query = _context.Maps.AsQueryable();
+        public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
+        {
+            var query = _context.Maps.AsQueryable();
+            if (includeRobots)
+                query = query.Include(m => m.Robots);
 
-    if (includeRobots)
-        query = query.Include(m => m.Robots);
-
-    // ✅ Luôn include Destinations
-    query = query.Include(m => m.Destinations);
-
-    return await query.FirstOrDefaultAsync(m => m.Id == id);
-}
+            query = query.Include(m => m.Destinations);
+            return await query.FirstOrDefaultAsync(m => m.Id == id);
+        }
 
         // -------------------------------
         // 🖼️ Lấy dữ liệu ảnh map
@@ -85,7 +81,7 @@ public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
         }
 
         // -------------------------------
-        // ✏️ Cập nhật thông tin map
+        // ✏️ Cập nhật thông tin map (không sửa MapName và ImageData)
         // -------------------------------
         public async Task<Map?> UpdateAsync(ulong id, Map map)
         {
@@ -93,20 +89,8 @@ public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
             if (existing == null)
                 return null;
 
-            existing.MapName = map.MapName;
-            existing.ImageName = map.ImageName;
-            existing.Width = map.Width;
-            existing.Height = map.Height;
-            existing.Resolution = map.Resolution;
-            existing.OriginX = map.OriginX;
-            existing.OriginY = map.OriginY;
-            existing.OriginZ = map.OriginZ;
-            existing.Mode = map.Mode;
-            existing.Negate = map.Negate;
-            existing.OccupiedThresh = map.OccupiedThresh;
-            existing.FreeThresh = map.FreeThresh;
-            existing.ImageData = map.ImageData;
-
+            // Vì map là existing đã được update từ service, chỉ cần save
+            // (Không cần manual set từng field nữa, vì _mapper.Map đã set vào existing)
             await _context.SaveChangesAsync();
             return existing;
         }

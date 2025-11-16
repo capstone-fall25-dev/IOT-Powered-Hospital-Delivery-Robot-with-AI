@@ -1,0 +1,383 @@
+/* src/assets/styles/roomDetail.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    min-height: 100vh;
+}
+
+/* Header Section */
+.pageTitle {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pageTitle i {
+    color: var(--teal-dark);
+    font-size: 1.5rem;
+}
+
+/* Buttons */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btnTeal:hover {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnOutline {
+    border: 1.5px solid rgba(13, 148, 136, 0.3);
+    color: var(--teal-dark);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btnOutline:hover {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.5);
+    color: var(--teal-dark);
+}
+
+/* Info Cards */
+.infoCard {
+    border-radius: 5px;
+    padding: 1.75rem;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.infoCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.6) 0%, rgba(8, 145, 178, 0.6) 100%);
+}
+
+.sectionTitle {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.sectionTitle i {
+    color: var(--teal-dark);
+    font-size: 1.35rem;
+}
+
+/* Room Info Grid */
+.infoLabel {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.infoValue {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1.05rem;
+}
+
+.infoValueHighlight {
+    font-weight: 700;
+    color: var(--teal-dark);
+    font-size: 1.15rem;
+}
+
+/* Patients Table */
+.patientsTable {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.patientsTable thead th {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(8, 145, 178, 0.06) 100%);
+    font-weight: 700;
+    color: #334155;
+    padding: 1rem 1rem;
+    border: none;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.patientsTable thead th:first-child {
+    border-radius: 5px 0 0 0;
+}
+
+.patientsTable thead th:last-child {
+    border-radius: 0 5px 0 0;
+}
+
+.patientsTable tbody td {
+    padding: 1rem 1rem;
+    border-bottom: 1px solid rgba(13, 148, 136, 0.08);
+    color: #334155;
+}
+
+.patientsTable tbody tr {
+    transition: background 0.15s ease;
+}
+
+.patientsTable tbody tr:hover {
+    background: rgba(13, 148, 136, 0.03);
+}
+
+.patientsTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.patientName {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.statusBadge {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(8, 145, 178, 0.12) 100%);
+    color: var(--teal-dark);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+}
+
+/* Table Action Buttons */
+.btnView {
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    color: var(--teal-dark);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+    min-width: 95px;
+}
+
+.btnView:hover {
+    background: rgba(13, 148, 136, 0.2);
+    border-color: rgba(13, 148, 136, 0.4);
+    color: var(--teal-dark);
+}
+
+.btnMove {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.85) 0%, rgba(255, 152, 0, 0.85) 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+    min-width: 95px;
+}
+
+.btnMove:hover {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.95) 0%, rgba(255, 152, 0, 0.95) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25);
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #64748b;
+    font-style: italic;
+    font-size: 1rem;
+    background: rgba(13, 148, 136, 0.03);
+    border-radius: 5px;
+    border: 1px dashed rgba(13, 148, 136, 0.2);
+}
+
+/* Modal Overlay */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 1rem;
+}
+
+.modalBox {
+    width: 100%;
+    max-width: 540px;
+    border-radius: 5px;
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(13, 148, 136, 0.2);
+}
+
+/* Modal Header */
+.modalHeader {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(8, 145, 178, 0.9) 100%);
+    color: white;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modalTitle {
+    font-weight: 700;
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+/* Modal Body */
+.modalBody {
+    padding: 1.75rem 1.5rem;
+    background: #f8fafb;
+}
+
+.modalLabel {
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.modalSelect {
+    border-radius: 5px !important;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid rgba(13, 148, 136, 0.25);
+    font-size: 1rem;
+    transition: all 0.15s ease;
+    background: white;
+}
+
+.modalSelect:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+}
+
+/* Modal Footer */
+.modalFooter {
+    padding: 1.25rem 1.5rem;
+    background: #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.btnModalCancel {
+    padding: 0.65rem 1.5rem;
+    border-radius: 5px;
+    font-weight: 600;
+    color: #475569;
+    background: white;
+    border: 1.5px solid #cbd5e1;
+    transition: all 0.15s ease;
+}
+
+.btnModalCancel:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.btnModalConfirm {
+    padding: 0.65rem 1.75rem;
+    border-radius: 5px;
+    font-weight: 700;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(8, 145, 178, 0.9) 100%);
+    border: none;
+    color: white;
+    transition: all 0.15s ease;
+}
+
+.btnModalConfirm:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 1) 0%, rgba(8, 145, 178, 1) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+}
+
+.btnModalConfirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading State */
+.loadingState {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--teal-dark);
+    font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pageTitle {
+        font-size: 1.4rem;
+    }
+
+    .infoCard {
+        padding: 1.25rem;
+    }
+
+    .patientsTable {
+        font-size: 0.9rem;
+    }
+
+    .patientsTable thead th,
+    .patientsTable tbody td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .btnView,
+    .btnMove {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+        min-width: 80px;
+    }
+
+    .modalBox {
+        margin: 1rem;
+    }
+}

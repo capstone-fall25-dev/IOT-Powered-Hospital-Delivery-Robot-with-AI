@@ -1,0 +1,168 @@
+/* src/assets/styles/roomFleetCards.module.css */
+:root {
+  --teal: #4CE1C6;
+  --teal-dark: #0d9488;
+  --ink: #0f172a;
+}
+
+.page {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: #0b1324;
+  background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+              radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+              linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+  min-height: 100vh;
+  padding-top: 20px;
+}
+
+.title {
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 1.5rem;
+}
+
+/* Button với gradient nhạt hơn header/sidebar 3-4% */
+.btnTeal {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+  border: none;
+  color: white;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+}
+
+.btnTeal:hover {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+  color: white;
+}
+
+.btnTeal:active {
+  transform: translateY(0);
+}
+
+/* Room Card - Glass morphism nhẹ */
+.roomCard {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  color: #334155;
+  border: 1px solid rgba(13, 148, 136, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gradient overlay on hover */
+.roomCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.03) 0%, rgba(8, 145, 178, 0.02) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.roomCard:hover::before {
+  opacity: 1;
+}
+
+.roomCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.15);
+  border-color: rgba(13, 148, 136, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.roomCard:active {
+  transform: translateY(-2px);
+}
+
+/* Card content styling */
+.roomCard .fw-bold {
+  color: var(--teal-dark);
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Search input đồng bộ */
+.searchInput {
+  border-radius: 8px !important;
+  border: 1px solid rgba(13, 148, 136, 0.2) !important;
+  padding: 0.5rem 1rem !important;
+  transition: all 0.2s ease !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.searchInput:focus {
+  border-color: rgba(13, 148, 136, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.08) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  outline: none !important;
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+}
+
+/* No rooms message */
+.noRooms {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #64748b;
+  font-style: italic;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px dashed rgba(13, 148, 136, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .roomCard {
+    border-radius: 10px;
+  }
+  
+  .searchInput {
+    width: 100% !important;
+  }
+
+  .btnTeal {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .page {
+    padding-top: 10px;
+  }
+
+  .roomCard .fw-bold {
+    font-size: 1rem;
+  }
+
+  .muted {
+    font-size: 0.85rem;
+  }
+}

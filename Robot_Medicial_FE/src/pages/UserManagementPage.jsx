@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllUsers, toggleActive } from '@/services/userService';
-import styles from '@/assets/styles/userManagement.module.css'; // import CSS module
+import styles from '@/assets/styles/userManagement.module.css';
 
 export default function UserManagementPage() {
     const navigate = useNavigate();
@@ -13,7 +13,6 @@ export default function UserManagementPage() {
     const [toDelete, setToDelete] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    // Load users
     useEffect(() => {
         loadUsers();
     }, []);
@@ -45,12 +44,7 @@ export default function UserManagementPage() {
     }
 
     function confirmDelete(row) {
-        setToDelete(row);
-        // Giả sử bạn có modal #confirm, nếu không thì gọi trực tiếp handleToggle
-        if (window.bootstrap?.Modal) {
-            window.bootstrap?.Modal.getOrCreateInstance("#confirm").show();
-        } else {
-            // Fallback: gọi trực tiếp nếu không có modal
+        if (window.confirm(`Bạn có chắc muốn ${row.isActive ? 'khóa' : 'mở khóa'} người dùng "${row.fullName}"?`)) {
             handleToggleActive(row);
         }
     }
@@ -58,7 +52,7 @@ export default function UserManagementPage() {
     const handleToggleActive = async (row) => {
         try {
             await toggleActive(row.id, row.isActive);
-            await loadUsers(); // Refresh list
+            await loadUsers();
             alert(row.isActive ? "Người dùng đã được khóa thành công." : "Người dùng đã được kích hoạt thành công.");
         } catch (err) {
             console.error("Lỗi khi toggle trạng thái:", err);
@@ -66,25 +60,18 @@ export default function UserManagementPage() {
         }
     };
 
-    // Nếu có modal confirm, thêm event listener hoặc onConfirm handler để gọi handleToggleActive(toDelete)
-    // Ví dụ: trong modal, button confirm onClick={() => { handleToggleActive(toDelete); window.bootstrap.Modal.getInstance("#confirm").hide(); setToDelete(null); }}
-
-    // Filtered rows
     const filteredRows = useMemo(() => {
         return rows.filter(r => {
-            // search filter
             const matchesQ = q
                 ? r.fullName.toLowerCase().includes(q.toLowerCase()) ||
                 r.email.toLowerCase().includes(q.toLowerCase())
                 : true;
 
-            // status filter
             const matchesStatus =
                 status === "all" ? true :
                     status === "active" ? r.isActive :
                         !r.isActive;
 
-            // spec/role filter
             const matchesSpec =
                 specFilter === "all" ? true : r.role === specFilter;
 
@@ -94,153 +81,169 @@ export default function UserManagementPage() {
 
     return (
         <div className={styles.page}>
-            <div className="container-fluid py-4">
-                <div className="container-lg">
-                    {/* HEADER */}
-                    <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className={styles.chip}><i className="bi bi-person-lines-fill me-1"></i></span>
-                            <h4 className="mb-0 fw-bold">Quản lý người dùng</h4>
+            <div className="container-xl py-4">
+
+                {/* =================== HEADER ==================== */}
+                <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
+                        <span className={styles.chip}>
+                            <i className="bi bi-people"></i>
+                        </span>
+                        <h4 className={`${styles.pageTitle} mb-0`}>Quản lý người dùng</h4>
+                    </div>
+                    <button 
+                        className={styles.btnTeal} 
+                        onClick={() => navigate("/users/create")}
+                    >
+                        <i className="bi bi-plus-lg me-2"></i>
+                        Thêm mới
+                    </button>
+                </div>
+
+                {/* =================== FILTER TOOLBAR ==================== */}
+                <div className={`${styles.glass} ${styles.toolbar} p-3 p-md-4 mb-3`}>
+                    <div className="row g-3 align-items-end">
+                        <div className="col-md-4">
+                            <label className="form-label">Tìm kiếm</label>
+                            <input
+                                className="form-control"
+                                placeholder="Tên, email..."
+                                value={q}
+                                onChange={e => setQ(e.target.value)}
+                            />
                         </div>
-                        <div className="d-flex gap-2">
-                            <button className={`${styles.btnTeal} rounded-pill px-3 py-2`} onClick={() => navigate("/users/create")}>
-                                <i className="bi bi-plus-lg me-1"></i> Thêm mới
+                        <div className="col-md-3">
+                            <label className="form-label">Trạng thái</label>
+                            <select 
+                                className="form-select" 
+                                value={status} 
+                                onChange={e => setStatus(e.target.value)}
+                            >
+                                <option value="all">Tất cả</option>
+                                <option value="active">Hoạt động</option>
+                                <option value="suspended">Tạm dừng</option>
+                            </select>
+                        </div>
+                        <div className="col-md-3">
+                            <label className="form-label">Vai trò</label>
+                            <select 
+                                className="form-select" 
+                                value={specFilter} 
+                                onChange={e => setSpecFilter(e.target.value)}
+                            >
+                                <option value="all">Tất cả</option>
+                                <option value="doctor">Doctor</option>
+                                <option value="admin">Admin</option>
+                                <option value="nurse">Nurse</option>
+                            </select>
+                        </div>
+                        <div className="col-md-2">
+                            <label className="form-label d-none d-md-block">&nbsp;</label>
+                            <button
+                                className={`${styles.btnClear} w-100`}
+                                onClick={() => { 
+                                    setQ(''); 
+                                    setStatus('all'); 
+                                    setSpecFilter('all'); 
+                                }}
+                            >
+                                <i className="bi bi-x-circle me-1"></i>
+                                Xóa lọc
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    {/* FILTER TOOLBAR */}
-                    <div className={`${styles.glass} ${styles.rounded2xl} p-3 p-md-4 mb-3 toolbar`}>
-                        <div className="row g-2 align-items-end">
-                            <div className="col-md-4">
-                                <label className="form-label">Tìm kiếm</label>
-                                <input
-                                    className="form-control"
-                                    placeholder="Tên, email..."
-                                    value={q}
-                                    onChange={e => setQ(e.target.value)}
-                                />
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label">Trạng thái</label>
-                                <select className="form-select" value={status} onChange={e => setStatus(e.target.value)}>
-                                    <option value="all">Tất cả</option>
-                                    <option value="active">Hoạt động</option>
-                                    <option value="suspended">Tạm dừng</option>
-                                </select>
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label">Vai trò</label>
-                                <select className="form-select" value={specFilter} onChange={e => setSpecFilter(e.target.value)}>
-                                    <option value="all">Tất cả</option>
-                                    <option value="doctor">Doctor</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="nurse">Nurse</option>
-                                </select>
-                            </div>
-                            <div className="col-md-2 text-md-end">
-                                <label className="form-label d-block">&nbsp;</label>
-                                <button
-                                    className="btn btn-light rounded-pill w-100"
-                                    onClick={() => { setQ(''); setStatus('all'); setSpecFilter('all'); }}
-                                >
-                                    <i className="bi bi-x-circle me-1"></i> Xóa lọc
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* TABLE */}
-                    <div className={`${styles.glass} ${styles.rounded2xl} p-2 p-md-3`}>
-                        <div className="table-responsive">
-                            <table className="table align-middle">
-                                <thead>
+                {/* =================== TABLE ==================== */}
+                <div className={`${styles.glass} ${styles.tableCard} p-2 p-md-3`}>
+                    <div className="table-responsive">
+                        <table className={`table ${styles.table} align-middle mb-0`}>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '60px' }}>#</th>
+                                    <th>Họ tên</th>
+                                    <th>Email</th>
+                                    <th>Vai trò</th>
+                                    <th>Trạng thái</th>
+                                    <th style={{ width: '80px' }}>Online</th>
+                                    <th>Ngày tạo</th>
+                                    <th className="text-end">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
                                     <tr>
-                                        <th>#</th>
-                                        <th>Họ tên</th>
-                                        <th>Email</th>
-                                        <th>Vai trò</th>
-                                        <th>Trạng thái</th>
-                                        <th>Online</th>
-                                        <th>Ngày tạo</th>
-                                        <th>Hành động</th>
+                                        <td colSpan={8} className={styles.loadingState}>
+                                            <div className="spinner-border text-primary mb-2" role="status"></div>
+                                            <p className="mb-0">Đang tải dữ liệu...</p>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={8} className="text-center text-muted py-4">
-                                                <div className="spinner-border" role="status">
-                                                    <span className="visually-hidden">Loading...</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : filteredRows.map((r, idx) => (
+                                ) : filteredRows.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className={styles.emptyState}>
+                                            <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                                            Không tìm thấy người dùng
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredRows.map((r, idx) => (
                                         <tr key={r.id}>
                                             <td>{idx + 1}</td>
-                                            <td>{r.fullName}</td>
+                                            <td className="fw-semibold">{r.fullName}</td>
                                             <td>{r.email}</td>
                                             <td>
-                                                <span className="badge bg-info-subtle text-dark border">{r.role}</span>
+                                                <span className={styles.badgeTeal}>{r.role}</span>
                                             </td>
                                             <td>
                                                 {r.isActive ? (
-                                                    <span className="badge bg-success-subtle text-success border">Hoạt động</span>
+                                                    <span className={styles.badgeActive}>Hoạt động</span>
                                                 ) : (
-                                                    <span className="badge bg-secondary-subtle text-secondary border">Tạm dừng</span>
+                                                    <span className={styles.badgeInactive}>Tạm dừng</span>
                                                 )}
                                             </td>
-                                            <td>
+                                            <td className="text-center">
                                                 {r.isOnline ? (
-                                                    <i className="bi bi-check-circle-fill text-success"></i>
+                                                    <i className={`bi bi-check-circle-fill ${styles.iconOnline}`}></i>
                                                 ) : (
-                                                    <i className="bi bi-x-circle-fill text-danger"></i>
+                                                    <i className={`bi bi-x-circle ${styles.iconOffline}`}></i>
                                                 )}
                                             </td>
                                             <td>{r.createdAt}</td>
-                                            <td className="">
-                                                <div className="btn-group btn-group-sm">
-
-                                                    {/* VIEW DETAIL */}
+                                            <td>
+                                                <div className="d-flex justify-content-end gap-1">
                                                     <button
-                                                        className="btn btn-outline-info"
+                                                        className={styles.btnView}
                                                         onClick={() => navigate(`/user-detail/${r.id}`)}
+                                                        title="Xem chi tiết"
                                                     >
-                                                        <i className="bi bi-eye-fill"></i> Xem
+                                                        <i className="bi bi-eye"></i>
                                                     </button>
 
-                                                    {/* EDIT */}
                                                     <button
-                                                        className="btn btn-outline-secondary"
+                                                        className={styles.btnEdit}
                                                         onClick={() => openEdit(r)}
+                                                        title="Chỉnh sửa"
                                                     >
-                                                        <i className="bi bi-pencil"></i> Sửa
+                                                        <i className="bi bi-pencil"></i>
                                                     </button>
 
-                                                    {/* ACTIVE / DEACTIVATE */}
                                                     <button
-                                                        className={`btn ${r.isActive ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                                                        className={r.isActive ? styles.btnLock : styles.btnUnlock}
                                                         onClick={() => confirmDelete(r)}
+                                                        title={r.isActive ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                                                     >
-                                                        <i className={`bi ${r.isActive ? 'bi-lock-fill' : 'bi-unlock-fill'}`}></i>
-                                                        {r.isActive ? ' Khóa' : ' Mở'}
+                                                        <i className={`bi ${r.isActive ? 'bi-lock' : 'bi-unlock'}`}></i>
                                                     </button>
-
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
-                                    {loading === false && filteredRows.length === 0 && (
-                                        <tr>
-                                            <td colSpan={8} className="text-center text-muted py-4">Không có dữ liệu</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-
                 </div>
+
             </div>
         </div>
     );

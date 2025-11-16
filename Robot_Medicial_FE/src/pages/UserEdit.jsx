@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getUserById, updateUser } from "@/services/userService";
-import styles from '@/assets/styles/doctorEdit.module.css'; // import CSS module (giả sử có các class tương tự userManagement)
+import styles from '@/assets/styles/userForm.module.css';
 
 export default function UserEdit() {
     const { userId } = useParams();
@@ -10,7 +10,6 @@ export default function UserEdit() {
     const [showPwd, setShowPwd] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Load user từ API
     useEffect(() => {
         if (!userId) return;
         getUserById(userId)
@@ -36,10 +35,25 @@ export default function UserEdit() {
         if (/[a-z]/.test(v)) n++;
         if (/\d/.test(v)) n++;
         if (/[^\w\s]/.test(v)) n++;
-        const label = n <= 2 ? "Yếu" : n === 3 ? "Trung bình" : "Mạnh";
-        const variant = n <= 2 ? "danger" : n === 3 ? "warning" : "success";
-        const width = n <= 2 ? "25%" : n === 3 ? "60%" : "100%";
-        return { n, label, variant, width };
+        
+        let label = "Yếu";
+        let labelClass = styles.strengthLabelWeak;
+        let barClass = styles.strengthWeak;
+        let width = "25%";
+
+        if (n === 3) {
+            label = "Trung bình";
+            labelClass = styles.strengthLabelMedium;
+            barClass = styles.strengthMedium;
+            width = "60%";
+        } else if (n >= 4) {
+            label = "Mạnh";
+            labelClass = styles.strengthLabelStrong;
+            barClass = styles.strengthStrong;
+            width = "100%";
+        }
+
+        return { n, label, labelClass, barClass, width };
     }, [user?.password]);
 
     function handleChange(e) {
@@ -72,90 +86,109 @@ export default function UserEdit() {
         }
     };
 
-    if (!user) return (
-        <div className={styles.page}>
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Đang tải...</span>
+    if (!user) {
+        return (
+            <div className={styles.page}>
+                <div className={styles.loadingContainer}>
+                    <div className="spinner-border text-primary" role="status"></div>
+                    <p className={styles.loadingText}>Đang tải thông tin người dùng...</p>
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className={styles.page}>
-            <div className="container-lg py-3">
-                {/* HEADER */}
-                <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                    <div className="d-flex align-items-center gap-2">
+            <div className="container-xl py-4">
+
+                {/* =================== HEADER ==================== */}
+                <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
                         <button
-                            className="btn btn-outline-secondary rounded-pill px-2 py-1"
+                            className={styles.btnBack}
                             onClick={() => navigate(-1)}
                         >
-                            <i className="bi bi-arrow-left me-1"></i> Quay lại
+                            <i className="bi bi-arrow-left me-1"></i>
+                            Quay lại
                         </button>
                         <div>
-                            <h3 className="mb-0 fw-bold text-dark">Cập nhật thông tin người dùng</h3>
-                            <p className="text-muted small mb-0">Chỉnh sửa chi tiết tài khoản {user.fullName}</p>
+                            <h3 className={styles.pageTitle}>Cập nhật thông tin người dùng</h3>
+                            <p className={styles.pageSubtitle}>
+                                Chỉnh sửa chi tiết tài khoản {user.fullName}
+                            </p>
                         </div>
                     </div>
-                    <span className={`badge ${user.isActive ? 'bg-success' : 'bg-secondary'} px-2 py-1`}>
-                        <i className={`bi ${user.isActive ? 'bi-check-circle-fill me-1' : 'bi-x-circle-fill me-1'}`}></i>
+                    <span className={`${styles.statusBadge} ${user.isActive ? styles.badgeActive : styles.badgeInactive}`}>
+                        <i className={`bi ${user.isActive ? 'bi-check-circle-fill' : 'bi-x-circle-fill'}`}></i>
                         {user.isActive ? 'Hoạt động' : 'Tạm dừng'}
                     </span>
                 </div>
 
-                {/* MAIN FORM LAYOUT */}
-                <div className={`${styles.glass} ${styles.rounded2xl} p-3 p-md-4`}>
-                    <div className="row g-3">
+                {/* =================== MAIN FORM ==================== */}
+                <div className={`${styles.glass} p-3 p-md-4`}>
+                    <div className="row g-4">
+
                         {/* LEFT COLUMN: BASIC INFO */}
                         <div className="col-lg-8">
-                            <div className="row g-3">
+                            <div className="row g-4">
+
                                 {/* FULL NAME */}
                                 <div className="col-12">
-                                    <label className="form-label fw-semibold mb-1">Tên đầy đủ <span className="text-danger">*</span></label>
+                                    <label className={styles.formLabel}>
+                                        Tên đầy đủ
+                                        <span className={styles.required}>*</span>
+                                    </label>
                                     <input
                                         name="fullName"
-                                        className="form-control"
+                                        className={`form-control ${styles.formControl}`}
                                         value={user.fullName || ""}
                                         onChange={handleChange}
                                         placeholder="Nhập họ và tên đầy đủ"
                                         required
                                     />
-                                    <div className="form-text">Tên hiển thị trên hệ thống.</div>
+                                    <div className={styles.formText}>
+                                        Tên hiển thị trên hệ thống.
+                                    </div>
                                 </div>
 
                                 {/* EMAIL */}
                                 <div className="col-12">
-                                    <label className="form-label fw-semibold mb-1">Email <span className="text-danger">*</span></label>
+                                    <label className={styles.formLabel}>
+                                        Email
+                                        <span className={styles.required}>*</span>
+                                    </label>
                                     <input
                                         name="email"
                                         type="email"
-                                        className="form-control"
+                                        className={`form-control ${styles.formControl}`}
                                         value={user.email || ""}
                                         onChange={handleChange}
-                                        placeholder="example@benhvien.vn"
+                                        placeholder="example@hospital.vn"
                                         required
                                     />
-                                    <div className="form-text">Email dùng để đăng nhập và gửi thông báo.</div>
+                                    <div className={styles.formText}>
+                                        Email dùng để đăng nhập và gửi thông báo.
+                                    </div>
                                 </div>
 
-                                {/* PASSWORD SECTION */}
+                                {/* PASSWORD */}
                                 <div className="col-12">
-                                    <label className="form-label fw-semibold mb-1">Mật khẩu (tùy chọn)</label>
-                                    <div className="input-group">
+                                    <label className={styles.formLabel}>
+                                        Mật khẩu (tùy chọn)
+                                    </label>
+                                    <div className={`input-group ${styles.inputGroup}`}>
                                         <input
                                             type={showPwd ? 'text' : 'password'}
                                             name="password"
-                                            className="form-control"
+                                            className={`form-control ${styles.formControl}`}
                                             value={user.password || ""}
                                             onChange={handleChange}
-                                            placeholder="Nhập mật khẩu mới hoặc để trống để giữ nguyên"
+                                            placeholder="Nhập mật khẩu mới hoặc để trống"
                                             minLength={8}
                                         />
                                         <button
                                             type="button"
-                                            className="btn btn-outline-secondary"
+                                            className={`btn ${styles.btnOutlineSecondary}`}
                                             onClick={() => setShowPwd(s => !s)}
                                             title={showPwd ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                                         >
@@ -163,107 +196,111 @@ export default function UserEdit() {
                                         </button>
                                         <button
                                             type="button"
-                                            className="btn btn-outline-primary"
+                                            className={`btn ${styles.btnOutlinePrimary}`}
                                             onClick={() => setUser(u => ({ ...u, password: genPassword() }))}
                                             title="Tạo mật khẩu ngẫu nhiên mạnh"
                                         >
-                                            <i className="bi bi-stars me-1"></i>Tạo
+                                            <i className="bi bi-stars me-1"></i>
+                                            Tạo
                                         </button>
                                     </div>
+
                                     {user.password && (
                                         <div className="mt-2">
-                                            <div className="mb-1">
-                                                <small className="text-muted me-1">Độ mạnh mật khẩu:</small>
-                                                <small className={`fw-semibold text-${strength.variant}`}>
-                                                    {strength.label}
-                                                </small>
+                                            <div className={`${styles.strengthLabel} ${strength.labelClass}`}>
+                                                <small className="text-muted me-1">Độ mạnh:</small>
+                                                {strength.label}
                                             </div>
-                                            <div className="progress" style={{ height: '6px' }}>
-                                                <div className={`progress-bar bg-${strength.variant}`} style={{ width: strength.width }}></div>
+                                            <div className={styles.strengthMeter}>
+                                                <div 
+                                                    className={`${styles.strengthBar} ${strength.barClass}`} 
+                                                    style={{ width: strength.width }}
+                                                ></div>
                                             </div>
                                         </div>
                                     )}
-                                    <div className="form-text">
-                                        Để trống nếu không muốn thay đổi. Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+
+                                    <div className={styles.formText}>
+                                        Để trống nếu không muốn thay đổi. Mật khẩu mới phải có ít nhất 8 ký tự.
                                     </div>
                                 </div>
+
                             </div>
                         </div>
 
                         {/* RIGHT COLUMN: SETTINGS */}
                         <div className="col-lg-4">
-                            <div className={`${styles.glass} ${styles.rounded2xl} p-3 h-100`}>
-                                <h6 className="fw-bold mb-3 border-bottom pb-2">Cài đặt tài khoản</h6>
-                               
+                            <div className={styles.sidebarCard}>
+                                <h6 className={styles.sidebarTitle}>Cài đặt tài khoản</h6>
+
                                 {/* ACTIVE TOGGLE */}
-                                <div className="mb-3">
-                                    <div className="form-check form-switch">
+                                <div className="mb-4">
+                                    <div className={`form-check form-switch ${styles.formSwitch}`}>
                                         <input
-                                            className="form-check-input"
+                                            className={`form-check-input ${styles.formSwitchInput}`}
                                             type="checkbox"
                                             id="isActive"
                                             name="isActive"
                                             checked={user.isActive}
                                             onChange={handleChange}
                                         />
-                                        <label className="form-check-label fw-medium" htmlFor="isActive">
+                                        <label 
+                                            className={`form-check-label ${styles.formSwitchLabel}`} 
+                                            htmlFor="isActive"
+                                        >
                                             Kích hoạt tài khoản
                                         </label>
                                     </div>
-                                    <div className="form-text">
-                                        Bật để cho phép đăng nhập. Tắt để tạm khóa tài khoản.
+                                    <div className={styles.formText}>
+                                        Bật để cho phép đăng nhập. Tắt để tạm khóa.
                                     </div>
                                 </div>
 
                                 {/* ROLE SELECT */}
-                                <div className="mb-3">
-                                    <label className="form-label fw-semibold mb-1">Vai trò</label>
+                                <div className="mb-4">
+                                    <label className={styles.formLabel}>Vai trò</label>
                                     <select
                                         name="role"
-                                        className="form-select"
+                                        className={`form-select ${styles.formSelect}`}
                                         value={user.role || ""}
                                         onChange={handleChange}
                                     >
-                                        <option value="">Chọn vai trò</option>
+                                        <option value="">- Chọn vai trò -</option>
                                         <option value="admin">Quản trị viên</option>
                                         <option value="doctor">Bác sĩ</option>
                                         <option value="pharmacist">Dược sĩ</option>
-                                        <option value="operator">Người vận hành</option>
-                                        <option value="nurse">Y tá</option>
                                     </select>
-                                    <div className="form-text">
-                                        Quyền hạn sẽ được áp dụng theo vai trò.
+                                    <div className={styles.formText}>
+                                        Quyền hạn được áp dụng theo vai trò.
                                     </div>
                                 </div>
 
-                                {/* INFO CARD */}
-                                <div className="mt-auto pt-2 border-top">
-                                    <small className="text-muted">
-                                        <i className="bi bi-info-circle me-1"></i>
-                                        Thay đổi sẽ được áp dụng ngay sau khi lưu.
-                                    </small>
+                                {/* INFO */}
+                                <div className={styles.infoAlert}>
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    Thay đổi sẽ được áp dụng ngay sau khi lưu.
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* SAVE BUTTON - FULL WIDTH FOOTER */}
-                    <div className="row mt-3">
+                    {/* SAVE BUTTON */}
+                    <div className="row mt-4 pt-3 border-top">
                         <div className="col-12">
                             <div className="d-flex justify-content-end">
                                 <button
-                                    className={`${styles.btnTeal} rounded-pill px-4 py-2 fw-bold`}
+                                    className={styles.btnTeal}
                                     onClick={save}
                                     disabled={saving}
                                 >
                                     {saving ? (
                                         <>
-                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
                                             Đang lưu...
                                         </>
                                     ) : (
                                         <>
-                                            <i className="bi bi-check-circle-fill me-2"></i>
+                                            <i className="bi bi-check-circle me-2"></i>
                                             Lưu thay đổi
                                         </>
                                     )}
@@ -272,6 +309,7 @@ export default function UserEdit() {
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     );

@@ -1,0 +1,325 @@
+/* src/assets/styles/userEdit.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
+}
+
+/* Glass Cards */
+.glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+}
+
+/* Header */
+.pageTitle {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.5rem;
+    margin-bottom: 0;
+}
+
+.pageSubtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+/* Buttons */
+.btnBack {
+    border: 1.5px solid rgba(13, 148, 136, 0.3);
+    color: var(--teal-dark);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 1rem;
+    transition: all 0.15s ease;
+}
+
+.btnBack:hover {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.5);
+    color: var(--teal-dark);
+}
+
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.65rem 1.75rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+}
+
+.btnTeal:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnTeal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Status Badge */
+.statusBadge {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badgeActive {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.12) 100%);
+    color: #15803d;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.badgeInactive {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.15) 0%, rgba(75, 85, 99, 0.12) 100%);
+    color: #4b5563;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+/* Form Elements */
+.formLabel {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+}
+
+.required {
+    color: #ef4444;
+}
+
+.formControl,
+.formSelect {
+    border-radius: 5px !important;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.formControl:focus,
+.formSelect:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.formText {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+}
+
+/* Input Group */
+.inputGroup .formControl {
+    border-radius: 5px 0 0 5px !important;
+}
+
+.inputGroup .btn:not(:last-child) {
+    border-radius: 0 !important;
+}
+
+.inputGroup .btn:last-child {
+    border-radius: 0 5px 5px 0 !important;
+}
+
+.btnOutlineSecondary {
+    border: 1.5px solid #cbd5e1;
+    color: #475569;
+    background: white;
+    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    transition: all 0.15s ease;
+}
+
+.btnOutlineSecondary:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.btnOutlinePrimary {
+    border: 1.5px solid rgba(13, 148, 136, 0.3);
+    color: var(--teal-dark);
+    background: white;
+    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    transition: all 0.15s ease;
+}
+
+.btnOutlinePrimary:hover {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.5);
+    color: var(--teal-dark);
+}
+
+/* Password Strength */
+.strengthMeter {
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background-color: #e5e7eb;
+    margin-top: 0.5rem;
+}
+
+.strengthBar {
+    height: 100%;
+    transition: width 0.2s ease;
+    border-radius: 3px;
+}
+
+.strengthWeak {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.strengthMedium {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.strengthStrong {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.strengthLabel {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.strengthLabelWeak {
+    color: #dc2626;
+}
+
+.strengthLabelMedium {
+    color: #d97706;
+}
+
+.strengthLabelStrong {
+    color: #059669;
+}
+
+/* Sidebar Card */
+.sidebarCard {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-radius: 5px;
+    padding: 1.25rem;
+    height: 100%;
+}
+
+.sidebarTitle {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1.05rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid rgba(13, 148, 136, 0.15);
+}
+
+/* Form Switch */
+.formSwitch {
+    padding-left: 3em;
+}
+
+.formSwitchInput {
+    width: 3em;
+    height: 1.5em;
+    border-radius: 2em;
+    margin-left: -3em;
+}
+
+.formSwitchInput:checked {
+    background-color: var(--teal-dark);
+    border-color: var(--teal-dark);
+}
+
+.formSwitchLabel {
+    font-weight: 600;
+    color: #334155;
+}
+
+/* Loading State */
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 50vh;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.loadingText {
+    color: var(--teal-dark);
+    font-size: 1.1rem;
+}
+
+/* Info Alert */
+.infoAlert {
+    background: rgba(13, 148, 136, 0.08);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+    border-radius: 5px;
+    padding: 0.75rem;
+    color: #334155;
+    font-size: 0.875rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pageTitle {
+        font-size: 1.3rem;
+    }
+
+    .glass {
+        padding: 1.25rem !important;
+    }
+
+    .btnTeal {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .formControl,
+    .formSelect {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}

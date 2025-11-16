@@ -5,8 +5,7 @@ import {
     activateUser,
     deactivateUser
 } from "@/services/userService";
-
-import styles from "@/assets/styles/userManagement.module.css";
+import styles from '@/assets/styles/userDetail.module.css';
 
 export default function UserDetail() {
     const { userId } = useParams();
@@ -55,168 +54,246 @@ export default function UserDetail() {
         }
     }
 
-    if (loading)
+    if (loading) {
         return (
-            <div className="text-center mt-5">
-                <div className="spinner-border text-success"></div>
-                <p>Đang tải dữ liệu...</p>
+            <div className={styles.page}>
+                <div className={styles.loadingContainer}>
+                    <div className="spinner-border text-primary" role="status"></div>
+                    <p className={styles.loadingText}>Đang tải thông tin người dùng...</p>
+                </div>
             </div>
         );
+    }
 
-    if (!user)
+    if (!user) {
         return (
-            <div className="text-center text-danger mt-5">
-                Không tìm thấy người dùng!
+            <div className={styles.page}>
+                <div className={styles.errorContainer}>
+                    <i className="bi bi-exclamation-circle text-danger" style={{ fontSize: '3rem' }}></i>
+                    <p className={styles.errorText}>Không tìm thấy người dùng!</p>
+                    <button 
+                        className={styles.btnBack}
+                        onClick={() => navigate("/users")}
+                    >
+                        <i className="bi bi-arrow-left me-1"></i>
+                        Quay lại danh sách
+                    </button>
+                </div>
             </div>
         );
+    }
 
     return (
-        <div className={`${styles.page} py-5 d-flex justify-content-center`}>
-            <div className={`${styles.glass} p-5`} style={{ maxWidth: 900, width: "95%" }}>
+        <div className={styles.page}>
+            <div className="container-xl py-4">
+                <div className="row justify-content-center">
+                    <div className="col-lg-10">
 
-                {/* HEADER */}
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h3 className="fw-bold">
-                        <i className="bi bi-person-badge text-primary me-2"></i>
-                        Chi tiết người dùng
-                    </h3>
+                        {/* =================== HEADER ==================== */}
+                        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                            <h3 className={styles.pageTitle}>
+                                <i className="bi bi-person-badge"></i>
+                                Chi tiết người dùng
+                            </h3>
 
-                    <button
-                        className={`${styles.btnTeal} btn rounded-pill px-3`}
-                        onClick={() => navigate("/user")}
-                    >
-                        <i className="bi bi-arrow-left-circle me-1"></i> Quay lại
-                    </button>
-                </div>
+                            <button
+                                className={styles.btnBack}
+                                onClick={() => navigate("/users")}
+                            >
+                                <i className="bi bi-arrow-left me-1"></i>
+                                Quay lại
+                            </button>
+                        </div>
 
-                {/* USER CARD */}
-                <div className="row g-4">
+                        {/* =================== USER INFO CARD ==================== */}
+                        <div className={`${styles.glass} p-3 p-md-4 mb-4`}>
+                            <div className="row g-4">
 
-                    <div className="col-md-6">
-                        <label className="fw-semibold">Họ tên</label>
-                        <div className="form-control">{user.fullName}</div>
-                    </div>
+                                {/* FULL NAME */}
+                                <div className="col-md-6">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Họ và tên</label>
+                                        <div className={styles.infoValue}>{user.fullName}</div>
+                                    </div>
+                                </div>
 
-                    <div className="col-md-6">
-                        <label className="fw-semibold">Email</label>
-                        <div className="form-control">{user.email}</div>
-                    </div>
+                                {/* EMAIL */}
+                                <div className="col-md-6">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Email</label>
+                                        <div className={styles.infoValue}>{user.email}</div>
+                                    </div>
+                                </div>
 
-                    <div className="col-md-4">
-                        <label className="fw-semibold">Vai trò</label>
-                        <div className="form-control text-capitalize">{user.role}</div>
-                    </div>
+                                {/* ROLE */}
+                                <div className="col-md-4">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Vai trò</label>
+                                        <div className={styles.infoValue}>
+                                            <span className={styles.roleBadge}>{user.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                    <div className="col-md-4">
-                        <label className="fw-semibold">Trạng thái</label>
-                        <div className="form-control">
-                            {user.isActive ? (
-                                <span className="text-success fw-bold">Hoạt động</span>
+                                {/* ACTIVE STATUS */}
+                                <div className="col-md-4">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Trạng thái tài khoản</label>
+                                        <div className={styles.infoValue}>
+                                            {user.isActive ? (
+                                                <span className={styles.statusActive}>
+                                                    <i className="bi bi-check-circle-fill"></i>
+                                                    Hoạt động
+                                                </span>
+                                            ) : (
+                                                <span className={styles.statusInactive}>
+                                                    <i className="bi bi-x-circle-fill"></i>
+                                                    Tạm dừng
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ONLINE STATUS */}
+                                <div className="col-md-4">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Trạng thái kết nối</label>
+                                        <div className={styles.infoValue}>
+                                            {user.isOnline ? (
+                                                <span className={styles.statusOnline}>
+                                                    <i className="bi bi-circle-fill"></i>
+                                                    Đang online
+                                                </span>
+                                            ) : (
+                                                <span className={styles.statusOffline}>
+                                                    <i className="bi bi-circle"></i>
+                                                    Offline
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* CREATED AT */}
+                                <div className="col-md-6">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Ngày tạo</label>
+                                        <div className={styles.infoValue}>
+                                            <i className="bi bi-calendar3 me-2 text-muted"></i>
+                                            {new Date(user.createdAt).toLocaleString("vi-VN")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* UPDATED AT */}
+                                <div className="col-md-6">
+                                    <div className={styles.infoGroup}>
+                                        <label className={styles.infoLabel}>Cập nhật lần cuối</label>
+                                        <div className={styles.infoValue}>
+                                            <i className="bi bi-clock-history me-2 text-muted"></i>
+                                            {new Date(user.updatedAt).toLocaleString("vi-VN")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {/* ACTION BUTTONS */}
+                            <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                                <button
+                                    className={styles.btnEdit}
+                                    onClick={() => navigate(`/users/edit/${user.id}`)}
+                                >
+                                    <i className="bi bi-pencil-square me-1"></i>
+                                    Chỉnh sửa
+                                </button>
+
+                                <button
+                                    className={`${styles.btnToggle} ${!user.isActive ? styles.btnActivate : ''}`}
+                                    onClick={handleToggleStatus}
+                                    disabled={toggling}
+                                >
+                                    {toggling ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2"></span>
+                                            Đang xử lý...
+                                        </>
+                                    ) : user.isActive ? (
+                                        <>
+                                            <i className="bi bi-lock me-1"></i>
+                                            Vô hiệu hóa
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-unlock me-1"></i>
+                                            Kích hoạt
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* =================== TASKS SECTION ==================== */}
+                        <div className={styles.sectionCard}>
+                            <h5 className={styles.sectionTitle}>
+                                <i className="bi bi-list-task"></i>
+                                Nhiệm vụ đã giao
+                            </h5>
+
+                            {user.tasks && user.tasks.length > 0 ? (
+                                <div>
+                                    {user.tasks.map((t) => (
+                                        <div key={t.id} className={styles.listItem}>
+                                            <i className="bi bi-check2-square me-2 text-success"></i>
+                                            {t.title}
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
-                                <span className="text-danger fw-bold">Tạm dừng</span>
+                                <div className={styles.emptyState}>
+                                    <i className="bi bi-inbox mb-2" style={{ fontSize: '2rem', display: 'block' }}></i>
+                                    Không có nhiệm vụ nào
+                                </div>
                             )}
                         </div>
-                    </div>
 
-                    <div className="col-md-4">
-                        <label className="fw-semibold">Online</label>
-                        <div className="form-control">
-                            {user.isOnline ? (
-                                <span className="text-success">
-                                    <i className="bi bi-circle-fill me-1"></i> Đang hoạt động
-                                </span>
+                        {/* =================== SESSIONS SECTION ==================== */}
+                        <div className={styles.sectionCard}>
+                            <h5 className={styles.sectionTitle}>
+                                <i className="bi bi-activity"></i>
+                                Phiên hoạt động
+                            </h5>
+
+                            {user.activeSessions && user.activeSessions.length > 0 ? (
+                                <div>
+                                    {user.activeSessions.map((s) => (
+                                        <div key={s.id} className={styles.listItem}>
+                                            <div className="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <div className="mb-1">
+                                                        <i className="bi bi-box-arrow-in-right me-2 text-success"></i>
+                                                        <strong>Đăng nhập:</strong> {new Date(s.createdAt).toLocaleString("vi-VN")}
+                                                    </div>
+                                                    <div>
+                                                        <i className="bi bi-hourglass-split me-2 text-warning"></i>
+                                                        <strong>Hết hạn:</strong> {new Date(s.expiresAt).toLocaleString("vi-VN")}
+                                                    </div>
+                                                </div>
+                                                <span className="badge bg-success">Active</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
-                                <span className="text-secondary">
-                                    <i className="bi bi-circle me-1"></i> Offline
-                                </span>
+                                <div className={styles.emptyState}>
+                                    <i className="bi bi-wifi-off mb-2" style={{ fontSize: '2rem', display: 'block' }}></i>
+                                    Không có phiên hoạt động
+                                </div>
                             )}
                         </div>
+
                     </div>
-
-                    <div className="col-md-6">
-                        <label className="fw-semibold">Ngày tạo</label>
-                        <div className="form-control">
-                            {new Date(user.createdAt).toLocaleString("vi-VN")}
-                        </div>
-                    </div>
-
-                    <div className="col-md-6">
-                        <label className="fw-semibold">Cập nhật lần cuối</label>
-                        <div className="form-control">
-                            {new Date(user.updatedAt).toLocaleString("vi-VN")}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ACTION BUTTONS */}
-                <div className="d-flex justify-content-end gap-3 mt-4">
-
-                    <button
-                        className="btn btn-outline-secondary rounded-pill"
-                        onClick={() => navigate(`/user-detail/${user.id}`)}
-                    >
-                        <i className="bi bi-pencil-square me-1"></i> Chỉnh sửa
-                    </button>
-
-                    <button
-                        className="btn btn-danger rounded-pill"
-                        onClick={handleToggleStatus}
-                        disabled={toggling}
-                    >
-                        {toggling ? (
-                            <span className="spinner-border spinner-border-sm"></span>
-                        ) : user.isActive ? (
-                            <>
-                                <i className="bi bi-lock me-1"></i> Vô hiệu hóa
-                            </>
-                        ) : (
-                            <>
-                                <i className="bi bi-unlock me-1"></i> Kích hoạt
-                            </>
-                        )}
-                    </button>
-                </div>
-
-                {/* TASK LIST */}
-                <div className="mt-5">
-                    <h5 className="fw-bold mb-3">
-                        <i className="bi bi-list-task text-success me-2"></i>
-                        Nhiệm vụ đã giao
-                    </h5>
-
-                    {user.tasks && user.tasks.length > 0 ? (
-                        <ul className="list-group">
-                            {user.tasks.map((t) => (
-                                <li key={t.id} className="list-group-item">
-                                    {t.title}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-muted">Không có nhiệm vụ nào.</p>
-                    )}
-                </div>
-
-                {/* SESSIONS */}
-                <div className="mt-4">
-                    <h5 className="fw-bold mb-3">
-                        <i className="bi bi-wifi text-primary me-2"></i>
-                        Phiên hoạt động
-                    </h5>
-
-                    {user.activeSessions && user.activeSessions.length > 0 ? (
-                        <ul className="list-group">
-                            {user.activeSessions.map((s) => (
-                                <li key={s.id} className="list-group-item">
-                                    <b>Đăng nhập:</b> {new Date(s.createdAt).toLocaleString("vi-VN")}  
-                                    <br />
-                                    <b>Hết hạn:</b> {new Date(s.expiresAt).toLocaleString("vi-VN")}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-muted">Không có phiên hoạt động.</p>
-                    )}
                 </div>
             </div>
         </div>
