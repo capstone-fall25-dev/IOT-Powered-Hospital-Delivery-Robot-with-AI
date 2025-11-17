@@ -10,11 +10,14 @@ services:
       MYSQL_DATABASE: robotmanager
     volumes:
       - mysql_data:/var/lib/mysql
-      # ✅ Tạo script init SQL
-      - ./mysql-init:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
-    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./Robot_Medicial_BE
@@ -22,10 +25,11 @@ services:
     container_name: hospital_backend
     restart: always
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=server=mysql;port=3306;database=robotmanager;user=root;password=1239
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: server=mysql;port=3306;database=robotmanager;user=root;password=1239
     ports:
       - "5000:5000"
 
@@ -36,7 +40,8 @@ services:
     container_name: hospital_frontend
     restart: always
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "8080:80"
 
