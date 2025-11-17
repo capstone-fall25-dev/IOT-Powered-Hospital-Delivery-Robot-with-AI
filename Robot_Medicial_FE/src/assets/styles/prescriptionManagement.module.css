@@ -1,4 +1,4 @@
-/* src/assets/styles/medicinesManagement.module.css */
+/* src/assets/styles/prescriptionManagement.module.css */
 :root {
     --teal: #4CE1C6;
     --teal-dark: #0d9488;
@@ -52,24 +52,6 @@
     color: white;
 }
 
-.btnBack,
-.btnSecondary {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1.5px solid rgba(13, 148, 136, 0.2);
-    color: #475569;
-    font-weight: 600;
-    border-radius: 5px;
-    padding: 0.5rem 1.2rem;
-    transition: all 0.15s ease;
-}
-
-.btnBack:hover,
-.btnSecondary:hover {
-    background: rgba(13, 148, 136, 0.05);
-    border-color: rgba(13, 148, 136, 0.3);
-    color: #475569;
-}
-
 .btnClear {
     background: rgba(255, 255, 255, 0.8);
     border: 1.5px solid rgba(13, 148, 136, 0.2);
@@ -94,11 +76,15 @@
     border: 1px solid rgba(13, 148, 136, 0.12);
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     border-radius: 5px;
+}
+
+/* =================== TOOLBAR =================== */
+.toolbar {
     position: relative;
     overflow: hidden;
 }
 
-.glass::before {
+.toolbar::before {
     content: '';
     position: absolute;
     top: 0;
@@ -108,10 +94,21 @@
     background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
 }
 
-/* =================== TOOLBAR =================== */
-.toolbar {
-    position: relative;
-    overflow: hidden;
+.toolbar .formControl,
+.toolbar .formSelect {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.6rem 1rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.toolbar .formControl:focus,
+.toolbar .formSelect:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
 }
 
 .formLabel {
@@ -142,6 +139,16 @@
 .tableCard {
     position: relative;
     overflow: hidden;
+}
+
+.tableCard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
 }
 
 .table {
@@ -188,7 +195,17 @@
 }
 
 /* =================== STATUS BADGES =================== */
-.badgeAvailable {
+.badgePending {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.12) 100%);
+    color: #d97706;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 5px;
+    font-size: 0.85rem;
+}
+
+.badgeApproved {
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.12) 100%);
     color: #15803d;
     border: 1px solid rgba(34, 197, 94, 0.2);
@@ -196,30 +213,26 @@
     padding: 0.4rem 0.8rem;
     border-radius: 5px;
     font-size: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
 }
 
-.badgeExpired {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.12) 100%);
-    color: #dc2626;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+.badgeDispensed {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.12) 100%);
+    color: #1e40af;
+    border: 1px solid rgba(59, 130, 246, 0.2);
     font-weight: 600;
     padding: 0.4rem 0.8rem;
     border-radius: 5px;
     font-size: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
 }
 
-/* Large badges for detail page */
-.badgeAvailable.badgeLarge,
-.badgeExpired.badgeLarge {
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
-    font-weight: 700;
+.badgeCanceled {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.15) 0%, rgba(75, 85, 99, 0.12) 100%);
+    color: #4b5563;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 5px;
+    font-size: 0.85rem;
 }
 
 /* =================== ACTION BUTTONS =================== */
@@ -274,90 +287,31 @@
     color: #dc2626;
 }
 
-/* Large delete button for detail page */
-.btnDelete.btnLarge {
-    padding: 0.5rem 1.5rem;
-}
-
-/* =================== MODAL =================== */
-.modalOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-}
-
-.modalContent {
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 20px 60px rgba(13, 148, 136, 0.2);
-    max-width: 900px;
-    width: 95%;
-    max-height: 90vh;
-    overflow: hidden;
-}
-
-.modalHeader {
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(8, 145, 178, 0.9) 100%);
-    color: white;
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.modalTitle {
-    font-weight: 700;
-    font-size: 1.15rem;
-    margin: 0;
-}
-
-.modalBody {
-    background: #f8fafb;
-    padding: 1.5rem;
-    max-height: 60vh;
-    overflow-y: auto;
-}
-
-.modalFooter {
-    background: #f1f5f9;
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-}
-
-.btnModalClose {
-    background: rgba(100, 116, 139, 0.1);
-    border: 1.5px solid rgba(100, 116, 139, 0.25);
-    color: #475569;
+.btnRestore {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #15803d;
     font-weight: 600;
     border-radius: 5px;
-    padding: 0.5rem 1.5rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.875rem;
     transition: all 0.15s ease;
 }
 
-.btnModalClose:hover {
-    background: rgba(100, 116, 139, 0.2);
-    border-color: rgba(100, 116, 139, 0.4);
+.btnRestore:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #15803d;
 }
 
-/* =================== STATES =================== */
-.loadingState,
+/* =================== EMPTY STATE =================== */
 .emptyState {
     text-align: center;
     padding: 3rem 2rem;
     color: #64748b;
 }
 
-.emptyState {
-    font-style: italic;
-}
-
+/* =================== LOADING STATE =================== */
 .loadingContainer {
     display: flex;
     justify-content: center;
@@ -370,156 +324,6 @@
 .loadingText {
     color: var(--teal-dark);
     font-size: 1.1rem;
-}
-
-.errorContainer {
-    text-align: center;
-    padding: 3rem 2rem;
-}
-
-.errorIcon {
-    font-size: 4rem;
-    color: #f59e0b;
-    display: block;
-    margin-bottom: 1rem;
-}
-
-.errorTitle {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 1rem;
-}
-
-/* =================== STOCK WARNING =================== */
-.stockLow {
-    color: #dc2626;
-    font-weight: 600;
-}
-
-.stockNormal {
-    color: #15803d;
-    font-weight: 600;
-}
-
-/* =================== DETAIL PAGE SPECIFIC =================== */
-.medicineHeader {
-    padding-bottom: 1.25rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 2px solid rgba(13, 148, 136, 0.1);
-}
-
-.medicineName {
-    font-weight: 800;
-    color: var(--teal-dark);
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.medicineCode {
-    color: #64748b;
-    font-size: 0.95rem;
-}
-
-.medicineCode i {
-    color: var(--teal-dark);
-}
-
-.medicineCodeValue {
-    font-weight: 600;
-    color: #334155;
-}
-
-/* Info Items */
-.infoItem {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.infoIcon {
-    flex-shrink: 0;
-    width: 42px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 5px;
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(8, 145, 178, 0.08) 100%);
-    border: 1px solid rgba(13, 148, 136, 0.15);
-    color: var(--teal-dark);
-    font-size: 1.1rem;
-}
-
-.infoLabel {
-    display: block;
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 0.25rem;
-    font-weight: 500;
-}
-
-.infoValue {
-    font-weight: 600;
-    color: #334155;
-    font-size: 1rem;
-}
-
-.stockValue {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--teal-dark);
-}
-
-.stockUnit {
-    font-size: 0.9rem;
-    color: #64748b;
-    font-weight: 500;
-}
-
-/* Description */
-.description {
-    color: #475569;
-    line-height: 1.6;
-}
-
-.descriptionEmpty {
-    color: #94a3b8;
-    font-style: italic;
-}
-
-/* Additional Info Section */
-.additionalInfo {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 2px solid rgba(13, 148, 136, 0.1);
-}
-
-.metaItem {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.metaLabel {
-    font-size: 0.85rem;
-    color: #64748b;
-    font-weight: 500;
-}
-
-.metaValue {
-    font-weight: 600;
-    color: #334155;
-}
-
-/* Action Section */
-.actionSection {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 2px solid rgba(13, 148, 136, 0.1);
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
 }
 
 /* =================== RESPONSIVE =================== */
@@ -545,35 +349,9 @@
 
     .btnView,
     .btnEdit,
-    .btnDelete {
+    .btnDelete,
+    .btnRestore {
         padding: 0.3rem 0.6rem;
         font-size: 0.8rem;
-    }
-
-    .modalContent {
-        width: 98%;
-        margin: 1rem;
-    }
-
-    .medicineName {
-        font-size: 1.3rem;
-    }
-
-    .infoIcon {
-        width: 36px;
-        height: 36px;
-        font-size: 1rem;
-    }
-
-    .stockValue {
-        font-size: 1.1rem;
-    }
-
-    .actionSection {
-        flex-direction: column;
-    }
-
-    .actionSection button {
-        width: 100%;
     }
 }

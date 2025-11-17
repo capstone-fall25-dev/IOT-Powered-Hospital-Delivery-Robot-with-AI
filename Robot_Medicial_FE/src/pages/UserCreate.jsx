@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "@/services/userService";
-import styles from '@/assets/styles/userForm.module.css'; // Dùng chung CSS
+import styles from '@/assets/styles/userForm.module.css'; 
 
 export default function UserCreate() {
     const navigate = useNavigate();

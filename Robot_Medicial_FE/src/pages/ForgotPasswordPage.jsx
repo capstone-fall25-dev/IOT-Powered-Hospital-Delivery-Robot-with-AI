@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import styles from "@/assets/styles/forgotPassword.module.css";
 
-/**
- * MedFleet • Forgot Password Screen (React + Bootstrap)
- * Tone: teal/seafoam + glass; matches other MedFleet screens
- */
 export default function ForgotPassword() {
-
-
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [sending, setSending] = useState(false);
     const [done, setDone] = useState(false);
-    const [error, setError] = useState();
-
+    const [error, setError] = useState("");
 
     function isValidEmail(v) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -19,7 +15,7 @@ export default function ForgotPassword() {
 
     async function onSubmit(e) {
         e.preventDefault();
-        setError(undefined);
+        setError("");
 
         if (!isValidEmail(email)) {
             setError("Email không hợp lệ");
@@ -40,63 +36,116 @@ export default function ForgotPassword() {
         return `${vis}${"*".repeat(Math.max(2, u.length - vis.length))}@${d}`;
     }
 
-    return (
-        <div style={{
-            fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-            minHeight: '100vh',
-            background: `radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),
-                  radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),
-                  linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%)`
-        }}>
-            <style>{`
-        :root{--teal:#4CE1C6;--ink:#0f172a}
-        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.8);box-shadow:0 20px 60px rgba(15,23,42,.10);}
-        .rounded-2xl{border-radius:22px}
-        .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-        .btn-teal:hover{filter:brightness(1.05)}
-        .title{font-weight:800; letter-spacing:.2px; color:#0b1432}
-        .subtitle{color:#3f556e}
-        .hero-emoji{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#0ea5a5,#14e2c1);color:#fff}
-      `}</style>
+    function handleBackToLogin(e) {
+        e.preventDefault();
+        navigate("/login");
+    }
 
-            <div className="container py-5 d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
-                <div className="glass rounded-2xl p-4 p-md-5" style={{ width: '100%', maxWidth: 460 }}>
-                    <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
-                        <span className="hero-emoji"><i className="bi bi-key"></i></span>
-                        <h4 className="title mb-0">Quên Mật Khẩu</h4>
-                    </div>
-                    {!done ? (
-                        <>
-                            <p className="subtitle text-center mb-4">Nhập email đã đăng ký để nhận hướng dẫn đặt lại mật khẩu.</p>
-                            <form onSubmit={onSubmit} noValidate>
-                                <div className="mb-3">
-                                    <label className="form-label">Email</label>
-                                    <input type="email" className={`form-control form-control-lg rounded-pill ${error ? 'is-invalid' : ''}`} placeholder="nhapemail@benhvien.vn" value={email} onChange={e => setEmail(e.target.value)} />
-                                    {error && <div className="invalid-feedback">{error}</div>}
+    return (
+        <div className={styles.page}>
+                <div className={styles.glass}>
+                    <div className="p-4 p-md-5">
+
+                        {!done ? (
+                            <>
+                                {/* =================== HEADER =================== */}
+                                <div className={styles.header}>
+                                    <span className={styles.heroIcon}>
+                                        <i className="bi bi-key-fill"></i>
+                                    </span>
+                                    <h4 className={styles.pageTitle}>Quên Mật Khẩu</h4>
                                 </div>
-                                <button className="btn btn-teal w-100 rounded-pill py-2" type="submit" disabled={sending || !email}>
-                                    {sending && <span className="spinner-border spinner-border-sm me-2" role="status"></span>}
-                                    Xác nhận
-                                </button>
-                            </form>
-                            <div className="text-center mt-3">
-                                <a className="small text-decoration-none" href="#">← Quay lại đăng nhập</a>
+
+                                <p className={styles.subtitle}>
+                                    Nhập email đã đăng ký để nhận hướng dẫn đặt lại mật khẩu.
+                                </p>
+
+                                {/* =================== FORM =================== */}
+                                <form onSubmit={onSubmit} noValidate>
+                                    <div className={styles.formGroup}>
+                                        <label className={styles.formLabel}>
+                                            <i className="bi bi-envelope me-1"></i>
+                                            Email
+                                        </label>
+                                        <input 
+                                            type="email" 
+                                            className={`${styles.formControl} ${error ? styles.formControlError : ''}`}
+                                            placeholder="nhapemail@benhvien.vn" 
+                                            value={email} 
+                                            onChange={(e) => setEmail(e.target.value)} 
+                                        />
+                                        {error && (
+                                            <div className={styles.errorFeedback}>
+                                                <i className="bi bi-exclamation-circle me-1"></i>
+                                                {error}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button 
+                                        className={styles.btnTeal}
+                                        type="submit" 
+                                        disabled={sending || !email}
+                                    >
+                                        {sending && (
+                                            <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        )}
+                                        {sending ? "Đang xử lý..." : "Xác nhận"}
+                                    </button>
+                                </form>
+
+                                <div className="text-center mt-3">
+                                    <a 
+                                        className={styles.backLink}
+                                        href="#" 
+                                        onClick={handleBackToLogin}
+                                    >
+                                        <i className="bi bi-arrow-left"></i>
+                                        Quay lại đăng nhập
+                                    </a>
+                                </div>
+                            </>
+                        ) : (
+                            /* =================== SUCCESS STATE =================== */
+                            <div className={styles.successContainer}>
+                                <span className={styles.successEmoji}>📬</span>
+                                
+                                <h5 className={styles.successTitle}>
+                                    Vui lòng kiểm tra email
+                                </h5>
+                                
+                                <p className={styles.successMessage}>
+                                    Chúng tôi đã gửi liên kết đặt lại mật khẩu đến{" "}
+                                    <strong>{masked(email)}</strong>.
+                                </p>
+
+                                <div className={styles.buttonGroup}>
+                                    <button 
+                                        className={styles.btnSecondary}
+                                        onClick={() => setDone(false)}
+                                    >
+                                        <i className="bi bi-envelope me-2"></i>
+                                        Gửi lại email khác
+                                    </button>
+                                    
+                                    <button 
+                                        className={styles.btnTeal}
+                                        onClick={handleBackToLogin}
+                                    >
+                                        <i className="bi bi-box-arrow-in-right me-2"></i>
+                                        Quay lại đăng nhập
+                                    </button>
+                                </div>
+
+                                <div className={styles.helpText}>
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    Không thấy email? Kiểm tra thư mục Spam/Quảng cáo.
+                                </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="text-center">
-                            <div className="display-6 mb-2">📬</div>
-                            <h5 className="fw-bold">Vui lòng kiểm tra email</h5>
-                            <p className="subtitle">Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <strong>{masked(email)}</strong>.</p>
-                            <div className="d-grid gap-2 mt-3">
-                                <button className="btn btn-outline-secondary rounded-pill" onClick={() => { setDone(false); }}>Gửi lại email khác</button>
-                                <a className="btn btn-teal rounded-pill" href="#">Quay lại đăng nhập</a>
-                            </div>
-                            <div className="small text-muted mt-3">Không thấy email? Kiểm tra thư mục Spam/Quảng cáo.</div>
-                        </div>
-                    )}
+                        )}
+
+                    </div>
                 </div>
-            </div>
         </div>
     );
 }
