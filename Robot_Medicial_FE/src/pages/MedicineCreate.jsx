@@ -39,7 +39,6 @@ export default function MedicineCreate() {
     async function handleSubmit(e) {
         e.preventDefault();
         
-        // Validation
         if (!form.categoryId) {
             alert("Vui lòng chọn danh mục!");
             return;
@@ -60,185 +59,195 @@ export default function MedicineCreate() {
 
     return (
         <div className={styles.page}>
-            <div className="container-fluid py-4">
-                <div className="container-lg">
-                    {/* Header */}
-                    <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className={styles.chip}>
-                                <i className="bi bi-plus-circle me-1"></i>
-                            </span>
-                            <h4 className="mb-0 fw-bold">Thêm thuốc mới</h4>
+            <div className="container-xl py-4">
+                <div className="row justify-content-center">
+                    <div className="col-lg-10">
+
+                        {/* =================== HEADER ==================== */}
+                        <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                            <div className="d-flex align-items-center gap-3">
+                                <span className={styles.chip}>
+                                    <i className="bi bi-plus-circle"></i>
+                                </span>
+                                <h4 className={`${styles.pageTitle} mb-0`}>Thêm thuốc mới</h4>
+                            </div>
+
+                            <button 
+                                className={styles.btnBack}
+                                onClick={() => navigate("/medicines")}
+                            >
+                                <i className="bi bi-arrow-left me-1"></i>
+                                Quay lại
+                            </button>
                         </div>
-                        <button 
-                            className="btn btn-outline-secondary rounded-pill" 
-                            onClick={() => navigate("/medicines")}
-                        >
-                            <i className="bi bi-arrow-left me-1"></i> Quay lại
-                        </button>
-                    </div>
 
-                    {/* Form */}
-                    <div className={`glass ${styles.glass} ${styles.rounded2xl} p-4 p-md-5`}>
-                        <form onSubmit={handleSubmit}>
-                            <div className="row g-3">
-                                {/* Mã thuốc */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Mã thuốc <span className="text-danger">*</span>
-                                    </label>
-                                    <input 
-                                        name="medicineCode" 
-                                        className="form-control"
-                                        placeholder="Nhập mã thuốc"
-                                        value={form.medicineCode} 
-                                        onChange={handleChange} 
-                                        required 
-                                    />
+                        {/* =================== FORM ==================== */}
+                        <div className={`${styles.glass} p-4 p-md-5`}>
+                            <form onSubmit={handleSubmit}>
+                                <div className="row g-4">
+
+                                    {/* Mã thuốc */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Mã thuốc <span className="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            name="medicineCode" 
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Nhập mã thuốc"
+                                            value={form.medicineCode} 
+                                            onChange={handleChange} 
+                                            required 
+                                        />
+                                    </div>
+
+                                    {/* Tên thuốc */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Tên thuốc <span className="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            name="name" 
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Nhập tên thuốc"
+                                            value={form.name} 
+                                            onChange={handleChange} 
+                                            required 
+                                        />
+                                    </div>
+
+                                    {/* Danh mục */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Danh mục <span className="text-danger">*</span>
+                                        </label>
+                                        <select 
+                                            name="categoryId" 
+                                            className={`form-select ${styles.formSelect}`}
+                                            value={form.categoryId}
+                                            onChange={handleChange}
+                                            required
+                                        >
+                                            <option value="">-- Chọn danh mục --</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.categoryName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Đơn vị */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Đơn vị <span className="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            name="unit" 
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Ví dụ: viên, hộp, lọ..."
+                                            value={form.unit} 
+                                            onChange={handleChange} 
+                                            required 
+                                        />
+                                    </div>
+
+                                    {/* Số lượng tồn */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Số lượng tồn <span className="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            name="stockQuantity" 
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Nhập số lượng"
+                                            min="0"
+                                            value={form.stockQuantity} 
+                                            onChange={handleChange}
+                                            required 
+                                        />
+                                    </div>
+
+                                    {/* Hạn sử dụng */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Hạn sử dụng
+                                        </label>
+                                        <input 
+                                            type="date" 
+                                            name="expiryDate" 
+                                            className={`form-control ${styles.formControl}`}
+                                            value={form.expiryDate} 
+                                            onChange={handleChange} 
+                                        />
+                                    </div>
+
+                                    {/* Trạng thái */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Trạng thái
+                                        </label>
+                                        <select 
+                                            name="status" 
+                                            className={`form-select ${styles.formSelect}`}
+                                            value={form.status}
+                                            onChange={handleChange}
+                                        >
+                                            <option value={0}>Sẵn sàng</option>
+                                            <option value={1}>Hết hạn</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Mô tả */}
+                                    <div className="col-12">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Mô tả
+                                        </label>
+                                        <textarea 
+                                            name="description" 
+                                            className={`form-control ${styles.formControl}`}
+                                            rows="4"
+                                            placeholder="Nhập mô tả về thuốc (tùy chọn)"
+                                            value={form.description} 
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+
                                 </div>
 
-                                {/* Tên thuốc */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Tên thuốc <span className="text-danger">*</span>
-                                    </label>
-                                    <input 
-                                        name="name" 
-                                        className="form-control"
-                                        placeholder="Nhập tên thuốc"
-                                        value={form.name} 
-                                        onChange={handleChange} 
-                                        required 
-                                    />
-                                </div>
-
-                                {/* Danh mục */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Danh mục <span className="text-danger">*</span>
-                                    </label>
-                                    <select 
-                                        name="categoryId" 
-                                        className="form-select" 
-                                        value={form.categoryId}
-                                        onChange={handleChange}
-                                        required
+                                {/* Action Buttons */}
+                                <div className={styles.actionSection}>
+                                    <button 
+                                        type="button"
+                                        className={styles.btnModalClose}
+                                        onClick={() => navigate("/medicines")}
+                                        disabled={loading}
                                     >
-                                        <option value="">-- Chọn danh mục --</option>
-                                        {categories.map(c => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.categoryName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Đơn vị */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Đơn vị <span className="text-danger">*</span>
-                                    </label>
-                                    <input 
-                                        name="unit" 
-                                        className="form-control"
-                                        placeholder="Ví dụ: viên, hộp, lọ..."
-                                        value={form.unit} 
-                                        onChange={handleChange} 
-                                        required 
-                                    />
-                                </div>
-
-                                {/* Số lượng tồn */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Số lượng tồn <span className="text-danger">*</span>
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        name="stockQuantity" 
-                                        className="form-control"
-                                        placeholder="Nhập số lượng"
-                                        min="0"
-                                        value={form.stockQuantity} 
-                                        onChange={handleChange}
-                                        required 
-                                    />
-                                </div>
-
-                                {/* Hạn sử dụng */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Hạn sử dụng
-                                    </label>
-                                    <input 
-                                        type="date" 
-                                        name="expiryDate" 
-                                        className="form-control"
-                                        value={form.expiryDate} 
-                                        onChange={handleChange} 
-                                    />
-                                </div>
-
-                                {/* Trạng thái */}
-                                <div className="col-md-6">
-                                    <label className="form-label fw-semibold">
-                                        Trạng thái
-                                    </label>
-                                    <select 
-                                        name="status" 
-                                        className="form-select"
-                                        value={form.status}
-                                        onChange={handleChange}
+                                        <i className="bi bi-x-circle me-1"></i>
+                                        Hủy
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className={styles.btnTeal}
+                                        disabled={loading}
                                     >
-                                        <option value={0}>Sẵn sàng</option>
-                                        <option value={1}>Hết hạn</option>
-                                    </select>
+                                        {loading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Đang lưu...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-check-circle me-1"></i>
+                                                Lưu thuốc
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
+                            </form>
+                        </div>
 
-                                {/* Mô tả */}
-                                <div className="col-12">
-                                    <label className="form-label fw-semibold">
-                                        Mô tả
-                                    </label>
-                                    <textarea 
-                                        name="description" 
-                                        className="form-control"
-                                        rows="4"
-                                        placeholder="Nhập mô tả về thuốc (tùy chọn)"
-                                        value={form.description} 
-                                        onChange={handleChange}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Buttons */}
-                            <div className="d-flex gap-2 justify-content-end mt-4 pt-3 border-top">
-                                <button 
-                                    type="button"
-                                    className="btn btn-outline-secondary rounded-pill px-4" 
-                                    onClick={() => navigate("/medicines")}
-                                    disabled={loading}
-                                >
-                                    <i className="bi bi-x-circle me-1"></i> Hủy
-                                </button>
-                                <button 
-                                    type="submit"
-                                    className={`btn ${styles.btnTeal} rounded-pill px-4`}
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm me-2"></span>
-                                            Đang lưu...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-check-circle me-1"></i> Lưu thuốc
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             </div>

@@ -14,25 +14,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<UserResponseDto?> UpdateAsync(ulong id, UserDto userDto);
         Task<bool> ToggleActiveAsync(ulong id, bool isActive);
 
-
         // interface login, logout, verifil user
         string HashPassword(string password);
 
         Task AddUserAsync(User user);
-        Task<User?> GetByUsernameAsync(string username);
+        Task<User?> GetByEmailAsync(string email);
         Task UpdateUserAsync(User user);
-
 
         Task<string> RegisterAsync(Models.DTOs.RegisterRequest request);
         Task<string> VerifyOtpAsync(VerifyOtpRequest request);
         Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context);
         Task<string> LogoutAsync(HttpContext context, string username);
         Task<string> RequestForgotPasswordAsync(Models.DTOs.ForgotPasswordRequest request);
-
-
         Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request);
-
         Task<string> AdminResetPasswordAsync(string email);
-
     }
 }

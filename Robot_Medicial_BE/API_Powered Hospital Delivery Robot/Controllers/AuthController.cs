@@ -70,14 +70,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         [Authorize]
         public async Task<IActionResult> CheckLoginStatus()
         {
-            // 1️⃣ Lấy token từ header
+            // 1️. Lấy token từ header
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 return Unauthorized(new { Message = "Thiếu hoặc sai định dạng Authorization header." });
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
 
-            // 2️⃣ Đọc token để lấy email (dùng email làm key session)
+            // 2️. Đọc token để lấy email (dùng email làm key session)
             JwtSecurityToken jwtToken;
             try
             {
@@ -89,16 +89,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
 
             var email = jwtToken.Claims.FirstOrDefault(c =>
-                            c.Type == ClaimTypes.Email ||
-                            c.Type == "email" ||
-                            c.Type == "unique_name" ||
-                            c.Type == "sub" ||
-                            c.Type == ClaimTypes.Name)?.Value;
+                                 c.Type == ClaimTypes.Email ||
+                                 c.Type == "email" ||
+                                 c.Type == "unique_name" ||
+                                 c.Type == "sub" ||
+                                 c.Type == ClaimTypes.Name)?.Value;
 
             if (string.IsNullOrEmpty(email))
                 return Unauthorized(new { Message = "Token không hợp lệ — không tìm thấy email." });
 
-            // 3️⃣ Kiểm tra session theo email
+            // 3️. Kiểm tra session theo email
             var sessionToken = HttpContext.Session.GetString($"UserToken_{email}");
             if (sessionToken == null)
                 return Unauthorized(new { Message = "Phiên đăng nhập đã hết hạn hoặc người dùng chưa đăng nhập." });
@@ -106,12 +106,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (sessionToken != token)
                 return Unauthorized(new { Message = "Token không khớp — người dùng đã đăng nhập ở nơi khác." });
 
-            // 4️⃣ Lấy thông tin user từ DB (tùy chọn)
-            var user = await _userService.GetByUsernameAsync(email);
+            // 4️. Lấy thông tin user từ DB (tùy chọn)
+            var user = await _userService.GetByEmailAsync(email);
             if (user == null)
                 return Unauthorized(new { Message = "Không tìm thấy người dùng." });
 
-            // 5️⃣ Thành công
+            // 5️. Thành công
             return Ok(new
             {
                 Message = "Người dùng đã đăng nhập và token hợp lệ.",
@@ -122,7 +122,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpPost("admin-reset-password")]
-        //[Authorize(Roles = "admin")]
+        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> AdminResetPassword([FromQuery] string email)
         {
             var result = await _userService.AdminResetPasswordAsync(email);

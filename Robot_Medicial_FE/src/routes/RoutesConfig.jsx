@@ -53,7 +53,7 @@ const routes = [
 
   { path: "/login", element: <Login /> },
   { path: "/reset-password", element: <ChangePasswordPage /> },
-  { path: "/forgot-password", element: <MainLayout><ForgotPasswordPage /></MainLayout> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/change-password", element: <MainLayout><ChangePasswordPage /></MainLayout> },
 
   { path: "/", element: <Home /> },

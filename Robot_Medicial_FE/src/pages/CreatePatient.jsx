@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPatient } from "@/services/patientService";
 import { getAllRooms } from "@/services/roomService";
-import styles from "@/assets/styles/createPatient.module.css";
+import styles from "@/assets/styles/patientForm.module.css";
 
 export default function CreatePatient() {
     const navigate = useNavigate();
@@ -23,7 +23,6 @@ export default function CreatePatient() {
     const [loading, setLoading] = useState(false);
     const [rooms, setRooms] = useState([]);
     const [error, setError] = useState("");
-
 
     // Gọi API lấy danh sách phòng
     useEffect(() => {
@@ -77,7 +76,7 @@ export default function CreatePatient() {
         try {
             await createPatient(form);
             alert("Tạo bệnh nhân thành công!");
-            navigate("/patient");
+            navigate("/patients");
         } catch (err) {
             console.error("Lỗi khi tạo bệnh nhân:", err);
             alert("Không thể tạo bệnh nhân. Vui lòng thử lại!");
@@ -88,86 +87,222 @@ export default function CreatePatient() {
 
     return (
         <div className={styles.page}>
-            <div className="container py-5">
-                <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-                    <div className="d-flex align-items-center gap-2">
-                        <span className={styles.chip}><i className="bi bi-person-plus-fill me-1"></i></span>
-                        <h4 className="mb-0 fw-bold">Thêm mới bệnh nhân</h4>
+            <div className="container-xl py-4">
+                <div className="row justify-content-center">
+                    <div className="col-lg-10">
+
+                        {/* =================== HEADER ==================== */}
+                        <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                            <div className="d-flex align-items-center gap-3">
+                                <span className={styles.chip}>
+                                    <i className="bi bi-person-plus-fill"></i>
+                                </span>
+                                <h4 className={`${styles.pageTitle} mb-0`}>Thêm mới bệnh nhân</h4>
+                            </div>
+
+                            <button 
+                                className={styles.btnBack}
+                                onClick={() => navigate("/patients")}
+                            >
+                                <i className="bi bi-arrow-left me-1"></i>
+                                Quay lại
+                            </button>
+                        </div>
+
+                        {/* =================== FORM ==================== */}
+                        <div className={`${styles.glass} p-4 p-md-5`}>
+                            {error && (
+                                <div className={styles.alert}>
+                                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                    {error}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit}>
+                                <div className="row g-4">
+
+                                    {/* Mã bệnh nhân */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Mã bệnh nhân <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="patientCode"
+                                            value={form.patientCode}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="VD: BN001"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Họ tên */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Họ và tên <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="fullName"
+                                            value={form.fullName}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Nhập họ tên đầy đủ"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Giới tính */}
+                                    <div className="col-md-4">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Giới tính <span className="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            name="gender"
+                                            value={form.gender}
+                                            onChange={handleChange}
+                                            className={`form-select ${styles.formSelect}`}
+                                        >
+                                            <option value="male">Nam</option>
+                                            <option value="female">Nữ</option>
+                                            <option value="other">Khác</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Ngày sinh */}
+                                    <div className="col-md-4">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Ngày sinh <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            name="dob"
+                                            value={form.dob}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Số điện thoại */}
+                                    <div className="col-md-4">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Số điện thoại <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            value={form.phone}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="VD: 0905123456"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Địa chỉ */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Địa chỉ
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="address"
+                                            value={form.address}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="Nhập địa chỉ"
+                                        />
+                                    </div>
+
+                                    {/* Khoa */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Khoa / Phòng ban
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="department"
+                                            value={form.department}
+                                            onChange={handleChange}
+                                            className={`form-control ${styles.formControl}`}
+                                            placeholder="VD: Khoa nội tổng hợp"
+                                        />
+                                    </div>
+
+                                    {/* Phòng */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Phòng <span className="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            name="roomId"
+                                            value={form.roomId}
+                                            onChange={handleRoomSelect}
+                                            className={`form-select ${styles.formSelect}`}
+                                            required
+                                        >
+                                            <option value="">-- Chọn phòng --</option>
+                                            {rooms.map((room) => (
+                                                <option key={room.id} value={room.id}>
+                                                    {room.roomName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Trạng thái */}
+                                    <div className="col-md-6">
+                                        <label className={`form-label ${styles.formLabel}`}>
+                                            Trạng thái
+                                        </label>
+                                        <select
+                                            name="status"
+                                            value={form.status}
+                                            onChange={handleChange}
+                                            className={`form-select ${styles.formSelect}`}
+                                        >
+                                            <option value="active">Đang điều trị</option>
+                                            <option value="discharged">Đã xuất viện</option>
+                                        </select>
+                                    </div>
+
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className={styles.actionSection}>
+                                    <button
+                                        type="button"
+                                        className={styles.btnCancel}
+                                        onClick={() => navigate("/patients")}
+                                    >
+                                        <i className="bi bi-x-circle me-1"></i>
+                                        Hủy
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        className={styles.btnTeal}
+                                        disabled={loading}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Đang lưu...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-check-circle me-1"></i>
+                                                Lưu bệnh nhân
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
                     </div>
-                    <button className="btn btn-outline-secondary rounded-pill" onClick={() => navigate("/patients")}>
-                        <i className="bi bi-arrow-left"></i> Quay lại
-                    </button>
-                </div>
-
-                <div className={styles.glass + " p-4 p-md-5"}>
-                    {error && <div className="alert alert-danger text-center">{error}</div>}
-
-                    <form onSubmit={handleSubmit} className="row g-3">
-                        <div className="col-md-4">
-                            <label className="form-label">Mã bệnh nhân</label>
-                            <input type="text" name="patientCode" value={form.patientCode} onChange={handleChange} className="form-control" required />
-                        </div>
-
-                        <div className="col-md-8">
-                            <label className="form-label">Họ và tên</label>
-                            <input type="text" name="fullName" value={form.fullName} onChange={handleChange} className="form-control" required />
-                        </div>
-
-                        <div className="col-md-4">
-                            <label className="form-label">Giới tính</label>
-                            <select name="gender" value={form.gender} onChange={handleChange} className="form-select">
-                                <option value="male">Nam</option>
-                                <option value="female">Nữ</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-4">
-                            <label className="form-label">Ngày sinh</label>
-                            <input type="date" name="dob" value={form.dob} onChange={handleChange} className="form-control" required />
-                        </div>
-
-                        <div className="col-md-4">
-                            <label className="form-label">Số điện thoại</label>
-                            <input type="text" name="phone" value={form.phone} onChange={handleChange} className="form-control" required placeholder="VD: 0905123456 hoặc +84905123456" />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Địa chỉ</label>
-                            <input type="text" name="address" value={form.address} onChange={handleChange} className="form-control" />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Khoa / Phòng ban</label>
-                            <input type="text" name="department" value={form.department} onChange={handleChange} className="form-control" />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Phòng</label>
-                            <select name="roomId" value={form.roomId} onChange={handleRoomSelect} className="form-select" required>
-                                <option value="">-- Chọn phòng --</option>
-                                {rooms.map((room) => (
-                                    <option key={room.id} value={room.id}>{room.roomName}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Trạng thái</label>
-                            <select name="status" value={form.status} onChange={handleChange} className="form-select">
-                                <option value="active">Đang điều trị</option>
-                                <option value="discharged">Đã xuất viện</option>
-                            </select>
-                        </div>
-
-                        <div className="col-12 text-end mt-4">
-                            <button type="button" className="btn btn-outline-secondary rounded-pill me-2" onClick={() => navigate("/patients")}>
-                                Hủy
-                            </button>
-                            <button type="submit" className="btn btn-teal rounded-pill" disabled={loading}>
-                                {loading ? "Đang lưu..." : "Lưu bệnh nhân"}
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
         </div>

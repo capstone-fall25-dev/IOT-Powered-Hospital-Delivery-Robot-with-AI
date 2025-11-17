@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getTaskById } from "@/services/taskService";
+import styles from "@/assets/styles/taskDetail.module.css";
 
 export default function TaskDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [task, setTask] = useState(null);
-
-    const statusColor = {
-        pending: "warning",
-        in_progress: "info",
-        completed: "success",
-        canceled: "secondary"
-    };
+    const [loading, setLoading] = useState(true);
 
     function formatVNDateTime(dateStr) {
         if (!dateStr) return "—";
@@ -27,15 +22,35 @@ export default function TaskDetail() {
         });
     }
 
-    function getBlink(startTime) {
+    function getScheduleClass(startTime) {
         if (!startTime) return "";
         const now = new Date();
         const start = new Date(startTime);
         const diffMin = (start - now) / 1000 / 60;
 
-        if (diffMin <= 0) return "blink blink-yellow";
-        if (diffMin <= 1) return "blink blink-red";
-        return "blink blink-green";
+        if (diffMin <= 0) return styles.scheduleTimeOverdue;
+        if (diffMin <= 1) return styles.scheduleTimeSoon;
+        return styles.scheduleTimeUpcoming;
+    }
+
+    function getStatusBadgeClass(status) {
+        if (status === "pending") return styles.badgePending;
+        if (status === "in_progress") return styles.badgeInProgress;
+        if (status === "completed") return styles.badgeCompleted;
+        if (status === "canceled") return styles.badgeCanceled;
+        return styles.badgePending;
+    }
+
+    function getPriorityBadgeClass(priority) {
+        if (priority === 1) return styles.badgeLow;
+        if (priority === 2) return styles.badgeMedium;
+        return styles.badgeHigh;
+    }
+
+    function getPriorityText(priority) {
+        if (priority === 1) return "Thấp";
+        if (priority === 2) return "Trung bình";
+        return "Cao";
     }
 
     useEffect(() => {
@@ -43,214 +58,277 @@ export default function TaskDetail() {
             try {
                 const data = await getTaskById(id);
                 setTask(data);
+                setLoading(false);
             } catch (e) {
                 console.error("Lỗi load detail:", e);
+                setLoading(false);
             }
         }
         load();
     }, [id]);
 
-    if (!task) return <div className="text-center mt-5">Đang tải dữ liệu...</div>;
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <div className={styles.loadingContainer}>
+                    <div className="spinner-border text-primary"></div>
+                    <p className={styles.loadingText}>Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const handleEdit = () => {
-        navigate(`/task-edit/${task.id}`);
-    };
-
-    const handleBack = () => {
-        navigate("/dashboard");
-    };
+    if (!task) {
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className={styles.emptyState}>
+                        <i className="bi bi-exclamation-triangle" style={{ fontSize: '3rem' }}></i>
+                        <p>Không tìm thấy nhiệm vụ</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <>
-            <style>{`
-                :root{--teal:#4CE1C6;}
-                .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
-                       border-radius:8px;border:1px solid rgba(255,255,255,.85);
-                       box-shadow:0 8px 24px rgba(15,23,42,.08);}
-                @keyframes blink{50%{opacity:.25}}
-                .blink{animation:blink 1s infinite;font-weight:700}
-                .blink-green{color:#16a34a!important}
-                .blink-red{color:#dc2626!important}
-                .blink-yellow{color:#f59e0b!important}
+        <div className={styles.page}>
+            <div className="container-xl py-4">
 
-                /* Padding động dựa trên sidebar width để full hơn */
-                .task-detail-padding {
-                    padding-right: 1rem;
-                    transition: padding-left 0.2s ease-in-out;
-                }
-
-                body.sidebar-collapsed .task-detail-padding {
-                    padding-left: calc(60px + 1rem);
-                }
-
-                @media (max-width: 1024px) {
-                    .task-detail-padding {
-                        padding-left: 1rem !important;
-                    }
-                }
-
-                /* Breadcrumb style */
-                .breadcrumb-item + .breadcrumb-item::before {
-                    content: " > ";
-                    color: #6c757d;
-                }
-
-                /* Button group responsive */
-                .btn-group-sm .btn { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
-
-                /* Stop section đơn giản */
-                .stop-section { margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; }
-                .prescription-list { list-style: none; padding: 0; }
-                .prescription-list li { padding: 0.5rem 0; border-bottom: 1px solid #dee2e6; }
-                .prescription-list li:last-child { border-bottom: none; }
-            `}</style>
-
-            <div className="task-detail-padding">
-                {/* BREADCRUMBS & BUTTONS */}
-                <nav aria-label="breadcrumb" className="mb-3 mt-3">
-                    <ol className="breadcrumb">
-                        <li className="breadcrumb-item"><a href="#" onClick={handleBack} className="text-decoration-none text-muted">Nhiệm vụ</a></li>
-                        <li className="breadcrumb-item active" aria-current="page">Chi Tiết #{task.id}</li>
+                {/* =================== BREADCRUMB =================== */}
+                <nav aria-label="breadcrumb" className="mb-4">
+                    <ol className={`breadcrumb ${styles.breadcrumb}`}>
+                        <li className={styles.breadcrumbItem}>
+                            <a 
+                                href="#" 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate("/dashboard");
+                                }}
+                                className={styles.breadcrumbLink}
+                            >
+                                Nhiệm vụ -
+                            </a>
+                        </li>
+                        <li className={`${styles.breadcrumbItem} ${styles.breadcrumbActive}`}>
+                            - Chi tiết #{task.id}
+                        </li>
                     </ol>
                 </nav>
 
-                {/* TASK HEADER CARD */}
-                <div className="glass p-4 mb-4">
-                    <div className="d-flex justify-content-between align-items-start mb-3">
+                {/* =================== TASK HEADER CARD =================== */}
+                <div className={`${styles.glass} p-4 p-md-5 mb-4`}>
+                    <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
                         <div>
-                            <h1 className="fw-bold mb-2">Nhiệm vụ #{task.id}</h1>
-                            <p className="text-muted mb-2">Robot: <strong>{task.robotName}</strong></p>
-                            <span className={`badge bg-${statusColor[task.status] ?? "secondary"}`}>
+                            <h1 className={styles.pageTitle}>Nhiệm vụ #{task.id}</h1>
+                            <p className={styles.subtitle}>
+                                Robot: <strong>{task.robotName}</strong>
+                            </p>
+                            <span className={getStatusBadgeClass(task.status)}>
                                 {task.status.toUpperCase()}
                             </span>
                         </div>
-                        <div className="btn-group btn-group-sm" role="group">
-                            <button className="btn btn-outline-primary" onClick={handleEdit}>
+
+                        <div className="d-flex gap-2 flex-wrap">
+                            <button 
+                                className={styles.btnEdit}
+                                onClick={() => navigate(`/task-edit/${task.id}`)}
+                            >
+                                <i className="bi bi-pencil me-1"></i>
                                 Sửa
                             </button>
-                            <button className="btn btn-outline-secondary" onClick={handleBack}>
+                            <button 
+                                className={styles.btnBack}
+                                onClick={() => navigate("/dashboard")}
+                            >
+                                <i className="bi bi-arrow-left me-1"></i>
                                 Quay lại
                             </button>
                         </div>
                     </div>
 
-                    <div className="row g-3">
-                        <div className="col-md-6">
-                            <dl>
-                                <dt>Người giao:</dt>
-                                <dd>{task.assignedByFullName} ({task.assignedByEmail})</dd>
-                                <dt>Độ ưu tiên:</dt>
-                                <dd>
-                                    <span className={`badge bg-${task.priority === 1 ? 'success' : task.priority === 2 ? 'warning' : 'danger'}`}>
-                                        {task.priority === 1 ? 'Thấp' : task.priority === 2 ? 'Trung bình' : 'Cao'}
+                    <div className={styles.infoSection}>
+                        <div className="row g-4">
+                            <div className="col-md-6">
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>Người giao</div>
+                                    <div className={styles.infoValue}>
+                                        <strong>{task.assignedByFullName}</strong>
+                                        <br />
+                                        <small className="text-muted">{task.assignedByEmail}</small>
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>Độ ưu tiên</div>
+                                    <span className={getPriorityBadgeClass(task.priority)}>
+                                        {getPriorityText(task.priority)}
                                     </span>
-                                </dd>
-                                <dt>Ngày tạo:</dt>
-                                <dd className="text-muted">{formatVNDateTime(task.createdAt)}</dd>
-                            </dl>
-                        </div>
-                        <div className="col-md-6">
-                            <dl>
-                                <dt className={getBlink(task.scheduledStartAt)}>Bắt đầu lúc:</dt>
-                                <dd className={getBlink(task.scheduledStartAt)}>{formatVNDateTime(task.scheduledStartAt)}</dd>
-                                <dt>Bản đồ:</dt>
-                                <dd className="text-primary">{task.mapName}</dd>
-                                <dt>Tổng điểm dừng:</dt>
-                                <dd><span className="badge bg-info">{task.stops?.length || 0}</span></dd>
-                            </dl>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>Ngày tạo</div>
+                                    <div className={`${styles.infoValue} text-muted`}>
+                                        {formatVNDateTime(task.createdAt)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="col-md-6">
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>
+                                        <i className="bi bi-clock me-1"></i>
+                                        Bắt đầu lúc
+                                    </div>
+                                    <span className={`${styles.scheduleTime} ${getScheduleClass(task.scheduledStartAt)}`}>
+                                        {formatVNDateTime(task.scheduledStartAt)}
+                                    </span>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>Bản đồ</div>
+                                    <div className={`${styles.infoValue} text-primary`}>
+                                        {task.mapName}
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className={styles.infoLabel}>Tổng điểm dừng</div>
+                                    <span className={styles.badgeInfo}>
+                                        {task.stops?.length || 0} điểm
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* STOPS SECTION */}
-                <div className="glass p-4 mb-3">
-                    <h2 className="fw-bold mb-3">Danh sách điểm dừng</h2>
+                {/* =================== STOPS SECTION =================== */}
+                <div className={`${styles.glass} p-4 p-md-5`}>
+                    <h2 className={styles.sectionTitle}>
+                        <i className="bi bi-geo-alt-fill"></i>
+                        Danh sách điểm dừng
+                    </h2>
 
-                    {task.stops.length === 0 ? (
-                        <p className="text-muted text-center">Chưa có điểm dừng nào.</p>
+                    {!task.stops || task.stops.length === 0 ? (
+                        <div className={styles.emptyState}>
+                            <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                            Chưa có điểm dừng nào
+                        </div>
                     ) : (
                         task.stops.map((s, idx) => (
-                            <div key={idx} className="stop-section mb-4">
-                                <h3 className="fw-semibold mb-2">Điểm dừng #{s.seqNo}</h3>
-                                <p className="text-muted mb-3">Trạng thái giao: <span className={`badge bg-${s.assignmentStatus === 'pending' ? 'warning' : s.assignmentStatus === 'in_progress' ? 'info' : 'success'}`}>
-                                    {s.assignmentStatus.toUpperCase()}
-                                </span></p>
+                            <div key={idx} className={styles.stopCard}>
+                                <div className={styles.stopHeader}>
+                                    <div className={styles.stopNumber}>{s.seqNo}</div>
+                                    <div className={styles.stopTitle}>Điểm dừng #{s.seqNo}</div>
+                                    <span className={getStatusBadgeClass(s.assignmentStatus)}>
+                                        {s.assignmentStatus?.toUpperCase()}
+                                    </span>
+                                </div>
 
-                                <dl className="row g-3">
+                                <div className="row g-3">
                                     <div className="col-md-6">
-                                        <dt className="col-sm-4">Điểm đến:</dt>
-                                        <dd className="col-sm-8">{s.destinationName}</dd>
+                                        <div className={styles.infoLabel}>Điểm đến</div>
+                                        <div className={styles.infoValue}>{s.destinationName}</div>
                                     </div>
+
                                     <div className="col-md-6">
-                                        <dt className="col-sm-4">Bệnh nhân:</dt>
-                                        <dd className="col-sm-8"><strong>{s.patientName}</strong> ({s.patientCode})</dd>
+                                        <div className={styles.infoLabel}>Bệnh nhân</div>
+                                        <div className={styles.infoValue}>
+                                            <strong>{s.patientName}</strong>
+                                            <br />
+                                            <small className="text-muted">Mã: {s.patientCode}</small>
+                                        </div>
                                     </div>
+
                                     <div className="col-md-4">
-                                        <dt className="col-sm-4">Phòng:</dt>
-                                        <dd className="col-sm-8">{s.roomNumber || '—'}</dd>
+                                        <div className={styles.infoLabel}>Phòng</div>
+                                        <div className={styles.infoValue}>{s.roomNumber || '—'}</div>
                                     </div>
+
                                     <div className="col-md-4">
-                                        <dt className="col-sm-4">Khoa:</dt>
-                                        <dd className="col-sm-8">{s.department || '—'}</dd>
+                                        <div className={styles.infoLabel}>Khoa</div>
+                                        <div className={styles.infoValue}>{s.department || '—'}</div>
                                     </div>
+
                                     <div className="col-md-4">
-                                        <dt className="col-sm-4">Khoang:</dt>
-                                        <dd className="col-sm-8">
-                                            <strong>{s.compartmentCode}</strong> — {s.compartmentCategory || '—'}<br />
-                                            <small className={`badge bg-${s.compartmentStatus === 'locked' ? 'danger' : 'success'}`}>
+                                        <div className={styles.infoLabel}>Ngăn chứa</div>
+                                        <div className={styles.infoValue}>
+                                            <strong>{s.compartmentCode}</strong>
+                                            <br />
+                                            <small className="text-muted">{s.compartmentCategory || '—'}</small>
+                                            <br />
+                                            <span className={s.compartmentStatus === 'locked' ? styles.badgeLocked : styles.badgeUnlocked}>
                                                 {s.compartmentStatus}
-                                            </small>
-                                        </dd>
+                                            </span>
+                                        </div>
                                     </div>
-                                </dl>
 
-                                {s.itemDesc && (
-                                    <div className="mt-3">
-                                        <dt className="fw-semibold">Ghi chú hàng hóa:</dt>
-                                        <dd className="text-muted">{s.itemDesc}</dd>
-                                    </div>
-                                )}
+                                    {s.itemDesc && (
+                                        <div className="col-12">
+                                            <div className={styles.infoLabel}>Ghi chú hàng hóa</div>
+                                            <div className={`${styles.infoValue} text-muted`}>
+                                                {s.itemDesc}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* PRESCRIPTION */}
                                 {s.prescription ? (
-                                    <div className="mt-4">
-                                        <h4 className="fw-semibold mb-2">Đơn thuốc</h4>
-                                        <dl className="row g-2 mb-3">
-                                            <div className="col-md-4">
-                                                <dt>Mã đơn:</dt>
-                                                <dd>{s.prescription.prescriptionCode}</dd>
-                                            </div>
-                                            <div className="col-md-4">
-                                                <dt>Ngày tạo:</dt>
-                                                <dd>{formatVNDateTime(s.prescription.createdAt)}</dd>
-                                            </div>
-                                            <div className="col-md-4">
-                                                <dt>Trạng thái:</dt>
-                                                <dd>
-                                                    <span className={`badge bg-${s.prescription.status === 'approved' ? 'success' : s.prescription.status === 'pending' ? 'warning' : 'secondary'}`}>
-                                                        {s.prescription.status}
-                                                    </span>
-                                                </dd>
-                                            </div>
-                                        </dl>
+                                    <div className={styles.prescriptionBox}>
+                                        <h6 className={styles.prescriptionTitle}>
+                                            <i className="bi bi-file-medical-fill"></i>
+                                            Đơn thuốc: {s.prescription.prescriptionCode}
+                                        </h6>
 
-                                        <ul className="prescription-list">
-                                            {s.prescription.items.map((it, itemIdx) => (
-                                                <li key={itemIdx}>
-                                                    <strong>{it.medicineName}</strong> — SL: {it.quantity}, {it.dosage}<br />
-                                                    <small className="text-muted">{it.instructions}</small>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                        <div className="row g-3 mb-3">
+                                            <div className="col-md-4">
+                                                <div className={styles.infoLabel}>Ngày tạo</div>
+                                                <div className={`${styles.infoValue} small`}>
+                                                    {formatVNDateTime(s.prescription.createdAt)}
+                                                </div>
+                                            </div>
+                                            <div className="col-md-4">
+                                                <div className={styles.infoLabel}>Trạng thái</div>
+                                                <span className={
+                                                    s.prescription.status === 'approved' ? styles.badgeCompleted :
+                                                    s.prescription.status === 'pending' ? styles.badgePending :
+                                                    styles.badgeCanceled
+                                                }>
+                                                    {s.prescription.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {s.prescription.items.map((it, itemIdx) => (
+                                            <div key={itemIdx} className={styles.prescriptionItem}>
+                                                <div className={styles.medicineName}>
+                                                    {it.medicineName}
+                                                </div>
+                                                <div className={styles.medicineInfo}>
+                                                    <strong>Số lượng:</strong> {it.quantity} • 
+                                                    <strong> Liều dùng:</strong> {it.dosage}
+                                                </div>
+                                                <div className={styles.medicineInfo}>
+                                                    <strong>Hướng dẫn:</strong> {it.instructions}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : (
-                                    <p className="text-muted mt-2">Không có đơn thuốc.</p>
+                                    <div className="mt-3">
+                                        <div className={`${styles.infoValue} text-muted fst-italic`}>
+                                            Không có đơn thuốc
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         ))
                     )}
                 </div>
+
             </div>
-        </>
+        </div>
     );
 }

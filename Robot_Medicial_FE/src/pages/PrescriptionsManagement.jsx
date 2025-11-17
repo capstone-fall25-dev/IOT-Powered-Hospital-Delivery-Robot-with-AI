@@ -2,20 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllPrescriptions, softDeletePrescription, restorePrescription } from "@/services/prescriptionServices";
-
-const styles = (
-    <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);border-radius:5px}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .toolbar .form-control, .toolbar .form-select{border-radius:12px}
-      .table thead th{white-space:nowrap}
-      .table tbody td{vertical-align:middle}
-    `}</style>
-);
+import styles from "@/assets/styles/prescriptionManagement.module.css";
 
 const statusLabel = (status) => {
     switch (status) {
@@ -29,11 +16,11 @@ const statusLabel = (status) => {
 
 const statusBadgeClass = (status) => {
     switch (status) {
-        case "pending": return "bg-warning-subtle text-warning";
-        case "approved": return "bg-success-subtle text-success";
-        case "dispensed": return "bg-primary-subtle text-primary";
-        case "canceled": return "bg-secondary-subtle text-secondary";
-        default: return "bg-light text-dark";
+        case "pending": return styles.badgePending;
+        case "approved": return styles.badgeApproved;
+        case "dispensed": return styles.badgeDispensed;
+        case "canceled": return styles.badgeCanceled;
+        default: return "";
     }
 };
 
@@ -105,85 +92,99 @@ export default function PrescriptionManagement() {
     };
 
     return (
-        <div className="page">
-            {styles}
-            <div className="container-fluid py-4">
-                <div className="container-lg">
+        <div className={styles.page}>
+            <div className="container-xl py-4">
 
-                    {/* Header */}
-                    <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className="chip"><i className="bi bi-file-medical me-1"></i></span>
-                            <h4 className="mb-0 fw-bold">Quản lý đơn thuốc</h4>
+                {/* =================== HEADER ==================== */}
+                <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
+                        <span className={styles.chip}>
+                            <i className="bi bi-file-medical-fill"></i>
+                        </span>
+                        <h4 className={`${styles.pageTitle} mb-0`}>Quản lý đơn thuốc</h4>
+                    </div>
+
+                    <button
+                        className={styles.btnTeal}
+                        onClick={() => navigate("/prescriptions/add")}
+                    >
+                        <i className="bi bi-plus-lg me-2"></i>
+                        Thêm đơn thuốc
+                    </button>
+                </div>
+
+                {/* =================== FILTER TOOLBAR ==================== */}
+                <div className={`${styles.glass} ${styles.toolbar} p-3 p-md-4 mb-3`}>
+                    <div className="row g-3 align-items-end">
+                        <div className="col-md-5">
+                            <label className={`form-label ${styles.formLabel}`}>Tìm kiếm</label>
+                            <input
+                                className={`form-control ${styles.formControl}`}
+                                placeholder="Mã đơn, tên bệnh nhân..."
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                            />
                         </div>
-                        <div>
-                            <button
-                                className="btn btn-teal rounded-pill"
-                                onClick={() => navigate("/prescriptions/add")}
+
+                        <div className="col-md-3">
+                            <label className={`form-label ${styles.formLabel}`}>Trạng thái</label>
+                            <select
+                                className={`form-select ${styles.formSelect}`}
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
                             >
-                                <i className="bi bi-plus-lg me-1"></i> Thêm đơn thuốc
+                                <option value="all">Tất cả</option>
+                                <option value="pending">Chờ duyệt</option>
+                                <option value="approved">Đã duyệt</option>
+                                <option value="dispensed">Đã cấp phát</option>
+                                <option value="canceled">Đã hủy</option>
+                            </select>
+                        </div>
+
+                        <div className="col-md-2">
+                            <label className="form-label d-none d-md-block">&nbsp;</label>
+                            <button
+                                className={`${styles.btnClear} w-100`}
+                                onClick={() => { setQ(""); setStatus("all"); }}
+                            >
+                                <i className="bi bi-x-circle me-1"></i>
+                                Xóa lọc
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    {/* Filters */}
-                    <div className="glass p-3 p-md-4 mb-3 toolbar">
-                        <div className="row g-2 align-items-end">
-                            <div className="col-md-4">
-                                <label className="form-label">Tìm kiếm</label>
-                                <input
-                                    className="form-control"
-                                    placeholder="Mã đơn, tên bệnh nhân..."
-                                    value={q}
-                                    onChange={(e) => setQ(e.target.value)}
-                                />
-                            </div>
-                            <div className="col-md-3">
-                                <label className="form-label">Trạng thái</label>
-                                <select
-                                    className="form-select"
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
-                                >
-                                    <option value="all">Tất cả</option>
-                                    <option value="pending">Chờ duyệt</option>
-                                    <option value="approved">Đã duyệt</option>
-                                    <option value="dispensed">Đã cấp phát</option>
-                                    <option value="canceled">Đã hủy</option>
-                                </select>
-                            </div>
-                            <div className="col-md-2 text-md-end">
-                                <label className="form-label d-block"> </label>
-                                <button
-                                    className="btn btn-light rounded-pill w-100"
-                                    onClick={() => { setQ(""); setStatus("all"); }}
-                                >
-                                    <i className="bi bi-x-circle me-1"></i> Xóa lọc
-                                </button>
-                            </div>
+                {/* =================== TABLE ==================== */}
+                <div className={`${styles.glass} ${styles.tableCard} p-2 p-md-3`}>
+                    {loading ? (
+                        <div className={styles.loadingContainer}>
+                            <div className="spinner-border text-primary"></div>
+                            <p className={styles.loadingText}>Đang tải dữ liệu...</p>
                         </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="glass p-2 p-md-3">
-                        {loading ? (
-                            <div className="text-center py-4">Đang tải...</div>
-                        ) : (
-                            <div className="table-responsive">
-                                <table className="table align-middle">
-                                    <thead>
+                    ) : (
+                        <div className="table-responsive">
+                            <table className={`table ${styles.table} align-middle mb-0`}>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Mã đơn</th>
+                                        <th>Bệnh nhân</th>
+                                        <th>Thuốc</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ngày tạo</th>
+                                        <th className="text-end">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.length === 0 ? (
                                         <tr>
-                                            <th>#</th>
-                                            <th>Mã đơn</th>
-                                            <th>Bệnh nhân</th>
-                                            <th>Thuốc</th>
-                                            <th>Trạng thái</th>
-                                            <th>Ngày tạo</th>
-                                            <th className="text-end">Thao tác</th>
+                                            <td colSpan="7" className={styles.emptyState}>
+                                                <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                                                Không tìm thấy đơn thuốc
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filtered.map((r, idx) => {
+                                    ) : (
+                                        filtered.map((r, idx) => {
                                             const medicineSummary =
                                                 (r.items || [])
                                                     .map((i) => i.medicineName || i.medicineCode)
@@ -195,65 +196,62 @@ export default function PrescriptionManagement() {
                                             return (
                                                 <tr key={r.id}>
                                                     <td>{idx + 1}</td>
-                                                    <td>{r.prescriptionCode}</td>
-                                                    <td>{r.patientName}</td>
+                                                    <td className="fw-semibold">{r.prescriptionCode}</td>
+                                                    <td className="fw-semibold">{r.patientName}</td>
                                                     <td style={{ maxWidth: 260 }}>
                                                         <small className="text-muted">
                                                             {medicineSummary || "—"}
                                                         </small>
                                                     </td>
                                                     <td>
-                                                        <span className={`badge ${statusBadgeClass(r.status)}`}>
+                                                        <span className={statusBadgeClass(r.status)}>
                                                             {statusLabel(r.status)}
                                                         </span>
                                                     </td>
                                                     <td>{new Date(r.createdAt).toLocaleString("vi-VN")}</td>
-                                                    <td className="text-end">
-                                                        <div className="btn-group">
+                                                    <td>
+                                                        <div className="d-flex justify-content-end gap-1">
                                                             <button
-                                                                className="btn btn-outline-secondary btn-sm"
+                                                                className={styles.btnView}
                                                                 onClick={() => navigate(`/prescriptions/${r.id}`)}
+                                                                title="Xem chi tiết"
                                                             >
-                                                                Xem
+                                                                <i className="bi bi-eye"></i>
                                                             </button>
                                                             <button
-                                                                className="btn btn-outline-primary btn-sm"
+                                                                className={styles.btnEdit}
                                                                 onClick={() => navigate(`/prescriptions/${r.id}/edit`)}
+                                                                title="Chỉnh sửa"
                                                             >
-                                                                Sửa
+                                                                <i className="bi bi-pencil"></i>
                                                             </button>
                                                             {r.status !== "canceled" ? (
                                                                 <button
-                                                                    className="btn btn-outline-danger btn-sm"
+                                                                    className={styles.btnDelete}
                                                                     onClick={() => handleSoftDelete(r.id)}
+                                                                    title="Hủy đơn"
                                                                 >
-                                                                    Hủy
+                                                                    <i className="bi bi-x-circle"></i>
                                                                 </button>
                                                             ) : (
                                                                 <button
-                                                                    className="btn btn-outline-success btn-sm"
+                                                                    className={styles.btnRestore}
                                                                     onClick={() => handleRestore(r.id)}
+                                                                    title="Khôi phục"
                                                                 >
-                                                                    Khôi phục
+                                                                    <i className="bi bi-arrow-counterclockwise"></i>
                                                                 </button>
                                                             )}
                                                         </div>
                                                     </td>
                                                 </tr>
                                             );
-                                        })}
-                                        {filtered.length === 0 && !loading && (
-                                            <tr>
-                                                <td colSpan={7} className="text-center text-muted py-4">
-                                                    Không có dữ liệu
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

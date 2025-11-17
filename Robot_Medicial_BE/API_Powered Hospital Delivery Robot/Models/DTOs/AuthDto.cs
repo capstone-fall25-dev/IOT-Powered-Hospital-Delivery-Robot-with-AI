@@ -4,8 +4,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
     public class RegisterRequest
     {
-        [JsonIgnore]
-        public string? Username { get; set; }
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
         public string FullName { get; set; } = null!;
@@ -13,9 +11,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class LoginDto
     {
-        [JsonPropertyName("email")]
-        public string Username { get; set; }
-        public string Password { get; set; }
+        public string Email { get; set; } = null!;
+        public string Password { get; set; } = null!;
     }
 
     public class ForgotPasswordRequest
@@ -38,8 +35,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class VerifyOtpRequest
     {
-        [JsonPropertyName("email")]
-        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public string Otp { get; set; } = string.Empty;
     }
 }

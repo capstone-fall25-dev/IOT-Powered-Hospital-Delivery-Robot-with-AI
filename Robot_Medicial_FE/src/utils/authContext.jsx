@@ -1,24 +1,24 @@
-// src/contexts/AuthContext.js
+// src/utils/authContext.js
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getUserBySessionToken, loginUser } from "../services/authService"; // import đúng đường dẫn .js
+import { getUserBySessionToken, loginUser } from "../services/authService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null); // user hiện tại
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Khi app load, nếu có sessionToken thì fetch user
     useEffect(() => {
         async function fetchUser() {
-            const token = sessionStorage.getItem("sessionToken"); // lưu token trong sessionStorage
+            // ĐỔI TỪ "sessionToken" THÀNH "token"
+            const token = sessionStorage.getItem("token");
             if (token) {
                 try {
                     const userData = await getUserBySessionToken(token);
                     setUser(userData);
                 } catch (err) {
-                    console.error("Không lấy được user từ sessionToken:", err);
-                    sessionStorage.removeItem("sessionToken");
+                    console.error("Không lấy được user từ token:", err);
+                    sessionStorage.removeItem("token");
                 }
             }
             setLoading(false);
@@ -26,11 +26,10 @@ export const AuthProvider = ({ children }) => {
         fetchUser();
     }, []);
 
-    // login
     const login = async (username, password) => {
         try {
             const { token, user: userData } = await loginUser(username, password);
-            sessionStorage.setItem("sessionToken", token);
+            sessionStorage.setItem("token", token); // Dùng key "token"
             setUser(userData);
             return userData;
         } catch (err) {
@@ -38,9 +37,8 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // logout
     const logout = () => {
-        sessionStorage.removeItem("sessionToken");
+        sessionStorage.removeItem("token"); // Dùng key "token"
         setUser(null);
     };
 
@@ -51,5 +49,4 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// hook tiện lợi để dùng context
 export const useAuth = () => useContext(AuthContext);
