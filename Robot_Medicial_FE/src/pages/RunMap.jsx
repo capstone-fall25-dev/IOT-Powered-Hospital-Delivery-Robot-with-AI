@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
+
 export default function RobotLiveConsole() {
-  const mapRef = useRef(null);
-  const mapLayer = useRef(null);
-  const robotMarker = useRef(null);
+  // ===================================
+  // 🗺️ MAP REFS
+  // ===================================
+  // Map trên: bản đồ theo destination
+  const navMapRef = useRef(null);
+  const navMapLayer = useRef(null);
   const destinationMarker = useRef(null);
+
+  // Map dưới: bản đồ bệnh viện (live từ ROS2)
+  const liveMapRef = useRef(null);
+  const liveMapLayer = useRef(null);
+  const robotMarker = useRef(null);
 
   // ===================================
   // 🧩 STATE
@@ -25,7 +34,6 @@ export default function RobotLiveConsole() {
   const [destinations, setDestinations] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
-  const [currentMapInfo, setCurrentMapInfo] = useState(null);
 
   // ===================================
   // 🧭 LOAD CSS & JS
@@ -33,21 +41,25 @@ export default function RobotLiveConsole() {
   useEffect(() => {
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
+    css.href =
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
     document.head.appendChild(css);
 
     const icons = document.createElement("link");
     icons.rel = "stylesheet";
-    icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
+    icons.href =
+      "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
     document.head.appendChild(icons);
 
     const leafletCss = document.createElement("link");
     leafletCss.rel = "stylesheet";
-    leafletCss.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    leafletCss.href =
+      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
     document.head.appendChild(leafletCss);
 
     const leafletJs = document.createElement("script");
-    leafletJs.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    leafletJs.src =
+      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
     leafletJs.defer = true;
     document.body.appendChild(leafletJs);
 
@@ -73,7 +85,8 @@ export default function RobotLiveConsole() {
       .withAutomaticReconnect()
       .build();
 
-    posConn.on("ReceiveMapUpdate", (map) => drawMap(map));
+    // LIVE MAP (bệnh viện) – giống createmap.jsx
+    posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
 
     camConn.on("ReceiveCameraFrame", (frame) => {
@@ -96,7 +109,9 @@ export default function RobotLiveConsole() {
   useEffect(() => {
     async function fetchDestinations() {
       try {
-       const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations");
+        const res = await fetch(
+          API_CONFIG.API_BASE1 + "/api/Destinations"
+        );
         const data = await res.json();
         setDestinations(data);
       } catch {}
@@ -105,70 +120,70 @@ export default function RobotLiveConsole() {
   }, []);
 
   // ============================================================
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-  // 1) FIXED RENDER MAP — giống y trang ProjectMapListView
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  // 1) LIVE MAP bệnh viện (ROS2) – dùng cho bản đồ phía DƯỚI
+  //    COPY LOGIC TỪ createmap.jsx
   // ============================================================
-  function drawMap(mapData) {
+  function drawLiveMap(mapData) {
     if (!window.L) return;
     const L = window.L;
 
-    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data;
+    const base64 =
+      mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
     if (!base64) return;
 
-    const resolution = mapData.Resolution || mapData.resolution;
-    const originX = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-    const originY = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
-    const width = mapData.Width || mapData.width;
-    const height = mapData.Height || mapData.height;
-
-    setCurrentMapInfo({ originX, originY, resolution, width, height });
-
-    const widthMeters = width * resolution;
-    const heightMeters = height * resolution;
+    const res = mapData.Resolution || mapData.resolution || 0.05;
+    const w = mapData.Width || mapData.width || 800;
+    const h = mapData.Height || mapData.height || 800;
+    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
     const imgSrc = `data:image/png;base64,${base64}`;
 
-    const bounds = L.latLngBounds(
-      L.latLng(0, 0),
-      L.latLng(heightMeters, widthMeters)
-    );
+    const bounds = [
+      [oy, ox],
+      [oy + h * res, ox + w * res],
+    ];
 
-    if (!mapRef.current) {
-      mapRef.current = L.map("map", { crs: L.CRS.Simple });
-      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+    if (!liveMapRef.current) {
+      liveMapRef.current = L.map("live-map", {
+        crs: L.CRS.Simple,
+        zoomControl: false,
+      });
+      L.control.zoom({ position: "bottomright" }).addTo(
+        liveMapRef.current
+      );
     }
 
-    if (mapLayer.current) mapRef.current.removeLayer(mapLayer.current);
-    mapLayer.current = L.imageOverlay(imgSrc, bounds).addTo(mapRef.current);
+    if (liveMapLayer.current)
+      liveMapRef.current.removeLayer(liveMapLayer.current);
 
-    mapRef.current.fitBounds(bounds);
+    liveMapLayer.current = L.imageOverlay(imgSrc, bounds, {
+      opacity: 1,
+    }).addTo(liveMapRef.current);
+    liveMapRef.current.fitBounds(bounds);
   }
 
   // ============================================================
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-  // 2) FIXED ROBOT POSITION (convert world → local)
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  // 2) ROBOT POSITION – giống createmap.jsx
   // ============================================================
   function updateRobotPosition(pos) {
-    if (!window.L || !mapRef.current || !currentMapInfo) return;
-
+    if (!window.L || !liveMapRef.current) return;
     const L = window.L;
-    const { originX, originY } = currentMapInfo;
-
-    const localX = pos.x - originX;
-    const localY = pos.y - originY;
-
-    const latlng = [localY, localX];
 
     const icon = L.divIcon({
-      html: `<div style="transform:rotate(${pos.theta}rad);font-size:22px;">🤖</div>`,
+      className: "robot-marker",
+      html: `<div style="transform:rotate(${pos.theta}rad);font-size:15px;">🤖</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
 
+    // Dùng world coords trực tiếp
+    const latlng = [pos.y, pos.x];
+
     if (!robotMarker.current)
-      robotMarker.current = L.marker(latlng, { icon }).addTo(mapRef.current);
+      robotMarker.current = L.marker(latlng, { icon }).addTo(
+        liveMapRef.current
+      );
     else {
       robotMarker.current.setLatLng(latlng);
       robotMarker.current.setIcon(icon);
@@ -176,31 +191,27 @@ export default function RobotLiveConsole() {
   }
 
   // ============================================================
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-  // 3) FIXED LOAD NAVIGATION MAP + DESTINATION MARKER
-  // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+  // 3) NAVIGATION MAP theo DESTINATION – dùng cho bản đồ phía TRÊN
   // ============================================================
   async function loadNavigationMapForDestination(destination) {
     if (!destination) return;
-
+    if (!window.L) return;
     const L = window.L;
 
-   const metaRes = await fetch(
+    const metaRes = await fetch(
       API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
     );
-
     const meta = await metaRes.json();
 
     const resolution = meta.resolution;
     const originX = meta.originX;
     const originY = meta.originY;
 
-    setCurrentMapInfo({ originX, originY, resolution });
     setSelectedMapName(meta.mapName);
 
-    
     const imgUrl =
-      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
+      API_CONFIG.API_BASE1 +
+      `/api/MapsUpload/${destination.mapId}/image`;
 
     const img = new Image();
     img.src = imgUrl;
@@ -214,19 +225,22 @@ export default function RobotLiveConsole() {
         L.latLng(heightMeters, widthMeters)
       );
 
-      if (!mapRef.current) {
-        mapRef.current = L.map("map", { crs: L.CRS.Simple });
-        L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+      if (!navMapRef.current) {
+        navMapRef.current = L.map("nav-map", { crs: L.CRS.Simple });
+        L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
       }
 
-      if (mapLayer.current) mapRef.current.removeLayer(mapLayer.current);
-      mapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(mapRef.current);
-      mapRef.current.fitBounds(bounds);
+      if (navMapLayer.current)
+        navMapRef.current.removeLayer(navMapLayer.current);
 
-      // convert world (/map) -> local image coords
+      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(
+        navMapRef.current
+      );
+      navMapRef.current.fitBounds(bounds);
+
+      // Marker 📍 tại destination (map trên)
       const localX = destination.x - originX;
       const localY = destination.y - originY;
-
       const latlng = [localY, localX];
 
       const icon = L.divIcon({
@@ -238,17 +252,18 @@ export default function RobotLiveConsole() {
       if (destinationMarker.current)
         destinationMarker.current.setLatLng(latlng);
       else
-        destinationMarker.current = L.marker(latlng, { icon }).addTo(mapRef.current);
+        destinationMarker.current = L.marker(latlng, { icon }).addTo(
+          navMapRef.current
+        );
     };
   }
 
   // ===================================
-  // REST CODE (GIỮ NGUYÊN 100%)
+  // CONTROL KEYS
   // ===================================
-
   async function sendCommand(key) {
     try {
-       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/control",{
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/control", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),
@@ -280,14 +295,19 @@ export default function RobotLiveConsole() {
     const newState = comp.state === "open" ? "close" : "open";
 
     try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal",{
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ compartmentId: id, action: newState }),
-      });
+      await fetch(
+        API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ compartmentId: id, action: newState }),
+        }
+      );
 
       setCompartments((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, state: newState } : c))
+        prev.map((c) =>
+          c.id === id ? { ...c, state: newState } : c
+        )
       );
     } catch {}
   }
@@ -309,7 +329,7 @@ export default function RobotLiveConsole() {
     if (!selectedMapName) return alert("Không có mapName!");
 
     try {
-       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -341,11 +361,14 @@ export default function RobotLiveConsole() {
     };
 
     try {
-       await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await fetch(
+        API_CONFIG.API_BASE1 + "/api/Destinations/send-route",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       alert("📤 Route đã gửi!");
     } catch {}
@@ -359,7 +382,7 @@ export default function RobotLiveConsole() {
   }
 
   // ===================================
-  // UI (GIỮ NGUYÊN)
+  // UI
   // ===================================
   return (
     <div className="page">
@@ -370,13 +393,13 @@ export default function RobotLiveConsole() {
         .key{height:56px;width:56px;border:1px solid rgba(0,0,0,.15);border-radius:12px;display:grid;place-items:center;font-weight:700;cursor:pointer;}
         .key.active{background:var(--teal)}
         .pad{display:grid;grid-template-columns:repeat(3,56px);gap:8px;justify-content:center}
-        .map-box,.video-box{height:260px;border-radius:14px;background:#eaf7f4;display:grid;place-items:center}
+        .map-box,.video-box{height:260px;border-radius:14px;background:#eaf7f4;overflow:hidden;}
+        .map-box{display:block;}
         .btn-teal{background:var(--teal)}
       `}</style>
 
       <div className="container-xxl py-3">
         <div className="row g-3">
-
           {/* LEFT CONTROL */}
           <div className="col-lg-4">
             <div className="glass p-3 h-100">
@@ -393,35 +416,65 @@ export default function RobotLiveConsole() {
                 <>
                   <div className="pad mb-2">
                     <div></div>
-                    <div className={`key ${activeKey==="w"?"active":""}`} onClick={()=>sendCommand("w")}>W</div>
+                    <div
+                      className={`key ${activeKey === "w" ? "active" : ""}`}
+                      onClick={() => sendCommand("w")}
+                    >
+                      W
+                    </div>
                     <div></div>
 
-                    <div className={`key ${activeKey==="a"?"active":""}`} onClick={()=>sendCommand("a")}>A</div>
-                    <div className={`key ${activeKey==="s"?"active":""}`} onClick={()=>sendCommand("s")}>S</div>
-                    <div className={`key ${activeKey==="d"?"active":""}`} onClick={()=>sendCommand("d")}>D</div>
+                    <div
+                      className={`key ${activeKey === "a" ? "active" : ""}`}
+                      onClick={() => sendCommand("a")}
+                    >
+                      A
+                    </div>
+                    <div
+                      className={`key ${activeKey === "s" ? "active" : ""}`}
+                      onClick={() => sendCommand("s")}
+                    >
+                      S
+                    </div>
+                    <div
+                      className={`key ${activeKey === "d" ? "active" : ""}`}
+                      onClick={() => sendCommand("d")}
+                    >
+                      D
+                    </div>
                   </div>
 
                   <div className="d-flex justify-content-center">
-                    <div className={`key ${activeKey==="x"?"active":""}`} onClick={()=>sendCommand("x")}>X</div>
+                    <div
+                      className={`key ${activeKey === "x" ? "active" : ""}`}
+                      onClick={() => sendCommand("x")}
+                    >
+                      X
+                    </div>
                   </div>
                 </>
               )}
 
               <h6 className="fw-bold mt-3 mb-2">📦 Hộp chứa</h6>
-              {compartments.map((c)=>(
-                <div key={c.id} className="d-flex justify-content-between mb-2">
+              {compartments.map((c) => (
+                <div
+                  key={c.id}
+                  className="d-flex justify-content-between mb-2"
+                >
                   <span>{c.label}</span>
                   <button
-                    className={`btn btn-sm ${c.state==="open"?"btn-danger":"btn-success"}`}
-                    onClick={()=>toggleCompartment(c.id)}
+                    className={`btn btn-sm ${
+                      c.state === "open" ? "btn-danger" : "btn-success"
+                    }`}
+                    onClick={() => toggleCompartment(c.id)}
                   >
-                    {c.state==="open"?"Đóng":"Mở"}
+                    {c.state === "open" ? "Đóng" : "Mở"}
                   </button>
                 </div>
               ))}
 
-                  {/* RIGHT DEST + LOGS */}
-              <h6 className="fw-bold mb-2">📍 Điểm đến</h6>
+              {/* DEST + ROUTE */}
+              <h6 className="fw-bold mb-2 mt-3">📍 Điểm đến</h6>
 
               <select
                 className="form-select form-select-sm mb-2"
@@ -429,41 +482,60 @@ export default function RobotLiveConsole() {
                 onChange={handleSelectDestination}
               >
                 <option value="">Chọn điểm...</option>
-                {destinations.map((d)=>(
+                {destinations.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} (map {d.mapId})
                   </option>
                 ))}
               </select>
 
-              <button className="btn btn-sm btn-teal w-100 mb-2" onClick={startRunMap} disabled={!selectedDestination}>
-                🚀 Bắt đầu chạy bản đồ 
+              <button
+                className="btn btn-sm btn-teal w-100 mb-2"
+                onClick={startRunMap}
+                disabled={!selectedDestination}
+              >
+                🚀 Bắt đầu chạy bản đồ
               </button>
 
-              <button className="btn btn-sm btn-outline-primary w-100 mb-3" onClick={sendRoute} disabled={!selectedDestination}>
+              <button
+                className="btn btn-sm btn-outline-primary w-100 mb-3"
+                onClick={sendRoute}
+                disabled={!selectedDestination}
+              >
                 📤 Gửi Vị trí muốn đến
               </button>
 
               {selectedDestination && (
                 <div className="small text-muted mb-3">
-                  Điểm: <b>{selectedDestination.name}</b><br/>
-                  Map: <b>{selectedMapName}</b><br/>
-                  ROS x:{selectedDestination.x.toFixed(2)} — y:{selectedDestination.y.toFixed(2)}
+                  Điểm: <b>{selectedDestination.name}</b>
+                  <br />
+                  Map: <b>{selectedMapName}</b>
+                  <br />
+                  ROS x:{selectedDestination.x.toFixed(2)} — y:
+                  {selectedDestination.y.toFixed(2)}
                 </div>
               )}
 
-              <hr/>
+              <hr />
 
               <h6 className="fw-bold mb-2">📜 Logs</h6>
-              <button className="btn btn-sm btn-outline-danger mb-2" onClick={()=>setLogs([])}>
+              <button
+                className="btn btn-sm btn-outline-danger mb-2"
+                onClick={() => setLogs([])}
+              >
                 Xóa
               </button>
 
-              <ul className="list-group list-group-flush" style={{maxHeight:280,overflowY:"auto"}}>
-                {logs.length===0 ? (
-                  <li className="list-group-item text-center text-muted">Chưa có log.</li>
+              <ul
+                className="list-group list-group-flush"
+                style={{ maxHeight: 280, overflowY: "auto" }}
+              >
+                {logs.length === 0 ? (
+                  <li className="list-group-item text-center text-muted">
+                    Chưa có log.
+                  </li>
                 ) : (
-                  logs.map((l,i)=>(
+                  logs.map((l, i) => (
                     <li key={i} className="list-group-item small">
                       <div className="text-muted">{l.time}</div>
                       {l.text}
@@ -471,40 +543,63 @@ export default function RobotLiveConsole() {
                   ))
                 )}
               </ul>
-
             </div>
           </div>
 
-          {/* CENTER CAM + MAP */}
+          {/* CENTER CAM + MAPS */}
           <div className="col-lg-8">
+            {/* Camera */}
             <div className="glass p-3 mb-3">
               <div className="d-flex justify-content-between mb-2">
                 <div>🎥 Camera</div>
                 <span className="badge bg-info text-dark">{status}</span>
               </div>
 
-              <div className="video-box">
+              <div className="video-box d-grid place-items-center">
                 {cameraFrame ? (
-                  <img src={cameraFrame} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                ) : "Đang chờ khung hình..."}
+                  <img
+                    src={cameraFrame}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  "Đang chờ khung hình..."
+                )}
               </div>
             </div>
 
+            {/* MAPS */}
             <div className="glass p-3">
+              {/* Map trên: theo destination */}
               <div className="d-flex justify-content-between mb-2">
-                <div>🗺️ Bản đồ</div>
-                <div className="input-group input-group-sm" style={{maxWidth:"60%"}}>
-                  <input className="form-control" placeholder="Tên map" value={mapName} onChange={(e)=>setMapName(e.target.value)} />
-                  <button className="btn btn-success" onClick={saveMap}>💾</button>
+                <div>🗺️ Bản đồ theo điểm đến</div>
+                <div
+                  className="input-group input-group-sm"
+                  style={{ maxWidth: "60%" }}
+                >
+                  <input
+                    className="form-control"
+                    placeholder="Tên map"
+                    value={mapName}
+                    onChange={(e) => setMapName(e.target.value)}
+                  />
+                  <button className="btn btn-success" onClick={saveMap}>
+                    💾
+                  </button>
                 </div>
               </div>
+              <div id="nav-map" className="map-box mb-3"></div>
 
-              <div id="map" className="map-box"></div>
+              {/* Map dưới: bệnh viện LIVE */}
+              <div className="d-flex justify-content-between mb-2">
+                <div>🏥 Bản đồ bệnh viện (live)</div>
+              </div>
+              <div id="live-map" className="map-box"></div>
             </div>
           </div>
-
-      
-
         </div>
       </div>
     </div>
