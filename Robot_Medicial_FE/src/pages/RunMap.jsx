@@ -6,6 +6,8 @@ export default function RobotLiveConsole() {
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
   const destinationMarker = useRef(null);
+const mapLiveRef = useRef(null);
+const mapLiveLayer = useRef(null);
 
   // ===================================
   // 🧩 STATE
@@ -73,7 +75,10 @@ export default function RobotLiveConsole() {
       .withAutomaticReconnect()
       .build();
 
-    posConn.on("ReceiveMapUpdate", (map) => drawMap(map));
+   posConn.on("ReceiveMapUpdate", (map) => {
+  drawMap(map);        // map navigation (map bên phải)
+  drawLiveMap(map);    // map live SLAM (map bên trái)
+});
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
 
     camConn.on("ReceiveCameraFrame", (frame) => {
@@ -144,6 +149,40 @@ export default function RobotLiveConsole() {
 
     mapRef.current.fitBounds(bounds);
   }
+  function drawLiveMap(mapData) {
+  if (!window.L) return;
+  const L = window.L;
+
+  const base64 = mapData?.Data_b64 || mapData?.data_b64;
+  if (!base64) return;
+
+  const resolution = mapData.Resolution;
+  const width = mapData.Width;
+  const height = mapData.Height;
+
+  const widthMeters = width * resolution;
+  const heightMeters = height * resolution;
+
+  const imgSrc = `data:image/png;base64,${base64}`;
+
+  const bounds = L.latLngBounds(
+    L.latLng(0, 0),
+    L.latLng(heightMeters, widthMeters)
+  );
+
+  // tạo map riêng
+  if (!mapLiveRef.current) {
+    mapLiveRef.current = L.map("live_map", { crs: L.CRS.Simple });
+    L.control.zoom({ position: "bottomright" }).addTo(mapLiveRef.current);
+  }
+
+  if (mapLiveLayer.current)
+    mapLiveRef.current.removeLayer(mapLiveLayer.current);
+
+  mapLiveLayer.current = L.imageOverlay(imgSrc, bounds).addTo(mapLiveRef.current);
+
+  mapLiveRef.current.fitBounds(bounds);
+}
 
   // ============================================================
   // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
@@ -489,6 +528,12 @@ export default function RobotLiveConsole() {
                 ) : "Đang chờ khung hình..."}
               </div>
             </div>
+<div className="glass p-3 mb-3">
+  <div className="d-flex justify-content-between mb-2">
+    <div>🧭 Bản đồ LIVE từ ROS (SLAM)</div>
+  </div>
+  <div id="live_map" className="map-box"></div>
+</div>
 
             <div className="glass p-3">
               <div className="d-flex justify-content-between mb-2">

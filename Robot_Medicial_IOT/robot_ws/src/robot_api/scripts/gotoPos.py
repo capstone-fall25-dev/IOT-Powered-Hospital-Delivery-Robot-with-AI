@@ -48,32 +48,43 @@ class APIHandler:
         self.config = config
 
     def send_status_to_api(self, status):
-        """Gửi trạng thái robot lên API"""
+        """Gửi trạng thái robot lên API (không bao giờ crash)"""
+        status_mapping = {
+            'NAVIGATION_STARTED': 'transporting',
+            'IN_PROGRESS': 'transporting',
+            'ARRIVED_AT_TABLE': 'awaiting_handover',
+            'RETURNING_HOME': 'returning_to_station',
+            'ARRIVED_HOME': 'at_station',
+            'NAVIGATION_COMPLETED': 'completed',
+            'NAVIGATION_FAILED': 'needs_attention',
+            'NAVIGATION_CANCELED': 'at_station',
+            'TIMEOUT': 'needs_attention',
+            'NAVIGATION_ERROR': 'needs_attention'
+        }
+
+        api_status = status_mapping.get(status, 'at_station')
+        payload = {"code": self.config.robot_code, "status": api_status}
+
         try:
-            status_mapping = {
-                'NAVIGATION_STARTED': 'transporting',
-                'IN_PROGRESS': 'transporting',
-                'ARRIVED_AT_TABLE': 'awaiting_handover',
-                'RETURNING_HOME': 'returning_to_station',
-                'ARRIVED_HOME': 'at_station',
-                'NAVIGATION_COMPLETED': 'completed',
-                'NAVIGATION_FAILED': 'needs_attention',
-                'NAVIGATION_CANCELED': 'at_station',
-                'TIMEOUT': 'needs_attention',
-                'NAVIGATION_ERROR': 'needs_attention'
-            }
-
-            api_status = status_mapping.get(status, 'at_station')
-            payload = {"code": self.config.robot_code, "status": api_status}
             res = requests.post(
-                self.config.send_status_url, json=payload, headers=self.config.headers, timeout=5
+                self.config.send_status_url,
+                json=payload,
+                headers=self.config.headers,
+                timeout=5
             )
-            res.raise_for_status()
+
+            if res.status_code != 200:
+                logger.warning(f"⚠️ API rejected status ({res.status_code}): {res.text}")
+                return
+
             logger.info(f"✅ Status sent → {api_status}")
-        except requests.RequestException as e:
-            logger.error(f"❌ Failed to send status: {e}")
 
+        except Exception as e:
+            logger.warning(f"⚠️ Cannot send status now → {e}")
+            # Không retry ngay, tránh spam API & spam log
+            time.sleep(1)
 
+    
 # ============================================================
 # 🤖 TABLE NAVIGATOR NODE
 # ============================================================
@@ -104,8 +115,20 @@ class TableNavigator(Node):
         msg = String()
         msg.data = f"{status}|table:{table_name}" if table_name else status
         self.status_publisher.publish(msg)
+
         if self.api_handler:
-            threading.Thread(target=self.api_handler.send_status_to_api, args=(status,), daemon=True).start()
+            # Thread an toàn – không crash chương trình
+            threading.Thread(
+                target=lambda: self.safe_send(status),
+                daemon=True
+            ).start()
+
+    def safe_send(self, status):
+        try:
+            self.api_handler.send_status_to_api(status)
+        except Exception as e:
+            logger.warning(f"⚠️ Safe send error: {e}")
+
 
     def parse_destination_route(self, route_data):
         """Nhận payload từ SignalR và chuyển thành danh sách PoseStamped"""
@@ -133,14 +156,14 @@ class TableNavigator(Node):
 
     def navigate_to_tables(self, positions_data):
         """Điều hướng qua danh sách các waypoint"""
-        self.publish_navigation_status("NAVIGATION_STARTED")
+        # self.publish_navigation_status("NAVIGATION_STARTED")
         total = len(positions_data)
         self.get_logger().info(f"🚀 Bắt đầu di chuyển qua {total} điểm")
 
         for i, pos in enumerate(positions_data, 1):
             x, y, name = pos["x"], pos["y"], pos["name"]
             pose = self.create_pose(x, y)
-            self.publish_navigation_status("IN_PROGRESS", name)
+            # self.publish_navigation_status("IN_PROGRESS", name)
             self.get_logger().info(f"Go to position: {pose}")
             self.navigator.goToPose(pose)
             time.sleep(0.5)
@@ -149,21 +172,21 @@ class TableNavigator(Node):
                 if shutdown_requested:
                     self.get_logger().warn("🛑 Shutdown requested, canceling nav2...")
                     self.navigator.cancelTask()
-                    self.publish_navigation_status("NAVIGATION_CANCELED", name)
+                    # self.publish_navigation_status("NAVIGATION_CANCELED", name)
                     return
                 time.sleep(0.2)
 
             result = self.navigator.getResult()
             if result == TaskResult.SUCCEEDED:
                 self.get_logger().info(f"✅ Arrived at {name}")
-                self.publish_navigation_status("ARRIVED_AT_TABLE", name)
+                # self.publish_navigation_status("ARRIVED_AT_TABLE", name)
             elif result == TaskResult.CANCELED:
                 self.get_logger().warn(f"⚠️ Canceled at {name}")
             else:
                 self.get_logger().error(f"❌ Failed at {name}")
-                self.publish_navigation_status("NAVIGATION_FAILED", name)
+                # self.publish_navigation_status("NAVIGATION_FAILED", name)
 
-        self.publish_navigation_status("NAVIGATION_COMPLETED")
+        # self.publish_navigation_status("NAVIGATION_COMPLETED")
         self.get_logger().info("🎉 Completed route navigation!")
 
 
@@ -243,30 +266,39 @@ def main():
     print("=" * 60)
 
     try:
-    # Vòng lặp spin an toàn thay cho rclpy.spin()
+        # SAFE SPIN LOOP — prevents crash from WaitSet errors
         while rclpy.ok() and not shutdown_requested:
-            rclpy.spin(navigator)
+            try:
+                rclpy.spin_once(navigator, timeout_sec=0.1)
+            except Exception as spin_err:
+                print(f"⚠️ Spin error (ignored): {spin_err}")
+                time.sleep(0.1)
+                continue
+
     except KeyboardInterrupt:
         print("🛑 Received Ctrl+C — shutting down gracefully...")
-    except Exception as e:
-        print(f"⚠️ Unexpected error during spin: {e}")
+
     finally:
         print("🧹 Cleaning up resources...")
 
-        # Dừng SignalR connection nếu có
-        if 'listener' in locals() and hasattr(listener, 'hub') and listener.hub is not None:
+        # Stop SignalR cleanly
+        if 'listener' in locals() and listener.hub is not None:
             try:
                 listener.hub.stop()
             except Exception:
                 pass
 
-        # Hủy node & shutdown ROS2
-        if 'navigator' in locals():
+        # Destroy ROS node safely
+        try:
             navigator.destroy_node()
+        except:
+            pass
+
+        # Shutdown ROS
         if rclpy.ok():
-            rclpy.shutdown()
-
-
-
+            try:
+                rclpy.shutdown()
+            except:
+                pass
 if __name__ == "__main__":
     main()
