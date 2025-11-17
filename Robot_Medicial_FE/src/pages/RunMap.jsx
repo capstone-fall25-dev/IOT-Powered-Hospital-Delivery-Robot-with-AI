@@ -34,7 +34,6 @@ export default function RobotLiveConsole() {
   const [destinations, setDestinations] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
-  const [currentMapInfo, setCurrentMapInfo] = useState(null); // chỉ dùng cho LIVE map
 
   // ===================================
   // 🧭 LOAD CSS & JS
@@ -42,21 +41,25 @@ export default function RobotLiveConsole() {
   useEffect(() => {
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
+    css.href =
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
     document.head.appendChild(css);
 
     const icons = document.createElement("link");
     icons.rel = "stylesheet";
-    icons.href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
+    icons.href =
+      "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
     document.head.appendChild(icons);
 
     const leafletCss = document.createElement("link");
     leafletCss.rel = "stylesheet";
-    leafletCss.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    leafletCss.href =
+      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
     document.head.appendChild(leafletCss);
 
     const leafletJs = document.createElement("script");
-    leafletJs.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    leafletJs.src =
+      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
     leafletJs.defer = true;
     document.body.appendChild(leafletJs);
 
@@ -106,7 +109,9 @@ export default function RobotLiveConsole() {
   useEffect(() => {
     async function fetchDestinations() {
       try {
-        const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations");
+        const res = await fetch(
+          API_CONFIG.API_BASE1 + "/api/Destinations"
+        );
         const data = await res.json();
         setDestinations(data);
       } catch {}
@@ -116,67 +121,70 @@ export default function RobotLiveConsole() {
 
   // ============================================================
   // 1) LIVE MAP bệnh viện (ROS2) – dùng cho bản đồ phía DƯỚI
+  //    COPY LOGIC TỪ createmap.jsx
   // ============================================================
   function drawLiveMap(mapData) {
     if (!window.L) return;
     const L = window.L;
 
-    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data;
+    const base64 =
+      mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
     if (!base64) return;
 
-    const resolution = mapData.Resolution || mapData.resolution;
-    const originX = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-    const originY = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
-    const width = mapData.Width || mapData.width;
-    const height = mapData.Height || mapData.height;
+    const res = mapData.Resolution || mapData.resolution || 0.05;
+    const w = mapData.Width || mapData.width || 800;
+    const h = mapData.Height || mapData.height || 800;
+    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-    setCurrentMapInfo({ originX, originY, resolution, width, height });
-
-    const widthMeters = width * resolution;
-    const heightMeters = height * resolution;
     const imgSrc = `data:image/png;base64,${base64}`;
 
-    const bounds = L.latLngBounds(
-      L.latLng(0, 0),
-      L.latLng(heightMeters, widthMeters)
-    );
+    const bounds = [
+      [oy, ox],
+      [oy + h * res, ox + w * res],
+    ];
 
     if (!liveMapRef.current) {
-      liveMapRef.current = L.map("live-map", { crs: L.CRS.Simple });
-      L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+      liveMapRef.current = L.map("live-map", {
+        crs: L.CRS.Simple,
+        zoomControl: false,
+      });
+      L.control.zoom({ position: "bottomright" }).addTo(
+        liveMapRef.current
+      );
     }
 
     if (liveMapLayer.current)
       liveMapRef.current.removeLayer(liveMapLayer.current);
 
-    liveMapLayer.current = L.imageOverlay(imgSrc, bounds).addTo(liveMapRef.current);
+    liveMapLayer.current = L.imageOverlay(imgSrc, bounds, {
+      opacity: 1,
+    }).addTo(liveMapRef.current);
     liveMapRef.current.fitBounds(bounds);
   }
 
   // ============================================================
-  // 2) ROBOT POSITION – vẽ trên LIVE MAP (phía dưới)
+  // 2) ROBOT POSITION – giống createmap.jsx
   // ============================================================
   function updateRobotPosition(pos) {
-    if (!window.L || !liveMapRef.current || !currentMapInfo) return;
-
+    if (!window.L || !liveMapRef.current) return;
     const L = window.L;
-    const { originX, originY } = currentMapInfo;
-
-    // world (/map) -> local
-    const localX = pos.x - originX;
-    const localY = pos.y - originY;
-
-    const latlng = [localY, localX];
 
     const icon = L.divIcon({
-      html: `<div style="transform:rotate(${pos.theta}rad);font-size:22px;">🤖</div>`,
+      className: "robot-marker",
+      html: `<div style="transform:rotate(${pos.theta}rad);font-size:15px;">🤖</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
 
-    if (!robotMarker.current) {
-      robotMarker.current = L.marker(latlng, { icon }).addTo(liveMapRef.current);
-    } else {
+    // Dùng world coords trực tiếp
+    const latlng = [pos.y, pos.x];
+
+    if (!robotMarker.current)
+      robotMarker.current = L.marker(latlng, { icon }).addTo(
+        liveMapRef.current
+      );
+    else {
       robotMarker.current.setLatLng(latlng);
       robotMarker.current.setIcon(icon);
     }
@@ -202,7 +210,8 @@ export default function RobotLiveConsole() {
     setSelectedMapName(meta.mapName);
 
     const imgUrl =
-      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
+      API_CONFIG.API_BASE1 +
+      `/api/MapsUpload/${destination.mapId}/image`;
 
     const img = new Image();
     img.src = imgUrl;
@@ -224,10 +233,12 @@ export default function RobotLiveConsole() {
       if (navMapLayer.current)
         navMapRef.current.removeLayer(navMapLayer.current);
 
-      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
+      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(
+        navMapRef.current
+      );
       navMapRef.current.fitBounds(bounds);
 
-      // Marker 📍 tại destination (chỉ trên map TRÊN)
+      // Marker 📍 tại destination (map trên)
       const localX = destination.x - originX;
       const localY = destination.y - originY;
       const latlng = [localY, localX];
@@ -241,7 +252,9 @@ export default function RobotLiveConsole() {
       if (destinationMarker.current)
         destinationMarker.current.setLatLng(latlng);
       else
-        destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
+        destinationMarker.current = L.marker(latlng, { icon }).addTo(
+          navMapRef.current
+        );
     };
   }
 
@@ -292,7 +305,9 @@ export default function RobotLiveConsole() {
       );
 
       setCompartments((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, state: newState } : c))
+        prev.map((c) =>
+          c.id === id ? { ...c, state: newState } : c
+        )
       );
     } catch {}
   }
@@ -346,11 +361,14 @@ export default function RobotLiveConsole() {
     };
 
     try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await fetch(
+        API_CONFIG.API_BASE1 + "/api/Destinations/send-route",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       alert("📤 Route đã gửi!");
     } catch {}
@@ -575,7 +593,7 @@ export default function RobotLiveConsole() {
               </div>
               <div id="nav-map" className="map-box mb-3"></div>
 
-              {/* Map dưới: bệnh viện LIVE (giống createmap.jsx) */}
+              {/* Map dưới: bệnh viện LIVE */}
               <div className="d-flex justify-content-between mb-2">
                 <div>🏥 Bản đồ bệnh viện (live)</div>
               </div>
