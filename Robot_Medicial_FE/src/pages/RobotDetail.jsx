@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import styles from "@/assets/styles/robotDetail.module.css";
 import { getRobotById } from "@/services/robotService"; 
-
+import { API_CONFIG } from "@/utils/apiConfig";
 export default function RobotDetail() {
   const { id } = useParams(); // Lấy id từ URL: /robot/1
   const [robot, setRobot] = useState(null);
@@ -33,7 +33,7 @@ export default function RobotDetail() {
   // ============================
   useEffect(() => {
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl("http://localhost:5170/hubs/robot")
+      .withUrl(API_CONFIG.API_BASE1+"/hubs/robot")
       .withAutomaticReconnect()
       .build();
 
@@ -57,7 +57,7 @@ export default function RobotDetail() {
   // ============================
   const togglePower = useCallback(async () => {
     try {
-      const res = await fetch("http://localhost:5170/api/RobotPower/toggle", {
+      const res = await fetch(API_CONFIG.API_BASE1+"/api/RobotPower/toggle", {
         method: "POST",
       });
       const data = await res.json();
