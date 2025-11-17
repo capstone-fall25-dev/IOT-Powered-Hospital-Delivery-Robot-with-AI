@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import styles from "@/assets/styles/robotDetail.module.css";
 import { getRobotById } from "@/services/robotService"; 
 import { API_CONFIG } from "@/utils/apiConfig";
+
 export default function RobotDetail() {
-  const { id } = useParams(); // Lấy id từ URL: /robot/1
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [robot, setRobot] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,7 @@ export default function RobotDetail() {
   // ============================
   useEffect(() => {
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl(API_CONFIG.API_BASE1+"/hubs/robot")
+      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robot")
       .withAutomaticReconnect()
       .build();
 
@@ -57,7 +59,7 @@ export default function RobotDetail() {
   // ============================
   const togglePower = useCallback(async () => {
     try {
-      const res = await fetch(API_CONFIG.API_BASE1+"/api/RobotPower/toggle", {
+      const res = await fetch(API_CONFIG.API_BASE1 + "/api/RobotPower/toggle", {
         method: "POST",
       });
       const data = await res.json();
@@ -76,145 +78,238 @@ export default function RobotDetail() {
   // Badge Status
   // ============================
   const getStatusBadge = (status) => {
-    const map = {
-      "in_progress": { text: "Đang hoạt động", color: "bg-success-subtle text-success" },
-      "at_station": { text: "Tại trạm", color: "bg-info-subtle text-info" },
-      "pending": { text: "Chờ nhiệm vụ", color: "bg-warning-subtle text-warning" },
+    const badges = {
+      in_progress: { text: "Đang hoạt động", class: styles.badgeActive },
+      at_station: { text: "Tại trạm", class: styles.badgeStation },
+      pending: { text: "Chờ nhiệm vụ", class: styles.badgePending },
     };
-    const item = map[status] || { text: "Không kết nối", color: "bg-secondary-subtle text-secondary" };
-    return <span className={`badge ${item.color} border`}>{item.text}</span>;
+    const badge = badges[status] || { text: "Không kết nối", class: styles.badgeOffline };
+    return <span className={badge.class}>{badge.text}</span>;
   };
 
-  if (loading) return <div className="text-center py-5">Đang tải robot...</div>;
-  if (!robot) return <div className="text-center py-5 text-danger">Không tìm thấy robot</div>;
+  // ============================
+  // Battery Progress Class
+  // ============================
+  const getBatteryClass = (percent) => {
+    if (percent < 30) return styles.progressDanger;
+    if (percent < 60) return styles.progressWarning;
+    return styles.progressSuccess;
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.loadingContainer}>
+          <div className="spinner-border text-primary"></div>
+          <p className={styles.loadingText}>Đang tải thông tin robot...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!robot) {
+    return (
+      <div className={styles.page}>
+        <div className="container-xl py-4">
+          <div className={styles.emptyState}>
+            <i className="bi bi-exclamation-triangle" style={{ fontSize: '3rem' }}></i>
+            <p>Không tìm thấy robot</p>
+            <button className={styles.btnTeal} onClick={() => navigate("/team")}>
+              Quay lại danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
-      <div className="container-lg py-4">
-        <div className={`${styles.glass} ${styles.rounded2xl} p-3 p-md-4`}>
-          {/* HEADER */}
-          <div className="d-flex align-items-start gap-3">
-            <div className={`${styles.cover} bg-primary text-white d-flex align-items-center justify-content-center fw-bold`}>
+      <div className="container-xl py-4">
+        
+        {/* Back Button */}
+        <div className="mb-3">
+          <button 
+            className={styles.btnPrimary}
+            onClick={() => navigate("/team")}
+          >
+            <i className="bi bi-arrow-left me-1"></i>
+            Quay lại
+          </button>
+        </div>
+
+        <div className={`${styles.glass} p-4 p-md-5`}>
+          
+          {/* =================== HEADER =================== */}
+          <div className={styles.headerSection}>
+            <div className={styles.robotAvatar}>
+              <i className="bi bi-robot"></i>
+              <br />
               {robot.code}
             </div>
-            <div className="flex-grow-1">
-              <h4 className={`mb-1 ${styles.title}`}>{robot.name}</h4>
-              <div className="text-muted small">Mã: {robot.code}</div>
-              <div className="mt-1">{getStatusBadge(robot.status)}</div>
+
+            <div className={styles.robotInfo}>
+              <h4 className={styles.robotTitle}>{robot.name}</h4>
+              <div className={styles.robotCode}>
+                <i className="bi bi-upc-scan me-1"></i>
+                Mã: {robot.code}
+              </div>
+              <div>{getStatusBadge(robot.status)}</div>
             </div>
 
-            <div className="d-flex flex-column gap-2">
+            <div className={styles.robotActions}>
               <button
-                className={`btn ${robot.power ? "btn-danger" : "btn-success"} rounded-pill`}
+                className={robot.power ? styles.btnPowerOff : styles.btnPowerOn}
                 onClick={togglePower}
               >
-                {robot.power ? (
-                  <>Tắt robot</>
-                ) : (
-                  <>Bật robot</>
-                )}
+                <i className={`bi bi-power me-1`}></i>
+                {robot.power ? "Tắt robot" : "Bật robot"}
               </button>
 
               <button
-                className={`btn ${styles.btnTeal} rounded-pill`}
+                className={styles.btnTeal}
                 disabled={!robot.power}
+                onClick={() => navigate('/run-map')}
               >
-                Điều khiển robot
+                <i className="bi bi-joystick me-1"></i>
+                Điều khiển
               </button>
             </div>
           </div>
 
-          {/* DETAIL + TASKS */}
+          {/* =================== DETAIL + TASKS =================== */}
           <div className="row g-4 mt-3">
+            
             {/* Thông tin chi tiết */}
             <div className="col-lg-7">
-              <div className={styles.kv}>
-                <div className="text-muted">Loại robot</div>
-                <div className="fw-semibold">Xe chở thuốc</div>
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-info-circle-fill"></i>
+                Thông tin chi tiết
+              </h6>
 
-                <div className="text-muted">Vị trí hiện tại</div>
-                <div className="fw-semibold">
+              <div className={styles.infoGrid}>
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-tag me-1"></i>
+                  Loại robot
+                </div>
+                <div className={styles.infoValue}>Xe chở thuốc</div>
+
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-geo-alt me-1"></i>
+                  Vị trí hiện tại
+                </div>
+                <div className={styles.infoValue}>
                   {robot.latitude && robot.longitude
                     ? `(${robot.latitude.toFixed(4)}, ${robot.longitude.toFixed(4)})`
                     : "Tại trạm sạc"}
                 </div>
 
-                <div className="text-muted">Kết nối</div>
-                <div className="fw-semibold">
-                  {robot.power ? "Online" : "Offline"}
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-wifi me-1"></i>
+                  Kết nối
+                </div>
+                <div className={styles.infoValue}>
+                  {robot.power ? (
+                    <span className="text-success">
+                      <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+                      Online
+                    </span>
+                  ) : (
+                    <span className="text-danger">
+                      <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+                      Offline
+                    </span>
+                  )}
                 </div>
 
-                <div className="text-muted">Pin</div>
-                <div>
-                  <div className="progress" style={{ height: "8px" }}>
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-battery-charging me-1"></i>
+                  Pin
+                </div>
+                <div className={styles.infoValue}>
+                  <div className={styles.progressContainer}>
                     <div
-                      className={`progress-bar ${
-                        robot.batteryPercent < 30 ? "bg-danger" : robot.batteryPercent < 60 ? "bg-warning" : "bg-success"
-                      }`}
+                      className={`${styles.progressBar} ${getBatteryClass(robot.batteryPercent)}`}
                       style={{ width: `${robot.batteryPercent}%` }}
                     ></div>
                   </div>
-                  <small className="text-muted">{robot.batteryPercent}%</small>
+                  <small>{robot.batteryPercent}%</small>
                 </div>
               </div>
 
-              <button className="btn btn-primary mt-3 rounded-pill">
+              <button className={styles.btnPrimary + " mt-4"}>
+                <i className="bi bi-geo-alt-fill me-1"></i>
                 Định vị nhanh
               </button>
             </div>
 
             {/* Danh sách nhiệm vụ hiện tại */}
             <div className="col-lg-5">
-              <h6 className="fw-bold mb-3">Nhiệm vụ hiện tại</h6>
-              <div className="list-group">
-                {robot.tasks
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-list-task"></i>
+                Nhiệm vụ hiện tại
+              </h6>
+
+              {robot.tasks && robot.tasks.length > 0 ? (
+                robot.tasks
                   .filter(t => t.status === "in_progress" || t.status === "pending")
                   .slice(0, 5)
                   .map((task) => (
-                    <div key={task.id} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div className="fw-semibold">Nhiệm vụ #{task.id}</div>
-                          <small className="text-muted">
-                            {task.stops.length > 0
-                              ? `${task.stops.length} điểm dừng`
-                              : "Chưa có điểm dừng"}
-                          </small>
+                    <div key={task.id} className={styles.taskCard}>
+                      <div className={styles.taskHeader}>
+                        <div className={styles.taskTitle}>
+                          <i className="bi bi-clipboard-check me-1"></i>
+                          Nhiệm vụ #{task.id}
                         </div>
                         {getStatusBadge(task.status)}
                       </div>
 
-                      {task.stops.length > 0 && (
-                        <ol className="mt-2 mb-0 ps-3 small">
+                      <div className={styles.taskMeta}>
+                        <i className="bi bi-geo me-1"></i>
+                        {task.stops && task.stops.length > 0
+                          ? `${task.stops.length} điểm dừng`
+                          : "Chưa có điểm dừng"}
+                      </div>
+
+                      {task.stops && task.stops.length > 0 && (
+                        <ol className={styles.taskStops}>
                           {task.stops.map((stop) => (
                             <li key={stop.seqNo}>
-                              {stop.destinationName}
-                              {stop.patientName && ` - ${stop.patientName}`}
+                              <strong>{stop.destinationName}</strong>
+                              {stop.patientName && <> - {stop.patientName}</>}
                             </li>
                           ))}
                         </ol>
                       )}
                     </div>
-                  ))}
-              </div>
+                  ))
+              ) : (
+                <div className={styles.emptyState}>
+                  <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                  Chưa có nhiệm vụ nào
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Gallery */}
+          {/* =================== GALLERY =================== */}
           <div className="mt-4">
-            <h6 className="fw-bold mb-2">Hình ảnh hoạt động</h6>
-            <div className="row g-3">
+            <h6 className={styles.sectionTitle}>
+              <i className="bi bi-images"></i>
+              Hình ảnh hoạt động
+            </h6>
+            <div className={styles.galleryGrid}>
               {[1, 2, 3, 4].map((i) => (
-                <div className="col-6 col-md-3" key={i}>
-                  <img
-                    className={`${styles.thumb} w-100`}
-                    src={`https://picsum.photos/400/300?random=${robot.id + i}`}
-                    alt={`Hoạt động ${i}`}
-                  />
-                </div>
+                <img
+                  key={i}
+                  className={styles.galleryThumb}
+                  src={`https://picsum.photos/400/300?random=${robot.id + i}`}
+                  alt={`Hoạt động ${i}`}
+                />
               ))}
             </div>
           </div>
+
         </div>
       </div>
     </div>

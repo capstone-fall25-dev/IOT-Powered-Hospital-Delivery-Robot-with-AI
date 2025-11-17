@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { API_CONFIG } from "@/utils/apiConfig";
+import styles from "@/assets/styles/projectMapListView.module.css";
 
 export default function ProjectMapListView() {
   const mapRef = useRef(null);
-  const worldPosRef = useRef(null); // 🔹 Lưu toạ độ /map đã chọn
+  const worldPosRef = useRef(null);
   const [maps, setMaps] = useState([]);
   const [selectedMap, setSelectedMap] = useState(null);
   const [mapInfo, setMapInfo] = useState(null);
@@ -16,53 +17,6 @@ export default function ProjectMapListView() {
   const [pointName, setPointName] = useState("");
 
   const navigate = useNavigate();
-
-  // ==========================================================
-  // 🎨 CSS Glass UI
-  // ==========================================================
-  const styles = (
-    <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(1200px 600px at 15% 10%,rgba(76,225,198,.18),transparent 60%),radial-gradient(900px 500px at 90% 5%,rgba(76,225,198,.12),transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 15%,#e9f3f1 35%,#e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.58);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 30px rgba(15,23,42,.08);border-radius:24px}
-      .btn-teal{background:var(--teal);color:#052a2b;font-weight:700;border:none}
-      .btn-teal:hover{background:#39d7bf;color:#052a2b}
-      .list-active{background:rgba(76,225,198,.2);border-color:rgba(76,225,198,.35)}
-      .map-toolbar{position:absolute;right:16px;top:16px;z-index:9999;width:260px}
-      .map-toolbar .btn{box-shadow:0 6px 16px rgba(15,23,42,.12)}
-
-      #coordinates{
-        position:absolute;
-        left:18px;
-        bottom:18px;
-        z-index:9999;
-        padding:6px 10px;
-        background:rgba(15,23,42,0.8);
-        color:#e5f7f3;
-        border-radius:999px;
-        font-size:12px;
-        display:none;
-        pointer-events:none;
-        box-shadow:0 8px 20px rgba(15,23,42,.35);
-      }
-
-      .btn-outline-teal { 
-      color: var(--teal); 
-      border-color: rgba(76,225,198,.3) !important; 
-      transition: all 0.2s ease-in-out;
-    }
-    .btn-outline-teal:hover { 
-      background: rgba(76,225,198,.1) !important; 
-      color: #052a2b !important; 
-      border-color: var(--teal) !important;
-      transform: translateY(-1px); /* Nâng nhẹ khi hover */
-      box-shadow: 0 4px 12px rgba(76,225,198,.2) !important;
-    }
-    .btn-outline-teal:active { 
-      transform: translateY(0); /* Trở về khi click */
-    }
-    `}</style>
-  );
 
   // ==========================================================
   // 1️⃣ Load danh sách bản đồ từ API
@@ -88,11 +42,11 @@ export default function ProjectMapListView() {
     async function fetchMapInfo() {
       if (!selectedMap) return;
       try {
-         const res = await fetch(
+        const res = await fetch(
           API_CONFIG.API_BASE1 + `/api/MapsUpload/${selectedMap.id}`
         );
         const data = await res.json();
-        console.log("ℹ️ mapInfo từ API:", data); // 🔎 check origin/resolution
+        console.log("ℹ️ mapInfo từ API:", data);
         setMapInfo(data);
       } catch (err) {
         console.error("❌ Lỗi metadata:", err);
@@ -121,7 +75,7 @@ export default function ProjectMapListView() {
       zoomControl: false,
     });
 
-   const imageUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${selectedMap.id}/image`;
+    const imageUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${selectedMap.id}/image`;
 
     const res = mapInfo.resolution;
     const originX = mapInfo.originX;
@@ -138,7 +92,6 @@ export default function ProjectMapListView() {
       const widthMeters = pixelWidth * res;
       const heightMeters = pixelHeight * res;
 
-      // Ảnh chạy trong hệ local: (0,0) -> (heightMeters, widthMeters)
       const southWest = L.latLng(0, 0);
       const northEast = L.latLng(heightMeters, widthMeters);
       const imageBounds = L.latLngBounds(southWest, northEast);
@@ -152,30 +105,26 @@ export default function ProjectMapListView() {
     // ==========================================================
     // 🔁 Chuyển mouse event -> toạ độ /map
     // ==========================================================
-  function screenToWorld(e) {
-  const containerPoint = map.mouseEventToContainerPoint(e);
-  const latlng = map.containerPointToLatLng(containerPoint);
-  if (!latlng || !mapInfo) return null;
+    function screenToWorld(e) {
+      const containerPoint = map.mouseEventToContainerPoint(e);
+      const latlng = map.containerPointToLatLng(containerPoint);
+      if (!latlng || !mapInfo) return null;
 
-  const res = mapInfo.resolution;
-  const originX = mapInfo.originX;
-  const originY = mapInfo.originY;
+      const res = mapInfo.resolution;
+      const originX = mapInfo.originX;
+      const originY = mapInfo.originY;
 
-  // local trong ảnh (m)
-  const localX = latlng.lng;
-  const localY = latlng.lat;
+      const localX = latlng.lng;
+      const localY = latlng.lat;
 
-  // 🎯 Offset hiệu chỉnh (từ dữ liệu bạn gửi)
-  // const offsetX = 1.8200597426258849; // ~1.82 m
-  // const offsetY = 0.7597526087366795; // ~0.76 m
-    const offsetX = 0;
-    const offsetY = 0;
-  // Global trong frame /map (m) giống ROS:
-  const worldX = originX + localX + offsetX;
-  const worldY = originY + localY + offsetY;
+      const offsetX = 0;
+      const offsetY = 0;
 
-  return { x: worldX, y: worldY, localX, localY };
-}
+      const worldX = originX + localX + offsetX;
+      const worldY = originY + localY + offsetY;
+
+      return { x: worldX, y: worldY, localX, localY };
+    }
 
     function updateCoordinateDisplay(e) {
       const div = document.getElementById("coordinates");
@@ -183,14 +132,12 @@ export default function ProjectMapListView() {
 
       const world = screenToWorld(e);
       if (!world) {
-        div.style.display = "none";
+        div.classList.remove(styles.show);
         return;
       }
 
-      div.style.display = "inline-flex";
-      div.textContent = `World: (${world.x.toFixed(2)}m, ${world.y.toFixed(
-        2
-      )}m)`;
+      div.classList.add(styles.show);
+      div.textContent = `World: (${world.x.toFixed(2)}m, ${world.y.toFixed(2)}m)`;
     }
 
     function isClick(mouseDownTime, hasMouseMoved) {
@@ -245,12 +192,11 @@ export default function ProjectMapListView() {
             map.removeLayer(currentMarker);
           }
 
-          // Marker vẽ theo local (lat = localY, lng = localX)
           const marker = L.marker([world.localY, world.localX]).addTo(map);
           currentMarker = marker;
 
           setNewMarker(marker);
-          worldPosRef.current = { x: world.x, y: world.y }; // 🔹 lưu /map vào ref
+          worldPosRef.current = { x: world.x, y: world.y };
 
           console.log(
             "📍 Chọn world coordinate (ROS /map):",
@@ -269,7 +215,7 @@ export default function ProjectMapListView() {
 
     const handleMouseLeave = () => {
       const div = document.getElementById("coordinates");
-      if (div) div.style.display = "none";
+      if (div) div.classList.remove(styles.show);
       mouseDownTime = 0;
       hasMouseMoved = false;
     };
@@ -324,12 +270,12 @@ export default function ProjectMapListView() {
     const payload = {
       name: pointName,
       mapId: selectedMap.id,
-      x: world.x, // toạ độ /map
+      x: world.x,
       y: world.y,
     };
 
     try {
-      const res = await fetch( API_CONFIG.API_BASE1 + "/api/Destinations", {
+      const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -361,7 +307,7 @@ export default function ProjectMapListView() {
   // ==========================================================
   async function handleCreateMap() {
     try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode",{
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "mapping" }),
@@ -378,25 +324,32 @@ export default function ProjectMapListView() {
   // 6️⃣ UI
   // ==========================================================
   return (
-    <div className="page">
-      {styles}
-
-      <div className="container-fluid py-3 py-lg-4">
-        <div className="container-lg">
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+    <div className={styles.page}>
+      <div className="container-fluid py-4">
+        <div className="container-xl">
+          
+          {/* =================== HEADER =================== */}
+          <div className={styles.headerSection}>
             <div>
-              <h2 className="fw-bold mb-0">🗺️ Quản lý bản đồ ROS2</h2>
-              <div className="chip mt-2">Hiển thị bản đồ và thêm điểm đến</div>
+              <h2 className={styles.pageTitle}>
+                <i className="bi bi-map me-2" style={{ color: 'var(--teal-dark)' }}></i>
+                Quản lý bản đồ ROS2
+              </h2>
+              <div className={styles.subtitle}>
+                <i className="bi bi-geo-alt me-1"></i>
+                Hiển thị bản đồ và thêm điểm đến
+              </div>
             </div>
 
-            <div className="d-flex gap-2">
-              <button className="btn btn-teal" onClick={handleSelectPointMode}>
+            <div className={styles.headerActions}>
+              <button className={styles.btnTeal} onClick={handleSelectPointMode}>
                 <i className="bi bi-geo-alt me-1"></i>
                 {isSelecting ? "Đang chọn điểm..." : "Chọn điểm đến"}
               </button>
 
-              <button className="btn btn-teal" onClick={handleCreateMap}>
-                <i className="bi bi-plus-circle me-1"></i> Tạo bản đồ mới
+              <button className={styles.btnTeal} onClick={handleCreateMap}>
+                <i className="bi bi-plus-circle me-1"></i>
+                Tạo bản đồ mới
               </button>
             </div>
           </div>
@@ -404,97 +357,86 @@ export default function ProjectMapListView() {
 
         <div className="container-fluid">
           <div className="row g-3">
-            {/* Sidebar */}
+            
+            {/* =================== SIDEBAR =================== */}
             <div className="col-lg-4 col-xl-3">
-              <div
-                className="glass p-3 rounded-3 h-100"
-                style={{ maxHeight: "78vh", overflowY: "auto" }}
-              >
-                <ul className="list-group list-group-flush">
-                  {maps.map((m) => (
-                    <li
-                      key={m.id}
-                      className={`list-group-item list-group-item-action px-3 py-3 mb-2 rounded-2 border-0 shadow-sm transition-all ${
-                        selectedMap?.id === m.id ? "list-active bg-teal-soft shadow-md" : "hover-bg-light"
-                      }`}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => setSelectedMap(m)}
-                    >
-                      <div className="d-flex flex-column gap-2">
-                        {/* Header: Icon + Title */}
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="flex-shrink-0">
-                            <i className={`bi bi-map text-teal fs-3 opacity-75`}></i>
-                          </div>
-                          <div className="flex-grow-1">
-                            <h6 className="fw-bold mb-0 text-truncate" style={{ fontSize: "1.1em" }}>
-                              {m.nameMapFE || m.mapName}
-                            </h6>
-                          </div>
-                        </div>
-                        
-                        {/* Footer: ROS Label + Detail Button */}
-                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                          <small className="map-name-ros text-muted flex-grow-1">
-                            <i className="bi bi-robot me-1"></i>
-                            ROS: {m.mapName}
-                          </small>
-                          <button
-                            className="btn btn-sm btn-outline-teal border-0 px-3 py-1 rounded-pill shadow-sm ms-auto"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Ngăn click item
-                              navigate(`/maps/${m.id}`); // Route detail, điều chỉnh nếu cần
-                            }}
-                            title="Xem chi tiết bản đồ"
-                          >
-                            <i className="bi bi-eye me-1"></i> Chi tiết
-                          </button>
-                        </div>
+              <div className={styles.sidebar}>
+                {maps.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`${styles.mapItem} ${
+                      selectedMap?.id === m.id ? styles.mapItemActive : ""
+                    }`}
+                    onClick={() => setSelectedMap(m)}
+                  >
+                    <div className={styles.mapItemHeader}>
+                      <div className={styles.mapIcon}>
+                        <i className="bi bi-map"></i>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                      <h6 className={styles.mapTitle}>
+                        {m.nameMapFE || m.mapName}
+                      </h6>
+                    </div>
+
+                    <div className={styles.mapItemFooter}>
+                      <div className={styles.mapRosName}>
+                        <i className="bi bi-robot me-1"></i>
+                        ROS: {m.mapName}
+                      </div>
+                      <button
+                        className={styles.btnOutlineTeal}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/maps/${m.id}`);
+                        }}
+                      >
+                        <i className="bi bi-eye me-1"></i>
+                        Chi tiết
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Map */}
+            {/* =================== MAP =================== */}
             <div className="col-lg-8 col-xl-9 position-relative">
               <div
                 id="map"
-                style={{
-                  height: "78vh",
-                  minHeight: 480,
-                  background: "#e2f4f0",
-                  borderRadius: "24px",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
+                className={styles.mapContainer}
               />
 
-              <div id="coordinates">World: (...)</div>
+              <div id="coordinates" className={styles.coordinateDisplay}>
+                World: (...)
+              </div>
 
+              {/* =================== TOOLBAR =================== */}
               {isSelecting && (
-                <div className="map-toolbar glass p-3 rounded-3">
-                  <div className="fw-semibold mb-2">🧭 Thêm điểm đến</div>
+                <div className={styles.mapToolbar}>
+                  <div className={styles.toolbarTitle}>
+                    <i className="bi bi-geo-alt-fill"></i>
+                    Thêm điểm đến
+                  </div>
 
                   <input
                     type="text"
-                    className="form-control mb-2"
+                    className={styles.toolbarInput}
                     placeholder="Nhập tên điểm..."
                     value={pointName}
                     onChange={(e) => setPointName(e.target.value)}
                   />
 
-                  <div className="d-flex gap-2">
+                  <div className={styles.toolbarActions}>
                     <button
-                      className="btn btn-sm btn-teal w-100"
+                      className={`${styles.btnTeal} flex-fill`}
                       onClick={handleSavePoint}
                     >
-                      <i className="bi bi-save me-1"></i> Lưu
+                      <i className="bi bi-save me-1"></i>
+                      Lưu
                     </button>
 
                     <button
-                      className="btn btn-sm btn-outline-danger w-100"
+                      className={`${styles.btnDanger} flex-fill`}
                       onClick={() => {
                         if (newMarker && mapRef.current) {
                           mapRef.current.removeLayer(newMarker);
@@ -504,7 +446,8 @@ export default function ProjectMapListView() {
                         setIsSelecting(false);
                       }}
                     >
-                      <i className="bi bi-x-circle"></i> Hủy
+                      <i className="bi bi-x-circle me-1"></i>
+                      Hủy
                     </button>
                   </div>
                 </div>

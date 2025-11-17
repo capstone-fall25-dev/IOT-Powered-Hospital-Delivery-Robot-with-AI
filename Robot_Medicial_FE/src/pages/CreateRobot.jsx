@@ -132,7 +132,7 @@ export default function CreateRobot() {
         try {
             await createRobot(payload);
             showToast("success", "Tạo Robot thành công!");
-            setTimeout(() => navigate("/team"), 800); // Chuyển trang sau hiệu ứng
+            setTimeout(() => navigate("/team"), 800);
         } catch (err) {
             console.error("Create robot error:", err);
 
@@ -164,14 +164,14 @@ export default function CreateRobot() {
 
     return (
         <div className={styles.page}>
-            {/* === TOAST THUẦN CSS === */}
+            {/* === TOAST NOTIFICATIONS === */}
             <div className={`${styles.toastContainer} ${toast.show ? styles.show : ""}`}>
                 <div className={`${styles.toast} ${styles[toast.type]}`}>
                     <div className={styles.toastIcon}>
-                        {toast.type === "success" && "Check"}
-                        {toast.type === "error" && "Error"}
-                        {toast.type === "warning" && "Warning"}
-                        {toast.type === "info" && "Info"}
+                        {toast.type === "success" && <i className="bi bi-check-lg"></i>}
+                        {toast.type === "error" && <i className="bi bi-x-lg"></i>}
+                        {toast.type === "warning" && <i className="bi bi-exclamation-lg"></i>}
+                        {toast.type === "info" && <i className="bi bi-info-lg"></i>}
                     </div>
                     <div className={styles.toastMessage}>{toast.message}</div>
                     <button
@@ -183,124 +183,176 @@ export default function CreateRobot() {
                 </div>
             </div>
 
-            <div className="container py-5">
-                <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-                    <h4 className="mb-0 fw-bold">Tạo Robot mới</h4>
-                    <button className="btn btn-outline-secondary rounded-pill" onClick={() => navigate("/team")}>
+            <div className="container-xl py-4">
+                {/* =================== HEADER =================== */}
+                <div className={styles.headerSection}>
+                    <h4 className={styles.pageTitle}>
+                        <i className="bi bi-robot me-2" style={{ color: 'var(--teal-dark)' }}></i>
+                        Tạo Robot mới
+                    </h4>
+                    <button 
+                        className={styles.btnSecondary}
+                        onClick={() => navigate("/team")}
+                    >
+                        <i className="bi bi-arrow-left me-1"></i>
                         Quay lại
                     </button>
                 </div>
 
-                <div className={styles.glass + " p-4 p-md-5"}>
-                    <form onSubmit={handleSubmit} className="row g-3">
-                        {/* Tên Robot */}
-                        <div className="col-md-6">
-                            <label className="form-label">Tên Robot <span className="text-danger">*</span></label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={form.name}
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="VD: Robot Giao Hàng A1"
-                                required
-                            />
-                        </div>
+                {/* =================== FORM =================== */}
+                <div className={`${styles.glass} p-4 p-md-5`}>
+                    <form onSubmit={handleSubmit}>
+                        <div className="row g-4">
 
-                        {/* Mã Robot - TỰ SINH + NÚT TẠO LẠI */}
-                        <div className="col-md-6">
-                            <label className="form-label">Mã Robot <span className="text-danger">*</span></label>
-                            <div className="input-group">
+                            {/* Tên Robot */}
+                            <div className="col-md-6">
+                                <label className={styles.formLabel}>
+                                    <i className="bi bi-tag me-1"></i>
+                                    Tên Robot <span className="text-danger">*</span>
+                                </label>
                                 <input
                                     type="text"
-                                    value={form.code}
-                                    className="form-control"
-                                    placeholder="RBxxx"
-                                    readOnly
+                                    name="name"
+                                    value={form.name}
+                                    onChange={handleChange}
+                                    className={styles.formControl}
+                                    placeholder="VD: Robot Giao Hàng A1"
+                                    required
                                 />
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-primary"
-                                    onClick={regenerateCode}
-                                >
-                                    Tạo lại
-                                </button>
                             </div>
-                            <small className="text-muted">Mã tự động: RB + 3 số ngẫu nhiên</small>
-                        </div>
 
-                        {/* Chọn Map */}
-                        <div className="col-md-6">
-                            <label className="form-label">Bản đồ <span className="text-danger">*</span></label>
-                            <select
-                                name="mapId"
-                                value={form.mapId}
-                                onChange={handleChange}
-                                className="form-select"
-                                required
-                            >
-                                <option value="">-- Chọn bản đồ --</option>
-                                {maps.map(m => (
-                                    <option key={m.id} value={m.id}>{m.mapName}</option>
-                                ))}
-                            </select>
-                        </div>
+                            {/* Mã Robot - TỰ SINH + NÚT TẠO LẠI */}
+                            <div className="col-md-6">
+                                <label className={styles.formLabel}>
+                                    <i className="bi bi-upc-scan me-1"></i>
+                                    Mã Robot <span className="text-danger">*</span>
+                                </label>
+                                <div className={styles.inputGroup}>
+                                    <input
+                                        type="text"
+                                        value={form.code}
+                                        className={styles.formControl}
+                                        placeholder="RBxxx"
+                                        readOnly
+                                    />
+                                    <button
+                                        type="button"
+                                        className={styles.btnRegenerate}
+                                        onClick={regenerateCode}
+                                    >
+                                        <i className="bi bi-arrow-clockwise me-1"></i>
+                                        Tạo lại
+                                    </button>
+                                </div>
+                                <small className={styles.helpText}>
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    Mã tự động: RB + 3 số ngẫu nhiên
+                                </small>
+                            </div>
 
-                        {/* Danh sách ngăn */}
-                        <div className="col-12">
-                            <label className="form-label">
-                                Loại ngăn <span className="text-danger">*</span>
-                            </label>
-                            {form.compartments.map((c, i) => (
-                                <div key={i} className="border rounded p-3 mb-3 bg-light">
-                                    <div className="row align-items-center g-2">
-                                        <div className="col-md-10">
-                                            <select
-                                                value={c.categoryId}
-                                                onChange={(e) => handleCompartmentChange(i, e)}
-                                                className="form-select"
-                                                required
-                                            >
-                                                <option value="">-- Chọn loại ngăn {i + 1} --</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                ))}
-                                            </select>
+                            {/* Chọn Map */}
+                            <div className="col-md-6">
+                                <label className={styles.formLabel}>
+                                    <i className="bi bi-map me-1"></i>
+                                    Bản đồ <span className="text-danger">*</span>
+                                </label>
+                                <select
+                                    name="mapId"
+                                    value={form.mapId}
+                                    onChange={handleChange}
+                                    className={styles.formSelect}
+                                    required
+                                >
+                                    <option value="">— Chọn bản đồ —</option>
+                                    {maps.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            #{m.id} • {m.mapName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Danh sách ngăn */}
+                            <div className="col-12">
+                                <label className={styles.sectionLabel}>
+                                    <i className="bi bi-box-seam"></i>
+                                    Danh sách ngăn chứa <span className="text-danger">*</span>
+                                </label>
+
+                                {form.compartments.map((c, i) => (
+                                    <div key={i} className={styles.compartmentCard}>
+                                        <div className={styles.compartmentHeader}>
+                                            <div className={styles.compartmentNumber}>{i + 1}</div>
+                                            <div className={styles.compartmentTitle}>
+                                                Ngăn chứa #{i + 1}
+                                            </div>
                                         </div>
-                                        <div className="col-md-2 text-end">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-danger btn-sm"
-                                                onClick={() => removeCompartment(i)}
-                                            >
-                                                Xóa
-                                            </button>
+
+                                        <div className="row align-items-center g-2">
+                                            <div className="col-md-10">
+                                                <select
+                                                    value={c.categoryId}
+                                                    onChange={(e) => handleCompartmentChange(i, e)}
+                                                    className={styles.formSelect}
+                                                    required
+                                                >
+                                                    <option value="">— Chọn loại ngăn —</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            {cat.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="col-md-2 text-end">
+                                                <button
+                                                    type="button"
+                                                    className={styles.btnRemove}
+                                                    onClick={() => removeCompartment(i)}
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.compartmentCode}>
+                                            <i className="bi bi-qr-code me-1"></i>
+                                            Mã ngăn tự động: <strong>C{i + 1 < 10 ? '00' : '0'}{i + 1}</strong>
                                         </div>
                                     </div>
-                                    <small className="text-muted d-block mt-1">
-                                        Mã ngăn tự động: <strong>C{i + 1 < 10 ? '00' : '0'}{i + 1}</strong>
-                                    </small>
-                                </div>
-                            ))}
+                                ))}
 
-                            <button
-                                type="button"
-                                className="btn btn-outline-primary btn-sm"
-                                onClick={addCompartment}
-                            >
-                                + Thêm ngăn
-                            </button>
-                        </div>
+                                <button
+                                    type="button"
+                                    className={styles.btnAddCompartment}
+                                    onClick={addCompartment}
+                                >
+                                    <i className="bi bi-plus-circle me-1"></i>
+                                    Thêm ngăn chứa
+                                </button>
+                            </div>
 
-                        {/* Submit */}
-                        <div className="col-12 text-end mt-4">
-                            <button
-                                type="submit"
-                                className="btn btn-teal rounded-pill px-4"
-                                disabled={loading}
-                            >
-                                {loading ? "Đang tạo..." : "Tạo Robot"}
-                            </button>
+                            {/* Submit */}
+                            <div className="col-12 text-end mt-4">
+                                <button
+                                    type="submit"
+                                    className={styles.btnTeal}
+                                    disabled={loading}
+                                >
+                                    {loading && (
+                                        <span className="spinner-border spinner-border-sm me-2"></span>
+                                    )}
+                                    {loading ? (
+                                        "Đang tạo..."
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-check-circle me-1"></i>
+                                            Tạo Robot
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
                         </div>
                     </form>
                 </div>

@@ -1,25 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
+import PopupWindow from "@/components/PopupWindow";
+import { usePopupWindows } from "@/hooks/usePopupWindows";
+import styles from "@/assets/styles/robotLiveConsole.module.css";
 
-export default function RobotLiveConsole() {
+export default function RobotRunMap() {
   // ===================================
   // 🗺️ MAP REFS
   // ===================================
-  // Map trên: bản đồ theo destination
   const navMapRef = useRef(null);
   const navMapLayer = useRef(null);
   const destinationMarker = useRef(null);
 
-  // Map dưới: bản đồ bệnh viện (live từ ROS2)
   const liveMapRef = useRef(null);
   const liveMapLayer = useRef(null);
   const robotMarker = useRef(null);
 
+  const { windows, openWindow, closeWindow, minimizeWindow, focusWindow } = usePopupWindows();
+
   // ===================================
   // 🧩 STATE
   // ===================================
-  const [status, setStatus] = useState("🕓 Đang kết nối...");
+  const [status, setStatus] = useState("Đang kết nối...");
   const [cameraFrame, setCameraFrame] = useState(null);
   const [mapName, setMapName] = useState("");
   const [logs, setLogs] = useState([]);
@@ -36,42 +39,6 @@ export default function RobotLiveConsole() {
   const [selectedMapName, setSelectedMapName] = useState("");
 
   // ===================================
-  // 🧭 LOAD CSS & JS
-  // ===================================
-  useEffect(() => {
-    const css = document.createElement("link");
-    css.rel = "stylesheet";
-    css.href =
-      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
-    document.head.appendChild(css);
-
-    const icons = document.createElement("link");
-    icons.rel = "stylesheet";
-    icons.href =
-      "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css";
-    document.head.appendChild(icons);
-
-    const leafletCss = document.createElement("link");
-    leafletCss.rel = "stylesheet";
-    leafletCss.href =
-      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(leafletCss);
-
-    const leafletJs = document.createElement("script");
-    leafletJs.src =
-      "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    leafletJs.defer = true;
-    document.body.appendChild(leafletJs);
-
-    return () => {
-      document.head.removeChild(css);
-      document.head.removeChild(icons);
-      document.head.removeChild(leafletCss);
-      document.body.removeChild(leafletJs);
-    };
-  }, []);
-
-  // ===================================
   // 🔗 SIGNALR
   // ===================================
   useEffect(() => {
@@ -85,7 +52,6 @@ export default function RobotLiveConsole() {
       .withAutomaticReconnect()
       .build();
 
-    // LIVE MAP (bệnh viện) – giống createmap.jsx
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
 
@@ -109,26 +75,24 @@ export default function RobotLiveConsole() {
   useEffect(() => {
     async function fetchDestinations() {
       try {
-        const res = await fetch(
-          API_CONFIG.API_BASE1 + "/api/Destinations"
-        );
+        const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations");
         const data = await res.json();
         setDestinations(data);
-      } catch {}
+      } catch (err) {
+        console.error("Error loading destinations:", err);
+      }
     }
     fetchDestinations();
   }, []);
 
   // ============================================================
-  // 1) LIVE MAP bệnh viện (ROS2) – dùng cho bản đồ phía DƯỚI
-  //    COPY LOGIC TỪ createmap.jsx
+  // 1) LIVE MAP bệnh viện (ROS2)
   // ============================================================
   function drawLiveMap(mapData) {
     if (!window.L) return;
     const L = window.L;
 
-    const base64 =
-      mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
     if (!base64) return;
 
     const res = mapData.Resolution || mapData.resolution || 0.05;
@@ -149,9 +113,7 @@ export default function RobotLiveConsole() {
         crs: L.CRS.Simple,
         zoomControl: false,
       });
-      L.control.zoom({ position: "bottomright" }).addTo(
-        liveMapRef.current
-      );
+      L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
     }
 
     if (liveMapLayer.current)
@@ -164,7 +126,7 @@ export default function RobotLiveConsole() {
   }
 
   // ============================================================
-  // 2) ROBOT POSITION – giống createmap.jsx
+  // 2) ROBOT POSITION
   // ============================================================
   function updateRobotPosition(pos) {
     if (!window.L || !liveMapRef.current) return;
@@ -177,13 +139,10 @@ export default function RobotLiveConsole() {
       iconAnchor: [12, 12],
     });
 
-    // Dùng world coords trực tiếp
     const latlng = [pos.y, pos.x];
 
     if (!robotMarker.current)
-      robotMarker.current = L.marker(latlng, { icon }).addTo(
-        liveMapRef.current
-      );
+      robotMarker.current = L.marker(latlng, { icon }).addTo(liveMapRef.current);
     else {
       robotMarker.current.setLatLng(latlng);
       robotMarker.current.setIcon(icon);
@@ -191,71 +150,73 @@ export default function RobotLiveConsole() {
   }
 
   // ============================================================
-  // 3) NAVIGATION MAP theo DESTINATION – dùng cho bản đồ phía TRÊN
+  // 3) NAVIGATION MAP theo DESTINATION
   // ============================================================
   async function loadNavigationMapForDestination(destination) {
     if (!destination) return;
     if (!window.L) return;
     const L = window.L;
 
-    const metaRes = await fetch(
-      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
-    );
-    const meta = await metaRes.json();
-
-    const resolution = meta.resolution;
-    const originX = meta.originX;
-    const originY = meta.originY;
-
-    setSelectedMapName(meta.mapName);
-
-    const imgUrl =
-      API_CONFIG.API_BASE1 +
-      `/api/MapsUpload/${destination.mapId}/image`;
-
-    const img = new Image();
-    img.src = imgUrl;
-
-    img.onload = () => {
-      const widthMeters = img.width * resolution;
-      const heightMeters = img.height * resolution;
-
-      const bounds = L.latLngBounds(
-        L.latLng(0, 0),
-        L.latLng(heightMeters, widthMeters)
+    try {
+      const metaRes = await fetch(
+        API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
       );
+      const meta = await metaRes.json();
 
-      if (!navMapRef.current) {
-        navMapRef.current = L.map("nav-map", { crs: L.CRS.Simple });
-        L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
-      }
+      const resolution = meta.resolution;
+      const originX = meta.originX;
+      const originY = meta.originY;
 
-      if (navMapLayer.current)
-        navMapRef.current.removeLayer(navMapLayer.current);
+      setSelectedMapName(meta.mapName);
 
-      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(
-        navMapRef.current
-      );
-      navMapRef.current.fitBounds(bounds);
+      const imgUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
 
-      // Marker 📍 tại destination (map trên)
-      const localX = destination.x - originX;
-      const localY = destination.y - originY;
-      const latlng = [localY, localX];
+      const img = new Image();
+      img.src = imgUrl;
 
-      const icon = L.divIcon({
-        html: `<div style="font-size:20px;">📍</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 24],
-      });
+      img.onload = () => {
+        const widthMeters = img.width * resolution;
+        const heightMeters = img.height * resolution;
 
-      if (destinationMarker.current)
-        destinationMarker.current.setLatLng(latlng);
-      else
-        destinationMarker.current = L.marker(latlng, { icon }).addTo(
-          navMapRef.current
+        const bounds = L.latLngBounds(
+          L.latLng(0, 0),
+          L.latLng(heightMeters, widthMeters)
         );
-    };
+
+        if (!navMapRef.current) {
+          navMapRef.current = L.map("nav-map", { crs: L.CRS.Simple });
+          L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
+        }
+
+        if (navMapLayer.current)
+          navMapRef.current.removeLayer(navMapLayer.current);
+
+        navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
+        navMapRef.current.fitBounds(bounds);
+
+        const localX = destination.x - originX;
+        const localY = destination.y - originY;
+        const latlng = [localY, localX];
+
+        const icon = L.divIcon({
+          html: `<div style="font-size:20px;">📍</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 24],
+        });
+
+        if (destinationMarker.current)
+          destinationMarker.current.setLatLng(latlng);
+        else
+          destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
+
+        // Open nav map window when destination is loaded
+        if (!windows.navMap.isOpen) {
+          openWindow("navMap");
+        }
+      };
+    } catch (err) {
+      console.error("Error loading navigation map:", err);
+    }
   }
 
   // ===================================
@@ -275,7 +236,9 @@ export default function RobotLiveConsole() {
       ]);
       setActiveKey(key);
       setTimeout(() => setActiveKey(""), 200);
-    } catch (err) {}
+    } catch (err) {
+      console.error("Control error:", err);
+    }
   }
 
   useEffect(() => {
@@ -295,21 +258,26 @@ export default function RobotLiveConsole() {
     const newState = comp.state === "open" ? "close" : "open";
 
     try {
-      await fetch(
-        API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ compartmentId: id, action: newState }),
-        }
-      );
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ compartmentId: id, action: newState }),
+      });
 
       setCompartments((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, state: newState } : c
-        )
+        prev.map((c) => (c.id === id ? { ...c, state: newState } : c))
       );
-    } catch {}
+
+      setLogs((l) => [
+        {
+          time: new Date().toLocaleTimeString(),
+          text: `Hộp ${id} → ${newState === "open" ? "Mở" : "Đóng"}`,
+        },
+        ...l,
+      ]);
+    } catch (err) {
+      console.error("Compartment error:", err);
+    }
   }
 
   async function saveMap() {
@@ -321,7 +289,13 @@ export default function RobotLiveConsole() {
         body: JSON.stringify({ Mode: "save_map", MapName: mapName }),
       });
       alert("Đã gửi lệnh lưu bản đồ!");
-    } catch {}
+      setLogs((l) => [
+        { time: new Date().toLocaleTimeString(), text: `Lưu bản đồ: ${mapName}` },
+        ...l,
+      ]);
+    } catch (err) {
+      alert("Không thể lưu bản đồ!");
+    }
   }
 
   async function startRunMap() {
@@ -339,7 +313,18 @@ export default function RobotLiveConsole() {
       });
 
       alert("Đã gửi lệnh run_map!");
-    } catch {}
+      setLogs((l) => [
+        { time: new Date().toLocaleTimeString(), text: `Bắt đầu chạy: ${selectedMapName}` },
+        ...l,
+      ]);
+
+      // Open live map window
+      if (!windows.liveMap.isOpen) {
+        openWindow("liveMap");
+      }
+    } catch (err) {
+      alert("Không thể chạy bản đồ!");
+    }
   }
 
   async function sendRoute() {
@@ -361,17 +346,20 @@ export default function RobotLiveConsole() {
     };
 
     try {
-      await fetch(
-        API_CONFIG.API_BASE1 + "/api/Destinations/send-route",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       alert("📤 Route đã gửi!");
-    } catch {}
+      setLogs((l) => [
+        { time: new Date().toLocaleTimeString(), text: `Gửi route: ${selectedDestination.name}` },
+        ...l,
+      ]);
+    } catch (err) {
+      alert("Không thể gửi route!");
+    }
   }
 
   function handleSelectDestination(e) {
@@ -385,68 +373,60 @@ export default function RobotLiveConsole() {
   // UI
   // ===================================
   return (
-    <div className="page">
-      <style>{`
-        :root{--teal:#4CE1C6;--ink:#0f172a}
-        .page{font-family:Inter,system-ui;background:linear-gradient(180deg,#f6faf9,#e8f0ee);min-height:100vh}
-        .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-radius:18px;box-shadow:0 16px 48px rgba(15,23,42,.08)}
-        .key{height:56px;width:56px;border:1px solid rgba(0,0,0,.15);border-radius:12px;display:grid;place-items:center;font-weight:700;cursor:pointer;}
-        .key.active{background:var(--teal)}
-        .pad{display:grid;grid-template-columns:repeat(3,56px);gap:8px;justify-content:center}
-        .map-box,.video-box{height:260px;border-radius:14px;background:#eaf7f4;overflow:hidden;}
-        .map-box{display:block;}
-        .btn-teal{background:var(--teal)}
-      `}</style>
-
-      <div className="container-xxl py-3">
+    <div className={styles.page}>
+      <div className="container-fluid py-3">
         <div className="row g-3">
-          {/* LEFT CONTROL */}
-          <div className="col-lg-4">
-            <div className="glass p-3 h-100">
-              <h6 className="fw-bold mb-3">⚙ Điều khiển</h6>
+          {/* =================== LEFT: CONTROL PANEL =================== */}
+          <div className="col-lg-3">
+            <div className={`${styles.glass} p-3 ${styles.controlSidebar}`}>
+              
+              {/* CONTROL SECTION */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-joystick"></i>
+                Điều khiển
+              </h6>
 
               <button
-                className="btn btn-primary w-100 rounded-pill mb-3"
+                className={styles.btnPrimary}
                 onClick={() => setRemoteMode(!remoteMode)}
               >
-                {remoteMode ? "Tắt Lái từ xa" : "Lái từ xa"}
+                <i className={`bi ${remoteMode ? "bi-hand-thumbs-down" : "bi-hand-thumbs-up"} me-1`}></i>
+                {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
               </button>
 
               {remoteMode && (
                 <>
-                  <div className="pad mb-2">
+                  <div className={styles.pad}>
                     <div></div>
                     <div
-                      className={`key ${activeKey === "w" ? "active" : ""}`}
+                      className={`${styles.key} ${activeKey === "w" ? styles.active : ""}`}
                       onClick={() => sendCommand("w")}
                     >
                       W
                     </div>
                     <div></div>
-
                     <div
-                      className={`key ${activeKey === "a" ? "active" : ""}`}
+                      className={`${styles.key} ${activeKey === "a" ? styles.active : ""}`}
                       onClick={() => sendCommand("a")}
                     >
                       A
                     </div>
                     <div
-                      className={`key ${activeKey === "s" ? "active" : ""}`}
+                      className={`${styles.key} ${activeKey === "s" ? styles.active : ""}`}
                       onClick={() => sendCommand("s")}
                     >
                       S
                     </div>
                     <div
-                      className={`key ${activeKey === "d" ? "active" : ""}`}
+                      className={`${styles.key} ${activeKey === "d" ? styles.active : ""}`}
                       onClick={() => sendCommand("d")}
                     >
                       D
                     </div>
                   </div>
-
-                  <div className="d-flex justify-content-center">
+                  <div className="d-flex justify-content-center mb-3">
                     <div
-                      className={`key ${activeKey === "x" ? "active" : ""}`}
+                      className={`${styles.key} ${activeKey === "x" ? styles.active : ""}`}
                       onClick={() => sendCommand("x")}
                     >
                       X
@@ -455,17 +435,18 @@ export default function RobotLiveConsole() {
                 </>
               )}
 
-              <h6 className="fw-bold mt-3 mb-2">📦 Hộp chứa</h6>
+              <hr className={styles.divider} />
+
+              {/* COMPARTMENTS */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-box-seam"></i>
+                Hộp chứa
+              </h6>
               {compartments.map((c) => (
-                <div
-                  key={c.id}
-                  className="d-flex justify-content-between mb-2"
-                >
-                  <span>{c.label}</span>
+                <div key={c.id} className={styles.compartmentItem}>
+                  <div className={styles.compartmentLabel}>{c.label}</div>
                   <button
-                    className={`btn btn-sm ${
-                      c.state === "open" ? "btn-danger" : "btn-success"
-                    }`}
+                    className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
                     onClick={() => toggleCompartment(c.id)}
                   >
                     {c.state === "open" ? "Đóng" : "Mở"}
@@ -473,133 +454,249 @@ export default function RobotLiveConsole() {
                 </div>
               ))}
 
-              {/* DEST + ROUTE */}
-              <h6 className="fw-bold mb-2 mt-3">📍 Điểm đến</h6>
+              <hr className={styles.divider} />
+
+              {/* DESTINATIONS */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-geo-alt-fill"></i>
+                Điểm đến
+              </h6>
 
               <select
-                className="form-select form-select-sm mb-2"
+                className={`${styles.formSelect} mb-2`}
                 value={selectedDestination?.id || ""}
                 onChange={handleSelectDestination}
               >
-                <option value="">Chọn điểm...</option>
+                <option value="">Chọn điểm đến...</option>
                 {destinations.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name} (map {d.mapId})
+                    {d.name} (Map #{d.mapId})
                   </option>
                 ))}
               </select>
 
               <button
-                className="btn btn-sm btn-teal w-100 mb-2"
+                className={`${styles.btnTeal} mb-2`}
                 onClick={startRunMap}
                 disabled={!selectedDestination}
               >
-                🚀 Bắt đầu chạy bản đồ
+                <i className="bi bi-play-circle me-1"></i>
+                Bắt đầu chạy
               </button>
 
               <button
-                className="btn btn-sm btn-outline-primary w-100 mb-3"
+                className={styles.btnOutlinePrimary}
                 onClick={sendRoute}
                 disabled={!selectedDestination}
               >
-                📤 Gửi Vị trí muốn đến
+                <i className="bi bi-send me-1"></i>
+                Gửi vị trí đến
               </button>
 
               {selectedDestination && (
-                <div className="small text-muted mb-3">
-                  Điểm: <b>{selectedDestination.name}</b>
-                  <br />
-                  Map: <b>{selectedMapName}</b>
-                  <br />
-                  ROS x:{selectedDestination.x.toFixed(2)} — y:
-                  {selectedDestination.y.toFixed(2)}
+                <div className={styles.destinationInfo}>
+                  <div>
+                    <strong>Điểm:</strong> {selectedDestination.name}
+                  </div>
+                  <div>
+                    <strong>Map:</strong> {selectedMapName}
+                  </div>
+                  <div>
+                    <strong>Tọa độ:</strong> x: {selectedDestination.x.toFixed(2)}, y:{" "}
+                    {selectedDestination.y.toFixed(2)}
+                  </div>
                 </div>
               )}
 
-              <hr />
+              <hr className={styles.divider} />
 
-              <h6 className="fw-bold mb-2">📜 Logs</h6>
-              <button
-                className="btn btn-sm btn-outline-danger mb-2"
-                onClick={() => setLogs([])}
-              >
-                Xóa
-              </button>
+              {/* SAVE MAP */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-save"></i>
+                Lưu bản đồ
+              </h6>
+              <div className={styles.inputGroup}>
+                <input
+                  className={styles.formControl}
+                  placeholder="Tên bản đồ..."
+                  value={mapName}
+                  onChange={(e) => setMapName(e.target.value)}
+                />
+                <button className={styles.btnSuccess} onClick={saveMap}>
+                  <i className="bi bi-save"></i>
+                </button>
+              </div>
 
-              <ul
-                className="list-group list-group-flush"
-                style={{ maxHeight: 280, overflowY: "auto" }}
-              >
+              <hr className={styles.divider} />
+
+              {/* LOGS */}
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h6 className={styles.sectionTitle} style={{ marginBottom: 0 }}>
+                  <i className="bi bi-journal-text"></i>
+                  Nhật ký
+                </h6>
+                <button className={styles.btnOutlineDanger} onClick={() => setLogs([])}>
+                  <i className="bi bi-trash"></i>
+                </button>
+              </div>
+
+              <div className={styles.logsContainer}>
                 {logs.length === 0 ? (
-                  <li className="list-group-item text-center text-muted">
-                    Chưa có log.
-                  </li>
+                  <div className={styles.logsEmpty}>
+                    <i className="bi bi-inbox mb-2" style={{ fontSize: '1.5rem', display: 'block' }}></i>
+                    Chưa có log
+                  </div>
                 ) : (
-                  logs.map((l, i) => (
-                    <li key={i} className="list-group-item small">
-                      <div className="text-muted">{l.time}</div>
-                      {l.text}
-                    </li>
+                  logs.slice(0, 20).map((l, i) => (
+                    <div key={i} className={styles.logItem}>
+                      <div className={styles.logTime}>{l.time}</div>
+                      <div className={styles.logText}>{l.text}</div>
+                    </div>
                   ))
                 )}
-              </ul>
+              </div>
             </div>
           </div>
 
-          {/* CENTER CAM + MAPS */}
-          <div className="col-lg-8">
-            {/* Camera */}
-            <div className="glass p-3 mb-3">
-              <div className="d-flex justify-content-between mb-2">
-                <div>🎥 Camera</div>
-                <span className="badge bg-info text-dark">{status}</span>
-              </div>
-
-              <div className="video-box d-grid place-items-center">
-                {cameraFrame ? (
-                  <img
-                    src={cameraFrame}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  "Đang chờ khung hình..."
-                )}
-              </div>
-            </div>
-
-            {/* MAPS */}
-            <div className="glass p-3">
-              {/* Map trên: theo destination */}
-              <div className="d-flex justify-content-between mb-2">
-                <div>🗺️ Bản đồ theo điểm đến</div>
-                <div
-                  className="input-group input-group-sm"
-                  style={{ maxWidth: "60%" }}
-                >
-                  <input
-                    className="form-control"
-                    placeholder="Tên map"
-                    value={mapName}
-                    onChange={(e) => setMapName(e.target.value)}
-                  />
-                  <button className="btn btn-success" onClick={saveMap}>
-                    💾
+          {/* =================== RIGHT: MAIN AREA (No content - just popups) =================== */}
+          <div className="col-lg-9">
+            <div className={`${styles.glass} p-4`} style={{ minHeight: "calc(100vh - 100px)" }}>
+              <div className="text-center py-5">
+                <i className="bi bi-window-stack" style={{ fontSize: '4rem', color: 'var(--teal-dark)', opacity: 0.3 }}></i>
+                <h5 className="mt-3 text-muted">Sử dụng các cửa sổ nổi để xem Camera và Bản đồ</h5>
+                <p className="text-muted">Bạn có thể di chuyển, thay đổi kích thước và sắp xếp các cửa sổ theo ý muốn</p>
+                <div className="mt-4">
+                  <button className={styles.btnOutlinePrimary} onClick={() => openWindow("camera")}>
+                    <i className="bi bi-camera-video me-2"></i>
+                    Mở Camera
                   </button>
                 </div>
               </div>
-              <div id="nav-map" className="map-box mb-3"></div>
-
-              {/* Map dưới: bệnh viện LIVE */}
-              <div className="d-flex justify-content-between mb-2">
-                <div>🏥 Bản đồ bệnh viện (live)</div>
-              </div>
-              <div id="live-map" className="map-box"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* =================== POPUP WINDOWS =================== */}
+      {windows.camera.isOpen && (
+        <PopupWindow
+          id="camera"
+          title="Camera trực tiếp"
+          icon="bi-camera-video"
+          initialPosition={{ x: 400, y: 50 }}
+          initialSize={{ width: 640, height: 480 }}
+          minSize={{ width: 400, height: 300 }}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          isMinimized={windows.camera.isMinimized}
+          zIndex={windows.camera.zIndex}
+        >
+          <div className={styles.videoContent}>
+            {cameraFrame ? (
+              <img src={cameraFrame} alt="Camera feed" />
+            ) : (
+              <div className={styles.videoPlaceholder}>
+                <i className="bi bi-camera-video-off mb-2" style={{ fontSize: '2rem', display: 'block' }}></i>
+                Đang chờ khung hình...
+              </div>
+            )}
+          </div>
+        </PopupWindow>
+      )}
+
+      {windows.navMap.isOpen && (
+        <PopupWindow
+          id="navMap"
+          title="Bản đồ điểm đến"
+          icon="bi-map-fill"
+          initialPosition={{ x: 100, y: 50 }}
+          initialSize={{ width: 700, height: 550 }}
+          minSize={{ width: 500, height: 400 }}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          isMinimized={windows.navMap.isMinimized}
+          zIndex={windows.navMap.zIndex}
+        >
+          <div className={styles.mapContent}>
+            <div id="nav-map" style={{ width: "100%", height: "100%" }}></div>
+          </div>
+        </PopupWindow>
+      )}
+
+      {windows.liveMap.isOpen && (
+        <PopupWindow
+          id="liveMap"
+          title="Bản đồ bệnh viện (Live)"
+          icon="bi-broadcast"
+          initialPosition={{ x: 820, y: 50 }}
+          initialSize={{ width: 700, height: 550 }}
+          minSize={{ width: 500, height: 400 }}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          isMinimized={windows.liveMap.isMinimized}
+          zIndex={windows.liveMap.zIndex}
+        >
+          <div className={styles.mapContent}>
+            <div id="live-map" style={{ width: "100%", height: "100%" }}></div>
+          </div>
+        </PopupWindow>
+      )}
+
+      {/* =================== TASKBAR =================== */}
+      <div className={styles.taskbar}>
+        <div
+          className={`${styles.taskbarItem} ${
+            windows.camera.isOpen && !windows.camera.isMinimized ? styles.active : ""
+          }`}
+          onClick={() =>
+            windows.camera.isMinimized
+              ? minimizeWindow("camera")
+              : windows.camera.isOpen
+              ? focusWindow("camera")
+              : openWindow("camera")
+          }
+        >
+          <i className="bi bi-camera-video"></i>
+          <span>Camera</span>
+        </div>
+
+        <div
+          className={`${styles.taskbarItem} ${
+            windows.navMap.isOpen && !windows.navMap.isMinimized ? styles.active : ""
+          }`}
+          onClick={() =>
+            windows.navMap.isMinimized
+              ? minimizeWindow("navMap")
+              : windows.navMap.isOpen
+              ? focusWindow("navMap")
+              : openWindow("navMap")
+          }
+        >
+          <i className="bi bi-map-fill"></i>
+          <span>Bản đồ đích</span>
+        </div>
+
+        <div
+          className={`${styles.taskbarItem} ${
+            windows.liveMap.isOpen && !windows.liveMap.isMinimized ? styles.active : ""
+          }`}
+          onClick={() =>
+            windows.liveMap.isMinimized
+              ? minimizeWindow("liveMap")
+              : windows.liveMap.isOpen
+              ? focusWindow("liveMap")
+              : openWindow("liveMap")
+          }
+        >
+          <i className="bi bi-broadcast"></i>
+          <span>Live Map</span>
+        </div>
+
+        <div className="ms-auto">
+          <span className={styles.statusBadge}>
+            <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+            {status}
+          </span>
         </div>
       </div>
     </div>

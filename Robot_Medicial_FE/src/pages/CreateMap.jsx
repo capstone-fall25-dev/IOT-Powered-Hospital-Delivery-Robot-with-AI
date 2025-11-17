@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
-export default function RobotLiveConsole() {
+import PopupWindow from "@/components/PopupWindow";
+import { usePopupWindows } from "@/hooks/usePopupWindows";
+import styles from "@/assets/styles/robotLiveConsole.module.css";
+
+export default function RobotCreateMap() {
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
+
+  const { windows, openWindow, closeWindow, minimizeWindow, focusWindow } = usePopupWindows();
 
   // ===================================
   // STATE
@@ -19,7 +25,6 @@ export default function RobotLiveConsole() {
     { id: 1, label: "Hộp 1", state: "closed" },
     { id: 2, label: "Hộp 2", state: "closed" },
   ]);
-
 
   // ===================================
   // SIGNALR HUBS
@@ -147,7 +152,7 @@ export default function RobotLiveConsole() {
     const comp = compartments.find((c) => c.id === id);
     const newState = comp.state === "open" ? "close" : "open";
     try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal",{
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotCompartmentSignal/signal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ compartmentId: id, action: newState }),
@@ -171,10 +176,10 @@ export default function RobotLiveConsole() {
   // ===================================
   // SAVE MAP
   // ===================================
-	async function saveMap() {
+  async function saveMap() {
     if (!mapName.trim()) return alert("Nhập tên bản đồ!");
     try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode",{
+      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Mode: "save_map", MapName: mapName }),
@@ -194,202 +199,235 @@ export default function RobotLiveConsole() {
   // UI
   // ===================================
   return (
-    <div className="page">
-     <style>{`
-  :root{--teal:#4CE1C6;--ink:#0f172a}
-  .page{font-family:Inter,system-ui; background:linear-gradient(180deg,#f6faf9,#e8f0ee);min-height:100vh;color:#0b1324;}
-  .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.85);box-shadow:0 16px 48px rgba(15,23,42,.08);border-radius:18px}
-
-  /* Điều khiển / phím */
-  .key{height:48px;width:48px;border:1px solid rgba(15,23,42,.1);border-radius:12px;
-      display:grid;place-items:center;font-weight:700;cursor:pointer;font-size:14px;}
-  .key.active{background:var(--teal);color:#052a2b;border-color:transparent}
-  .pad{display:grid;grid-template-columns:repeat(3,48px);gap:6px;justify-content:center}
-
-  /* CAMERA */
-  .video-box{
-    height:260px;
-    border-radius:14px;
-    background:#eaf7f4;
-    overflow:hidden;
-  }
-
-  /* MAP FULL WIDTH + FULL HEIGHT */
-  .map-box{
-    height:520px;          /* chiều cao to hơn */
-    width:100%;
-    border-radius:14px;
-    background:#eaf7f4;
-    overflow:hidden;
-    padding:0;
-  }
-  #map{
-    width:100% !important;
-    height:100% !important;
-    display:block;
-  }
-
-  /* LOG */
-  .log-container{max-height:220px;overflow-y:auto;padding-right:6px;font-size:12px;}
-  .log-container::-webkit-scrollbar{width:4px;}
-  .log-container::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:2px;}
-
-`}</style>
-
-
-      <div className="container-xxl py-3 py-lg-4">
+    <div className={styles.page}>
+      <div className="container-fluid py-3">
         <div className="row g-3">
-          {/* LEFT: CAMERA + MAP (10 phần) */}
-          <div className="col-lg-9">
-            {/* Camera */}
-            <div className="glass p-3 mb-3">
-              <div className="d-flex justify-content-between mb-2">
-                <div className="fw-bold">Camera Trực Tiếp</div>
-                <span className="badge bg-info text-dark">{status}</span>
-              </div>
-              <div className="video-box">
-                {cameraFrame ? (
-                  <img
-                    src={cameraFrame}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      borderRadius: "12px",
-                    }}
-                    alt="Camera feed"
-                  />
-                ) : (
-                  <span className="text-muted">Đang chờ khung hình...</span>
-                )}
-              </div>
-            </div>
-
-            {/* Map */}
-            <div className="glass p-3">
-              <div className="d-flex justify-content-between mb-2 align-items-center">
-                <div className="fw-bold">Bản đồ bệnh viện</div>
-                <div className="input-group input-group-sm" style={{ maxWidth: "60%" }}>
-                  <input
-                    className="form-control"
-                    placeholder="Tên bản đồ..."
-                    value={mapName}
-                    onChange={(e) => setMapName(e.target.value)}
-                  />
-                  <button className="btn btn-success" onClick={saveMap}>
-                    Lưu
-                  </button>
-                </div>
-              </div>
-              <div className="map-box">
-                <div id="map"></div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* RIGHT: CONTROL + LOGS (2 phần) */}
+          {/* =================== LEFT: CONTROL PANEL =================== */}
           <div className="col-lg-3">
-            <div className="glass p-3 h-100 d-flex flex-column control-panel" style={{ minHeight: "600px" }}>
-              {/* CONTROL PANEL */}
-              <div className="mb-3">
-                <h6 className="fw-bold mb-2">Điều khiển</h6>
+            <div className={`${styles.glass} p-3 ${styles.controlSidebar}`}>
+              
+              {/* CONTROL SECTION */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-joystick"></i>
+                Điều khiển
+              </h6>
 
-                <button
-                  className="btn btn-primary w-100 rounded-pill mb-2"
-                  onClick={() => setRemoteMode(!remoteMode)}
-                >
-                  {remoteMode ? "Tắt" : "Lái từ xa"}
-                </button>
+              <button
+                className={styles.btnPrimary}
+                onClick={() => setRemoteMode(!remoteMode)}
+              >
+                <i className={`bi ${remoteMode ? "bi-hand-thumbs-down" : "bi-hand-thumbs-up"} me-1`}></i>
+                {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
+              </button>
 
-                {remoteMode && (
-                  <>
-                    <div className="pad mx-auto mb-2">
-                      <div></div>
-                      <div
-                        className={`key ${activeKey === "w" ? "active" : ""}`}
-                        onClick={() => sendCommand("w")}
-                      >
-                        W
-                      </div>
-                      <div></div>
-                      <div
-                        className={`key ${activeKey === "a" ? "active" : ""}`}
-                        onClick={() => sendCommand("a")}
-                      >
-                        A
-                      </div>
-                      <div
-                        className={`key ${activeKey === "s" ? "active" : ""}`}
-                        onClick={() => sendCommand("s")}
-                      >
-                        S
-                      </div>
-                      <div
-                        className={`key ${activeKey === "d" ? "active" : ""}`}
-                        onClick={() => sendCommand("d")}
-                      >
-                        D
-                      </div>
-                    </div>
-                    <div className="d-flex justify-content-center mb-2">
-                      <div
-                        className={`key ${activeKey === "x" ? "active" : ""}`}
-                        onClick={() => sendCommand("x")}
-                      >
-                        X
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <h6 className="fw-bold mt-2 mb-1">Hộp</h6>
-                {compartments.map((c) => (
-                  <div key={c.id} className="d-flex align-items-center justify-content-between mb-1">
-                    <div className="fw-semibold small">{c.label}</div>
-                    <button
-                      className={`btn btn-sm ${c.state === "open" ? "btn-danger" : "btn-success"}`}
-                      onClick={() => toggleCompartment(c.id)}
+              {remoteMode && (
+                <>
+                  <div className={styles.pad}>
+                    <div></div>
+                    <div
+                      className={`${styles.key} ${activeKey === "w" ? styles.active : ""}`}
+                      onClick={() => sendCommand("w")}
                     >
-                      {c.state === "open" ? "Đóng" : "Mở"}
-                    </button>
+                      W
+                    </div>
+                    <div></div>
+                    <div
+                      className={`${styles.key} ${activeKey === "a" ? styles.active : ""}`}
+                      onClick={() => sendCommand("a")}
+                    >
+                      A
+                    </div>
+                    <div
+                      className={`${styles.key} ${activeKey === "s" ? styles.active : ""}`}
+                      onClick={() => sendCommand("s")}
+                    >
+                      S
+                    </div>
+                    <div
+                      className={`${styles.key} ${activeKey === "d" ? styles.active : ""}`}
+                      onClick={() => sendCommand("d")}
+                    >
+                      D
+                    </div>
                   </div>
-                ))}
-              </div>
+                  <div className="d-flex justify-content-center mb-3">
+                    <div
+                      className={`${styles.key} ${activeKey === "x" ? styles.active : ""}`}
+                      onClick={() => sendCommand("x")}
+                    >
+                      X
+                    </div>
+                  </div>
+                </>
+              )}
 
-              {/* LOGS - Dưới điều khiển */}
-              <div className="mt-3 border-top pt-2">
-                <div className="d-flex justify-content-between mb-1 align-items-center">
-                  <div className="fw-bold small">Nhật ký</div>
+              <hr className={styles.divider} />
+
+              {/* COMPARTMENTS */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-box-seam"></i>
+                Hộp chứa
+              </h6>
+              {compartments.map((c) => (
+                <div key={c.id} className={styles.compartmentItem}>
+                  <div className={styles.compartmentLabel}>{c.label}</div>
                   <button
-                    className="btn btn-sm btn-outline-danger p-0 px-1"
-                    onClick={() => setLogs([])}
+                    className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
+                    onClick={() => toggleCompartment(c.id)}
                   >
-                    Xóa
+                    {c.state === "open" ? "Đóng" : "Mở"}
                   </button>
                 </div>
-                <div className="log-container">
-                  <ul className="list-group list-group-flush">
-                    {logs.length === 0 ? (
-                      <li className="list-group-item text-center text-muted py-1 small">
-                        Chưa có log.
-                      </li>
-                    ) : (
-                      logs.slice(0, 15).map((l, i) => (
-                        <li
-                          key={i}
-                          className="list-group-item py-1 px-0 small"
-                        >
-                          <div className="text-muted">{l.time}</div>
-                          <div>{l.text}</div>
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
+              ))}
+
+              <hr className={styles.divider} />
+
+              {/* SAVE MAP */}
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-save"></i>
+                Lưu bản đồ
+              </h6>
+              <div className={styles.inputGroup}>
+                <input
+                  className={styles.formControl}
+                  placeholder="Tên bản đồ..."
+                  value={mapName}
+                  onChange={(e) => setMapName(e.target.value)}
+                />
+                <button className={styles.btnSuccess} onClick={saveMap}>
+                  <i className="bi bi-save"></i>
+                </button>
+              </div>
+
+              <hr className={styles.divider} />
+
+              {/* LOGS */}
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h6 className={styles.sectionTitle} style={{ marginBottom: 0 }}>
+                  <i className="bi bi-journal-text"></i>
+                  Nhật ký
+                </h6>
+                <button className={styles.btnOutlineDanger} onClick={() => setLogs([])}>
+                  <i className="bi bi-trash"></i>
+                </button>
+              </div>
+
+              <div className={styles.logsContainer}>
+                {logs.length === 0 ? (
+                  <div className={styles.logsEmpty}>
+                    <i className="bi bi-inbox mb-2" style={{ fontSize: '1.5rem', display: 'block' }}></i>
+                    Chưa có log
+                  </div>
+                ) : (
+                  logs.slice(0, 20).map((l, i) => (
+                    <div key={i} className={styles.logItem}>
+                      <div className={styles.logTime}>{l.time}</div>
+                      <div className={styles.logText}>{l.text}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
+
+          {/* =================== RIGHT: MAIN AREA (No content - just popups) =================== */}
+          <div className="col-lg-9">
+            <div className={`${styles.glass} p-4`} style={{ minHeight: "calc(100vh - 100px)" }}>
+              <div className="text-center py-5">
+                <i className="bi bi-window-stack" style={{ fontSize: '4rem', color: 'var(--teal-dark)', opacity: 0.3 }}></i>
+                <h5 className="mt-3 text-muted">Sử dụng các cửa sổ nổi để xem Camera và Bản đồ</h5>
+                <p className="text-muted">Bạn có thể di chuyển, thay đổi kích thước và sắp xếp các cửa sổ theo ý muốn</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =================== POPUP WINDOWS =================== */}
+      {windows.camera.isOpen && (
+        <PopupWindow
+          id="camera"
+          title="Camera trực tiếp"
+          icon="bi-camera-video"
+          initialPosition={{ x: 400, y: 50 }}
+          initialSize={{ width: 640, height: 480 }}
+          minSize={{ width: 400, height: 300 }}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          isMinimized={windows.camera.isMinimized}
+          zIndex={windows.camera.zIndex}
+        >
+          <div className={styles.videoContent}>
+            {cameraFrame ? (
+              <img src={cameraFrame} alt="Camera feed" />
+            ) : (
+              <div className={styles.videoPlaceholder}>
+                <i className="bi bi-camera-video-off mb-2" style={{ fontSize: '2rem', display: 'block' }}></i>
+                Đang chờ khung hình...
+              </div>
+            )}
+          </div>
+        </PopupWindow>
+      )}
+
+      {windows.map.isOpen && (
+        <PopupWindow
+          id="map"
+          title="Bản đồ bệnh viện"
+          icon="bi-map"
+          initialPosition={{ x: 400, y: 550 }}
+          initialSize={{ width: 800, height: 600 }}
+          minSize={{ width: 500, height: 400 }}
+          onClose={closeWindow}
+          onMinimize={minimizeWindow}
+          isMinimized={windows.map.isMinimized}
+          zIndex={windows.map.zIndex}
+        >
+          <div className={styles.mapContent}>
+            <div id="map" style={{ width: "100%", height: "100%" }}></div>
+          </div>
+        </PopupWindow>
+      )}
+
+      {/* =================== TASKBAR =================== */}
+      <div className={styles.taskbar}>
+        <div
+          className={`${styles.taskbarItem} ${
+            windows.camera.isOpen && !windows.camera.isMinimized ? styles.active : ""
+          }`}
+          onClick={() =>
+            windows.camera.isMinimized
+              ? minimizeWindow("camera")
+              : windows.camera.isOpen
+              ? focusWindow("camera")
+              : openWindow("camera")
+          }
+        >
+          <i className="bi bi-camera-video"></i>
+          <span>Camera</span>
+        </div>
+
+        <div
+          className={`${styles.taskbarItem} ${
+            windows.map.isOpen && !windows.map.isMinimized ? styles.active : ""
+          }`}
+          onClick={() =>
+            windows.map.isMinimized
+              ? minimizeWindow("map")
+              : windows.map.isOpen
+              ? focusWindow("map")
+              : openWindow("map")
+          }
+        >
+          <i className="bi bi-map"></i>
+          <span>Bản đồ</span>
+        </div>
+
+        <div className="ms-auto">
+          <span className={styles.statusBadge}>
+            <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+            {status}
+          </span>
         </div>
       </div>
     </div>
