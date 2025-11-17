@@ -4,7 +4,7 @@
     --teal-dark: #0d9488;
     --ink: #0f172a;
 }
-
+ 
 .page {
     font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: #0b1324;
@@ -12,13 +12,8 @@
                 radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
                 linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
     min-height: 100vh;
-}
-
-/* =================== FULL HEIGHT CONTAINER =================== */
-.fullHeightContainer {
-    height: calc(100vh - 2rem);
-    display: flex;
-    flex-direction: column;
+    position: relative;
+    overflow: hidden;
 }
 
 /* =================== GLASS CARD =================== */
@@ -43,12 +38,193 @@
     background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
 }
 
+/* =================== FLOATING POPUP WINDOWS =================== */
+.popupWindow {
+    position: fixed;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+    border-radius: 5px;
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.popupWindow.active {
+    box-shadow: 0 12px 48px rgba(13, 148, 136, 0.25);
+    border-color: rgba(13, 148, 136, 0.3);
+}
+
+.popupWindow.minimized {
+    display: none;
+}
+
+.popupWindow.fullscreen {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0;
+    z-index: 9999 !important;
+}
+
+/* Window Header */
+.windowHeader {
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%);
+    border-bottom: 1px solid rgba(13, 148, 136, 0.15);
+    padding: 0.6rem 0.75rem;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.windowTitle {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.windowTitle i {
+    color: var(--teal-dark);
+}
+
+.windowControls {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.windowBtn {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.85rem;
+    padding: 0;
+}
+
+.windowBtnMinimize {
+    background: rgba(251, 191, 36, 0.15);
+    color: #d97706;
+}
+
+.windowBtnMinimize:hover {
+    background: rgba(251, 191, 36, 0.25);
+}
+
+.windowBtnMaximize {
+    background: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+}
+
+.windowBtnMaximize:hover {
+    background: rgba(59, 130, 246, 0.25);
+}
+
+.windowBtnClose {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+}
+
+.windowBtnClose:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+/* Window Content */
+.windowContent {
+    flex: 1;
+    overflow: auto;
+    padding: 0.75rem;
+}
+
+.windowContent::-webkit-scrollbar {
+    width: 6px;
+}
+
+.windowContent::-webkit-scrollbar-track {
+    background: rgba(13, 148, 136, 0.05);
+}
+
+.windowContent::-webkit-scrollbar-thumb {
+    background: rgba(13, 148, 136, 0.2);
+    border-radius: 3px;
+}
+
+/* Resize Handle */
+.resizeHandle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(13, 148, 136, 0.3) 50%);
+    border-bottom-right-radius: 5px;
+}
+
+/* =================== TASKBAR =================== */
+.taskbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(13, 148, 136, 0.15);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 0.5rem;
+    z-index: 10000;
+}
+
+.taskbarItem {
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--teal-dark);
+}
+
+.taskbarItem:hover {
+    background: rgba(13, 148, 136, 0.2);
+    border-color: rgba(13, 148, 136, 0.3);
+}
+
+.taskbarItem.active {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    color: white;
+    border-color: transparent;
+}
+
 /* =================== SECTION TITLES =================== */
 .sectionTitle {
     font-weight: 700;
     color: #0f172a;
     font-size: 0.95rem;
-    margin-bottom: 0;
+    margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -213,84 +389,37 @@
     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
 
-/* =================== VIDEO BOX - SPLIT SCREEN =================== */
-.videoBoxSplit {
+/* =================== VIDEO/MAP CONTENT =================== */
+.videoContent {
+    width: 100%;
     height: 100%;
-    min-height: 350px;
-    border-radius: 5px;
     background: #e8f3f1;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 5px;
     overflow: hidden;
-    border: 1px solid rgba(13, 148, 136, 0.15);
-    position: relative;
 }
 
-.videoBoxSplit img {
+.videoContent img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-/* =================== VIDEO BOX - NORMAL =================== */
-.videoBox {
-    height: 280px;
-    border-radius: 5px;
-    background: #e8f3f1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border: 1px solid rgba(13, 148, 136, 0.15);
-    position: relative;
-}
-
-.videoBox img {
+.mapContent {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    background: #e8f3f1;
+    border-radius: 5px;
+    overflow: hidden;
 }
 
 .videoPlaceholder {
     color: #64748b;
     font-size: 0.95rem;
-}
-
-/* =================== MAP BOX - SPLIT SCREEN =================== */
-.mapBoxSplit {
-    height: 100%;
-    min-height: 350px;
-    width: 100%;
-    border-radius: 5px;
-    background: #e8f3f1;
-    overflow: hidden;
-    border: 1px solid rgba(13, 148, 136, 0.15);
-    position: relative;
-}
-
-/* =================== MAP BOX - NORMAL =================== */
-.mapBox {
-    height: 520px;
-    width: 100%;
-    border-radius: 5px;
-    background: #e8f3f1;
-    overflow: hidden;
-    border: 1px solid rgba(13, 148, 136, 0.15);
-    position: relative;
-}
-
-.mapBoxSmall {
-    height: 280px;
-}
-
-/* =================== SPLIT VIEW CONTAINER =================== */
-.splitViewContainer {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    height: calc(100vh - 180px);
-    min-height: 500px;
+    text-align: center;
+    padding: 2rem;
 }
 
 /* =================== COMPARTMENT CONTROLS =================== */
@@ -369,7 +498,7 @@
 
 /* =================== LOGS SECTION =================== */
 .logsContainer {
-    max-height: 220px;
+    max-height: 250px;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
@@ -445,10 +574,9 @@
 
 /* =================== CONTROL SIDEBAR =================== */
 .controlSidebar {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    height: calc(100vh - 80px);
     overflow-y: auto;
+    padding-bottom: 60px;
 }
 
 .controlSidebar::-webkit-scrollbar {
@@ -466,30 +594,27 @@
 }
 
 /* =================== RESPONSIVE =================== */
-@media (max-width: 1200px) {
-    .splitViewContainer {
-        grid-template-columns: 1fr;
-        height: auto;
+@media (max-width: 768px) {
+    .popupWindow {
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        border-radius: 0;
     }
 
-    .videoBoxSplit,
-    .mapBoxSplit {
-        min-height: 300px;
-        height: 400px;
-    }
-}
-
-@media (max-width: 992px) {
-    .videoBox {
-        height: 220px;
+    .taskbar {
+        height: 48px;
+        padding: 0 0.5rem;
     }
 
-    .mapBox {
-        height: 400px;
+    .taskbarItem {
+        padding: 0.35rem 0.7rem;
+        font-size: 0.8rem;
     }
 
-    .logsContainer {
-        max-height: 200px;
+    .windowHeader {
+        padding: 0.5rem 0.6rem;
     }
 
     .pad {
@@ -499,34 +624,5 @@
     .key {
         height: 44px;
         width: 44px;
-        font-size: 0.95rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .videoBox {
-        height: 200px;
-    }
-
-    .mapBox {
-        height: 350px;
-    }
-
-    .videoBoxSplit,
-    .mapBoxSplit {
-        height: 300px;
-        min-height: 250px;
-    }
-
-    .logsContainer {
-        max-height: 180px;
-    }
-
-    .sectionTitle {
-        font-size: 0.9rem;
-    }
-
-    .splitViewContainer {
-        gap: 0.75rem;
     }
 }

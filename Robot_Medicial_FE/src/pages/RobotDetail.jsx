@@ -2,316 +2,316 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import styles from "@/assets/styles/robotDetail.module.css";
-import { getRobotById } from "@/services/robotService";
+import { getRobotById } from "@/services/robotService"; 
 import { API_CONFIG } from "@/utils/apiConfig";
 
 export default function RobotDetail() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const [robot, setRobot] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [robot, setRobot] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // ============================
-    // LẤY DỮ LIỆU ROBOT TỪ API
-    // ============================
-    useEffect(() => {
-        const fetchRobot = async () => {
-            try {
-                const data = await getRobotById(id);
-                setRobot(data);
-                console.log("Robot loaded:", data);
-            } catch (err) {
-                console.error("Failed to load robot:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRobot();
-    }, [id]);
-
-    // ============================
-    // SignalR Realtime Power Status
-    // ============================
-    useEffect(() => {
-        const conn = new signalR.HubConnectionBuilder()
-            .withUrl(API_CONFIG.API_BASE1 + "/hubs/robot")
-            .withAutomaticReconnect()
-            .build();
-
-        conn.on("RobotPowerStatus", (data) => {
-            console.log("SignalR Power Update:", data);
-            setRobot((prev) => ({
-                ...prev,
-                power: data.power,
-                status: data.power ? "Đang hoạt động" : "Tạm dừng",
-                connectivity: data.power ? "Online" : "Offline",
-            }));
-        });
-
-        conn.start().catch((err) => console.error("SignalR error:", err));
-
-        return () => conn.stop();
-    }, []);
-
-    // ============================
-    // Toggle Power
-    // ============================
-    const togglePower = useCallback(async () => {
-        try {
-      const res = await fetch(API_CONFIG.API_BASE1+"/api/RobotPower/toggle", {
-                method: "POST",
-            });
-            const data = await res.json();
-            setRobot((prev) => ({
-                ...prev,
-                power: data.power,
-                status: data.power ? "Đang hoạt động" : "Tạm dừng",
-                connectivity: data.power ? "Online" : "Offline",
-            }));
-        } catch (err) {
-            console.error("Toggle error:", err);
-        }
-    }, []);
-
-    // ============================
-    // Badge Status
-    // ============================
-    const getStatusBadge = (status) => {
-        const badges = {
-            in_progress: { text: "Đang hoạt động", class: styles.badgeActive },
-            at_station: { text: "Tại trạm", class: styles.badgeStation },
-            pending: { text: "Chờ nhiệm vụ", class: styles.badgePending },
-        };
-        const badge = badges[status] || { text: "Không kết nối", class: styles.badgeOffline };
-        return <span className={badge.class}>{badge.text}</span>;
+  // ============================
+  // LẤY DỮ LIỆU ROBOT TỪ API
+  // ============================
+  useEffect(() => {
+    const fetchRobot = async () => {
+      try {
+        const data = await getRobotById(id);
+        setRobot(data);
+        console.log("Robot loaded:", data);
+      } catch (err) {
+        console.error("Failed to load robot:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // ============================
-    // Battery Progress Class
-    // ============================
-    const getBatteryClass = (percent) => {
-        if (percent < 30) return styles.progressDanger;
-        if (percent < 60) return styles.progressWarning;
-        return styles.progressSuccess;
+    fetchRobot();
+  }, [id]);
+
+  // ============================
+  // SignalR Realtime Power Status
+  // ============================
+  useEffect(() => {
+    const conn = new signalR.HubConnectionBuilder()
+      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robot")
+      .withAutomaticReconnect()
+      .build();
+
+    conn.on("RobotPowerStatus", (data) => {
+      console.log("SignalR Power Update:", data);
+      setRobot((prev) => ({
+        ...prev,
+        power: data.power,
+        status: data.power ? "Đang hoạt động" : "Tạm dừng",
+        connectivity: data.power ? "Online" : "Offline",
+      }));
+    });
+
+    conn.start().catch((err) => console.error("SignalR error:", err));
+
+    return () => conn.stop();
+  }, []);
+
+  // ============================
+  // Toggle Power
+  // ============================
+  const togglePower = useCallback(async () => {
+    try {
+      const res = await fetch(API_CONFIG.API_BASE1 + "/api/RobotPower/toggle", {
+        method: "POST",
+      });
+      const data = await res.json();
+      setRobot((prev) => ({
+        ...prev,
+        power: data.power,
+        status: data.power ? "Đang hoạt động" : "Tạm dừng",
+        connectivity: data.power ? "Online" : "Offline",
+      }));
+    } catch (err) {
+      console.error("Toggle error:", err);
+    }
+  }, []);
+
+  // ============================
+  // Badge Status
+  // ============================
+  const getStatusBadge = (status) => {
+    const badges = {
+      in_progress: { text: "Đang hoạt động", class: styles.badgeActive },
+      at_station: { text: "Tại trạm", class: styles.badgeStation },
+      pending: { text: "Chờ nhiệm vụ", class: styles.badgePending },
     };
+    const badge = badges[status] || { text: "Không kết nối", class: styles.badgeOffline };
+    return <span className={badge.class}>{badge.text}</span>;
+  };
 
-    if (loading) {
-        return (
-            <div className={styles.page}>
-                <div className={styles.loadingContainer}>
-                    <div className="spinner-border text-primary"></div>
-                    <p className={styles.loadingText}>Đang tải thông tin robot...</p>
-                </div>
-            </div>
-        );
-    }
+  // ============================
+  // Battery Progress Class
+  // ============================
+  const getBatteryClass = (percent) => {
+    if (percent < 30) return styles.progressDanger;
+    if (percent < 60) return styles.progressWarning;
+    return styles.progressSuccess;
+  };
 
-    if (!robot) {
-        return (
-            <div className={styles.page}>
-                <div className="container-xl py-4">
-                    <div className={styles.emptyState}>
-                        <i className="bi bi-exclamation-triangle" style={{ fontSize: '3rem' }}></i>
-                        <p>Không tìm thấy robot</p>
-                        <button className={styles.btnTeal} onClick={() => navigate("/team")}>
-                            Quay lại danh sách
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+  if (loading) {
     return (
-        <div className={styles.page}>
-            <div className="container-xl py-4">
-
-                {/* Back Button */}
-                <div className="mb-3">
-                    <button
-                        className={styles.btnPrimary}
-                        onClick={() => navigate("/team")}
-                    >
-                        <i className="bi bi-arrow-left me-1"></i>
-                        Quay lại
-                    </button>
-                </div>
-
-                <div className={`${styles.glass} p-4 p-md-5`}>
-
-                    {/* =================== HEADER =================== */}
-                    <div className={styles.headerSection}>
-                        <div className={styles.robotAvatar}>
-                            <i className="bi bi-robot"></i>
-                            <br />
-                            {robot.code}
-                        </div>
-
-                        <div className={styles.robotInfo}>
-                            <h4 className={styles.robotTitle}>{robot.name}</h4>
-                            <div className={styles.robotCode}>
-                                <i className="bi bi-upc-scan me-1"></i>
-                                Mã: {robot.code}
-                            </div>
-                            <div>{getStatusBadge(robot.status)}</div>
-                        </div>
-
-                        <div className={styles.robotActions}>
-                            <button
-                                className={robot.power ? styles.btnPowerOff : styles.btnPowerOn}
-                                onClick={togglePower}
-                            >
-                                <i className={`bi bi-power me-1`}></i>
-                                {robot.power ? "Tắt robot" : "Bật robot"}
-                            </button>
-
-                            <button
-                                className={styles.btnTeal}
-                                disabled={!robot.power}
-                                onClick={() => navigate('/run-map')}
-                            >
-                                <i className="bi bi-joystick me-1"></i>
-                                Điều khiển
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* =================== DETAIL + TASKS =================== */}
-                    <div className="row g-4 mt-3">
-
-                        {/* Thông tin chi tiết */}
-                        <div className="col-lg-7">
-                            <h6 className={styles.sectionTitle}>
-                                <i className="bi bi-info-circle-fill"></i>
-                                Thông tin chi tiết
-                            </h6>
-
-                            <div className={styles.infoGrid}>
-                                <div className={styles.infoLabel}>
-                                    <i className="bi bi-tag me-1"></i>
-                                    Loại robot
-                                </div>
-                                <div className={styles.infoValue}>Xe chở thuốc</div>
-
-                                <div className={styles.infoLabel}>
-                                    <i className="bi bi-geo-alt me-1"></i>
-                                    Vị trí hiện tại
-                                </div>
-                                <div className={styles.infoValue}>
-                                    {robot.latitude && robot.longitude
-                                        ? `(${robot.latitude.toFixed(4)}, ${robot.longitude.toFixed(4)})`
-                                        : "Tại trạm sạc"}
-                                </div>
-
-                                <div className={styles.infoLabel}>
-                                    <i className="bi bi-wifi me-1"></i>
-                                    Kết nối
-                                </div>
-                                <div className={styles.infoValue}>
-                                    {robot.power ? (
-                                        <span className="text-success">
-                                            <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
-                                            Online
-                                        </span>
-                                    ) : (
-                                        <span className="text-danger">
-                                            <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
-                                            Offline
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className={styles.infoLabel}>
-                                    <i className="bi bi-battery-charging me-1"></i>
-                                    Pin
-                                </div>
-                                <div className={styles.infoValue}>
-                                    <div className={styles.progressContainer}>
-                                        <div
-                                            className={`${styles.progressBar} ${getBatteryClass(robot.batteryPercent)}`}
-                                            style={{ width: `${robot.batteryPercent}%` }}
-                                        ></div>
-                                    </div>
-                                    <small>{robot.batteryPercent}%</small>
-                                </div>
-                            </div>
-
-                            <button className={styles.btnPrimary + " mt-4"}>
-                                <i className="bi bi-geo-alt-fill me-1"></i>
-                                Định vị nhanh
-                            </button>
-                        </div>
-
-                        {/* Danh sách nhiệm vụ hiện tại */}
-                        <div className="col-lg-5">
-                            <h6 className={styles.sectionTitle}>
-                                <i className="bi bi-list-task"></i>
-                                Nhiệm vụ hiện tại
-                            </h6>
-
-                            {robot.tasks && robot.tasks.length > 0 ? (
-                                robot.tasks
-                                    .filter(t => t.status === "in_progress" || t.status === "pending")
-                                    .slice(0, 5)
-                                    .map((task) => (
-                                        <div key={task.id} className={styles.taskCard}>
-                                            <div className={styles.taskHeader}>
-                                                <div className={styles.taskTitle}>
-                                                    <i className="bi bi-clipboard-check me-1"></i>
-                                                    Nhiệm vụ #{task.id}
-                                                </div>
-                                                {getStatusBadge(task.status)}
-                                            </div>
-
-                                            <div className={styles.taskMeta}>
-                                                <i className="bi bi-geo me-1"></i>
-                                                {task.stops && task.stops.length > 0
-                                                    ? `${task.stops.length} điểm dừng`
-                                                    : "Chưa có điểm dừng"}
-                                            </div>
-
-                                            {task.stops && task.stops.length > 0 && (
-                                                <ol className={styles.taskStops}>
-                                                    {task.stops.map((stop) => (
-                                                        <li key={stop.seqNo}>
-                                                            <strong>{stop.destinationName}</strong>
-                                                            {stop.patientName && <> - {stop.patientName}</>}
-                                                        </li>
-                                                    ))}
-                                                </ol>
-                                            )}
-                                        </div>
-                                    ))
-                            ) : (
-                                <div className={styles.emptyState}>
-                                    <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
-                                    Chưa có nhiệm vụ nào
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* =================== GALLERY =================== */}
-                    <div className="mt-4">
-                        <h6 className={styles.sectionTitle}>
-                            <i className="bi bi-images"></i>
-                            Hình ảnh hoạt động
-                        </h6>
-                        <div className={styles.galleryGrid}>
-                            {[1, 2, 3, 4].map((i) => (
-                                <img
-                                    key={i}
-                                    className={styles.galleryThumb}
-                                    src={`https://picsum.photos/400/300?random=${robot.id + i}`}
-                                    alt={`Hoạt động ${i}`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                </div>
-            </div>
+      <div className={styles.page}>
+        <div className={styles.loadingContainer}>
+          <div className="spinner-border text-primary"></div>
+          <p className={styles.loadingText}>Đang tải thông tin robot...</p>
         </div>
+      </div>
     );
+  }
+
+  if (!robot) {
+    return (
+      <div className={styles.page}>
+        <div className="container-xl py-4">
+          <div className={styles.emptyState}>
+            <i className="bi bi-exclamation-triangle" style={{ fontSize: '3rem' }}></i>
+            <p>Không tìm thấy robot</p>
+            <button className={styles.btnTeal} onClick={() => navigate("/team")}>
+              Quay lại danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className="container-xl py-4">
+        
+        {/* Back Button */}
+        <div className="mb-3">
+          <button 
+            className={styles.btnPrimary}
+            onClick={() => navigate("/team")}
+          >
+            <i className="bi bi-arrow-left me-1"></i>
+            Quay lại
+          </button>
+        </div>
+
+        <div className={`${styles.glass} p-4 p-md-5`}>
+          
+          {/* =================== HEADER =================== */}
+          <div className={styles.headerSection}>
+            <div className={styles.robotAvatar}>
+              <i className="bi bi-robot"></i>
+              <br />
+              {robot.code}
+            </div>
+
+            <div className={styles.robotInfo}>
+              <h4 className={styles.robotTitle}>{robot.name}</h4>
+              <div className={styles.robotCode}>
+                <i className="bi bi-upc-scan me-1"></i>
+                Mã: {robot.code}
+              </div>
+              <div>{getStatusBadge(robot.status)}</div>
+            </div>
+
+            <div className={styles.robotActions}>
+              <button
+                className={robot.power ? styles.btnPowerOff : styles.btnPowerOn}
+                onClick={togglePower}
+              >
+                <i className={`bi bi-power me-1`}></i>
+                {robot.power ? "Tắt robot" : "Bật robot"}
+              </button>
+
+              <button
+                className={styles.btnTeal}
+                disabled={!robot.power}
+                onClick={() => navigate('/run-map')}
+              >
+                <i className="bi bi-joystick me-1"></i>
+                Điều khiển
+              </button>
+            </div>
+          </div>
+
+          {/* =================== DETAIL + TASKS =================== */}
+          <div className="row g-4 mt-3">
+            
+            {/* Thông tin chi tiết */}
+            <div className="col-lg-7">
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-info-circle-fill"></i>
+                Thông tin chi tiết
+              </h6>
+
+              <div className={styles.infoGrid}>
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-tag me-1"></i>
+                  Loại robot
+                </div>
+                <div className={styles.infoValue}>Xe chở thuốc</div>
+
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-geo-alt me-1"></i>
+                  Vị trí hiện tại
+                </div>
+                <div className={styles.infoValue}>
+                  {robot.latitude && robot.longitude
+                    ? `(${robot.latitude.toFixed(4)}, ${robot.longitude.toFixed(4)})`
+                    : "Tại trạm sạc"}
+                </div>
+
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-wifi me-1"></i>
+                  Kết nối
+                </div>
+                <div className={styles.infoValue}>
+                  {robot.power ? (
+                    <span className="text-success">
+                      <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+                      Online
+                    </span>
+                  ) : (
+                    <span className="text-danger">
+                      <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
+                      Offline
+                    </span>
+                  )}
+                </div>
+
+                <div className={styles.infoLabel}>
+                  <i className="bi bi-battery-charging me-1"></i>
+                  Pin
+                </div>
+                <div className={styles.infoValue}>
+                  <div className={styles.progressContainer}>
+                    <div
+                      className={`${styles.progressBar} ${getBatteryClass(robot.batteryPercent)}`}
+                      style={{ width: `${robot.batteryPercent}%` }}
+                    ></div>
+                  </div>
+                  <small>{robot.batteryPercent}%</small>
+                </div>
+              </div>
+
+              <button className={styles.btnPrimary + " mt-4"}>
+                <i className="bi bi-geo-alt-fill me-1"></i>
+                Định vị nhanh
+              </button>
+            </div>
+
+            {/* Danh sách nhiệm vụ hiện tại */}
+            <div className="col-lg-5">
+              <h6 className={styles.sectionTitle}>
+                <i className="bi bi-list-task"></i>
+                Nhiệm vụ hiện tại
+              </h6>
+
+              {robot.tasks && robot.tasks.length > 0 ? (
+                robot.tasks
+                  .filter(t => t.status === "in_progress" || t.status === "pending")
+                  .slice(0, 5)
+                  .map((task) => (
+                    <div key={task.id} className={styles.taskCard}>
+                      <div className={styles.taskHeader}>
+                        <div className={styles.taskTitle}>
+                          <i className="bi bi-clipboard-check me-1"></i>
+                          Nhiệm vụ #{task.id}
+                        </div>
+                        {getStatusBadge(task.status)}
+                      </div>
+
+                      <div className={styles.taskMeta}>
+                        <i className="bi bi-geo me-1"></i>
+                        {task.stops && task.stops.length > 0
+                          ? `${task.stops.length} điểm dừng`
+                          : "Chưa có điểm dừng"}
+                      </div>
+
+                      {task.stops && task.stops.length > 0 && (
+                        <ol className={styles.taskStops}>
+                          {task.stops.map((stop) => (
+                            <li key={stop.seqNo}>
+                              <strong>{stop.destinationName}</strong>
+                              {stop.patientName && <> - {stop.patientName}</>}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  ))
+              ) : (
+                <div className={styles.emptyState}>
+                  <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                  Chưa có nhiệm vụ nào
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* =================== GALLERY =================== */}
+          <div className="mt-4">
+            <h6 className={styles.sectionTitle}>
+              <i className="bi bi-images"></i>
+              Hình ảnh hoạt động
+            </h6>
+            <div className={styles.galleryGrid}>
+              {[1, 2, 3, 4].map((i) => (
+                <img
+                  key={i}
+                  className={styles.galleryThumb}
+                  src={`https://picsum.photos/400/300?random=${robot.id + i}`}
+                  alt={`Hoạt động ${i}`}
+                />
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
 }
