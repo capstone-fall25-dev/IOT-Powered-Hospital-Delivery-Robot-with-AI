@@ -1,0 +1,353 @@
+/* src/assets/styles/projectMapListView.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
+}
+
+/* =================== HEADER =================== */
+.pageTitle {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.75rem;
+    margin-bottom: 0;
+}
+
+.subtitle {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(8, 145, 178, 0.12) 100%);
+    color: var(--teal-dark);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+    font-weight: 600;
+    padding: 0.35rem 0.8rem;
+    border-radius: 5px;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.headerSection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.headerActions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* =================== BUTTONS =================== */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.65rem 1.2rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+}
+
+.btnTeal:hover {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnOutlineTeal {
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    color: var(--teal-dark);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.btnOutlineTeal:hover {
+    background: rgba(13, 148, 136, 0.2);
+    border-color: rgba(13, 148, 136, 0.4);
+    color: var(--teal-dark);
+    transform: translateY(-1px);
+}
+
+.btnDanger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.btnDanger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #dc2626;
+}
+
+/* =================== SIDEBAR =================== */
+.sidebar {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    padding: 1rem;
+    max-height: 78vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+    border-radius: 5px 5px 0 0;
+}
+
+/* =================== MAP ITEM =================== */
+.mapItem {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-left: 3px solid transparent;
+    border-radius: 5px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mapItem:hover {
+    background: rgba(13, 148, 136, 0.05);
+    border-color: rgba(13, 148, 136, 0.25);
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.1);
+}
+
+.mapItemActive {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(8, 145, 178, 0.1) 100%);
+    border-left-color: var(--teal-dark);
+    border-color: rgba(13, 148, 136, 0.3);
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+}
+
+.mapItemHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.mapIcon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(8, 145, 178, 0.12) 100%);
+    color: var(--teal-dark);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.mapTitle {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1rem;
+    margin: 0;
+    flex: 1;
+}
+
+.mapItemFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mapRosName {
+    font-size: 0.85rem;
+    color: #64748b;
+    flex: 1;
+}
+
+/* =================== MAP CONTAINER =================== */
+.mapContainer {
+    height: 78vh;
+    min-height: 480px;
+    background: #e8f3f1;
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+/* =================== COORDINATE DISPLAY =================== */
+.coordinateDisplay {
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    z-index: 9999;
+    padding: 0.5rem 1rem;
+    background: rgba(15, 23, 42, 0.9);
+    color: #e5f7f3;
+    border-radius: 5px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.4);
+    font-family: 'Courier New', monospace;
+}
+
+.coordinateDisplay.show {
+    display: block;
+}
+
+/* =================== MAP TOOLBAR =================== */
+.mapToolbar {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    z-index: 9999;
+    width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    border-radius: 5px;
+    padding: 1.25rem;
+}
+
+.mapToolbar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+    border-radius: 5px 5px 0 0;
+}
+
+.toolbarTitle {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbarInput {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.65rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.toolbarInput:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.toolbarInput::placeholder {
+    color: #94a3b8;
+}
+
+.toolbarActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* =================== RESPONSIVE =================== */
+@media (max-width: 992px) {
+    .headerSection {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .headerActions {
+        width: 100%;
+    }
+
+    .headerActions button {
+        flex: 1;
+    }
+
+    .sidebar {
+        max-height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .mapToolbar {
+        width: calc(100% - 32px);
+        right: 16px;
+        left: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pageTitle {
+        font-size: 1.4rem;
+    }
+
+    .mapContainer {
+        height: 60vh;
+        min-height: 400px;
+    }
+
+    .sidebar {
+        max-height: 250px;
+    }
+
+    .mapItemHeader {
+        flex-direction: row;
+    }
+
+    .mapIcon {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+    }
+
+    .mapTitle {
+        font-size: 0.95rem;
+    }
+
+    .coordinateDisplay {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+    }
+}

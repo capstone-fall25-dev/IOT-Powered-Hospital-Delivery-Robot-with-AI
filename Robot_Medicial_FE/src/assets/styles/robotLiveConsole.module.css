@@ -1,110 +1,532 @@
 /* src/assets/styles/robotLiveConsole.module.css */
-
 :root {
-  --teal: #4CE1C6;
-  --ink: #0f172a;
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
 }
 
 .page {
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  background: linear-gradient(180deg, #f6faf9 0%, #e8f0ee 100%);
-  min-height: 100vh;
-  color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
 }
 
+/* =================== FULL HEIGHT CONTAINER =================== */
+.fullHeightContainer {
+    height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+
+/* =================== GLASS CARD =================== */
 .glass {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05); /* Mờ và mỏng hơn, gần như không có border */
-  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
-  border-radius: 24px; /* Bo tròn hơn, giảm vuông góc */
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+}
+
+/* =================== SECTION TITLES =================== */
+.sectionTitle {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sectionTitle i {
+    color: var(--teal-dark);
+}
+
+/* =================== STATUS BADGE =================== */
+.statusBadge {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.12) 100%);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    font-weight: 600;
+    padding: 0.35rem 0.7rem;
+    border-radius: 5px;
+    font-size: 0.85rem;
+}
+
+/* =================== BUTTONS =================== */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.65rem 1.2rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+    width: 100%;
+}
+
+.btnTeal:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnTeal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btnPrimary {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #2563eb;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.65rem 1.2rem;
+    transition: all 0.15s ease;
+    width: 100%;
+}
+
+.btnPrimary:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #2563eb;
+}
+
+.btnSuccess {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.74) 0%, rgba(22, 163, 74, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.btnSuccess:hover {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.85) 0%, rgba(22, 163, 74, 0.85) 100%);
+    color: white;
+}
+
+.btnDanger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.74) 0%, rgba(220, 38, 38, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.btnDanger:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.85) 0%, rgba(220, 38, 38, 0.85) 100%);
+    color: white;
+}
+
+.btnOutlineDanger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+
+.btnOutlineDanger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #dc2626;
+}
+
+.btnOutlinePrimary {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #2563eb;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    transition: all 0.15s ease;
+}
+
+.btnOutlinePrimary:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #2563eb;
+}
+
+/* =================== CONTROL PAD =================== */
+.pad {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    gap: 6px;
+    justify-content: center;
+    margin: 0.75rem auto;
 }
 
 .key {
-  height: 56px;
-  width: 56px;
-  border: 1px solid rgba(0, 0, 0, 0.05); /* Giảm độ đậm của border */
-  border-radius: 16px; /* Bo tròn hơn */
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease; /* Thêm transition mượt */
+    height: 48px;
+    width: 48px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+    color: #334155;
 }
 
 .key:hover {
-  border-color: var(--teal);
-  transform: scale(1.05); /* Hiệu ứng hover nhẹ */
+    background: rgba(13, 148, 136, 0.1);
+    border-color: rgba(13, 148, 136, 0.4);
+    transform: translateY(-2px);
 }
 
 .key.active {
-  background: var(--teal);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(76, 225, 198, 0.3); /* Glow effect */
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
 
-.pad {
-  display: grid;
-  grid-template-columns: repeat(3, 56px);
-  gap: 8px;
-  justify-content: center;
+/* =================== VIDEO BOX - SPLIT SCREEN =================== */
+.videoBoxSplit {
+    height: 100%;
+    min-height: 350px;
+    border-radius: 5px;
+    background: #e8f3f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
 }
 
-.mapBox,
+.videoBoxSplit img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* =================== VIDEO BOX - NORMAL =================== */
 .videoBox {
-  height: 260px;
-  border-radius: 20px; /* Bo tròn hơn cho box */
-  background: #eaf7f4;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(0, 0, 0, 0.02); /* Border mờ */
-  overflow: hidden; /* Ẩn góc vuông nếu cần */
+    height: 280px;
+    border-radius: 5px;
+    background: #e8f3f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
 }
 
-.btnTeal {
-  background: var(--teal) !important;
-  border: none !important;
-  color: #052a2b !important;
-  font-weight: 700;
-  border-radius: 20px; /* Bo tròn button hơn */
-  transition: all 0.2s ease;
+.videoBox img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-.btnTeal:hover {
-  background: #39d7bf !important;
-  transform: translateY(-1px); /* Hiệu ứng nâng nhẹ */
-  box-shadow: 0 4px 12px rgba(76, 225, 198, 0.3);
+.videoPlaceholder {
+    color: #64748b;
+    font-size: 0.95rem;
 }
 
-/* Tùy chỉnh list-group để bo tròn hơn */
-:global(.list-group-item) {
-  border: 1px solid rgba(0, 0, 0, 0.05) !important; /* Border mờ */
-  border-radius: 12px !important; /* Bo tròn item */
-  margin-bottom: 4px !important;
+/* =================== MAP BOX - SPLIT SCREEN =================== */
+.mapBoxSplit {
+    height: 100%;
+    min-height: 350px;
+    width: 100%;
+    border-radius: 5px;
+    background: #e8f3f1;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
 }
 
-/* Bo tròn select và input */
-:global(.form-select),
-:global(.form-control) {
-  border-radius: 16px !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important; /* Border mỏng hơn */
+/* =================== MAP BOX - NORMAL =================== */
+.mapBox {
+    height: 520px;
+    width: 100%;
+    border-radius: 5px;
+    background: #e8f3f1;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
 }
 
-/* Bo tròn badge */
-:global(.badge) {
-  border-radius: 20px !important;
+.mapBoxSmall {
+    height: 280px;
 }
 
-/* Responsive cho mobile */
+/* =================== SPLIT VIEW CONTAINER =================== */
+.splitViewContainer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+}
+
+/* =================== COMPARTMENT CONTROLS =================== */
+.compartmentItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    transition: all 0.15s ease;
+}
+
+.compartmentItem:hover {
+    background: rgba(13, 148, 136, 0.05);
+    border-color: rgba(13, 148, 136, 0.25);
+}
+
+.compartmentLabel {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.875rem;
+}
+
+/* =================== FORM CONTROLS =================== */
+.formControl {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.formControl:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.formSelect {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.formSelect:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.inputGroup {
+    display: flex;
+    gap: 0;
+}
+
+.inputGroup .formControl {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    flex: 1;
+}
+
+.inputGroup .btnSuccess {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: none;
+}
+
+/* =================== LOGS SECTION =================== */
+.logsContainer {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.logsContainer::-webkit-scrollbar {
+    width: 6px;
+}
+
+.logsContainer::-webkit-scrollbar-track {
+    background: rgba(13, 148, 136, 0.05);
+    border-radius: 3px;
+}
+
+.logsContainer::-webkit-scrollbar-thumb {
+    background: rgba(13, 148, 136, 0.2);
+    border-radius: 3px;
+}
+
+.logsContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(13, 148, 136, 0.3);
+}
+
+.logItem {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(13, 148, 136, 0.1);
+    border-left: 3px solid var(--teal-dark);
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.logTime {
+    color: #64748b;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.logText {
+    color: #334155;
+    font-weight: 500;
+}
+
+.logsEmpty {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: #64748b;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+/* =================== DESTINATION INFO =================== */
+.destinationInfo {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-radius: 5px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: #334155;
+}
+
+.destinationInfo strong {
+    color: var(--teal-dark);
+    font-weight: 700;
+}
+
+/* =================== DIVIDER =================== */
+.divider {
+    margin: 0.75rem 0;
+    border: none;
+    border-top: 2px solid rgba(13, 148, 136, 0.1);
+}
+
+/* =================== CONTROL SIDEBAR =================== */
+.controlSidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.controlSidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.controlSidebar::-webkit-scrollbar-track {
+    background: rgba(13, 148, 136, 0.05);
+    border-radius: 3px;
+}
+
+.controlSidebar::-webkit-scrollbar-thumb {
+    background: rgba(13, 148, 136, 0.2);
+    border-radius: 3px;
+}
+
+/* =================== RESPONSIVE =================== */
+@media (max-width: 1200px) {
+    .splitViewContainer {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .videoBoxSplit,
+    .mapBoxSplit {
+        min-height: 300px;
+        height: 400px;
+    }
+}
+
+@media (max-width: 992px) {
+    .videoBox {
+        height: 220px;
+    }
+
+    .mapBox {
+        height: 400px;
+    }
+
+    .logsContainer {
+        max-height: 200px;
+    }
+
+    .pad {
+        grid-template-columns: repeat(3, 44px);
+    }
+
+    .key {
+        height: 44px;
+        width: 44px;
+        font-size: 0.95rem;
+    }
+}
+
 @media (max-width: 768px) {
-  .glass {
-    border-radius: 20px; /* Giảm bo tròn trên mobile nếu cần */
-    margin-bottom: 1rem;
-  }
-  
-  .mapBox,
-  .videoBox {
-    height: 200px; /* Giảm chiều cao trên mobile */
-  }
+    .videoBox {
+        height: 200px;
+    }
+
+    .mapBox {
+        height: 350px;
+    }
+
+    .videoBoxSplit,
+    .mapBoxSplit {
+        height: 300px;
+        min-height: 250px;
+    }
+
+    .logsContainer {
+        max-height: 180px;
+    }
+
+    .sectionTitle {
+        font-size: 0.9rem;
+    }
+
+    .splitViewContainer {
+        gap: 0.75rem;
+    }
 }

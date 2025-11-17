@@ -1,177 +1,419 @@
-/* createRobot.module.css */
+/* src/assets/styles/createRobot.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
 
-/* ===== Page container ===== */
 .page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
     min-height: 100vh;
-    background: linear-gradient(135deg, #e0f7fa, #ffffff);
-    font-family: 'Roboto', sans-serif;
 }
 
-/* ===== Glassmorphism form ===== */
-.glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease-in-out;
+/* =================== HEADER =================== */
+.pageTitle {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 1.5rem;
+    margin-bottom: 0;
 }
 
-/* ===== Header chip ===== */
-.chip {
-    background-color: #26a69a; /* teal */
-    color: white;
-    padding: 6px 12px;
-    border-radius: 12px;
-    font-weight: 500;
-    display: inline-flex;
+.headerSection {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* =================== GLASS CARD =================== */
+.glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+}
+
+/* =================== FORM ELEMENTS =================== */
+.formLabel {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.formControl {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+    width: 100%;
+}
+
+.formControl:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.formControl::placeholder {
+    color: #94a3b8;
+}
+
+.formSelect {
+    border-radius: 5px;
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.9);
+    width: 100%;
+}
+
+.formSelect:focus {
+    border-color: rgba(13, 148, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    outline: none;
+    background: white;
+}
+
+.helpText {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+/* =================== BUTTONS =================== */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.15);
+}
+
+.btnTeal:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+    color: white;
+}
+
+.btnTeal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btnSecondary {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1.5px solid rgba(13, 148, 136, 0.2);
+    color: #475569;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.15s ease;
+}
+
+.btnSecondary:hover {
+    background: rgba(13, 148, 136, 0.05);
+    border-color: rgba(13, 148, 136, 0.3);
+    color: #475569;
+}
+
+.btnRegenerate {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #2563eb;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.65rem 1rem;
+    transition: all 0.15s ease;
+}
+
+.btnRegenerate:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #2563eb;
+}
+
+.btnAddCompartment {
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    color: var(--teal-dark);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.15s ease;
+}
+
+.btnAddCompartment:hover {
+    background: rgba(13, 148, 136, 0.2);
+    border-color: rgba(13, 148, 136, 0.4);
+    color: var(--teal-dark);
+}
+
+.btnRemove {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+}
+
+.btnRemove:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #dc2626;
+}
+
+/* =================== COMPARTMENT CARD =================== */
+.compartmentCard {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-left: 4px solid var(--teal-dark);
+    border-radius: 5px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.15s ease;
+}
+
+.compartmentCard:hover {
+    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.1);
+    border-color: rgba(13, 148, 136, 0.25);
+}
+
+.compartmentHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.compartmentNumber {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(8, 145, 178, 0.12) 100%);
+    border: 1px solid rgba(13, 148, 136, 0.2);
+    color: var(--teal-dark);
+    font-weight: 800;
     font-size: 0.9rem;
 }
 
-/* ===== Input & Select styling ===== */
-.form-control,
-.form-select {
-    border-radius: 12px;
-    border: 1px solid #b2dfdb;
-    padding: 8px 12px;
-    transition: 0.2s;
+.compartmentTitle {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.9rem;
 }
 
-.form-control:focus,
-.form-select:focus {
-    border-color: #26a69a;
-    box-shadow: 0 0 0 2px rgba(38, 166, 154, 0.2);
-    outline: none;
+.compartmentCode {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.5rem;
 }
 
-/* ===== Buttons ===== */
-.btn-teal {
-    background-color: #26a69a;
-    color: white;
-    border: none;
-    transition: 0.2s;
+.compartmentCode strong {
+    color: var(--teal-dark);
+    font-weight: 700;
 }
 
-.btn-teal:hover {
-    background-color: #00796b;
-    color: white;
+/* =================== INPUT GROUP =================== */
+.inputGroup {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
 }
 
-/* Outline buttons */
-.btn-outline-secondary {
-    border-radius: 50px;
-    border-color: #bdbdbd;
-    color: #424242;
-    transition: 0.2s;
+.inputGroup .formControl {
+    flex: 1;
+    border-radius: 5px;
 }
 
-.btn-outline-secondary:hover {
-    background-color: #e0f2f1;
+.inputGroup .btnRegenerate {
+    flex-shrink: 0;
+    border-radius: 5px;
 }
 
-/* ===== Form spacing ===== */
-.row.g-3 > .col-md-4,
-.row.g-3 > .col-md-6,
-.row.g-3 > .col-md-8,
-.row.g-3 > .col-12 {
-    margin-bottom: 16px;
-}
-
-
-/* === TOAST POPUP – THUẦN CSS === */
+/* =================== TOAST NOTIFICATIONS =================== */
 .toastContainer {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  pointer-events: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
 }
 
 .toastContainer.show {
-  pointer-events: auto;
+    pointer-events: auto;
 }
 
 .toast {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  padding: 14px 18px;
-  min-width: 300px;
-  max-width: 400px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  opacity: 0;
-  transform: translateX(120%);
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-  border-left: 5px solid;
-  font-weight: 500;
-  font-size: 15px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
+    padding: 1rem 1.25rem;
+    min-width: 320px;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    opacity: 0;
+    transform: translateX(120%);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    border-left: 4px solid;
 }
 
 .toastContainer.show .toast {
-  opacity: 1;
-  transform: translateX(0);
+    opacity: 1;
+    transform: translateX(0);
 }
 
-/* Màu sắc */
-.toast.success { border-left-color: #10b981; }
-.toast.error   { border-left-color: #ef4444; }
-.toast.warning { border-left-color: #f59e0b; }
-.toast.info    { border-left-color: #3b82f6; }
+/* Toast colors */
+.toast.success { 
+    border-left-color: #10b981;
+}
+.toast.error { 
+    border-left-color: #ef4444;
+}
+.toast.warning { 
+    border-left-color: #f59e0b;
+}
+.toast.info { 
+    border-left-color: #3b82f6;
+}
 
 .toastIcon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
-  color: white;
-  flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: white;
+    flex-shrink: 0;
 }
 
 .toast.success .toastIcon { background: #10b981; }
-.toast.error   .toastIcon { background: #ef4444; }
+.toast.error .toastIcon { background: #ef4444; }
 .toast.warning .toastIcon { background: #f59e0b; }
-.toast.info    .toastIcon { background: #3b82f6; }
+.toast.info .toastIcon { background: #3b82f6; }
 
 .toastMessage {
-  flex: 1;
-  color: #1f2937;
-  line-height: 1.4;
+    flex: 1;
+    color: #1f2937;
+    line-height: 1.5;
+    font-weight: 500;
 }
 
 .toastClose {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    transition: all 0.15s;
+    line-height: 1;
 }
 
 .toastClose:hover {
-  background: #f3f4f6;
-  color: #374151;
+    background: rgba(0, 0, 0, 0.05);
+    color: #374151;
 }
-/* ===== Responsive adjustments ===== */
+
+/* =================== SECTION LABELS =================== */
+.sectionLabel {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sectionLabel i {
+    color: var(--teal-dark);
+}
+
+/* =================== RESPONSIVE =================== */
 @media (max-width: 768px) {
-    .page {
-        padding: 1rem;
+    .pageTitle {
+        font-size: 1.3rem;
+    }
+
+    .headerSection {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .glass {
-        padding: 2rem 1rem;
+        padding: 1.5rem !important;
+    }
+
+    .compartmentCard {
+        padding: 0.75rem;
+    }
+
+    .toastContainer {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+    }
+
+    .inputGroup {
+        flex-direction: column;
+    }
+
+    .inputGroup .formControl,
+    .inputGroup .btnRegenerate {
+        border-radius: 5px;
+        border: 1.5px solid rgba(13, 148, 136, 0.2);
     }
 }

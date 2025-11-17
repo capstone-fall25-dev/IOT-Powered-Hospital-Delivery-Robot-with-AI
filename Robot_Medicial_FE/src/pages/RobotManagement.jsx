@@ -1,32 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllRobots } from "@/services/robotService";
-
+import styles from "@/assets/styles/robotFleetCards.module.css";
 
 export default function RobotFleetCards() {
     const navigate = useNavigate();
 
-
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(1200px 600px at 15% 10%,rgba(76,225,198,.18),transparent 60%),radial-gradient(900px 500px at 90% 5%,rgba(76,225,198,.12),transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 20%,#e9f3f1 60%,#e8f0ee 100%);min-height:100vh}
-      .title{font-weight:900;color:#0b1432}
-      .btn-teal{background:var(--teal);border:none;color:#052a2b;font-weight:800}
-      .btn-teal:hover{filter:brightness(1.05)}
-      .robot-card{background:#0e1a2b;color:#eef7f5;border:1px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 22px rgba(2,6,23,.18);transition:transform .2s ease, box-shadow .2s ease;cursor:pointer}
-      .robot-card:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(2,6,23,.22)}
-      .robot-card .muted{color:#cfe9e5;opacity:.85}
-      .badge-status{border:1px solid rgba(255,255,255,.2); font-weight:700}
-      .badge-warn{background:#ffefc6;color:#8a6a00}
-      .badge-ready{background:#d6fffb;color:#0b3e3c}
-      .badge-stop{background:#e9d6ff;color:#5b2d86}
-      .progress-dark{--bs-progress-bg:rgba(255,255,255,.1); --bs-progress-height: 8px}
-    `}</style>
-    );
-
-
-    // Map trạng thái từ API sang badge status (thêm map cho detail consistency)
+    // Map trạng thái từ API sang badge status
     const statusMap = {
         transporting: "dangvanchuyen",
         awaiting_handover: "chobangiao",
@@ -36,87 +16,106 @@ export default function RobotFleetCards() {
         charging: "sac",
         needs_attention: "chobangiao",
         offline: "khonghoatdong",
-        manual_control: "dangdieukhien",  // ✅ Thêm nếu cần
+        manual_control: "dangdieukhien",
     };
-
 
     const [robots, setRobots] = useState([]);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
-
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchRobots() {
             try {
                 const data = await getAllRobots();
                 const formatted = data.map((r) => ({
-
-                    id: r.id,  // ✅ Numeric ID cho navigate/fetch (ví dụ: 1)
-                    code: r.code,  // ✅ String code cho display/search
+                    id: r.id,
+                    code: r.code,
                     name: r.name,
                     battery: r.batteryPercent ?? 0,
                     mission: r.progressOverallPct ?? 0,
                     status: statusMap[r.status] || "sansang",
                 }));
                 setRobots(formatted);
+                setLoading(false);
             } catch (err) {
                 console.error("Lỗi khi load robots:", err);
+                setLoading(false);
             }
         }
         fetchRobots();
     }, []);
-
 
     const filtered = useMemo(
         () =>
             robots.filter(
                 (r) =>
                     (status === "all" || r.status === status) &&
-                    r.code.toLowerCase().includes(q.toLowerCase())  // ✅ Tìm theo code, không phải id
+                    r.code.toLowerCase().includes(q.toLowerCase())
             ),
         [robots, q, status]
     );
 
-
     function statusBadge(s) {
-        switch (s) {
-            case "chobangiao":
-                return <span className="badge badge-warn badge-status">Chờ bàn giao</span>;
-            case "dangvanchuyen":
-                return <span className="badge badge-ready badge-status">Đang vận chuyển</span>;
-            case "dangquayve":
-                return <span className="badge badge-ready badge-status">Đang quay về</span>;
-            case "taitram":
-                return <span className="badge badge-warn badge-status">Tại trạm</span>;
-            case "sac":
-                return <span className="badge badge-warn badge-status">Đang sạc</span>;
-            case "sansang":
-                return <span className="badge badge-ready badge-status">Sẵn sàng</span>;
-            case "khonghoatdong":
-                return <span className="badge badge-stop badge-status">Không hoạt động</span>;
-            default:
-                return <span className="badge badge-ready badge-status">Trạng thái khác</span>;
-        }
+        const badges = {
+            chobangiao: { class: styles.badgeWaiting, text: "Chờ bàn giao" },
+            dangvanchuyen: { class: styles.badgeTransporting, text: "Đang vận chuyển" },
+            dangquayve: { class: styles.badgeReturning, text: "Đang quay về" },
+            taitram: { class: styles.badgeAtStation, text: "Tại trạm" },
+            sac: { class: styles.badgeCharging, text: "Đang sạc" },
+            sansang: { class: styles.badgeReady, text: "Sẵn sàng" },
+            khonghoatdong: { class: styles.badgeOffline, text: "Không hoạt động" },
+            dangdieukhien: { class: styles.badgeManual, text: "Điều khiển thủ công" },
+        };
+
+        const badge = badges[s] || { class: styles.badgeReady, text: "Trạng thái khác" };
+        return <span className={`${styles.badgeStatus} ${badge.class}`}>{badge.text}</span>;
     }
 
+    function getBatteryIcon(battery) {
+        if (battery >= 80) return "bi-battery-full";
+        if (battery >= 60) return "bi-battery-half";
+        if (battery >= 40) return "bi-battery";
+        if (battery >= 20) return "bi-battery-half";
+        return "bi-battery";
+    }
+
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
+                        <div className="text-center">
+                            <div className="spinner-border text-primary mb-3"></div>
+                            <p className="text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="page">
-            {styles}
-            <div className="container-xl py-3 py-lg-4">
-                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                    <h5 className="title mb-0">Đội Robot Y Tế</h5>
-                    <div className="d-flex gap-2">
+        <div className={styles.page}>
+            <div className="container-xl py-4">
+
+                {/* =================== HEADER =================== */}
+                <div className={styles.headerSection}>
+                    <h5 className={styles.pageTitle}>
+                        <i className="bi bi-robot me-2" style={{ color: 'var(--teal-dark)' }}></i>
+                        Đội Robot Y Tế
+                    </h5>
+
+                    <div className={styles.headerActions}>
                         <input
-                            className="form-control"
-                            style={{ width: 220 }}
+                            className={styles.searchInput}
                             placeholder="Tìm robot (RB-xxx)"
                             value={q}
                             onChange={(e) => setQ(e.target.value)}
                         />
+
                         <select
-                            className="form-select"
-                            style={{ width: 180 }}
+                            className={styles.filterSelect}
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
                         >
@@ -128,43 +127,69 @@ export default function RobotFleetCards() {
                             <option value="sac">Đang sạc</option>
                             <option value="sansang">Sẵn sàng</option>
                             <option value="khonghoatdong">Không hoạt động</option>
+                            <option value="dangdieukhien">Điều khiển thủ công</option>
                         </select>
 
-                        <button className="btn btn-teal" onClick={() => navigate(`/createRobot`)}>
-                            <i className="bi bi-plus-lg me-1"></i> Thêm robot
+                        <button 
+                            className={styles.btnTeal}
+                            onClick={() => navigate(`/createRobot`)}
+                        >
+                            <i className="bi bi-plus-lg me-1"></i>
+                            Thêm robot
                         </button>
                     </div>
                 </div>
 
-
+                {/* =================== ROBOT CARDS =================== */}
                 <div className="row g-3">
                     {filtered.map((r) => (
-                        <div className="col-12 col-sm-6 col-lg-3" key={r.id}>  {/* ✅ Key dùng numeric id */}
+                        <div className="col-12 col-sm-6 col-lg-4 col-xl-3" key={r.id}>
                             <div
-                                className="robot-card p-3 h-100"
-
-                                onClick={() => navigate(`/robot-detail/${r.id}`)}  // ✅ Navigate dùng numeric id (ví dụ: /robot-detail/1)
+                                className={styles.robotCard}
+                                onClick={() => navigate(`/robot-detail/${r.id}`)}
                             >
-                                <div className="fw-bold mb-1">{r.code}</div>  {/* ✅ Display code */}
-                                <div className="mb-2">
-                                    <div className="d-flex align-items-center gap-2">
-                                        <i className="bi bi-battery-half"></i>
-                                        <span className="muted">Ắc quy: {r.battery}%</span>
-                                    </div>
+                                <div className={styles.robotCode}>
+                                    <i className="bi bi-cpu me-2" style={{ color: 'var(--teal-dark)' }}></i>
+                                    {r.code}
                                 </div>
-                                <div className="progress progress-dark" style={{ height: '8px' }}>  {/* ✅ Fix progress class */}
-                                    <div className="progress-bar" style={{ width: `${r.mission}%` }}></div>
+
+                                <div className={styles.robotInfo}>
+                                    <i className={getBatteryIcon(r.battery)}></i>
+                                    <span>Ắc quy: <strong>{r.battery}%</strong></span>
                                 </div>
+
+                                {r.mission > 0 && (
+                                    <>
+                                        <div className={styles.robotMission}>
+                                            <i className="bi bi-graph-up me-1" style={{ color: 'var(--teal-dark)' }}></i>
+                                            Tiến trình: {r.mission}%
+                                        </div>
+
+                                        <div className={styles.progressContainer}>
+                                            <div 
+                                                className={styles.progressBar}
+                                                style={{ width: `${r.mission}%` }}
+                                            ></div>
+                                        </div>
+                                    </>
+                                )}
+
                                 {statusBadge(r.status)}
                             </div>
                         </div>
                     ))}
+
                     {filtered.length === 0 && (
-                        <div className="text-muted">Không có robot phù hợp.</div>
+                        <div className="col-12">
+                            <div className={styles.emptyState}>
+                                <i className="bi bi-inbox" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                                Không có robot phù hợp với bộ lọc
+                            </div>
+                        </div>
                     )}
                 </div>
+
             </div>
         </div>
     );
 }
-
