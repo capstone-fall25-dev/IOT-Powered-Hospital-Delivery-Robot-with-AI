@@ -8,7 +8,7 @@ export default function RobotLiveConsole() {
   const destinationMarker = useRef(null);
 const mapLiveRef = useRef(null);
 const mapLiveLayer = useRef(null);
-
+const robotLiveMarker = useRef(null); 
   // ===================================
   // 🧩 STATE
   // ===================================
@@ -79,7 +79,10 @@ const mapLiveLayer = useRef(null);
   drawMap(map);        // map navigation (map bên phải)
   drawLiveMap(map);    // map live SLAM (map bên trái)
 });
-    posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    posConn.on("ReceivePosition", (pos) => {
+  updateRobotPosition(pos);       // map navigation
+  updateRobotPositionLive(pos);   // ⭐ map LIVE SLAM
+});
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64)
@@ -213,6 +216,35 @@ const mapLiveLayer = useRef(null);
       robotMarker.current.setIcon(icon);
     }
   }
+
+  // ================================================
+// ⭐ HIỂN THỊ ROBOT TRÊN MAP LIVE (SLAM)
+// ================================================
+function updateRobotPositionLive(pos) {
+  if (!window.L || !mapLiveRef.current || !currentMapInfo) return;
+
+  const L = window.L;
+  const { originX, originY } = currentMapInfo;
+
+  const localX = pos.x - originX;
+  const localY = pos.y - originY;
+
+  const latlng = [localY, localX];
+
+  const icon = L.divIcon({
+    html: `<div style="transform:rotate(${pos.theta}rad);font-size:20px;">🤖</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+
+  if (!robotLiveMarker.current)
+    robotLiveMarker.current = L.marker(latlng, { icon }).addTo(mapLiveRef.current);
+  else {
+    robotLiveMarker.current.setLatLng(latlng);
+    robotLiveMarker.current.setIcon(icon);
+  }
+}
+
 
   // ============================================================
   // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
