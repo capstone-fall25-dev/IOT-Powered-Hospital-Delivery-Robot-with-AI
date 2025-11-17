@@ -23,7 +23,6 @@ SERVICES = [
     "navigation.service"
 ]
 
-
 # ============================================================
 # ⚙️ SYSTEMD CONTROL
 # ============================================================
@@ -53,8 +52,10 @@ def control_services(power_on: bool):
 def report_power_state(power_on: bool):
     try:
         data = {"power": power_on, "source": ROBOT_NAME}
-        resp = requests.post(f"{BACKEND_URL}/api/RobotPower/report",
-                             json=data, timeout=5)
+        resp = requests.post(
+            f"{BACKEND_URL}/api/RobotPower/report",
+            json=data, timeout=5
+        )
         if resp.status_code == 200:
             print(f"📡 Reported to backend: {data}")
         else:
@@ -62,29 +63,28 @@ def report_power_state(power_on: bool):
     except Exception as e:
         print(f"❌ Report error: {e}")
 
-
 # ============================================================
-# 🧠 ROBOT POWER LISTENER — WITH AUTO RECONNECT
+# 🧠 SIGNALR LISTENER – AUTO RECONNECT
 # ============================================================
 class RobotPowerListener(Node):
     def __init__(self):
-        super().__init__('robot_power_listener')
+        super().__init__("robot_power_listener")
         self.get_logger().info("🤖 Robot Power Listener started")
 
-        # Tạo event-loop riêng để chạy SignalR
+        # Event loop cho SignalR
         self.loop = asyncio.new_event_loop()
-        threading.Thread(target=self.loop.run_forever,
-                         daemon=True).start()
+        threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
-        # Bắt đầu auto-reconnect
+        self.hub_connection = None
+
         asyncio.run_coroutine_threadsafe(
             self.signalr_connect_loop(),
             self.loop
         )
 
-    # ============================================================
+    # ------------------------------------------------------------
     # 🔁 AUTO RECONNECT LOOP
-    # ============================================================
+    # ------------------------------------------------------------
     async def signalr_connect_loop(self):
         while True:
             try:
@@ -98,27 +98,36 @@ class RobotPowerListener(Node):
             print("🔁 Reconnecting hub in 5 seconds…")
             await asyncio.sleep(5)
 
+    # ------------------------------------------------------------
+    # 🛑 WAIT UNTIL HUB DISCONNECTS
+    # ------------------------------------------------------------
     async def wait_for_disconnect(self):
-        """Chặn cho đến khi hub bị ngắt kết nối"""
         while True:
-            if not self.hub_connection.connected:
+            if (not self.hub_connection):
                 print("❌ Hub disconnected!")
                 return
             await asyncio.sleep(1)
 
-    # ============================================================
-    # 🔌 KẾT NỐI MỘT LẦN
-    # ============================================================
+    # ------------------------------------------------------------
+    # 🔌 CONNECT ONE TIME
+    # ------------------------------------------------------------
     async def start_signalr_once(self):
         print(f"🔌 Connecting to SignalR Hub at {HUB_URL}...")
+
+        if self.hub_connection:
+            try:
+                self.hub_connection.stop()
+            except:
+                pass
 
         self.hub_connection = (
             HubConnectionBuilder()
             .with_url(HUB_URL)
             .with_automatic_reconnect({
-                "type": "interval",
+                "type": "raw",
                 "keep_alive_interval": 10,
-                "reconnect_interval": 5
+                "reconnect_interval": 5,
+                "max_attempts": None
             })
             .build()
         )
@@ -132,23 +141,23 @@ class RobotPowerListener(Node):
                 print("\n⚡ Received Robot Power Command:\n",
                       json.dumps(data, indent=2, ensure_ascii=False))
 
-                state = data.get("state", "")
-                power_on = (state == "on")
+                power_on = (data.get("state", "") == "on")
 
                 control_services(power_on)
                 report_power_state(power_on)
 
                 print(f"✅ Robot power changed → {'🟢 ON' if power_on else '🔴 OFF'}")
-
             except Exception as e:
-                print(f"❌ Error processing power command: {e}")
+                print(f"❌ Error processing command: {e}")
 
         def on_receive_robot_command(args):
             print("\n🤖 Robot Command Received:")
             print(json.dumps(args, indent=2, ensure_ascii=False))
 
-        # Register events (ensure no duplication)
+        # Clear old handlers
         self.hub_connection.handlers.clear()
+
+        # Register handlers
         self.hub_connection.on("ReceiveRobotPower", on_receive_robot_power)
         self.hub_connection.on("ReceiveRobotCommand", on_receive_robot_command)
 
@@ -156,15 +165,11 @@ class RobotPowerListener(Node):
         self.hub_connection.on_close(lambda: print("❌ Connection closed"))
         self.hub_connection.on_error(lambda err: print(f"⚠️ Hub error: {err}"))
 
-        # Start connection
         self.hub_connection.start()
 
-        if not self.hub_connection.connected:
-            raise Exception("❌ Failed to connect hub!")
+  
 
         print("🎉 Hub started successfully")
-
-
 
 # ============================================================
 # 🚀 MAIN
