@@ -1,5 +1,11 @@
 fastapi
-uvicorn
-python-multipart
+uvicorn[standard]
+google-cloud-storage
+google-cloud-speech
 google-generativeai
 edge-tts
+python-multipart
+aiofiles
+langchain
+chromadb
+sentence-transformers
