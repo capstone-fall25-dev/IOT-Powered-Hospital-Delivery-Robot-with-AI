@@ -253,7 +253,7 @@
     text-align: center;
 }
 
-/* =================== MAP BOX - FILLS REMAINING SPACE =================== */
+/* =================== MAP BOX - SINGLE MAP (CreateMap) =================== */
 .mapBox {
     flex: 1;
     min-height: 300px;
@@ -265,22 +265,44 @@
     position: relative;
 }
 
-.mapBoxSmall {
-    height: 200px;
-    flex: none;
-}
-
-/* =================== DUAL MAP LAYOUT =================== */
+/* =================== DUAL MAP LAYOUT - HORIZONTAL (RunMap) =================== */
 .dualMapContainer {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
     flex: 1;
+    min-height: 0;
 }
 
-.dualMapContainer .mapBox {
+/* =================== MAP BOX WRAPPER (RunMap) =================== */
+.mapBoxWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 0;
+}
+
+.mapLabel {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.mapLabel i {
+    color: var(--teal-dark);
+    font-size: 0.9rem;
+}
+
+/* Map box trong wrapper - square layout */
+.mapBoxWrapper .mapBox {
     flex: 1;
     min-height: 200px;
+    aspect-ratio: 1 / 1;
 }
 
 /* =================== COMPARTMENT CONTROLS =================== */
@@ -466,10 +488,14 @@
     margin-bottom: 0.5rem;
 }
 
-/* =================== RESPONSIVE =================== */
+/* =================== RESPONSIVE (SINGLE BLOCK - NO DUPLICATE) =================== */
 @media (max-width: 1400px) {
     .cameraBox {
         height: 180px;
+    }
+
+    .mapBoxWrapper .mapBox {
+        aspect-ratio: auto;
     }
 }
 
@@ -480,6 +506,10 @@
 
     .mapBox {
         min-height: 250px;
+    }
+
+    .mapBoxWrapper .mapBox {
+        min-height: 200px;
     }
 
     .logsContainer {
@@ -506,6 +536,16 @@
         min-height: 300px;
     }
 
+    /* Stack dọc trên tablet */
+    .dualMapContainer {
+        grid-template-columns: 1fr;
+    }
+
+    .mapBoxWrapper .mapBox {
+        min-height: 250px;
+        aspect-ratio: auto;
+    }
+
     .logsContainer {
         max-height: 160px;
     }
@@ -522,6 +562,10 @@
 
     .mapBox {
         min-height: 250px;
+    }
+
+    .mapBoxWrapper .mapBox {
+        min-height: 200px;
     }
 
     .logsContainer {
