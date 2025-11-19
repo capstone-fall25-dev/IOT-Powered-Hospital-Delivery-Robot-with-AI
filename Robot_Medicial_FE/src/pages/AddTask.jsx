@@ -219,7 +219,7 @@ export default function AddTask() {
 
                             {/* MAP + ROBOT */}
                             <div className="row g-4 mb-4">
-                                <div className="col-md-6">
+                                <div className="col-md-4">
                                     <label className={`form-label ${styles.formLabel}`}>
                                         Chọn bản đồ <span className="text-danger">*</span>
                                     </label>
@@ -237,7 +237,7 @@ export default function AddTask() {
                                     </select>
                                 </div>
 
-                                <div className="col-md-6">
+                                <div className="col-md-4">
                                     <label className={`form-label ${styles.formLabel}`}>
                                         Chọn robot <span className="text-danger">*</span>
                                     </label>
@@ -255,10 +255,27 @@ export default function AddTask() {
                                         ))}
                                     </select>
                                 </div>
+
+                                <div className="col-md-4">
+                                    <label className={`form-label ${styles.formLabel}`}>
+                                        Thời gian bắt đầu
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className={`form-control ${styles.formControl}`}
+                                        value={form.scheduledStartAt}
+                                        onChange={(e) =>
+                                            setForm((f) => ({
+                                                ...f,
+                                                scheduledStartAt: e.target.value,
+                                            }))
+                                        }
+                                    />
+                                </div>
                             </div>
 
                             {/* PRIORITY + TIME */}
-                            <div className="row g-4 mb-4">
+                            <div className="row g-4 mb-4" hidden>
                                 <div className="col-md-6">
                                     <label className={`form-label ${styles.formLabel}`}>
                                         Độ ưu tiên
@@ -277,23 +294,6 @@ export default function AddTask() {
                                         <option value={1}>1 - Khẩn cấp</option>
                                         <option value={2}>2 - Nguy cấp</option>
                                     </select>
-                                </div>
-
-                                <div className="col-md-6">
-                                    <label className={`form-label ${styles.formLabel}`}>
-                                        Thời gian bắt đầu
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        className={`form-control ${styles.formControl}`}
-                                        value={form.scheduledStartAt}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                scheduledStartAt: e.target.value,
-                                            }))
-                                        }
-                                    />
                                 </div>
                             </div>
 

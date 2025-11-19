@@ -186,7 +186,6 @@ export default function UserCreate() {
                                 >
                                     <option value="doctor">Bác sĩ</option>
                                     <option value="pharmacist">Dược sĩ</option>
-                                    <option value="admin">Quản trị viên</option>
                                 </select>
                                 <div className={styles.formText}>
                                     Quyền hạn được áp dụng theo vai trò

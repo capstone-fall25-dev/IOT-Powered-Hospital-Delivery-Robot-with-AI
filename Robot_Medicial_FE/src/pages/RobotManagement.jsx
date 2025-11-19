@@ -103,7 +103,7 @@ export default function RobotFleetCards() {
                 <div className={styles.headerSection}>
                     <h5 className={styles.pageTitle}>
                         <i className="bi bi-robot me-2" style={{ color: 'var(--teal-dark)' }}></i>
-                        Đội Robot Y Tế
+                        Robot Y Tế
                     </h5>
 
                     <div className={styles.headerActions}>

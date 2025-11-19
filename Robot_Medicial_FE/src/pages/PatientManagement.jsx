@@ -317,14 +317,14 @@ export default function PatientsManagement() {
                             <div className={styles.modalBody}>
                                 {report ? (
                                     <div className="row g-3">
-                                        <div className="col-6">
+                                        <div className="col-6" hidden>
                                             <div className="p-3 bg-white rounded" style={{ border: '1px solid rgba(13, 148, 136, 0.2)' }}>
                                                 <small className="text-muted d-block mb-1">Tổng số lần khám</small>
                                                 <h4 className="mb-0 fw-bold" style={{ color: 'var(--teal-dark)' }}>{report.totalVisits}</h4>
                                             </div>
                                         </div>
 
-                                        <div className="col-6">
+                                        <div className="col-12">
                                             <div className="p-3 bg-white rounded" style={{ border: '1px solid rgba(13, 148, 136, 0.2)' }}>
                                                 <small className="text-muted d-block mb-1">Số loại thuốc đã kê</small>
                                                 <h4 className="mb-0 fw-bold" style={{ color: 'var(--teal-dark)' }}>{report.totalMedicinesPrescribed}</h4>
