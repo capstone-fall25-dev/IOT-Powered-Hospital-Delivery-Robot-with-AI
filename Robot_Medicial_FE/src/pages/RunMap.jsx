@@ -540,20 +540,30 @@ export default function RobotRunMap() {
 
                 <div className={styles.dualMapContainer}>
                   {/* Nav Map - Destination */}
-                  <div className={styles.mapBox}>
-                    <div id="nav-map" style={{ width: '100%', height: '100%' }}></div>
+                  <div className={styles.mapBoxWrapper}>
+                    <div className={styles.mapLabel}>
+                      <i className="bi bi-geo-alt-fill"></i>
+                      Điểm đến
+                    </div>
+                    <div className={styles.mapBox}>
+                      <div id="nav-map" style={{ width: '100%', height: '100%' }}></div>
+                    </div>
                   </div>
 
                   {/* Live Map - Hospital */}
-                  <div className={styles.mapBox}>
-                    <div id="live-map" style={{ width: '100%', height: '100%' }}></div>
+                  <div className={styles.mapBoxWrapper}>
+                    <div className={styles.mapLabel}>
+                      <i className="bi bi-broadcast"></i>
+                      Bệnh viện (Live)
+                    </div>
+                    <div className={styles.mapBox}>
+                      <div id="live-map" style={{ width: '100%', height: '100%' }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
     </div>
