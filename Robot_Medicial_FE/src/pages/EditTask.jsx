@@ -326,27 +326,22 @@ export default function EditTask() {
 
                                 <div className="col-md-6">
                                     <label className={`form-label ${styles.formLabel}`}>
-                                        Robot <span className="text-danger">*</span>
+                                        Thời gian bắt đầu
                                     </label>
-                                    <select
-                                        className={`form-select ${styles.formSelect}`}
-                                        value={form.robotId}
-                                        onChange={(e) => handleSelectRobot(e.target.value)}
-                                    >
-                                        <option value="">— Chọn robot —</option>
-                                        {robots.map(r => (
-                                            <option value={r.id} key={r.id}>
-                                                #{r.id} • {r.name} 
-                                                <span style={{ marginLeft: '8px' }}>🔋 {r.batteryPercent}%</span>
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <input
+                                        type="datetime-local"
+                                        className={`form-control ${styles.formControl}`}
+                                        value={form.scheduledStartAt}
+                                        onChange={(e) =>
+                                            setForm(f => ({ ...f, scheduledStartAt: e.target.value }))
+                                        }
+                                    />
                                 </div>
                             </div>
 
                             {/* PRIORITY + TIME */}
                             <div className="row g-4 mb-4">
-                                <div className="col-md-6">
+                                <div className="col-md-6" hidden>
                                     <label className={`form-label ${styles.formLabel}`}>
                                         Độ ưu tiên
                                     </label>
@@ -363,18 +358,23 @@ export default function EditTask() {
                                     </select>
                                 </div>
 
-                                <div className="col-md-6">
+                                <div className="col-md-12">
                                     <label className={`form-label ${styles.formLabel}`}>
-                                        Thời gian bắt đầu
+                                        Robot <span className="text-danger">*</span>
                                     </label>
-                                    <input
-                                        type="datetime-local"
-                                        className={`form-control ${styles.formControl}`}
-                                        value={form.scheduledStartAt}
-                                        onChange={(e) =>
-                                            setForm(f => ({ ...f, scheduledStartAt: e.target.value }))
-                                        }
-                                    />
+                                    <select
+                                        className={`form-select ${styles.formSelect}`}
+                                        value={form.robotId}
+                                        onChange={(e) => handleSelectRobot(e.target.value)}
+                                    >
+                                        <option value="">— Chọn robot —</option>
+                                        {robots.map(r => (
+                                            <option value={r.id} key={r.id}>
+                                                #{r.id} • {r.name} 
+                                                <span style={{ marginLeft: '8px' }}>🔋 {r.batteryPercent}%</span>
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 

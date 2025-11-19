@@ -123,7 +123,7 @@ export default function MedicinesManagement() {
                                 <option value="all">Tất cả</option>
                                 {categories.map((cat) => (
                                     <option key={cat.id} value={cat.id}>
-                                        {cat.categoryName}
+                                        {cat.name}
                                     </option>
                                 ))}
                             </select>

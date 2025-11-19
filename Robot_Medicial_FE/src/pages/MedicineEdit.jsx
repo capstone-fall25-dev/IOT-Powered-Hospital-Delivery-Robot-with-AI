@@ -194,7 +194,7 @@ export default function MedicineEdit() {
                                             <option value="">-- Chọn danh mục --</option>
                                             {categories.map(c => (
                                                 <option key={c.id} value={c.id}>
-                                                    {c.categoryName}
+                                                    {c.name}
                                                 </option>
                                             ))}
                                         </select>

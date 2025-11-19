@@ -211,7 +211,6 @@ export default function RobotDashboard() {
                                     <th>Nhiệm vụ</th>
                                     <th>Người giao</th>
                                     <th>Trạng thái</th>
-                                    <th>Ưu tiên</th>
                                     <th>Ngày tạo</th>
                                     <th className="text-end">Thao tác</th>
                                 </tr>
@@ -258,7 +257,7 @@ export default function RobotDashboard() {
                                                 </span>
                                             </td>
 
-                                            <td>
+                                            <td hidden>
                                                 <span className={getPriorityBadgeClass(t.priority)}>
                                                     {t.priority}
                                                 </span>

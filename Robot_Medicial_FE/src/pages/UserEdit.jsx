@@ -266,7 +266,6 @@ export default function UserEdit() {
                                         onChange={handleChange}
                                     >
                                         <option value="">- Chọn vai trò -</option>
-                                        <option value="admin">Quản trị viên</option>
                                         <option value="doctor">Bác sĩ</option>
                                         <option value="pharmacist">Dược sĩ</option>
                                     </select>

@@ -345,7 +345,7 @@ export default function ProjectMapListView() {
             <div>
               <h2 className={styles.pageTitle}>
                 <i className="bi bi-map me-2" style={{ color: 'var(--teal-dark)' }}></i>
-                Quản lý bản đồ ROS2
+                Bản đồ 
               </h2>
               <div className={styles.subtitle}>
                 <i className="bi bi-geo-alt me-1"></i>

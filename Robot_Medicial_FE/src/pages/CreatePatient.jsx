@@ -154,7 +154,7 @@ export default function CreatePatient() {
                                     </div>
 
                                     {/* Giới tính */}
-                                    <div className="col-md-4">
+                                    <div className="col-md-6">
                                         <label className={`form-label ${styles.formLabel}`}>
                                             Giới tính <span className="text-danger">*</span>
                                         </label>
@@ -171,7 +171,7 @@ export default function CreatePatient() {
                                     </div>
 
                                     {/* Ngày sinh */}
-                                    <div className="col-md-4">
+                                    <div className="col-md-6">
                                         <label className={`form-label ${styles.formLabel}`}>
                                             Ngày sinh <span className="text-danger">*</span>
                                         </label>
@@ -186,7 +186,7 @@ export default function CreatePatient() {
                                     </div>
 
                                     {/* Số điện thoại */}
-                                    <div className="col-md-4">
+                                    <div className="col-md-6">
                                         <label className={`form-label ${styles.formLabel}`}>
                                             Số điện thoại <span className="text-danger">*</span>
                                         </label>
@@ -217,7 +217,7 @@ export default function CreatePatient() {
                                     </div>
 
                                     {/* Khoa */}
-                                    <div className="col-md-6">
+                                    <div className="col-md-6" hidden>
                                         <label className={`form-label ${styles.formLabel}`}>
                                             Khoa / Phòng ban
                                         </label>

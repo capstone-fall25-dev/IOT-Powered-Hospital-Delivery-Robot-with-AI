@@ -159,7 +159,7 @@ export default function TaskDetail() {
                                     </div>
                                 </div>
 
-                                <div className="mb-3">
+                                <div className="mb-3" hidden>
                                     <div className={styles.infoLabel}>Độ ưu tiên</div>
                                     <span className={getPriorityBadgeClass(task.priority)}>
                                         {getPriorityText(task.priority)}
