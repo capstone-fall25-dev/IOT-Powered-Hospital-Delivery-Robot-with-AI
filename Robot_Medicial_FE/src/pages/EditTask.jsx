@@ -45,6 +45,8 @@ export default function EditTask() {
         2: "Critical"
     };
 
+    const [initLoaded, setInitLoaded] = useState(false);
+
     // ===================== LOAD INITIAL BASE DATA =====================
     useEffect(() => {
         async function loadInit() {
@@ -61,7 +63,7 @@ export default function EditTask() {
             setCategories(categoriesData);
         }
 
-        loadInit();
+        loadInit().then(() => setInitLoaded(true))
     }, []);
 
     // ===================== LOAD TASK EDIT DTO =====================
@@ -70,12 +72,31 @@ export default function EditTask() {
             try {
                 const data = await getTaskEditData(id);
 
+                if (!robots.some(r => r.id === data.robotId)) {
+                    setRobots(prev => [...prev, {
+                        id: data.robotId,
+                        name: `Robot #${data.robotId} (không khả dụng)`,
+                        batteryPercent: 0
+                    }]);
+                }
+
                 // convert stops to FE structure
                 const editedStops = await Promise.all(
                     data.stops.map(async (s) => {
-                        const filtered = s.categoryId
+                        let filtered = s.categoryId
                             ? await getCompartmentsByRobotAndCategory(data.robotId, s.categoryId)
                             : [];
+
+// FIX 2: Nếu compartmentId BE trả về không có trong filtered → thêm fallback
+                        if (s.compartmentId && !filtered.some(c => c.id === s.compartmentId)) {
+                            filtered = [
+                                ...filtered,
+                                {
+                                    id: s.compartmentId,
+                                    compartmentCode: `#${s.compartmentId} (không khả dụng)`
+                                }
+                            ];
+                        }
 
                         // Load prescription if patient exists
                         let prescriptionPreview = null;
@@ -129,8 +150,9 @@ export default function EditTask() {
                 setLoading(false);
             }
         }
+        if (!initLoaded) return;
         loadTask();
-    }, [id]);
+    }, [id, initLoaded]);
 
     // ===================== UPDATE STOP FIELD =====================
     async function updateStop(idx, key, value) {
@@ -139,9 +161,23 @@ export default function EditTask() {
 
         // Khi đổi category → reset compartment → load lại danh sách
         if (key === "categoryId") {
+            const oldCompartment = clone[idx].compartmentId;
             clone[idx].compartmentId = "";
-            clone[idx].filteredCompartments =
-                await getCompartmentsByRobotAndCategory(form.robotId, value);
+
+            let list = await getCompartmentsByRobotAndCategory(form.robotId, value);
+
+            // Nếu compartment cũ không còn → thêm fallback
+            if (oldCompartment && !list.some(c => c.id === oldCompartment)) {
+                list = [
+                    ...list,
+                    {
+                        id: oldCompartment,
+                        compartmentCode: `#${oldCompartment} (không khả dụng)`
+                    }
+                ];
+            }
+
+            clone[idx].filteredCompartments = list;
         }
 
         setForm(f => ({ ...f, stops: clone }));

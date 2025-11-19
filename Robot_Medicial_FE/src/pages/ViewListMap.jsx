@@ -5,6 +5,18 @@ import "leaflet/dist/leaflet.css";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/projectMapListView.module.css";
 
+import markerIconPng from "leaflet/dist/images/marker-icon.png";
+import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
+import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2xPng,
+  iconUrl: markerIconPng,
+  shadowUrl: markerShadowPng,
+});
+
 export default function ProjectMapListView() {
   const mapRef = useRef(null);
   const worldPosRef = useRef(null);
