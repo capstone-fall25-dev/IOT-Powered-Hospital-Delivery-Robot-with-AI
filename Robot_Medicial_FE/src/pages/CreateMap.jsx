@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
-import PopupWindow from "@/components/PopupWindow";
-import { usePopupWindows } from "@/hooks/usePopupWindows";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
 
 export default function RobotCreateMap() {
@@ -10,12 +8,10 @@ export default function RobotCreateMap() {
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
 
-  const { windows, openWindow, closeWindow, minimizeWindow, focusWindow } = usePopupWindows();
-
   // ===================================
   // STATE
   // ===================================
-  const [status, setStatus] = useState("Đang kết nối...");
+  const [status, setStatus] = useState("🕓 Đang kết nối...");
   const [cameraFrame, setCameraFrame] = useState(null);
   const [mapName, setMapName] = useState("");
   const [logs, setLogs] = useState([]);
@@ -200,234 +196,185 @@ export default function RobotCreateMap() {
   // ===================================
   return (
     <div className={styles.page}>
-      <div className="container-fluid py-3">
-        <div className="row g-3">
-          {/* =================== LEFT: CONTROL PANEL =================== */}
-          <div className="col-lg-3">
-            <div className={`${styles.glass} p-3 ${styles.controlSidebar}`}>
-              
-              {/* CONTROL SECTION */}
-              <h6 className={styles.sectionTitle}>
-                <i className="bi bi-joystick"></i>
-                Điều khiển
-              </h6>
+      <div className="container-xxl py-3">
+        <div className="row g-3" style={{ height: 'calc(100vh - 2rem)' }}>
+          
+          {/* =================== LEFT: CONTROLS =================== */}
+          <div className="col-lg-3 col-xl-2">
+            <div className={`${styles.glass} p-3 h-100`}>
+              <div className={styles.controlSidebar}>
+                
+                {/* Control Section */}
+                <div className="mb-3">
+                  <h6 className={styles.sectionTitle}>
+                    <i className="bi bi-joystick"></i>
+                    Điều khiển
+                  </h6>
 
-              <button
-                className={styles.btnPrimary}
-                onClick={() => setRemoteMode(!remoteMode)}
-              >
-                <i className={`bi ${remoteMode ? "bi-hand-thumbs-down" : "bi-hand-thumbs-up"} me-1`}></i>
-                {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
-              </button>
-
-              {remoteMode && (
-                <>
-                  <div className={styles.pad}>
-                    <div></div>
-                    <div
-                      className={`${styles.key} ${activeKey === "w" ? styles.active : ""}`}
-                      onClick={() => sendCommand("w")}
-                    >
-                      W
-                    </div>
-                    <div></div>
-                    <div
-                      className={`${styles.key} ${activeKey === "a" ? styles.active : ""}`}
-                      onClick={() => sendCommand("a")}
-                    >
-                      A
-                    </div>
-                    <div
-                      className={`${styles.key} ${activeKey === "s" ? styles.active : ""}`}
-                      onClick={() => sendCommand("s")}
-                    >
-                      S
-                    </div>
-                    <div
-                      className={`${styles.key} ${activeKey === "d" ? styles.active : ""}`}
-                      onClick={() => sendCommand("d")}
-                    >
-                      D
-                    </div>
-                  </div>
-                  <div className="d-flex justify-content-center mb-3">
-                    <div
-                      className={`${styles.key} ${activeKey === "x" ? styles.active : ""}`}
-                      onClick={() => sendCommand("x")}
-                    >
-                      X
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <hr className={styles.divider} />
-
-              {/* COMPARTMENTS */}
-              <h6 className={styles.sectionTitle}>
-                <i className="bi bi-box-seam"></i>
-                Hộp chứa
-              </h6>
-              {compartments.map((c) => (
-                <div key={c.id} className={styles.compartmentItem}>
-                  <div className={styles.compartmentLabel}>{c.label}</div>
                   <button
-                    className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
-                    onClick={() => toggleCompartment(c.id)}
+                    className={`${styles.btnPrimary} mt-2`}
+                    onClick={() => setRemoteMode(!remoteMode)}
                   >
-                    {c.state === "open" ? "Đóng" : "Mở"}
+                    <i className={`bi ${remoteMode ? 'bi-stop-circle' : 'bi-controller'} me-1`}></i>
+                    {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
                   </button>
+
+                  {remoteMode && (
+                    <>
+                      <div className={styles.pad}>
+                        <div></div>
+                        <div
+                          className={`${styles.key} ${activeKey === "w" ? styles.keyActive : ""}`}
+                          onClick={() => sendCommand("w")}
+                        >
+                          W
+                        </div>
+                        <div></div>
+                        <div
+                          className={`${styles.key} ${activeKey === "a" ? styles.keyActive : ""}`}
+                          onClick={() => sendCommand("a")}
+                        >
+                          A
+                        </div>
+                        <div
+                          className={`${styles.key} ${activeKey === "s" ? styles.keyActive : ""}`}
+                          onClick={() => sendCommand("s")}
+                        >
+                          S
+                        </div>
+                        <div
+                          className={`${styles.key} ${activeKey === "d" ? styles.keyActive : ""}`}
+                          onClick={() => sendCommand("d")}
+                        >
+                          D
+                        </div>
+                      </div>
+                      <div className="d-flex justify-content-center">
+                        <div
+                          className={`${styles.key} ${activeKey === "x" ? styles.keyActive : ""}`}
+                          onClick={() => sendCommand("x")}
+                        >
+                          X
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ))}
 
-              <hr className={styles.divider} />
+                <hr className={styles.divider} />
 
-              {/* SAVE MAP */}
-              <h6 className={styles.sectionTitle}>
-                <i className="bi bi-save"></i>
-                Lưu bản đồ
-              </h6>
-              <div className={styles.inputGroup}>
-                <input
-                  className={styles.formControl}
-                  placeholder="Tên bản đồ..."
-                  value={mapName}
-                  onChange={(e) => setMapName(e.target.value)}
-                />
-                <button className={styles.btnSuccess} onClick={saveMap}>
-                  <i className="bi bi-save"></i>
-                </button>
-              </div>
-
-              <hr className={styles.divider} />
-
-              {/* LOGS */}
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className={styles.sectionTitle} style={{ marginBottom: 0 }}>
-                  <i className="bi bi-journal-text"></i>
-                  Nhật ký
-                </h6>
-                <button className={styles.btnOutlineDanger} onClick={() => setLogs([])}>
-                  <i className="bi bi-trash"></i>
-                </button>
-              </div>
-
-              <div className={styles.logsContainer}>
-                {logs.length === 0 ? (
-                  <div className={styles.logsEmpty}>
-                    <i className="bi bi-inbox mb-2" style={{ fontSize: '1.5rem', display: 'block' }}></i>
-                    Chưa có log
+                {/* Compartments */}
+                <div className="mb-3">
+                  <h6 className={styles.sectionTitle}>
+                    <i className="bi bi-box-seam"></i>
+                    Hộp chứa
+                  </h6>
+                  <div className="mt-2">
+                    {compartments.map((c) => (
+                      <div key={c.id} className={styles.compartmentItem}>
+                        <span className={styles.compartmentLabel}>{c.label}</span>
+                        <button
+                          className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
+                          onClick={() => toggleCompartment(c.id)}
+                        >
+                          {c.state === "open" ? "Đóng" : "Mở"}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  logs.slice(0, 20).map((l, i) => (
-                    <div key={i} className={styles.logItem}>
-                      <div className={styles.logTime}>{l.time}</div>
-                      <div className={styles.logText}>{l.text}</div>
-                    </div>
-                  ))
-                )}
+                </div>
+
+                <hr className={styles.divider} />
+
+                {/* Logs */}
+                <div className="flex-grow-1">
+                  <div className={styles.headerBar}>
+                    <h6 className={styles.sectionTitle}>
+                      <i className="bi bi-journal-text"></i>
+                      Nhật ký
+                    </h6>
+                    <button
+                      className={styles.btnOutlineDanger}
+                      onClick={() => setLogs([])}
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                  <div className={styles.logsContainer}>
+                    {logs.length === 0 ? (
+                      <div className={styles.logsEmpty}>
+                        <i className="bi bi-inbox"></i>
+                        <p className="mb-0 mt-1">Chưa có log</p>
+                      </div>
+                    ) : (
+                      logs.slice(0, 20).map((l, i) => (
+                        <div key={i} className={styles.logItem}>
+                          <div className={styles.logTime}>{l.time}</div>
+                          <div className={styles.logText}>{l.text}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
 
-          {/* =================== RIGHT: MAIN AREA (No content - just popups) =================== */}
-          <div className="col-lg-9">
-            <div className={`${styles.glass} p-4`} style={{ minHeight: "calc(100vh - 100px)" }}>
-              <div className="text-center py-5">
-                <i className="bi bi-window-stack" style={{ fontSize: '4rem', color: 'var(--teal-dark)', opacity: 0.3 }}></i>
-                <h5 className="mt-3 text-muted">Sử dụng các cửa sổ nổi để xem Camera và Bản đồ</h5>
-                <p className="text-muted">Bạn có thể di chuyển, thay đổi kích thước và sắp xếp các cửa sổ theo ý muốn</p>
+          {/* =================== RIGHT: CAMERA + MAP =================== */}
+          <div className="col-lg-9 col-xl-10">
+            <div className={styles.mainContent}>
+              
+              {/* Camera Section */}
+              <div className={`${styles.glass} p-3`}>
+                <div className={styles.headerBar}>
+                  <div className={styles.sectionTitle}>
+                    <i className="bi bi-camera-video-fill"></i>
+                    Camera Trực Tiếp
+                  </div>
+                  <span className={status.includes("kết nối") ? styles.statusBadgeSuccess : styles.statusBadge}>
+                    {status}
+                  </span>
+                </div>
+                <div className={styles.cameraBox}>
+                  {cameraFrame ? (
+                    <img src={cameraFrame} alt="Camera feed" />
+                  ) : (
+                    <span className={styles.cameraPlaceholder}>
+                      <i className="bi bi-camera-video" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                      Đang chờ khung hình...
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Map Section */}
+              <div className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}>
+                <div className={styles.headerBar}>
+                  <div className={styles.sectionTitle}>
+                    <i className="bi bi-map-fill"></i>
+                    Bản đồ bệnh viện
+                  </div>
+                  <div className={styles.inputGroup} style={{ maxWidth: '300px' }}>
+                    <input
+                      className={styles.formControl}
+                      placeholder="Tên bản đồ..."
+                      value={mapName}
+                      onChange={(e) => setMapName(e.target.value)}
+                    />
+                    <button className={styles.btnSuccess} onClick={saveMap}>
+                      <i className="bi bi-save"></i>
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.mapBox}>
+                  <div id="map" style={{ width: '100%', height: '100%' }}></div>
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* =================== POPUP WINDOWS =================== */}
-      {windows.camera.isOpen && (
-        <PopupWindow
-          id="camera"
-          title="Camera trực tiếp"
-          icon="bi-camera-video"
-          initialPosition={{ x: 400, y: 50 }}
-          initialSize={{ width: 640, height: 480 }}
-          minSize={{ width: 400, height: 300 }}
-          onClose={closeWindow}
-          onMinimize={minimizeWindow}
-          isMinimized={windows.camera.isMinimized}
-          zIndex={windows.camera.zIndex}
-        >
-          <div className={styles.videoContent}>
-            {cameraFrame ? (
-              <img src={cameraFrame} alt="Camera feed" />
-            ) : (
-              <div className={styles.videoPlaceholder}>
-                <i className="bi bi-camera-video-off mb-2" style={{ fontSize: '2rem', display: 'block' }}></i>
-                Đang chờ khung hình...
-              </div>
-            )}
-          </div>
-        </PopupWindow>
-      )}
-
-      {windows.map.isOpen && (
-        <PopupWindow
-          id="map"
-          title="Bản đồ bệnh viện"
-          icon="bi-map"
-          initialPosition={{ x: 400, y: 550 }}
-          initialSize={{ width: 800, height: 600 }}
-          minSize={{ width: 500, height: 400 }}
-          onClose={closeWindow}
-          onMinimize={minimizeWindow}
-          isMinimized={windows.map.isMinimized}
-          zIndex={windows.map.zIndex}
-        >
-          <div className={styles.mapContent}>
-            <div id="map" style={{ width: "100%", height: "100%" }}></div>
-          </div>
-        </PopupWindow>
-      )}
-
-      {/* =================== TASKBAR =================== */}
-      <div className={styles.taskbar}>
-        <div
-          className={`${styles.taskbarItem} ${
-            windows.camera.isOpen && !windows.camera.isMinimized ? styles.active : ""
-          }`}
-          onClick={() =>
-            windows.camera.isMinimized
-              ? minimizeWindow("camera")
-              : windows.camera.isOpen
-              ? focusWindow("camera")
-              : openWindow("camera")
-          }
-        >
-          <i className="bi bi-camera-video"></i>
-          <span>Camera</span>
-        </div>
-
-        <div
-          className={`${styles.taskbarItem} ${
-            windows.map.isOpen && !windows.map.isMinimized ? styles.active : ""
-          }`}
-          onClick={() =>
-            windows.map.isMinimized
-              ? minimizeWindow("map")
-              : windows.map.isOpen
-              ? focusWindow("map")
-              : openWindow("map")
-          }
-        >
-          <i className="bi bi-map"></i>
-          <span>Bản đồ</span>
-        </div>
-
-        <div className="ms-auto">
-          <span className={styles.statusBadge}>
-            <i className="bi bi-circle-fill me-1" style={{ fontSize: '0.5rem' }}></i>
-            {status}
-          </span>
         </div>
       </div>
     </div>

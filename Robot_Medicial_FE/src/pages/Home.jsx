@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import vehicle1 from "../assets/image/vehicle-1.jpg";
 import vehicle2 from "../assets/image/vehicle-2.jpg";
+import logoMain from "../assets/image/logo-main.png";
 import styles from "../assets/styles/landing.module.css";
 
 export default function MedFleetLanding() {
@@ -72,10 +73,12 @@ export default function MedFleetLanding() {
                         className={`navbar-brand d-flex align-items-center gap-2 ${styles.navbarBrand}`}
                         href="/dashboard"
                     >
-                        <span className={styles.appBadge}>
-                            <span>▶︎</span>
-                        </span>
-                        <span>SEP490_G35</span>
+                        <img 
+                            src={logoMain} 
+                            alt="MediGo Logo" 
+                            style={{ height: '60px', width: 'auto' }} 
+                        />
+                        <span>MediGo</span>
                     </a>
                     <button
                         className={`navbar-toggler border-0 ${styles.navbarToggler}`}
@@ -383,7 +386,7 @@ export default function MedFleetLanding() {
             <footer className="py-4">
                 <div className="container-lg d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 text-center text-md-start">
                     <div className="small">
-                        © <span>{year}</span> SEP490_G35. Tất cả quyền được bảo lưu.
+                        © <span>{year}</span> MediGo. Tất cả quyền được bảo lưu.
                     </div>
                     <div className={`small text-muted ${styles.muted}`}>Điều khoản • Bảo mật</div>
                 </div>

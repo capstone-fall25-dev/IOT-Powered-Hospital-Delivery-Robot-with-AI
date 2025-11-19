@@ -4,7 +4,7 @@
     --teal-dark: #0d9488;
     --ink: #0f172a;
 }
- 
+
 .page {
     font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: #0b1324;
@@ -12,7 +12,20 @@
                 radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
                 linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
     min-height: 100vh;
-    position: relative;
+}
+
+/* =================== FULL HEIGHT LAYOUT =================== */
+.fullHeightContainer {
+    height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.mainContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     overflow: hidden;
 }
 
@@ -38,193 +51,12 @@
     background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
 }
 
-/* =================== FLOATING POPUP WINDOWS =================== */
-.popupWindow {
-    position: fixed;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(13, 148, 136, 0.2);
-    border-radius: 5px;
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.15);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: box-shadow 0.2s ease;
-}
-
-.popupWindow.active {
-    box-shadow: 0 12px 48px rgba(13, 148, 136, 0.25);
-    border-color: rgba(13, 148, 136, 0.3);
-}
-
-.popupWindow.minimized {
-    display: none;
-}
-
-.popupWindow.fullscreen {
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    border-radius: 0;
-    z-index: 9999 !important;
-}
-
-/* Window Header */
-.windowHeader {
-    background: linear-gradient(90deg, rgba(13, 148, 136, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%);
-    border-bottom: 1px solid rgba(13, 148, 136, 0.15);
-    padding: 0.6rem 0.75rem;
-    cursor: move;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    user-select: none;
-}
-
-.windowTitle {
-    font-weight: 700;
-    color: #0f172a;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.windowTitle i {
-    color: var(--teal-dark);
-}
-
-.windowControls {
-    display: flex;
-    gap: 0.35rem;
-}
-
-.windowBtn {
-    width: 24px;
-    height: 24px;
-    border-radius: 5px;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    font-size: 0.85rem;
-    padding: 0;
-}
-
-.windowBtnMinimize {
-    background: rgba(251, 191, 36, 0.15);
-    color: #d97706;
-}
-
-.windowBtnMinimize:hover {
-    background: rgba(251, 191, 36, 0.25);
-}
-
-.windowBtnMaximize {
-    background: rgba(59, 130, 246, 0.15);
-    color: #2563eb;
-}
-
-.windowBtnMaximize:hover {
-    background: rgba(59, 130, 246, 0.25);
-}
-
-.windowBtnClose {
-    background: rgba(239, 68, 68, 0.15);
-    color: #dc2626;
-}
-
-.windowBtnClose:hover {
-    background: rgba(239, 68, 68, 0.25);
-}
-
-/* Window Content */
-.windowContent {
-    flex: 1;
-    overflow: auto;
-    padding: 0.75rem;
-}
-
-.windowContent::-webkit-scrollbar {
-    width: 6px;
-}
-
-.windowContent::-webkit-scrollbar-track {
-    background: rgba(13, 148, 136, 0.05);
-}
-
-.windowContent::-webkit-scrollbar-thumb {
-    background: rgba(13, 148, 136, 0.2);
-    border-radius: 3px;
-}
-
-/* Resize Handle */
-.resizeHandle {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 20px;
-    height: 20px;
-    cursor: nwse-resize;
-    background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(13, 148, 136, 0.3) 50%);
-    border-bottom-right-radius: 5px;
-}
-
-/* =================== TASKBAR =================== */
-.taskbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 56px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(13, 148, 136, 0.15);
-    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    gap: 0.5rem;
-    z-index: 10000;
-}
-
-.taskbarItem {
-    background: rgba(13, 148, 136, 0.1);
-    border: 1px solid rgba(13, 148, 136, 0.2);
-    border-radius: 5px;
-    padding: 0.5rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--teal-dark);
-}
-
-.taskbarItem:hover {
-    background: rgba(13, 148, 136, 0.2);
-    border-color: rgba(13, 148, 136, 0.3);
-}
-
-.taskbarItem.active {
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
-    color: white;
-    border-color: transparent;
-}
-
 /* =================== SECTION TITLES =================== */
 .sectionTitle {
     font-weight: 700;
     color: #0f172a;
     font-size: 0.95rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -243,6 +75,12 @@
     padding: 0.35rem 0.7rem;
     border-radius: 5px;
     font-size: 0.85rem;
+}
+
+.statusBadgeSuccess {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.12) 100%);
+    color: #15803d;
+    border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
 /* =================== BUTTONS =================== */
@@ -343,6 +181,7 @@
     border-radius: 5px;
     padding: 0.5rem 1rem;
     transition: all 0.15s ease;
+    width: 100%;
 }
 
 .btnOutlinePrimary:hover {
@@ -354,22 +193,22 @@
 /* =================== CONTROL PAD =================== */
 .pad {
     display: grid;
-    grid-template-columns: repeat(3, 48px);
-    gap: 6px;
+    grid-template-columns: repeat(3, 44px);
+    gap: 5px;
     justify-content: center;
-    margin: 0.75rem auto;
+    margin: 0.5rem auto;
 }
 
 .key {
-    height: 48px;
-    width: 48px;
+    height: 44px;
+    width: 44px;
     border: 1.5px solid rgba(13, 148, 136, 0.2);
     border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.15s ease;
     background: rgba(255, 255, 255, 0.9);
@@ -382,44 +221,66 @@
     transform: translateY(-2px);
 }
 
-.key.active {
-    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
-    border-color: transparent;
-    color: white;
+.keyActive {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%) !important;
+    border-color: transparent !important;
+    color: white !important;
     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
 
-/* =================== VIDEO/MAP CONTENT =================== */
-.videoContent {
-    width: 100%;
-    height: 100%;
+/* =================== CAMERA BOX - RECTANGLE HORIZONTAL =================== */
+.cameraBox {
+    height: 200px;
+    border-radius: 5px;
     background: #e8f3f1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
     overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
 }
 
-.videoContent img {
+.cameraBox img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.mapContent {
-    width: 100%;
-    height: 100%;
-    background: #e8f3f1;
-    border-radius: 5px;
-    overflow: hidden;
+.cameraPlaceholder {
+    color: #64748b;
+    font-size: 0.9rem;
+    text-align: center;
 }
 
-.videoPlaceholder {
-    color: #64748b;
-    font-size: 0.95rem;
-    text-align: center;
-    padding: 2rem;
+/* =================== MAP BOX - FILLS REMAINING SPACE =================== */
+.mapBox {
+    flex: 1;
+    min-height: 300px;
+    width: 100%;
+    border-radius: 5px;
+    background: #e8f3f1;
+    overflow: hidden;
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    position: relative;
+}
+
+.mapBoxSmall {
+    height: 200px;
+    flex: none;
+}
+
+/* =================== DUAL MAP LAYOUT =================== */
+.dualMapContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.dualMapContainer .mapBox {
+    flex: 1;
+    min-height: 200px;
 }
 
 /* =================== COMPARTMENT CONTROLS =================== */
@@ -427,7 +288,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.65rem;
+    padding: 0.5rem;
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(13, 148, 136, 0.15);
     border-radius: 5px;
@@ -443,7 +304,7 @@
 .compartmentLabel {
     font-weight: 600;
     color: #334155;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
 }
 
 /* =================== FORM CONTROLS =================== */
@@ -451,7 +312,7 @@
     border-radius: 5px;
     border: 1.5px solid rgba(13, 148, 136, 0.2);
     padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     transition: all 0.15s ease;
     background: rgba(255, 255, 255, 0.9);
 }
@@ -466,10 +327,11 @@
 .formSelect {
     border-radius: 5px;
     border: 1.5px solid rgba(13, 148, 136, 0.2);
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
     transition: all 0.15s ease;
     background: rgba(255, 255, 255, 0.9);
+    width: 100%;
 }
 
 .formSelect:focus {
@@ -498,13 +360,13 @@
 
 /* =================== LOGS SECTION =================== */
 .logsContainer {
-    max-height: 250px;
+    max-height: 180px;
     overflow-y: auto;
     padding-right: 0.5rem;
 }
 
 .logsContainer::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
 }
 
 .logsContainer::-webkit-scrollbar-track {
@@ -526,15 +388,15 @@
     border: 1px solid rgba(13, 148, 136, 0.1);
     border-left: 3px solid var(--teal-dark);
     border-radius: 5px;
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.75rem;
 }
 
 .logTime {
     color: #64748b;
-    font-size: 0.75rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.7rem;
+    margin-bottom: 0.15rem;
 }
 
 .logText {
@@ -544,10 +406,10 @@
 
 .logsEmpty {
     text-align: center;
-    padding: 1.5rem 1rem;
+    padding: 1rem;
     color: #64748b;
     font-style: italic;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 /* =================== DESTINATION INFO =================== */
@@ -555,9 +417,10 @@
     background: linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%);
     border: 1px solid rgba(13, 148, 136, 0.15);
     border-radius: 5px;
-    padding: 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.65rem;
+    font-size: 0.8rem;
     color: #334155;
+    line-height: 1.5;
 }
 
 .destinationInfo strong {
@@ -574,13 +437,15 @@
 
 /* =================== CONTROL SIDEBAR =================== */
 .controlSidebar {
-    height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     overflow-y: auto;
-    padding-bottom: 60px;
+    padding-right: 0.25rem;
 }
 
 .controlSidebar::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
 }
 
 .controlSidebar::-webkit-scrollbar-track {
@@ -593,36 +458,87 @@
     border-radius: 3px;
 }
 
+/* =================== HEADER BAR =================== */
+.headerBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
 /* =================== RESPONSIVE =================== */
-@media (max-width: 768px) {
-    .popupWindow {
-        width: 100% !important;
-        height: 100% !important;
-        top: 0 !important;
-        left: 0 !important;
-        border-radius: 0;
+@media (max-width: 1400px) {
+    .cameraBox {
+        height: 180px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .cameraBox {
+        height: 160px;
     }
 
-    .taskbar {
-        height: 48px;
-        padding: 0 0.5rem;
+    .mapBox {
+        min-height: 250px;
     }
 
-    .taskbarItem {
-        padding: 0.35rem 0.7rem;
-        font-size: 0.8rem;
-    }
-
-    .windowHeader {
-        padding: 0.5rem 0.6rem;
+    .logsContainer {
+        max-height: 150px;
     }
 
     .pad {
-        grid-template-columns: repeat(3, 44px);
+        grid-template-columns: repeat(3, 40px);
     }
 
     .key {
-        height: 44px;
-        width: 44px;
+        height: 40px;
+        width: 40px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .cameraBox {
+        height: 180px;
+    }
+
+    .mapBox {
+        min-height: 300px;
+    }
+
+    .logsContainer {
+        max-height: 160px;
+    }
+
+    .controlSidebar {
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .cameraBox {
+        height: 150px;
+    }
+
+    .mapBox {
+        min-height: 250px;
+    }
+
+    .logsContainer {
+        max-height: 140px;
+    }
+
+    .sectionTitle {
+        font-size: 0.85rem;
+    }
+
+    .pad {
+        grid-template-columns: repeat(3, 38px);
+    }
+
+    .key {
+        height: 38px;
+        width: 38px;
+        font-size: 0.85rem;
     }
 }
