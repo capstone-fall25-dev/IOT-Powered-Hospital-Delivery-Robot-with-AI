@@ -7,12 +7,10 @@ export default function RobotRunMap() {
   // ===================================
   // 🗺️ MAP REFS
   // ===================================
-  // Map trên: bản đồ theo destination
   const navMapRef = useRef(null);
   const navMapLayer = useRef(null);
   const destinationMarker = useRef(null);
 
-  // Map dưới: bản đồ bệnh viện (live từ ROS2)
   const liveMapRef = useRef(null);
   const liveMapLayer = useRef(null);
   const robotMarker = useRef(null);
@@ -46,6 +44,7 @@ export default function RobotRunMap() {
   const webScriptNodeRef = useRef(null);
   const webMediaStreamRef = useRef(null);
   const webSourceNodeRef = useRef(null);
+  const webAudioConnRef = useRef(null); // 🔗 hub cho mic web
 
   // Robot Mic → Web
   const [robotMicConnected, setRobotMicConnected] = useState(false);
@@ -69,7 +68,6 @@ export default function RobotRunMap() {
       .withAutomaticReconnect()
       .build();
 
-    // LIVE MAP (bệnh viện)
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
 
@@ -82,6 +80,7 @@ export default function RobotRunMap() {
       .start()
       .then(() => setStatus("Đã kết nối robot"))
       .catch(() => setStatus("Không kết nối được robot"));
+
     camConn.start().catch(() => {});
 
     return () => {
@@ -153,7 +152,7 @@ export default function RobotRunMap() {
   }
 
   // ============================================================
-  // 2) ROBOT POSITION
+  // 🧭 ROBOT POSITION
   // ============================================================
   function updateRobotPosition(pos) {
     if (!window.L || !liveMapRef.current) return;
@@ -218,7 +217,6 @@ export default function RobotRunMap() {
       navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
       navMapRef.current.fitBounds(bounds);
 
-      // Marker 📍 tại destination (map trên)
       const localX = destination.x - originX;
       const localY = destination.y - originY;
       const latlng = [localY, localX];
@@ -384,13 +382,11 @@ export default function RobotRunMap() {
     return float32;
   }
 
-  // Lập lịch phát audio cho Robot Mic (giảm rè, giảm jitter)
   function scheduleRobotAudio(float32Data, sampleRateFromData) {
     const audioCtx = robotAudioContextRef.current;
     const gainNode = robotGainNodeRef.current;
     if (!audioCtx || !gainNode || !float32Data || float32Data.length === 0) return;
 
-    // Giảm gain thêm 20% nữa để tránh clip khi ROS mic vặn to
     for (let i = 0; i < float32Data.length; i++) {
       float32Data[i] *= 0.8;
     }
@@ -404,7 +400,6 @@ export default function RobotRunMap() {
     source.buffer = buffer;
     source.connect(gainNode);
 
-    // Nếu playhead bị sát currentTime → đẩy lên trước 100ms
     if (robotPlaybackTimeRef.current < audioCtx.currentTime + 0.05) {
       robotPlaybackTimeRef.current = audioCtx.currentTime + 0.1;
     }
@@ -417,12 +412,13 @@ export default function RobotRunMap() {
   }
 
   // ===================================
-  // 🔊 Mic Web → Robot
+  // 🔊 Mic Web → Robot (qua HUB)
   // ===================================
   async function startWebMic() {
     if (isWebMicOn) return;
     try {
       setWebMicStatus("Đang xin quyền micro...");
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
@@ -446,11 +442,27 @@ export default function RobotRunMap() {
       const source = audioCtx.createMediaStreamSource(stream);
       webSourceNodeRef.current = source;
 
+      // 🔗 Kết nối tới /hubs/robotaudio (nếu chưa có)
+      if (!webAudioConnRef.current) {
+        const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
+        const conn = new signalR.HubConnectionBuilder()
+          .withUrl(hubUrl)
+          .withAutomaticReconnect()
+          .build();
+
+        await conn.start();
+        webAudioConnRef.current = conn;
+        console.log("[WebMic] connected to", hubUrl);
+      }
+
       const bufferSize = 2048;
       const scriptNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
       webScriptNodeRef.current = scriptNode;
 
       scriptNode.onaudioprocess = (event) => {
+        const conn = webAudioConnRef.current;
+        if (!conn || conn.state !== signalR.HubConnectionState.Connected) return;
+
         const inputBuffer = event.inputBuffer.getChannelData(0);
         const pcm16 = floatTo16BitPCM(inputBuffer);
         const bytes = new Uint8Array(pcm16.buffer);
@@ -469,16 +481,12 @@ export default function RobotRunMap() {
           Timestamp: Date.now(),
         };
 
-        fetch(API_CONFIG.API_BASE1 + "/api/RobotAudio/SendChunk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }).catch(() => {});
+        // 🚀 Gửi lên HUB: gọi method StreamAudioFromWeb
+        conn.invoke("StreamAudioFromWeb", payload).catch(() => {});
       };
 
       source.connect(scriptNode);
-      // ❌ KHÔNG phát lại mic web trên loa để tránh vòng lặp / feedback
-      // scriptNode.connect(audioCtx.destination);
+      // không connect scriptNode tới loa tránh feedback
 
       setIsWebMicOn(true);
       setWebMicStatus("Mic web đang BẬT, đang gửi audio xuống robot...");
@@ -490,9 +498,6 @@ export default function RobotRunMap() {
   }
 
   function stopWebMic() {
-    if (!isWebMicOn && !webAudioContextRef.current && !webMediaStreamRef.current)
-      return;
-
     const scriptNode = webScriptNodeRef.current;
     if (scriptNode) {
       scriptNode.disconnect();
@@ -528,7 +533,7 @@ export default function RobotRunMap() {
   }
 
   // ===================================
-  // 🔊 Robot Mic → Web
+  // 🔊 Robot Mic → Web (giữ nguyên)
   // ===================================
   async function connectRobotMic() {
     if (robotMicConnected) return;
@@ -545,15 +550,13 @@ export default function RobotRunMap() {
       robotAudioContextRef.current = audioCtx;
 
       const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.8; // volume robot → web
+      gainNode.gain.value = 0.8;
       gainNode.connect(audioCtx.destination);
       robotGainNodeRef.current = gainNode;
 
-      // khởi tạo playhead cách hiện tại 200ms để có buffer
       robotPlaybackTimeRef.current = audioCtx.currentTime + 0.2;
 
       const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
-
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl)
         .withAutomaticReconnect()

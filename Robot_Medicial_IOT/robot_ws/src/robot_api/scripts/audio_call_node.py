@@ -19,7 +19,7 @@ from get_api_url import get_api
 # ========================================================
 # 🔗 CONFIG
 # ========================================================
-BASE_URL = get_api()  # vd: https://medigorobot.online
+BASE_URL = get_api()  # ví dụ: https://medigorobot.online
 HUB_URL = f"{BASE_URL}/hubs/robotaudio"
 
 shutdown_requested = False
@@ -49,12 +49,24 @@ class AudioCallNode(Node):
         self.get_logger().info("📞 Full-Duplex Audio Call Node Started")
 
         # ======================================================
-        # 🔊 START APLAY OUTPUT
+        # 🔊 START APLAY OUTPUT (RAW PCM)
         # ======================================================
-        self.aplay_proc = subprocess.Popen(
-            ["aplay", "-f", "S16_LE", "-c", "1", "-r", "48000"],
-            stdin=subprocess.PIPE,
-        )
+        try:
+            # ❗ Quan trọng: -t raw vì mình gửi PCM thô, KHÔNG có header WAV
+            self.aplay_proc = subprocess.Popen(
+                [
+                    "aplay",
+                    "-t", "raw",
+                    "-f", "S16_LE",
+                    "-c", "1",
+                    "-r", str(self.sample_rate),
+                ],
+                stdin=subprocess.PIPE,
+            )
+            self.get_logger().info("🔊 aplay started (raw 16bit, 48kHz, mono)")
+        except Exception as e:
+            self.get_logger().error(f"❌ Cannot start aplay: {e}")
+            self.aplay_proc = None
 
         # ======================================================
         # 🔗 SIGNALR CONNECT
@@ -82,18 +94,18 @@ class AudioCallNode(Node):
         self.hub.on_open(self.on_hub_open)
         self.hub.on_close(self.on_hub_close)
 
-        # 👉 start hub NGAY TRONG __init__ (không cần thread riêng)
+        self.get_logger().info(f"🔗 Connecting SignalR hub: {HUB_URL}")
         try:
             self.hub.start()
         except Exception as e:
             self.get_logger().error(f"❌ Không start được SignalR hub: {e}")
 
-        # Thread gửi mic lên server
+        # Thread gửi mic lên server (robot mic → web)
         self.send_thread = threading.Thread(target=self.send_mic_loop, daemon=True)
         self.send_thread.start()
 
         # ======================================================
-        # 🎤 MICROPHONE CAPTURE
+        # 🎤 MICROPHONE CAPTURE (robot mic → web)
         # ======================================================
         self.stream = sd.InputStream(
             samplerate=self.sample_rate,
@@ -119,7 +131,7 @@ class AudioCallNode(Node):
         self.get_logger().warn("⚠️ SignalR robotaudio hub disconnected")
 
     # ============================================================
-    # 🎤 Mic Callback → đưa vào queue
+    # 🎤 Mic Callback → queue (robot mic → web)
     # ============================================================
     def mic_callback(self, indata, frames, time_info, status):
         if status:
@@ -127,7 +139,7 @@ class AudioCallNode(Node):
 
         pcm16 = indata[:, 0].copy()
 
-        # (tùy chọn) giảm gain nhẹ để đỡ bể tiếng nếu mic ROS để quá to
+        # (tùy chọn) giảm gain nhẹ nếu mic để quá to:
         # pcm16 = (pcm16.astype(np.float32) * 0.8).astype(np.int16)
 
         raw_bytes = pcm16.tobytes()
@@ -144,20 +156,19 @@ class AudioCallNode(Node):
         if send_queue.full():
             try:
                 send_queue.get_nowait()  # drop gói cũ nhất
-            except:
+            except Exception:
                 pass
 
         send_queue.put(packet)
 
     # ============================================================
-    # 🚀 Gửi MIC → SignalR
+    # 🚀 Gửi MIC → SignalR (robot mic → web)
     # ============================================================
     def send_mic_loop(self):
         while not shutdown_requested:
             try:
                 packet = send_queue.get(timeout=0.05)
 
-                # ❗ Chỉ gửi khi hub đã connect
                 if not self.hub_connected:
                     continue
 
@@ -169,11 +180,10 @@ class AudioCallNode(Node):
                 print("Send mic err:", e)
 
     # ============================================================
-    # 🔊 Nhận audio từ server → phát qua aplay
+    # 🔊 Nhận audio từ web → phát qua loa robot
     # ============================================================
     def on_receive_audio_chunk(self, args):
         try:
-            
             data = args[0] if isinstance(args, list) else args
             if not data:
                 return
@@ -183,10 +193,13 @@ class AudioCallNode(Node):
                 return
 
             raw_bytes = base64.b64decode(audio_b64)
+            self.get_logger().info(f"🔈 Received web audio chunk: {len(raw_bytes)} bytes")
 
             if self.aplay_proc and self.aplay_proc.stdin:
                 self.aplay_proc.stdin.write(raw_bytes)
                 self.aplay_proc.stdin.flush()
+            else:
+                self.get_logger().warn("⚠️ aplay_proc is None or stdin closed")
 
         except Exception as e:
             self.get_logger().error(f"Playback error: {e}")
@@ -200,19 +213,19 @@ class AudioCallNode(Node):
         try:
             self.stream.stop()
             self.stream.close()
-        except:
+        except Exception:
             pass
 
         try:
             if self.aplay_proc:
                 self.aplay_proc.stdin.close()
                 self.aplay_proc.terminate()
-        except:
+        except Exception:
             pass
 
         try:
             self.hub.stop()
-        except:
+        except Exception:
             pass
 
         super().destroy_node()
