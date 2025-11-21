@@ -51,12 +51,12 @@ export default function RobotRunMap() {
   const [robotMicConnected, setRobotMicConnected] = useState(false);
   const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
   const robotAudioContextRef = useRef(null);
-  const robotAudioQueueRef = useRef([]);
-  const robotIsPlayingRef = useRef(false);
   const robotAudioConnRef = useRef(null);
+  const robotPlaybackTimeRef = useRef(0);
+  const robotGainNodeRef = useRef(null);
 
   // ===================================
-  // 🔗 SIGNALR
+  // 🔗 SIGNALR (position + camera)
   // ===================================
   useEffect(() => {
     const posConn = new signalR.HubConnectionBuilder()
@@ -108,7 +108,9 @@ export default function RobotRunMap() {
         const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations");
         const data = await res.json();
         setDestinations(data);
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
     fetchDestinations();
   }, []);
@@ -144,12 +146,14 @@ export default function RobotRunMap() {
     }
 
     if (liveMapLayer.current) liveMapRef.current.removeLayer(liveMapLayer.current);
-    liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(liveMapRef.current);
+    liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+      liveMapRef.current
+    );
     liveMapRef.current.fitBounds(bounds);
   }
 
   // ============================================================
-  // 2) ROBOT POSITION 
+  // 2) ROBOT POSITION
   // ============================================================
   function updateRobotPosition(pos) {
     if (!window.L || !liveMapRef.current) return;
@@ -173,7 +177,7 @@ export default function RobotRunMap() {
   }
 
   // ===================================
-  // NAVIGATION MAP
+  // NAVIGATION MAP (map trên)
   // ===================================
   async function loadNavigationMapForDestination(destination) {
     if (!destination) return;
@@ -247,7 +251,9 @@ export default function RobotRunMap() {
       ]);
       setActiveKey(key);
       setTimeout(() => setActiveKey(""), 200);
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   useEffect(() => {
@@ -276,7 +282,9 @@ export default function RobotRunMap() {
       setCompartments((prev) =>
         prev.map((c) => (c.id === id ? { ...c, state: newState } : c))
       );
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   async function saveMap() {
@@ -288,7 +296,9 @@ export default function RobotRunMap() {
         body: JSON.stringify({ Mode: "save_map", MapName: mapName }),
       });
       alert("Đã gửi lệnh lưu bản đồ!");
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   async function startRunMap() {
@@ -305,7 +315,9 @@ export default function RobotRunMap() {
         }),
       });
       alert("Đã gửi lệnh run_map!");
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   async function sendRoute() {
@@ -333,7 +345,9 @@ export default function RobotRunMap() {
         body: JSON.stringify(payload),
       });
       alert("📤 Route đã gửi!");
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   function handleSelectDestination(e) {
@@ -344,7 +358,7 @@ export default function RobotRunMap() {
   }
 
   // ===================================
-  // 🔊 AUDIO HELPERS (giống test.html)
+  // 🔊 AUDIO HELPERS (WEB ↔ ROS2)
   // ===================================
   function floatTo16BitPCM(float32Array) {
     const len = float32Array.length;
@@ -370,37 +384,29 @@ export default function RobotRunMap() {
     return float32;
   }
 
-  function enqueueRobotAudio(float32Data) {
-    const q = robotAudioQueueRef.current.slice();
-    q.push(float32Data);
-    robotAudioQueueRef.current = q;
-    if (!robotIsPlayingRef.current) {
-      playNextRobotChunk();
-    }
-  }
-
-  function playNextRobotChunk() {
+  // Lập lịch phát audio cho Robot Mic (giảm rè, giảm jitter)
+  function scheduleRobotAudio(float32Data, sampleRateFromData) {
     const audioCtx = robotAudioContextRef.current;
-    const q = robotAudioQueueRef.current;
-    if (!audioCtx || q.length === 0) {
-      robotIsPlayingRef.current = false;
-      return;
-    }
-    robotIsPlayingRef.current = true;
-    const data = q.shift();
-    robotAudioQueueRef.current = q;
+    const gainNode = robotGainNodeRef.current;
+    if (!audioCtx || !gainNode || !float32Data || float32Data.length === 0) return;
 
-    const buffer = audioCtx.createBuffer(1, data.length, audioCtx.sampleRate);
-    buffer.getChannelData(0).set(data);
+    const sr = sampleRateFromData || audioCtx.sampleRate || 48000;
+
+    const buffer = audioCtx.createBuffer(1, float32Data.length, sr);
+    buffer.getChannelData(0).set(float32Data);
 
     const source = audioCtx.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.onended = () => {
-      robotIsPlayingRef.current = false;
-      playNextRobotChunk();
-    };
-    source.start();
+    source.connect(gainNode);
+
+    const now = audioCtx.currentTime;
+    const lastTime = robotPlaybackTimeRef.current || 0;
+    const startAt = Math.max(now + 0.01, lastTime); // 10ms buffer
+
+    source.start(startAt);
+
+    const duration = buffer.length / buffer.sampleRate;
+    robotPlaybackTimeRef.current = startAt + duration;
   }
 
   // ===================================
@@ -410,7 +416,13 @@ export default function RobotRunMap() {
     if (isWebMicOn) return;
     try {
       setWebMicStatus("Đang xin quyền micro...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
       webMediaStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -524,6 +536,13 @@ export default function RobotRunMap() {
       const audioCtx = new AudioCtx();
       robotAudioContextRef.current = audioCtx;
 
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.8; // volume robot → web
+      gainNode.connect(audioCtx.destination);
+      robotGainNodeRef.current = gainNode;
+
+      robotPlaybackTimeRef.current = audioCtx.currentTime;
+
       const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
 
       const connection = new signalR.HubConnectionBuilder()
@@ -535,7 +554,14 @@ export default function RobotRunMap() {
         const b64 = data.audio_b64 || data.Audio_b64;
         if (!b64) return;
         const float32 = base64Pcm16ToFloat32(b64);
-        enqueueRobotAudio(float32);
+
+        const sr =
+          data.SampleRate ||
+          data.sampleRate ||
+          data.sample_rate ||
+          48000;
+
+        scheduleRobotAudio(float32, sr);
       });
 
       await connection.start();
@@ -559,7 +585,9 @@ export default function RobotRunMap() {
     if (conn) {
       try {
         await conn.stop();
-      } catch {}
+      } catch {
+        // ignore
+      }
       robotAudioConnRef.current = null;
     }
 
@@ -569,8 +597,7 @@ export default function RobotRunMap() {
       robotAudioContextRef.current = null;
     }
 
-    robotAudioQueueRef.current = [];
-    robotIsPlayingRef.current = false;
+    robotPlaybackTimeRef.current = 0;
 
     setRobotMicConnected(false);
     setRobotMicStatus("Robot mic đã ngắt kết nối.");
@@ -688,7 +715,7 @@ export default function RobotRunMap() {
                   </div>
                 </div>
 
-                {/* 🔊 AUDIO CONTROLS (thêm dưới Hộp chứa) */}
+                {/* 🔊 AUDIO CONTROLS */}
                 <hr className={styles.divider} />
 
                 <div className="mb-3">
