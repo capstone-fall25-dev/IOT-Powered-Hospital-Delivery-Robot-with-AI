@@ -37,7 +37,7 @@ class WebcamPublisher(Node):
             return False  # tránh spam mở camera
         self.last_connect_attempt = now
 
-        self.get_logger().info("🔄 Đang thử mở webcam...")
+        # self.get_logger().info("🔄 Đang thử mở webcam...")
 
         for i in range(10):
             cap = cv2.VideoCapture(i)
@@ -45,7 +45,7 @@ class WebcamPublisher(Node):
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                 self.cap = cap
-                self.get_logger().info(f"✅ Webcam mở thành công tại index {i}")
+                # self.get_logger().info(f"✅ Webcam mở thành công tại index {i}")
                 return True
 
         self.get_logger().warn("❌ Không tìm thấy camera. Chờ kết nối lại...")
@@ -64,7 +64,7 @@ class WebcamPublisher(Node):
 
         # Nếu đọc fail → thử reconnect
         if not ret:
-            self.get_logger().warn("⚠️ Không đọc được frame. Thử mở lại camera...")
+            # self.get_logger().warn("⚠️ Không đọc được frame. Thử mở lại camera...")
             self.cap.release()
             self.cap = None
             return

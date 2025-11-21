@@ -1,6 +1,9 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -19,47 +22,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _logger = logger;
         }
 
-        // YÊU CẦU: web gửi các chunk PCM (16-bit) dạng base64
-        public class AudioChunkRequest
-        {
-            public string Audio_b64 { get; set; } = string.Empty;  // base64 của PCM 16bit
-            public int SampleRate { get; set; } = 48000;           // ví dụ: 16000 hoặc 48000
-            public int Channels { get; set; } = 1;                 // mono = 1
-            public string? StreamId { get; set; }                  // để phân biệt nhiều stream
-            public long Timestamp { get; set; }                    // epoch ms
-        }
-
         /// <summary>
-        /// 🎤 Nhận 1 chunk audio từ Web → broadcast xuống ROS2 qua SignalR
+        /// 🎤 Web → Robot: nhận 1 chunk audio từ FE và bắn xuống ROS2 qua SignalR
+        /// FE gọi: POST /api/RobotAudio/SendChunk
         /// </summary>
         [HttpPost("SendChunk")]
-        public async Task<IActionResult> SendChunk([FromBody] AudioChunkRequest req)
+        public async Task<IActionResult> SendChunk([FromBody] AudioChunkDto req)
         {
             if (string.IsNullOrWhiteSpace(req.Audio_b64))
                 return BadRequest("Audio_b64 is required");
 
             try
             {
-                var chunkData = new
+                // Gửi cho tất cả client đang nối vào /hubs/robotaudio
+                // Python audio_call_node.py đang lắng "ReceiveAudioChunk"
+                await _hubContext.Clients.All.SendAsync("ReceiveAudioChunk", req);
+
+                return Ok(new
                 {
-                    type = "audio_chunk",
-                    stream_id = req.StreamId ?? "mic_main",
-                    audio_b64 = req.Audio_b64,
-                    sampleRate = req.SampleRate,
-                    channels = req.Channels,
-                    timestamp = req.Timestamp > 0
-                        ? DateTimeOffset.FromUnixTimeMilliseconds(req.Timestamp).UtcDateTime
-                        : DateTime.UtcNow
-                };
-
-                // Gửi cho TẤT CẢ client đang kết nối RobotAudioHub (trong đó có ROS2)
-                await _hubContext.Clients.All.SendAsync("ReceiveAudioChunk", chunkData);
-
-                return Ok(new { status = "sent", stream_id = chunkData.stream_id });
+                    status = "sent",
+                    stream_id = req.StreamId ?? "mic_main"
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to send audio chunk");
+                _logger.LogError(ex, "❌ Failed to send audio chunk from Web to Robot");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

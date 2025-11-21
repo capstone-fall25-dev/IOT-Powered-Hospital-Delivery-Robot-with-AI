@@ -10,6 +10,7 @@ SERVICES=(
   robot_driver
   robot_api
   navigation
+  control_status_robot
 )
 
 echo "🔁 Restarting robot services..."

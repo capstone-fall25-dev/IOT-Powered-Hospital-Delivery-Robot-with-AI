@@ -57,7 +57,7 @@ class MapSignalRStreamer(Node):
         # =========================
         threading.Thread(target=self.map_sender_loop, daemon=True).start()
 
-        self.get_logger().info(f"🌐 Map streamer initialized. API={self.api_url} HUB={self.hub_url}")
+        # self.get_logger().info(f"🌐 Map streamer initialized. API={self.api_url} HUB={self.hub_url}")
 
     # ------------------------------------------------------
     # SignalR connect + handlers
@@ -65,7 +65,7 @@ class MapSignalRStreamer(Node):
     def start_signalr_connection(self):
         def run():
             try:
-                self.get_logger().info(f"🔗 Connecting to SignalR Hub at {self.hub_url}")
+                # self.get_logger().info(f"🔗 Connecting to SignalR Hub at {self.hub_url}")
 
                 self.hub = (
                     HubConnectionBuilder()
@@ -80,9 +80,9 @@ class MapSignalRStreamer(Node):
 
                 self.hub.on("ReceiveRobotCommand", self.handle_robot_command)
                 self.hub.start()
-                self.get_logger().info("🟢 Connected to SignalR Hub successfully!")
+                # self.get_logger().info("🟢 Connected to SignalR Hub successfully!")
             except Exception as e:
-                self.get_logger().error(f"❌ Failed to connect to Hub: {e}")
+                # self.get_logger().error(f"❌ Failed to connect to Hub: {e}")
                 self.hub = None
 
         threading.Thread(target=run, daemon=True).start()
@@ -101,7 +101,8 @@ class MapSignalRStreamer(Node):
                 self.current_mode = mode
                 # self.get_logger().info(f"🔄 Current mode set to: {self.current_mode}")
         except Exception as e:
-            self.get_logger().warn(f"⚠️ Failed to process hub command: {e}")
+            # self.get_logger().warn(f"⚠️ Failed to process hub command: {e}")
+            pass
 
     # ------------------------------------------------------
     # ROS2 /map callback (cache only)
@@ -164,7 +165,7 @@ class MapSignalRStreamer(Node):
                 "Data_b64": map_b64,
             }
 
-            self.get_logger().info(f"🗺️ Sending corrected map {width}×{height}")
+            # self.get_logger().info(f"🗺️ Sending corrected map {width}×{height}")
             resp = requests.post(self.api_url, json=payload, timeout=self.http_timeout_sec)
             if resp.status_code == 200:
                 js = resp.json()
@@ -173,10 +174,12 @@ class MapSignalRStreamer(Node):
                 # else:
                 #     self.get_logger().info("✅ Map frame sent successfully")
             else:
-                self.get_logger().warn(f"⚠️ API returned {resp.status_code}: {resp.text[:200]}")
+                # self.get_logger().warn(f"⚠️ API returned {resp.status_code}: {resp.text[:200]}")
+                pass
 
         except Exception as e:
-            self.get_logger().error(f"❌ Failed to process map: {e}")
+            # self.get_logger().error(f"❌ Failed to process map: {e}")
+            pass
 
 
     # ------------------------------------------------------

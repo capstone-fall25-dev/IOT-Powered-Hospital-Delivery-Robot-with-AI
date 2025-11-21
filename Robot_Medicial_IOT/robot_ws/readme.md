@@ -128,7 +128,7 @@ sudo journalctl -u robot_driver -f
 sudo journalctl -u robot_api -f
 sudo journalctl -u navigation -f
 sudo journalctl -u slam_launch -f
-Sudo systemctl status robot_api
+sudo systemctl status robot_api
 ```
 
 ## 6 When open computer run 
