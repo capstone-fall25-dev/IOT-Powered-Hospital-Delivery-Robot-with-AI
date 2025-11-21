@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
@@ -23,8 +21,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// 🎤 Web → Robot: nhận 1 chunk audio từ FE và bắn xuống ROS2 qua SignalR
-        /// FE gọi: POST /api/RobotAudio/SendChunk
+        /// 🎤 Web → Robot: FE gửi 1 chunk audio, mình broadcast cho ROS2
         /// </summary>
         [HttpPost("SendChunk")]
         public async Task<IActionResult> SendChunk([FromBody] AudioChunkDto req)
@@ -34,8 +31,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             try
             {
-                // Gửi cho tất cả client đang nối vào /hubs/robotaudio
-                // Python audio_call_node.py đang lắng "ReceiveAudioChunk"
+                _logger.LogInformation(
+                    "[RobotAudioController] Received chunk from Web. Len={len}, SR={sr}",
+                    req.Audio_b64.Length,
+                    req.SampleRate
+                );
+
+                // 👉 Gửi cho TẤT CẢ client đang nối /hubs/robotaudio
+                // Python đang lắng event "ReceiveAudioChunk"
                 await _hubContext.Clients.All.SendAsync("ReceiveAudioChunk", req);
 
                 return Ok(new

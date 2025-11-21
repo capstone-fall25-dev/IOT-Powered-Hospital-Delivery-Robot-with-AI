@@ -173,6 +173,7 @@ class AudioCallNode(Node):
     # ============================================================
     def on_receive_audio_chunk(self, args):
         try:
+            
             data = args[0] if isinstance(args, list) else args
             if not data:
                 return
