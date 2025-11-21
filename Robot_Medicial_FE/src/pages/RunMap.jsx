@@ -390,6 +390,11 @@ export default function RobotRunMap() {
     const gainNode = robotGainNodeRef.current;
     if (!audioCtx || !gainNode || !float32Data || float32Data.length === 0) return;
 
+    // Giảm gain thêm 20% nữa để tránh clip khi ROS mic vặn to
+    for (let i = 0; i < float32Data.length; i++) {
+      float32Data[i] *= 0.8;
+    }
+
     const sr = sampleRateFromData || audioCtx.sampleRate || 48000;
 
     const buffer = audioCtx.createBuffer(1, float32Data.length, sr);
@@ -399,10 +404,12 @@ export default function RobotRunMap() {
     source.buffer = buffer;
     source.connect(gainNode);
 
-    const now = audioCtx.currentTime;
-    const lastTime = robotPlaybackTimeRef.current || 0;
-    const startAt = Math.max(now + 0.01, lastTime); // 10ms buffer
+    // Nếu playhead bị sát currentTime → đẩy lên trước 100ms
+    if (robotPlaybackTimeRef.current < audioCtx.currentTime + 0.05) {
+      robotPlaybackTimeRef.current = audioCtx.currentTime + 0.1;
+    }
 
+    const startAt = robotPlaybackTimeRef.current;
     source.start(startAt);
 
     const duration = buffer.length / buffer.sampleRate;
@@ -470,7 +477,8 @@ export default function RobotRunMap() {
       };
 
       source.connect(scriptNode);
-      scriptNode.connect(audioCtx.destination);
+      // ❌ KHÔNG phát lại mic web trên loa để tránh vòng lặp / feedback
+      // scriptNode.connect(audioCtx.destination);
 
       setIsWebMicOn(true);
       setWebMicStatus("Mic web đang BẬT, đang gửi audio xuống robot...");
@@ -541,7 +549,8 @@ export default function RobotRunMap() {
       gainNode.connect(audioCtx.destination);
       robotGainNodeRef.current = gainNode;
 
-      robotPlaybackTimeRef.current = audioCtx.currentTime;
+      // khởi tạo playhead cách hiện tại 200ms để có buffer
+      robotPlaybackTimeRef.current = audioCtx.currentTime + 0.2;
 
       const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
 
