@@ -37,6 +37,25 @@ export default function RobotRunMap() {
   const [selectedMapName, setSelectedMapName] = useState("");
 
   // ===================================
+  // 🔊 AUDIO STATE (WEB ↔ ROS2)
+  // ===================================
+  // Mic Web → Robot
+  const [isWebMicOn, setIsWebMicOn] = useState(false);
+  const [webMicStatus, setWebMicStatus] = useState("Mic web đang tắt.");
+  const webAudioContextRef = useRef(null);
+  const webScriptNodeRef = useRef(null);
+  const webMediaStreamRef = useRef(null);
+  const webSourceNodeRef = useRef(null);
+
+  // Robot Mic → Web
+  const [robotMicConnected, setRobotMicConnected] = useState(false);
+  const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
+  const robotAudioContextRef = useRef(null);
+  const robotAudioQueueRef = useRef([]);
+  const robotIsPlayingRef = useRef(false);
+  const robotAudioConnRef = useRef(null);
+
+  // ===================================
   // 🔗 SIGNALR
   // ===================================
   useEffect(() => {
@@ -59,13 +78,25 @@ export default function RobotRunMap() {
         setCameraFrame(`data:image/jpeg;base64,${frame.image_b64}`);
     });
 
-    posConn.start().then(() => setStatus("Đã kết nối robot"));
-    camConn.start();
+    posConn
+      .start()
+      .then(() => setStatus("Đã kết nối robot"))
+      .catch(() => setStatus("Không kết nối được robot"));
+    camConn.start().catch(() => {});
 
     return () => {
       posConn.stop();
       camConn.stop();
     };
+  }, []);
+
+  // cleanup audio khi unmount
+  useEffect(() => {
+    return () => {
+      stopWebMic();
+      disconnectRobotMic();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ===================================
@@ -313,18 +344,254 @@ export default function RobotRunMap() {
   }
 
   // ===================================
+  // 🔊 AUDIO HELPERS (giống test.html)
+  // ===================================
+  function floatTo16BitPCM(float32Array) {
+    const len = float32Array.length;
+    const result = new Int16Array(len);
+    for (let i = 0; i < len; i++) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      result[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return result;
+  }
+
+  function base64Pcm16ToFloat32(b64) {
+    const binary = atob(b64);
+    const len = binary.length / 2;
+    const float32 = new Float32Array(len);
+    for (let i = 0; i < len; i++) {
+      const lo = binary.charCodeAt(2 * i);
+      const hi = binary.charCodeAt(2 * i + 1);
+      let val = (hi << 8) | lo;
+      if (val >= 0x8000) val = val - 0x10000;
+      float32[i] = val / 0x8000;
+    }
+    return float32;
+  }
+
+  function enqueueRobotAudio(float32Data) {
+    const q = robotAudioQueueRef.current.slice();
+    q.push(float32Data);
+    robotAudioQueueRef.current = q;
+    if (!robotIsPlayingRef.current) {
+      playNextRobotChunk();
+    }
+  }
+
+  function playNextRobotChunk() {
+    const audioCtx = robotAudioContextRef.current;
+    const q = robotAudioQueueRef.current;
+    if (!audioCtx || q.length === 0) {
+      robotIsPlayingRef.current = false;
+      return;
+    }
+    robotIsPlayingRef.current = true;
+    const data = q.shift();
+    robotAudioQueueRef.current = q;
+
+    const buffer = audioCtx.createBuffer(1, data.length, audioCtx.sampleRate);
+    buffer.getChannelData(0).set(data);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.onended = () => {
+      robotIsPlayingRef.current = false;
+      playNextRobotChunk();
+    };
+    source.start();
+  }
+
+  // ===================================
+  // 🔊 Mic Web → Robot
+  // ===================================
+  async function startWebMic() {
+    if (isWebMicOn) return;
+    try {
+      setWebMicStatus("Đang xin quyền micro...");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      webMediaStreamRef.current = stream;
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) {
+        alert("Trình duyệt không hỗ trợ AudioContext");
+        setWebMicStatus("Trình duyệt không hỗ trợ audio.");
+        return;
+      }
+
+      const audioCtx = new AudioCtx();
+      webAudioContextRef.current = audioCtx;
+
+      const sampleRate = audioCtx.sampleRate;
+      const source = audioCtx.createMediaStreamSource(stream);
+      webSourceNodeRef.current = source;
+
+      const bufferSize = 2048;
+      const scriptNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+      webScriptNodeRef.current = scriptNode;
+
+      scriptNode.onaudioprocess = (event) => {
+        const inputBuffer = event.inputBuffer.getChannelData(0);
+        const pcm16 = floatTo16BitPCM(inputBuffer);
+        const bytes = new Uint8Array(pcm16.buffer);
+
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64Data = btoa(binary);
+
+        const payload = {
+          Audio_b64: base64Data,
+          SampleRate: sampleRate,
+          Channels: 1,
+          StreamId: "mic_main",
+          Timestamp: Date.now(),
+        };
+
+        fetch(API_CONFIG.API_BASE1 + "/api/RobotAudio/SendChunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch(() => {});
+      };
+
+      source.connect(scriptNode);
+      scriptNode.connect(audioCtx.destination);
+
+      setIsWebMicOn(true);
+      setWebMicStatus("Mic web đang BẬT, đang gửi audio xuống robot...");
+    } catch (err) {
+      console.error(err);
+      setWebMicStatus("Không thể bật mic web.");
+      alert("Không thể truy cập micro: " + err.message);
+    }
+  }
+
+  function stopWebMic() {
+    if (!isWebMicOn && !webAudioContextRef.current && !webMediaStreamRef.current)
+      return;
+
+    const scriptNode = webScriptNodeRef.current;
+    if (scriptNode) {
+      scriptNode.disconnect();
+      scriptNode.onaudioprocess = null;
+      webScriptNodeRef.current = null;
+    }
+
+    const source = webSourceNodeRef.current;
+    if (source) {
+      source.disconnect();
+      webSourceNodeRef.current = null;
+    }
+
+    const audioCtx = webAudioContextRef.current;
+    if (audioCtx) {
+      audioCtx.close();
+      webAudioContextRef.current = null;
+    }
+
+    const stream = webMediaStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      webMediaStreamRef.current = null;
+    }
+
+    setIsWebMicOn(false);
+    setWebMicStatus("Mic web đang tắt.");
+  }
+
+  function toggleWebMic() {
+    if (isWebMicOn) stopWebMic();
+    else startWebMic();
+  }
+
+  // ===================================
+  // 🔊 Robot Mic → Web
+  // ===================================
+  async function connectRobotMic() {
+    if (robotMicConnected) return;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) {
+        alert("Trình duyệt không hỗ trợ AudioContext");
+        setRobotMicStatus("Trình duyệt không hỗ trợ audio.");
+        return;
+      }
+
+      const audioCtx = new AudioCtx();
+      robotAudioContextRef.current = audioCtx;
+
+      const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
+
+      const connection = new signalR.HubConnectionBuilder()
+        .withUrl(hubUrl)
+        .withAutomaticReconnect()
+        .build();
+
+      connection.on("ReceiveRobotMicChunk", (data) => {
+        const b64 = data.audio_b64 || data.Audio_b64;
+        if (!b64) return;
+        const float32 = base64Pcm16ToFloat32(b64);
+        enqueueRobotAudio(float32);
+      });
+
+      await connection.start();
+
+      robotAudioConnRef.current = connection;
+      setRobotMicConnected(true);
+      setRobotMicStatus("Đã kết nối Robot Mic, đang nghe audio từ ROS2...");
+    } catch (err) {
+      console.error(err);
+      setRobotMicStatus("Không kết nối được Robot Mic.");
+      alert("Không kết nối được Robot Mic: " + err.message);
+      if (robotAudioContextRef.current) {
+        robotAudioContextRef.current.close();
+        robotAudioContextRef.current = null;
+      }
+    }
+  }
+
+  async function disconnectRobotMic() {
+    const conn = robotAudioConnRef.current;
+    if (conn) {
+      try {
+        await conn.stop();
+      } catch {}
+      robotAudioConnRef.current = null;
+    }
+
+    const audioCtx = robotAudioContextRef.current;
+    if (audioCtx) {
+      audioCtx.close();
+      robotAudioContextRef.current = null;
+    }
+
+    robotAudioQueueRef.current = [];
+    robotIsPlayingRef.current = false;
+
+    setRobotMicConnected(false);
+    setRobotMicStatus("Robot mic đã ngắt kết nối.");
+  }
+
+  function toggleRobotMic() {
+    if (robotMicConnected) disconnectRobotMic();
+    else connectRobotMic();
+  }
+
+  // ===================================
   // UI
   // ===================================
   return (
     <div className={styles.page}>
       <div className="container-xxl py-3">
-        <div className="row g-3" style={{ height: 'calc(100vh - 2rem)' }}>
-          
+        <div className="row g-3" style={{ height: "calc(100vh - 2rem)" }}>
           {/* =================== LEFT: CONTROLS =================== */}
           <div className="col-lg-3 col-xl-3">
             <div className={`${styles.glass} p-3 h-100`}>
               <div className={styles.controlSidebar}>
-                
                 {/* Control Section */}
                 <div className="mb-3">
                   <h6 className={styles.sectionTitle}>
@@ -336,7 +603,11 @@ export default function RobotRunMap() {
                     className={`${styles.btnPrimary} mt-2`}
                     onClick={() => setRemoteMode(!remoteMode)}
                   >
-                    <i className={`bi ${remoteMode ? 'bi-stop-circle' : 'bi-controller'} me-1`}></i>
+                    <i
+                      className={`bi ${
+                        remoteMode ? "bi-stop-circle" : "bi-controller"
+                      } me-1`}
+                    ></i>
                     {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
                   </button>
 
@@ -345,26 +616,34 @@ export default function RobotRunMap() {
                       <div className={styles.pad}>
                         <div></div>
                         <div
-                          className={`${styles.key} ${activeKey === "w" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "w" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("w")}
                         >
                           W
                         </div>
                         <div></div>
                         <div
-                          className={`${styles.key} ${activeKey === "a" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "a" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("a")}
                         >
                           A
                         </div>
                         <div
-                          className={`${styles.key} ${activeKey === "s" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "s" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("s")}
                         >
                           S
                         </div>
                         <div
-                          className={`${styles.key} ${activeKey === "d" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "d" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("d")}
                         >
                           D
@@ -372,7 +651,9 @@ export default function RobotRunMap() {
                       </div>
                       <div className="d-flex justify-content-center">
                         <div
-                          className={`${styles.key} ${activeKey === "x" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "x" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("x")}
                         >
                           X
@@ -395,13 +676,51 @@ export default function RobotRunMap() {
                       <div key={c.id} className={styles.compartmentItem}>
                         <span className={styles.compartmentLabel}>{c.label}</span>
                         <button
-                          className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
+                          className={
+                            c.state === "open" ? styles.btnDanger : styles.btnSuccess
+                          }
                           onClick={() => toggleCompartment(c.id)}
                         >
                           {c.state === "open" ? "Đóng" : "Mở"}
                         </button>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* 🔊 AUDIO CONTROLS (thêm dưới Hộp chứa) */}
+                <hr className={styles.divider} />
+
+                <div className="mb-3">
+                  <h6 className={styles.sectionTitle}>
+                    <i className="bi bi-mic-fill"></i>
+                    Âm thanh
+                  </h6>
+                  <div className="mt-2 d-flex flex-column gap-2">
+                    <button
+                      className={isWebMicOn ? styles.btnDanger : styles.btnSuccess}
+                      onClick={toggleWebMic}
+                    >
+                      <i className="bi bi-mic me-1"></i>
+                      {isWebMicOn ? "Tắt Mic Web → Robot" : "Bật Mic Web → Robot"}
+                    </button>
+
+                    <button
+                      className={
+                        robotMicConnected ? styles.btnDanger : styles.btnOutlinePrimary
+                      }
+                      onClick={toggleRobotMic}
+                    >
+                      <i className="bi bi-broadcast-pin me-1"></i>
+                      {robotMicConnected
+                        ? "Tắt Robot Mic → Web"
+                        : "Bật Robot Mic → Web"}
+                    </button>
+
+                    <small style={{ marginTop: "4px", opacity: 0.8 }}>
+                      {webMicStatus}
+                    </small>
+                    <small style={{ opacity: 0.8 }}>{robotMicStatus}</small>
                   </div>
                 </div>
 
@@ -447,9 +766,14 @@ export default function RobotRunMap() {
 
                   {selectedDestination && (
                     <div className={`${styles.destinationInfo} mt-2`}>
-                      <div><strong>{selectedDestination.name}</strong></div>
+                      <div>
+                        <strong>{selectedDestination.name}</strong>
+                      </div>
                       <div>Map: {selectedMapName}</div>
-                      <div>X: {selectedDestination.x.toFixed(2)} | Y: {selectedDestination.y.toFixed(2)}</div>
+                      <div>
+                        X: {selectedDestination.x.toFixed(2)} | Y:{" "}
+                        {selectedDestination.y.toFixed(2)}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -486,7 +810,6 @@ export default function RobotRunMap() {
                     )}
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
@@ -494,7 +817,6 @@ export default function RobotRunMap() {
           {/* =================== RIGHT: CAMERA + MAPS =================== */}
           <div className="col-lg-9 col-xl-9">
             <div className={styles.mainContent}>
-              
               {/* Camera Section */}
               <div className={`${styles.glass} p-3`}>
                 <div className={styles.headerBar}>
@@ -502,7 +824,13 @@ export default function RobotRunMap() {
                     <i className="bi bi-camera-video-fill"></i>
                     Camera Trực Tiếp
                   </div>
-                  <span className={status.includes("kết nối") ? styles.statusBadgeSuccess : styles.statusBadge}>
+                  <span
+                    className={
+                      status.includes("kết nối")
+                        ? styles.statusBadgeSuccess
+                        : styles.statusBadge
+                    }
+                  >
                     {status}
                   </span>
                 </div>
@@ -511,7 +839,14 @@ export default function RobotRunMap() {
                     <img src={cameraFrame} alt="Camera feed" />
                   ) : (
                     <span className={styles.cameraPlaceholder}>
-                      <i className="bi bi-camera-video" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                      <i
+                        className="bi bi-camera-video"
+                        style={{
+                          fontSize: "2rem",
+                          display: "block",
+                          marginBottom: "0.5rem",
+                        }}
+                      ></i>
                       Đang chờ khung hình...
                     </span>
                   )}
@@ -525,7 +860,7 @@ export default function RobotRunMap() {
                     <i className="bi bi-map-fill"></i>
                     Bản đồ điều hướng
                   </div>
-                  <div className={styles.inputGroup} style={{ maxWidth: '280px' }}>
+                  <div className={styles.inputGroup} style={{ maxWidth: "280px" }}>
                     <input
                       className={styles.formControl}
                       placeholder="Tên bản đồ..."
@@ -546,7 +881,10 @@ export default function RobotRunMap() {
                       Điểm đến
                     </div>
                     <div className={styles.mapBox}>
-                      <div id="nav-map" style={{ width: '100%', height: '100%' }}></div>
+                      <div
+                        id="nav-map"
+                        style={{ width: "100%", height: "100%" }}
+                      ></div>
                     </div>
                   </div>
 
@@ -557,7 +895,10 @@ export default function RobotRunMap() {
                       Bệnh viện (Live)
                     </div>
                     <div className={styles.mapBox}>
-                      <div id="live-map" style={{ width: '100%', height: '100%' }}></div>
+                      <div
+                        id="live-map"
+                        style={{ width: "100%", height: "100%" }}
+                      ></div>
                     </div>
                   </div>
                 </div>
