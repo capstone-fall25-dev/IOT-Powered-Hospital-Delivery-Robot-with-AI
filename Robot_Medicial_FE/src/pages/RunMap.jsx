@@ -414,11 +414,10 @@ export default function RobotRunMap() {
   // ===================================
   // 🔊 Mic Web → Robot (qua HUB)
   // ===================================
-  async function startWebMic() {
+    async function startWebMic() {
     if (isWebMicOn) return;
     try {
       setWebMicStatus("Đang xin quyền micro...");
-
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
@@ -436,33 +435,18 @@ export default function RobotRunMap() {
       }
 
       const audioCtx = new AudioCtx();
+      await audioCtx.resume(); 
       webAudioContextRef.current = audioCtx;
 
-      const sampleRate = audioCtx.sampleRate;
+      const sampleRate = 48000; // ép SR gửi xuống ROS khớp aplay
       const source = audioCtx.createMediaStreamSource(stream);
       webSourceNodeRef.current = source;
-
-      // 🔗 Kết nối tới /hubs/robotaudio (nếu chưa có)
-      if (!webAudioConnRef.current) {
-        const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
-        const conn = new signalR.HubConnectionBuilder()
-          .withUrl(hubUrl)
-          .withAutomaticReconnect()
-          .build();
-
-        await conn.start();
-        webAudioConnRef.current = conn;
-        console.log("[WebMic] connected to", hubUrl);
-      }
 
       const bufferSize = 2048;
       const scriptNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
       webScriptNodeRef.current = scriptNode;
 
       scriptNode.onaudioprocess = (event) => {
-        const conn = webAudioConnRef.current;
-        if (!conn || conn.state !== signalR.HubConnectionState.Connected) return;
-
         const inputBuffer = event.inputBuffer.getChannelData(0);
         const pcm16 = floatTo16BitPCM(inputBuffer);
         const bytes = new Uint8Array(pcm16.buffer);
@@ -481,12 +465,27 @@ export default function RobotRunMap() {
           Timestamp: Date.now(),
         };
 
-        // 🚀 Gửi lên HUB: gọi method StreamAudioFromWeb
-        conn.invoke("StreamAudioFromWeb", payload).catch(() => {});
+        // 🔍 LOG nhẹ cho debug (1 lần / vài gói)
+        console.debug("[WEB MIC] send chunk, bytes =", bytes.byteLength);
+
+        fetch(API_CONFIG.API_BASE1 + "/api/RobotAudio/SendChunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.error("SendChunk HTTP error", res.status);
+            }
+          })
+          .catch((err) => {
+            console.error("SendChunk fetch error", err);
+          });
       };
 
       source.connect(scriptNode);
-      // không connect scriptNode tới loa tránh feedback
+      // 🔥 BẮT BUỘC: nếu không connect, ScriptProcessorNode sẽ không chạy
+      scriptNode.connect(audioCtx.destination);
 
       setIsWebMicOn(true);
       setWebMicStatus("Mic web đang BẬT, đang gửi audio xuống robot...");
