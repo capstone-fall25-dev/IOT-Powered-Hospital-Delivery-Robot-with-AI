@@ -39,8 +39,7 @@ install(PROGRAMS
   scripts/stream_map_api.py
   scripts/control_robot_api.py
   scripts/get_api_url.py
-  scripts/audio_player_signalr.py
-  scripts/robot_mic_streamer.py
+  scripts/audio_call_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

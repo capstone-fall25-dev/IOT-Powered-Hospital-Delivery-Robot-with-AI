@@ -193,7 +193,7 @@ class AudioCallNode(Node):
                 return
 
             raw_bytes = base64.b64decode(audio_b64)
-            self.get_logger().info(f"🔈 Received web audio chunk: {len(raw_bytes)} bytes")
+         #   self.get_logger().info(f"🔈 Received web audio chunk: {len(raw_bytes)} bytes")
 
             if self.aplay_proc and self.aplay_proc.stdin:
                 self.aplay_proc.stdin.write(raw_bytes)

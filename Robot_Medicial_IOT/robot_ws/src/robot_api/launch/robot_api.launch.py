@@ -51,19 +51,12 @@ def generate_launch_description():
         output="screen"
     )   
     
-    voice_control_node = Node(
-    package='robot_api',
-    executable='audio_player_signalr.py',
-    name='audio_player_node',
-    output='screen'
-    )
-
-    mic_control_node = Node(
-    package='robot_api',
-    executable='robot_mic_streamer.py',
-    name='robot_mic_streamer_node',
-    output='screen'
-    ) 
+    # voice_control_node = Node(
+    # package='robot_api',
+    # executable='audio_call_node.py',
+    # name='audio_call_robot_node',
+    # output='screen'
+    # )
 
     ld = LaunchDescription()
     ld.add_action(control_box_node)
@@ -73,7 +66,6 @@ def generate_launch_description():
     ld.add_action(control_robot_node)
     ld.add_action(map_api_node)
     ld.add_action(goto_pose_node)
-    ld.add_action(voice_control_node)
-    ld.add_action(mic_control_node)
+    #ld.add_action(voice_control_node)
     return ld
     

@@ -60,32 +60,49 @@ export default function RobotCreateMap() {
   // MAP + ROBOT POSITION
   // ===================================
   function drawMap(mapData) {
-    if (!window.L) return;
-    const L = window.L;
-    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-    if (!base64) return;
+  if (!window.L) return;
+  const L = window.L;
+  const base64 =
+    mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+  if (!base64) return;
 
-    const res = mapData.Resolution || mapData.resolution || 0.05;
-    const w = mapData.Width || mapData.width || 800;
-    const h = mapData.Height || mapData.height || 800;
-    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
+  const res = mapData.Resolution || mapData.resolution || 0.05;
+  const w = mapData.Width || mapData.width || 800;
+  const h = mapData.Height || mapData.height || 800;
+  const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+  const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-    const imgSrc = `data:image/png;base64,${base64}`;
-    const bounds = [
-      [oy, ox],
-      [oy + h * res, ox + w * res],
-    ];
+  const imgSrc = `data:image/png;base64,${base64}`;
+  const bounds = [
+    [oy, ox],
+    [oy + h * res, ox + w * res],
+  ];
 
-    if (!mapRef.current) {
-      mapRef.current = L.map("map", { crs: L.CRS.Simple, zoomControl: false });
-      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
-    }
+  if (!mapRef.current) {
+    mapRef.current = L.map("map", {
+      crs: L.CRS.Simple,
+      zoomControl: false,
+    });
+    L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
 
-    if (mapLayer.current) mapRef.current.removeLayer(mapLayer.current);
-    mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(mapRef.current);
-    mapRef.current.fitBounds(bounds);
+    // ⭐ rất quan trọng: set view ban đầu để _loaded = true
+    mapRef.current.setView([0, 0], 0);
   }
+
+  if (mapLayer.current) {
+    mapRef.current.removeLayer(mapLayer.current);
+  }
+
+  mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+    mapRef.current
+  );
+
+  // sau khi có bounds mới, fit lại
+  mapRef.current.fitBounds(bounds);
+  // optional: nếu map nằm trong tab/box ẩn có thể thêm:
+  // setTimeout(() => mapRef.current.invalidateSize(), 100);
+}
+
 
   function updateRobotPosition(pos) {
     if (!window.L || !mapRef.current) return;

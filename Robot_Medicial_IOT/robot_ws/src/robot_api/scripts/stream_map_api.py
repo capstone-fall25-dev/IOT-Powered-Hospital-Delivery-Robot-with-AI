@@ -57,7 +57,7 @@ class MapSignalRStreamer(Node):
         # =========================
         threading.Thread(target=self.map_sender_loop, daemon=True).start()
 
-        # self.get_logger().info(f"🌐 Map streamer initialized. API={self.api_url} HUB={self.hub_url}")
+        self.get_logger().info(f"🌐 Map streamer initialized. API={self.api_url} HUB={self.hub_url}")
 
     # ------------------------------------------------------
     # SignalR connect + handlers
@@ -65,7 +65,7 @@ class MapSignalRStreamer(Node):
     def start_signalr_connection(self):
         def run():
             try:
-                # self.get_logger().info(f"🔗 Connecting to SignalR Hub at {self.hub_url}")
+                self.get_logger().info(f"🔗 Connecting to SignalR Hub at {self.hub_url}")
 
                 self.hub = (
                     HubConnectionBuilder()
