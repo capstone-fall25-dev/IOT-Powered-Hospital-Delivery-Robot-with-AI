@@ -7,7 +7,7 @@ export default function RobotCreateMap() {
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
-
+const mapContainerRef = useRef(null); // 👈 thêm dòng này 
   // ===================================
   // STATE
   // ===================================
@@ -56,11 +56,35 @@ export default function RobotCreateMap() {
     };
   }, []);
 
+
+  // ===================================
+// INIT LEAFLET MAP (only once)
+// ===================================
+useEffect(() => {
+  if (!window.L) return;
+  if (mapRef.current) return;          // tránh init lại
+  if (!mapContainerRef.current) return;
+
+  const L = window.L;
+
+  // Tạo map và set center + zoom ngay từ đầu
+  mapRef.current = L.map(mapContainerRef.current, {
+    crs: L.CRS.Simple,
+    center: [0, 0],   // 👈 set sẵn center
+    zoom: 0,          // 👈 set sẵn zoom
+    zoomControl: false,
+  });
+
+  L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+}, []);
+
   // ===================================
   // MAP + ROBOT POSITION
   // ===================================
-  function drawMap(mapData) {
+ function drawMap(mapData) {
   if (!window.L) return;
+  if (!mapRef.current) return;          // map chưa init thì bỏ qua
+
   const L = window.L;
   const base64 =
     mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
@@ -78,30 +102,23 @@ export default function RobotCreateMap() {
     [oy + h * res, ox + w * res],
   ];
 
-  if (!mapRef.current) {
-    mapRef.current = L.map("map", {
-      crs: L.CRS.Simple,
-      zoomControl: false,
-    });
-    L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
-
-    // ⭐ rất quan trọng: set view ban đầu để _loaded = true
-    mapRef.current.setView([0, 0], 0);
-  }
-
+  // Xóa layer cũ nếu có
   if (mapLayer.current) {
     mapRef.current.removeLayer(mapLayer.current);
   }
 
+  // Thêm map mới
   mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
     mapRef.current
   );
 
-  // sau khi có bounds mới, fit lại
+  // Fit vào bounds + refresh size
   mapRef.current.fitBounds(bounds);
-  // optional: nếu map nằm trong tab/box ẩn có thể thêm:
-  // setTimeout(() => mapRef.current.invalidateSize(), 100);
+  setTimeout(() => {
+    mapRef.current && mapRef.current.invalidateSize();
+  }, 0);
 }
+
 
 
   function updateRobotPosition(pos) {
@@ -385,7 +402,10 @@ export default function RobotCreateMap() {
                   </div>
                 </div>
                 <div className={styles.mapBox}>
-                  <div id="map" style={{ width: '100%', height: '100%' }}></div>
+                  <div
+                    ref={mapContainerRef}              // 👈 dùng ref
+                    style={{ width: "100%", height: "100%" }}
+                  ></div>
                 </div>
               </div>
 
