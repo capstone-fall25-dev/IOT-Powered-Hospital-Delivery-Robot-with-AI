@@ -7,7 +7,7 @@ export default function RobotCreateMap() {
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
-const mapContainerRef = useRef(null); // 👈 thêm dòng này 
+
   // ===================================
   // STATE
   // ===================================
@@ -38,9 +38,11 @@ const mapContainerRef = useRef(null); // 👈 thêm dòng này
 
     posConn.on("ReceiveMapUpdate", (map) => drawMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+
     camConn.on("ReceiveCameraFrame", (frame) => {
-      if (frame?.image_b64)
+      if (frame?.image_b64) {
         setCameraFrame(`data:image/jpeg;base64,${frame.image_b64}`);
+      }
     });
 
     posConn
@@ -56,70 +58,52 @@ const mapContainerRef = useRef(null); // 👈 thêm dòng này
     };
   }, []);
 
-
-  // ===================================
-// INIT LEAFLET MAP (only once)
-// ===================================
-useEffect(() => {
-  if (!window.L) return;
-  if (mapRef.current) return;          // tránh init lại
-  if (!mapContainerRef.current) return;
-
-  const L = window.L;
-
-  // Tạo map và set center + zoom ngay từ đầu
-  mapRef.current = L.map(mapContainerRef.current, {
-    crs: L.CRS.Simple,
-    center: [0, 0],   // 👈 set sẵn center
-    zoom: 0,          // 👈 set sẵn zoom
-    zoomControl: false,
-  });
-
-  L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
-}, []);
-
   // ===================================
   // MAP + ROBOT POSITION
+  // (giống logic drawLiveMap bên RobotRunMap)
   // ===================================
- function drawMap(mapData) {
-  if (!window.L) return;
-  if (!mapRef.current) return;          // map chưa init thì bỏ qua
+  function drawMap(mapData) {
+    if (!window.L) return;
+    const L = window.L;
 
-  const L = window.L;
-  const base64 =
-    mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-  if (!base64) return;
+    const base64 =
+      mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+    if (!base64) return;
 
-  const res = mapData.Resolution || mapData.resolution || 0.05;
-  const w = mapData.Width || mapData.width || 800;
-  const h = mapData.Height || mapData.height || 800;
-  const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-  const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
+    const res = mapData.Resolution || mapData.resolution || 0.05;
+    const w = mapData.Width || mapData.width || 800;
+    const h = mapData.Height || mapData.height || 800;
+    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-  const imgSrc = `data:image/png;base64,${base64}`;
-  const bounds = [
-    [oy, ox],
-    [oy + h * res, ox + w * res],
-  ];
+    const imgSrc = `data:image/png;base64,${base64}`;
+    const bounds = [
+      [oy, ox],
+      [oy + h * res, ox + w * res],
+    ];
 
-  // Xóa layer cũ nếu có
-  if (mapLayer.current) {
-    mapRef.current.removeLayer(mapLayer.current);
+    // ⭐ Tạo map lần đầu giống hệt live-map (chỉ khác ID "map")
+    if (!mapRef.current) {
+      mapRef.current = L.map("map", {
+        crs: L.CRS.Simple,
+        zoomControl: false,
+      });
+      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+    }
+
+    // Xóa layer cũ nếu có
+    if (mapLayer.current) {
+      mapRef.current.removeLayer(mapLayer.current);
+    }
+
+    // Thêm overlay mới
+    mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+      mapRef.current
+    );
+
+    // Fit bản đồ
+    mapRef.current.fitBounds(bounds);
   }
-
-  // Thêm map mới
-  mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
-    mapRef.current
-  );
-
-  // Fit vào bounds + refresh size
-  mapRef.current.fitBounds(bounds);
-  setTimeout(() => {
-    mapRef.current && mapRef.current.invalidateSize();
-  }, 0);
-}
-
-
 
   function updateRobotPosition(pos) {
     if (!window.L || !mapRef.current) return;
@@ -153,7 +137,11 @@ useEffect(() => {
         body: JSON.stringify({ key }),
       });
       setLogs((l) => [
-        { time: new Date().toLocaleTimeString(), text: `Điều khiển: ${key}`, level: "ok" },
+        {
+          time: new Date().toLocaleTimeString(),
+          text: `Điều khiển: ${key}`,
+          level: "ok",
+        },
         ...l,
       ]);
       setActiveKey(key);
@@ -215,7 +203,11 @@ useEffect(() => {
         body: JSON.stringify({ Mode: "save_map", MapName: mapName }),
       });
       setLogs((l) => [
-        { time: new Date().toLocaleTimeString(), text: `Lưu bản đồ: ${mapName}`, level: "ok" },
+        {
+          time: new Date().toLocaleTimeString(),
+          text: `Lưu bản đồ: ${mapName}`,
+          level: "ok",
+        },
         ...l,
       ]);
       setMapName("");
@@ -231,13 +223,11 @@ useEffect(() => {
   return (
     <div className={styles.page}>
       <div className="container-xxl py-3">
-        <div className="row g-3" style={{ height: 'calc(100vh - 2rem)' }}>
-          
+        <div className="row g-3" style={{ height: "calc(100vh - 2rem)" }}>
           {/* =================== LEFT: CONTROLS =================== */}
           <div className="col-lg-3 col-xl-2">
             <div className={`${styles.glass} p-3 h-100`}>
               <div className={styles.controlSidebar}>
-                
                 {/* Control Section */}
                 <div className="mb-3">
                   <h6 className={styles.sectionTitle}>
@@ -249,7 +239,11 @@ useEffect(() => {
                     className={`${styles.btnPrimary} mt-2`}
                     onClick={() => setRemoteMode(!remoteMode)}
                   >
-                    <i className={`bi ${remoteMode ? 'bi-stop-circle' : 'bi-controller'} me-1`}></i>
+                    <i
+                      className={`bi ${
+                        remoteMode ? "bi-stop-circle" : "bi-controller"
+                      } me-1`}
+                    ></i>
                     {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
                   </button>
 
@@ -258,26 +252,34 @@ useEffect(() => {
                       <div className={styles.pad}>
                         <div></div>
                         <div
-                          className={`${styles.key} ${activeKey === "w" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "w" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("w")}
                         >
                           W
                         </div>
                         <div></div>
                         <div
-                          className={`${styles.key} ${activeKey === "a" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "a" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("a")}
                         >
                           A
                         </div>
                         <div
-                          className={`${styles.key} ${activeKey === "s" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "s" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("s")}
                         >
                           S
                         </div>
                         <div
-                          className={`${styles.key} ${activeKey === "d" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "d" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("d")}
                         >
                           D
@@ -285,7 +287,9 @@ useEffect(() => {
                       </div>
                       <div className="d-flex justify-content-center">
                         <div
-                          className={`${styles.key} ${activeKey === "x" ? styles.keyActive : ""}`}
+                          className={`${styles.key} ${
+                            activeKey === "x" ? styles.keyActive : ""
+                          }`}
                           onClick={() => sendCommand("x")}
                         >
                           X
@@ -306,9 +310,15 @@ useEffect(() => {
                   <div className="mt-2">
                     {compartments.map((c) => (
                       <div key={c.id} className={styles.compartmentItem}>
-                        <span className={styles.compartmentLabel}>{c.label}</span>
+                        <span className={styles.compartmentLabel}>
+                          {c.label}
+                        </span>
                         <button
-                          className={c.state === "open" ? styles.btnDanger : styles.btnSuccess}
+                          className={
+                            c.state === "open"
+                              ? styles.btnDanger
+                              : styles.btnSuccess
+                          }
                           onClick={() => toggleCompartment(c.id)}
                         >
                           {c.state === "open" ? "Đóng" : "Mở"}
@@ -350,7 +360,6 @@ useEffect(() => {
                     )}
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
@@ -358,7 +367,6 @@ useEffect(() => {
           {/* =================== RIGHT: CAMERA + MAP =================== */}
           <div className="col-lg-9 col-xl-10">
             <div className={styles.mainContent}>
-              
               {/* Camera Section */}
               <div className={`${styles.glass} p-3`}>
                 <div className={styles.headerBar}>
@@ -366,7 +374,13 @@ useEffect(() => {
                     <i className="bi bi-camera-video-fill"></i>
                     Camera Trực Tiếp
                   </div>
-                  <span className={status.includes("kết nối") ? styles.statusBadgeSuccess : styles.statusBadge}>
+                  <span
+                    className={
+                      status.includes("kết nối")
+                        ? styles.statusBadgeSuccess
+                        : styles.statusBadge
+                    }
+                  >
                     {status}
                   </span>
                 </div>
@@ -375,7 +389,14 @@ useEffect(() => {
                     <img src={cameraFrame} alt="Camera feed" />
                   ) : (
                     <span className={styles.cameraPlaceholder}>
-                      <i className="bi bi-camera-video" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                      <i
+                        className="bi bi-camera-video"
+                        style={{
+                          fontSize: "2rem",
+                          display: "block",
+                          marginBottom: "0.5rem",
+                        }}
+                      ></i>
                       Đang chờ khung hình...
                     </span>
                   )}
@@ -389,7 +410,10 @@ useEffect(() => {
                     <i className="bi bi-map-fill"></i>
                     Bản đồ bệnh viện
                   </div>
-                  <div className={styles.inputGroup} style={{ maxWidth: '300px' }}>
+                  <div
+                    className={styles.inputGroup}
+                    style={{ maxWidth: "300px" }}
+                  >
                     <input
                       className={styles.formControl}
                       placeholder="Tên bản đồ..."
@@ -403,15 +427,13 @@ useEffect(() => {
                 </div>
                 <div className={styles.mapBox}>
                   <div
-                    ref={mapContainerRef}              // 👈 dùng ref
+                    id="map"
                     style={{ width: "100%", height: "100%" }}
                   ></div>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
     </div>
