@@ -85,6 +85,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public string? CustomName { get; set; }
         public string? ItemDesc { get; set; }
+        public string? Status { get; set; }
     }
 
     // =====================================
@@ -233,7 +234,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public TaskPriority Priority { get; set; }
         public DateTime? ScheduledStartAt { get; set; }
-
+        public string? Status { get; set; }
         public List<TaskEditStopDto> Stops { get; set; } = new();
     }
 
@@ -250,5 +251,41 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public string? CustomName { get; set; }
         public string? ItemDesc { get; set; }
+
+        public string? Status { get; set; }
     }
+
+    public class TaskStatusChangeDto
+    {
+        public string Status { get; set; } = "";
+    }
+
+    public class RunTaskInfoDto
+    {
+        public ulong TaskId { get; set; }
+        public ulong RobotId { get; set; }
+        public ulong MapId { get; set; }
+        public string MapName { get; set; } = "";
+        public List<RunTaskStopDto> Stops { get; set; } = new();
+    }
+
+    public class RunTaskStopDto
+    {
+        public int Order { get; set; }
+        public ulong DestinationId { get; set; }
+        public string Name { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+    public class StopUpdateResultDto
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = "";
+        public TaskDetailDto? Task { get; set; }
+    }
+    public class StopStatusChangeDto
+    {
+        public string Status { get; set; } = "";
+    }
+
 }

@@ -107,5 +107,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             _context.RobotCompartments.AddRange(compartments);
             await _context.SaveChangesAsync();
         }
+
+        public async System.Threading.Tasks.Task ReleaseCompartmentAsync(ulong compartmentId)
+        {
+            var comp = await _context.RobotCompartments.FindAsync(compartmentId)
+                ?? throw new InvalidOperationException("Khoang không tồn tại.");
+
+            comp.PatientId = null;
+            comp.CategoryId = null;
+
+            if (comp.Status == "locked")
+                comp.Status = "unlocked"; 
+
+            _context.RobotCompartments.Update(comp);
+            await _context.SaveChangesAsync();
+        }
     }
 }

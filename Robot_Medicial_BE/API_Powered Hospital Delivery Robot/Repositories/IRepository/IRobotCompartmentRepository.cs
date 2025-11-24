@@ -13,5 +13,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         public System.Threading.Tasks.Task AssignPatientToCompartment(ulong compartmentId, ulong patientId);
         Task<bool> AssignCategoryToCompartment(ulong compId, ulong categoryId);
         Task<IEnumerable<RobotCompartment>> GetFilteredByRobotAsync(ulong robotId, ulong? categoryId);
+        System.Threading.Tasks.Task ReleaseCompartmentAsync(ulong compartmentId);
     }
 }

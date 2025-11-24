@@ -29,6 +29,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _taskHub = taskHub;
         }
 
+        // ======================================================================
+        // GET LIST
+        // ======================================================================
         public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter)
         {
             var tasks = await _repo.GetListAsync(filter);
@@ -59,26 +62,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             });
         }
 
+        // ======================================================================
+        // GET DETAIL
+        // ======================================================================
         public async Task<TaskDetailDto?> GetByIdAsync(ulong id)
         {
             var task = await _repo.GetByIdAsync(id);
             return task == null ? null : MapToDetail(task);
         }
 
+        // ======================================================================
+        // CREATE TASK
+        // ======================================================================
         public async Task<TaskResponseDto> CreateAsync(CreateTaskDto dto, ulong currentUserId)
         {
-            // 🧨 BẮT ĐẦU TRANSACTION
             using var transaction = await _repo.BeginTransactionAsync();
 
             try
             {
+                // Validate map & robot
                 var map = await _repo.GetMapAsync(dto.MapId)
-                ?? throw new InvalidOperationException("Bản đồ không tồn tại.");
+                    ?? throw new InvalidOperationException("Bản đồ không tồn tại.");
 
                 var robot = await _repo.GetRobotAsync(dto.RobotId)
                     ?? throw new InvalidOperationException("Robot không tồn tại.");
 
-                // BƯỚC 1: TỰ ĐỘNG CẬP NHẬT MAP CHO ROBOT
+                // Ensure robot matches the map
                 if (robot.MapId != dto.MapId)
                 {
                     var updated = await _repoRobot.AssignMapToRobotAsync(robot.Id, dto.MapId);
@@ -86,13 +95,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         throw new InvalidOperationException("Không thể gán map mới cho robot.");
                 }
 
-                // BƯỚC 2: Ngăn robot đang vận hành bị gán thêm task. Robot chỉ nhận task nếu at_station
+                // Robot must be at_station to accept task
                 if (robot.Status != "at_station")
                     throw new InvalidOperationException(
-                        $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', KHÔNG thể nhận nhiệm vụ mới. Robot chỉ có thể nhận task khi đang 'at_station'."
+                        $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', không thể nhận nhiệm vụ mới."
                     );
 
-                // ===== Bước 3: tạo Task ở trạng thái pending =====
+                // Create task
                 var task = new Models.Entities.Task
                 {
                     MapId = dto.MapId,
@@ -104,69 +113,53 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     UpdatedAt = DateTime.UtcNow,
                     ScheduledStartAt = dto.ScheduledStartAt
                 };
+
                 task = await _repo.CreateAsync(task);
 
-                // ===== Bước 4: tạo Stop + gán Compartment =====
-                foreach (var s in dto.Stops.OrderBy(x => x.SeqNo))
+                // Create task stops
+                foreach (var s in dto.Stops.OrderBy(s => s.SeqNo))
                 {
                     var comp = await _repo.GetCompartmentAsync(s.CompartmentId)
                         ?? throw new InvalidOperationException($"Khoang {s.CompartmentId} không tồn tại.");
 
-                    // Kiểm tra khoang có đang bận không
+                    // Check compartment is free
                     if (await _repo.IsCompartmentBusyAsync(s.CompartmentId))
                         throw new InvalidOperationException($"Khoang {s.CompartmentId} đang được sử dụng.");
 
-                    // Compartment locked => không được chọn
                     if (comp.Status == "locked")
-                    {
                         throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
-                    }
 
-                    // Nếu compartment đã có Category → bắt buộc phải trùng với Category đã chọn
+                    // Validate category
                     if (comp.CategoryId != null && comp.CategoryId != s.CategoryId)
-                    {
                         throw new InvalidOperationException(
-                            $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}, không thể chọn Category {s.CategoryId}."
+                            $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}."
                         );
-                    }
 
-                    // Nếu compartment chưa có Category → cho phép gán
                     if (comp.CategoryId == null)
-                    {
                         await _repoRobotCom.AssignCategoryToCompartment(comp.Id, s.CategoryId);
-                    }
 
-                    // Nếu compartment đã có bệnh nhân → phải trùng bệnh nhân
+                    // Validate patient
                     if (comp.PatientId != null && comp.PatientId != s.PatientId)
-                    {
                         throw new InvalidOperationException(
-                            $"Khoang {comp.CompartmentCode} đang chứa bệnh nhân ID = {comp.PatientId}, không thể đổi sang bệnh nhân {s.PatientId}."
+                            $"Khoang {comp.CompartmentCode} đang gắn với bệnh nhân {comp.PatientId}."
                         );
-                    }
 
-                    // Nếu chưa có bệnh nhân → gán mới
                     if (comp.PatientId == null)
-                    {
                         await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
-                    }
 
-                    // ===== LẤY ĐƠN THUỐC =====
                     var rx = await _repo.GetLatestPrescriptionForPatientAsync(s.PatientId)
-                    ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc hợp lệ.");
+                        ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc.");
 
                     var patient = await _repoPatient.GetByIdAsync(s.PatientId)
                         ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
 
-                    // ===== AUTO NAME FORMAT =====
                     string autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
+                    autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
 
-                    var itemList = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-                    autoName += $" - {itemList}";
+                    var finalName = string.IsNullOrWhiteSpace(s.CustomName)
+                        ? autoName
+                        : s.CustomName.Trim();
 
-                    // Nếu CustomName null hoặc empty → dùng autoName
-                    string finalName = string.IsNullOrWhiteSpace(s.CustomName) ? autoName : s.CustomName!.Trim();
-
-                    // Tạo stop
                     var stop = new TaskStop
                     {
                         TaskId = task.Id,
@@ -178,21 +171,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
+
                     stop = await _repo.CreateStopAsync(stop);
 
-                    // Tạo assignment
-                    // Nếu FE nhập itemDesc → dùng FE
-                    // Nếu không → Auto generate theo prescription
-                    string itemDesc;
-                    if (!string.IsNullOrWhiteSpace(s.ItemDesc))
-                    {
-                        itemDesc = s.ItemDesc.Trim();
-                    }
-                    else
-                    {
-                        var auto = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-                        itemDesc = $"RX#{rx.PrescriptionCode}: {auto}";
-                    }
+                    string itemDesc = string.IsNullOrWhiteSpace(s.ItemDesc)
+                        ? $"RX#{rx.PrescriptionCode}: " +
+                          string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"))
+                        : s.ItemDesc.Trim();
 
                     await _repo.CreateAssignmentAsync(new CompartmentAssignment
                     {
@@ -206,30 +191,41 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     });
                 }
 
-                // ===== Bước 5: đổi trạng thái Task và Robot =====
-                task.Status = "in_progress";
-                await _repo.UpdateAsync(task.Id, task);
+                // Auto start or schedule
+                if (!task.ScheduledStartAt.HasValue || task.ScheduledStartAt <= DateTime.UtcNow)
+                {
+                    task.Status = "in_progress";
+                    task.UpdatedAt = DateTime.UtcNow;
 
-                robot.Status = "transporting";
-                await _repo.UpdateRobotStatusAsync(robot.Id, robot.Status);
+                    await _repo.UpdateAsync(task.Id, task);
 
-                await transaction.CommitAsync(); // 🔥 COMMIT
+                    robot.Status = "transporting";
+                    await _repo.UpdateRobotStatusAsync(robot.Id, robot.Status);
+                }
+                else
+                {
+                    await _repo.UpdateAsync(task.Id, task);
+                }
+
+                await transaction.CommitAsync();
 
                 var result = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(result!);
 
-                // Gửi realtime đến client
                 await _taskHub.Clients.All.SendAsync("TaskCreated", response);
 
                 return response;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(); // 🔥 ROLLBACK nếu lỗi
+                await transaction.RollbackAsync();
                 throw new InvalidOperationException($"Tạo nhiệm vụ thất bại: {ex.Message}");
             }
         }
 
+        // ======================================================================
+        // GET EDIT DATA
+        // ======================================================================
         public async Task<TaskEditDto?> GetEditDataAsync(ulong id)
         {
             var task = await _repo.GetByIdAsync(id);
@@ -238,6 +234,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return MapToEdit(task);
         }
 
+        // ======================================================================
+        // UPDATE TASK
+        // ======================================================================
         public async Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto)
         {
             using var transaction = await _repo.BeginTransactionAsync();
@@ -247,23 +246,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var task = await _repo.GetByIdAsync(id)
                     ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
 
-                // ============== 1. Validate điều kiện cho phép edit ==============
-                // Chỉ cho phép edit nếu:
-                //  - Task đang pending, hoặc
-                //  - Task in_progress nhưng CHƯA đến giờ ScheduledStartAt
-
-                if (task.Status != "pending")
-                {
-                    if (task.ScheduledStartAt.HasValue &&
-                        DateTime.UtcNow >= task.ScheduledStartAt.Value)
-                    {
-                        throw new InvalidOperationException(
-                            "Nhiệm vụ đã đến giờ khởi hành hoặc đang thực hiện, không thể chỉnh sửa.");
-                    }
-                }
-
-                // ============== 2. Đổi Robot (nếu có) ============================
-                Robot? currentRobot = null;
+                // ------------------------------
+                // 1. CHANGE ROBOT
+                // ------------------------------
+                Robot? currentRobot;
 
                 if (dto.RobotId.HasValue && dto.RobotId.Value != task.RobotId)
                 {
@@ -274,16 +260,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         ?? throw new InvalidOperationException("Robot mới không tồn tại.");
 
                     if (newRobot.Status != "at_station")
-                        throw new InvalidOperationException("Robot mới đang bận, không thể gán nhiệm vụ.");
+                        throw new InvalidOperationException("Robot mới đang bận.");
 
-                    // Trả robot cũ về at_station (tuỳ nghiệp vụ, bạn có thể bỏ nếu không muốn)
                     oldRobot.Status = "at_station";
                     await _repo.UpdateRobotStatusAsync(oldRobot.Id, oldRobot.Status);
 
-                    // Gán robot mới cho task
                     task.RobotId = dto.RobotId.Value;
 
-                    // Set robot mới sang transporting (vì task này đã được assign)
                     newRobot.Status = "transporting";
                     await _repo.UpdateRobotStatusAsync(newRobot.Id, newRobot.Status);
 
@@ -295,7 +278,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         ?? throw new InvalidOperationException("Robot không tồn tại.");
                 }
 
-                // ============== 3. Đổi Map (nếu có) ==============================
+                // ------------------------------
+                // 2. CHANGE MAP
+                // ------------------------------
                 if (dto.MapId.HasValue && dto.MapId.Value != task.MapId)
                 {
                     var map = await _repo.GetMapAsync(dto.MapId.Value)
@@ -303,101 +288,144 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     task.MapId = dto.MapId.Value;
 
-                    // đảm bảo robot hiện tại đang gán đúng map
-                    if (currentRobot.MapId != task.MapId)
+                    if (currentRobot.MapId != dto.MapId.Value)
                     {
-                        var updated = await _repoRobot.AssignMapToRobotAsync(currentRobot.Id, task.MapId!.Value);
+                        var updated = await _repoRobot.AssignMapToRobotAsync(currentRobot.Id, dto.MapId.Value);
                         if (updated == null)
                             throw new InvalidOperationException("Không thể gán map mới cho robot.");
                     }
                 }
                 else
                 {
-                    // nếu map không đổi nhưng robot đổi, cũng cần đảm bảo robot mới có map này
                     if (currentRobot.MapId != task.MapId)
                     {
                         var updated = await _repoRobot.AssignMapToRobotAsync(currentRobot.Id, task.MapId!.Value);
                         if (updated == null)
-                            throw new InvalidOperationException("Không thể gán map hiện tại cho robot mới.");
+                            throw new InvalidOperationException("Không thể gán map hiện tại cho robot.");
                     }
                 }
 
-                // ============== 4. Header Task: Priority, Scheduled, Status ======
+                // ------------------------------
+                // 3. HEADER UPDATE
+                // ------------------------------
                 if (dto.Priority.HasValue)
                     task.Priority = dto.Priority.ToString();
 
                 if (dto.ScheduledStartAt.HasValue)
                     task.ScheduledStartAt = dto.ScheduledStartAt.Value;
 
+                bool taskStatusManuallyChanged =
+                    dto.Status != null &&       // FE có gửi lên
+                    dto.Status.Trim().ToLower() != task.Status.ToLower();   // Và FE ĐÃ THAY ĐỔI trạng thái
+
+                // ------------------------------
+                // 3.1 UPDATE TASK STATUS
+                // ------------------------------
                 if (!string.IsNullOrWhiteSpace(dto.Status))
-                    task.Status = dto.Status!.Trim();
+                {
+                    string newStatus = dto.Status.Trim().ToLower();
+                    string currentStatus = task.Status.ToLower();
 
-                task.UpdatedAt = DateTime.UtcNow;
+                    // Validate status change
+                    if (!AllowedStatusForEdit.Contains(currentStatus))
+                        throw new InvalidOperationException(
+                            $"Không thể update trạng thái khi task đang ở '{task.Status}'."
+                        );
 
-                // ============== 5. Update từng Stop (nếu có) =====================
-                if (dto.Stops != null && dto.Stops.Any())
+                    if (!ValidTaskStatuses.Contains(newStatus))
+                        throw new InvalidOperationException($"Status '{newStatus}' không hợp lệ.");
+
+                    task.Status = newStatus;
+                    task.UpdatedAt = DateTime.UtcNow;
+                    taskStatusManuallyChanged = true;
+
+                    string stopStatus = MapTaskStatusToTaskStopStatus(newStatus);
+
+                    foreach (var stop in task.TaskStops)
+                    {
+                        stop.Status = stopStatus;
+                        stop.UpdatedAt = DateTime.UtcNow;
+
+                        foreach (var assign in stop.CompartmentAssignments)
+                        {
+                            assign.Status = stopStatus;
+                            assign.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
+                    // Robot về trạm khi task kết thúc
+                    if (newStatus is "completed" or "failed" or "canceled")
+                    {
+                        await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+                    }
+                }
+
+                // ------------------------------
+                // 4. UPDATE STOPS
+                // ------------------------------
+                if (dto.Stops != null)
                 {
                     foreach (var sDto in dto.Stops)
                     {
-                        var stop = task.TaskStops.FirstOrDefault(x => x.Id == sDto.StopId);
-                        if (stop == null)
-                            throw new InvalidOperationException($"Không tìm thấy điểm dừng Id = {sDto.StopId}.");
+                        var stop = task.TaskStops.FirstOrDefault(x => x.Id == sDto.StopId)
+                            ?? throw new InvalidOperationException($"Không tìm thấy Stop {sDto.StopId}");
 
-                        // ---- Update Seq + Destination + Patient ----
+                        // 4.1 Update Stop Status
+                        if (!string.IsNullOrWhiteSpace(sDto.Status))
+                        {
+                            var newStopStatus = sDto.Status.Trim().ToLower();
+
+                            if (!ValidStopStatuses.Contains(newStopStatus))
+                                throw new InvalidOperationException($"Stop status '{newStopStatus}' không hợp lệ.");
+
+                            stop.Status = newStopStatus;
+                            stop.UpdatedAt = DateTime.UtcNow;
+
+                            foreach (var assign in stop.CompartmentAssignments)
+                            {
+                                assign.Status = newStopStatus;
+                                assign.UpdatedAt = DateTime.UtcNow;
+                            }
+                        }
+
+                        // 4.2 Update stop info
                         stop.SeqNo = sDto.SeqNo;
                         stop.DestinationId = sDto.DestinationId;
                         stop.PatientId = sDto.PatientId;
                         stop.UpdatedAt = DateTime.UtcNow;
 
-                        // Lấy assignment hiện tại (mỗi stop 1 assignment)
                         var assignment = stop.CompartmentAssignments.FirstOrDefault();
 
-                        // Nếu đổi compartment
-                        var isChangingCompartment = assignment == null ||
-                                                    assignment.CompartmentId != sDto.CompartmentId;
+                        bool changingCompartment =
+                            assignment == null || assignment.CompartmentId != sDto.CompartmentId;
 
-                        if (isChangingCompartment)
+                        if (changingCompartment)
                         {
-                            var comp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
-                                ?? throw new InvalidOperationException($"Khoang {sDto.CompartmentId} không tồn tại.");
+                            if (assignment != null)
+                                await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
 
-                            if (comp.Status == "locked")
-                                throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
+                            var newComp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
+                                ?? throw new InvalidOperationException("Khoang không tồn tại.");
 
-                            // nếu compartment đã có category → phải trùng
-                            if (comp.CategoryId != null && comp.CategoryId != sDto.CategoryId)
-                            {
+                            if (newComp.Status == "locked")
+                                throw new InvalidOperationException($"Khoang {newComp.CompartmentCode} đang bị khóa.");
+
+                            if (newComp.CategoryId != null && newComp.CategoryId != sDto.CategoryId)
                                 throw new InvalidOperationException(
-                                    $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}, không thể chọn Category {sDto.CategoryId}.");
-                            }
+                                    $"Khoang {newComp.CompartmentCode} chỉ hỗ trợ Category {newComp.CategoryId}."
+                                );
 
-                            // nếu compartment chưa có category → gán mới
-                            if (comp.CategoryId == null)
-                            {
-                                await _repoRobotCom.AssignCategoryToCompartment(comp.Id, sDto.CategoryId);
-                            }
+                            if (newComp.CategoryId == null)
+                                await _repoRobotCom.AssignCategoryToCompartment(newComp.Id, sDto.CategoryId);
 
-                            // bệnh nhân trong compartment
-                            if (comp.PatientId != null && comp.PatientId != sDto.PatientId)
-                            {
+                            if (newComp.PatientId != null && newComp.PatientId != sDto.PatientId)
                                 throw new InvalidOperationException(
-                                    $"Khoang {comp.CompartmentCode} đang gắn với bệnh nhân ID = {comp.PatientId}, không thể đổi sang bệnh nhân {sDto.PatientId}.");
-                            }
+                                    $"Khoang {newComp.CompartmentCode} đang gắn bệnh nhân khác."
+                                );
 
-                            if (comp.PatientId == null)
-                            {
-                                await _repoRobotCom.AssignPatientToCompartment(comp.Id, sDto.PatientId);
-                            }
+                            if (newComp.PatientId == null)
+                                await _repoRobotCom.AssignPatientToCompartment(newComp.Id, sDto.PatientId);
 
-                            // check khoang có đang bị task khác dùng không
-                            if (assignment == null || assignment.CompartmentId != sDto.CompartmentId)
-                            {
-                                var isBusy = await _repo.IsCompartmentBusyAsync(sDto.CompartmentId);
-                                if (isBusy)
-                                    throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang được sử dụng bởi nhiệm vụ khác.");
-                            }
-
-                            // nếu chưa có assignment → tạo mới
                             if (assignment == null)
                             {
                                 assignment = new CompartmentAssignment
@@ -405,12 +433,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     TaskId = task.Id,
                                     StopId = stop.Id,
                                     CompartmentId = sDto.CompartmentId,
-                                    Status = "pending",
+                                    Status = stop.Status,
                                     CreatedAt = DateTime.UtcNow,
                                     UpdatedAt = DateTime.UtcNow
                                 };
-                                _ = await _repo.CreateAssignmentAsync(assignment);
-                                // add vào navigation để mapToResponse sau này nhìn thấy
+
+                                await _repo.CreateAssignmentAsync(assignment);
                                 stop.CompartmentAssignments.Add(assignment);
                             }
                             else
@@ -419,57 +447,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 assignment.UpdatedAt = DateTime.UtcNow;
                             }
                         }
-                        else
-                        {
-                            // compartment giữ nguyên → vẫn cần validate category / patient
-                            var comp = await _repo.GetCompartmentAsync(assignment!.CompartmentId)
-                                ?? throw new InvalidOperationException("Khoang không tồn tại.");
 
-                            if (comp.Status == "locked")
-                                throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
-
-                            if (comp.CategoryId != null && comp.CategoryId != sDto.CategoryId)
-                                throw new InvalidOperationException(
-                                    $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}, không thể chọn Category {sDto.CategoryId}.");
-
-                            if (comp.CategoryId == null)
-                                await _repoRobotCom.AssignCategoryToCompartment(comp.Id, sDto.CategoryId);
-
-                            if (comp.PatientId != null && comp.PatientId != sDto.PatientId)
-                                throw new InvalidOperationException(
-                                    $"Khoang {comp.CompartmentCode} đang gắn với bệnh nhân ID = {comp.PatientId}, không thể đổi sang bệnh nhân {sDto.PatientId}.");
-
-                            if (comp.PatientId == null)
-                                await _repoRobotCom.AssignPatientToCompartment(comp.Id, sDto.PatientId);
-                        }
-
-                        // ----- ItemDesc / CustomName / Auto generate -----
-                        // nếu CustomName gửi lên → update
+                        // CustomName
                         if (!string.IsNullOrWhiteSpace(sDto.CustomName))
-                            stop.CustomName = sDto.CustomName!.Trim();
+                            stop.CustomName = sDto.CustomName.Trim();
 
-                        // ItemDesc:
+                        // ItemDesc
                         if (assignment != null)
                         {
                             if (!string.IsNullOrWhiteSpace(sDto.ItemDesc))
                             {
-                                assignment.ItemDesc = sDto.ItemDesc!.Trim();
-                            }
-                            else
-                            {
-                                // nếu FE không truyền itemDesc mới → có thể giữ nguyên, hoặc auto regen
-                                // Ở đây: nếu đang rỗng thì auto lấy theo đơn thuốc mới nhất
-                                if (string.IsNullOrWhiteSpace(assignment.ItemDesc))
-                                {
-                                    if (stop.PatientId == null)
-                                        throw new InvalidOperationException("Điểm dừng không có bệnh nhân hợp lệ.");
-
-                                    var rx = await _repo.GetLatestPrescriptionForPatientAsync(stop.PatientId.Value)
-                                        ?? throw new InvalidOperationException("Bệnh nhân chưa có đơn thuốc hợp lệ.");
-
-                                    var auto = string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-                                    assignment.ItemDesc = $"RX#{rx.PrescriptionCode}: {auto}";
-                                }
+                                assignment.ItemDesc = sDto.ItemDesc.Trim();
                             }
 
                             assignment.UpdatedAt = DateTime.UtcNow;
@@ -477,15 +465,44 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     }
                 }
 
-                // Lưu thay đổi
+                // ==================================================================
+                // 5. AUTO-COMPLETE IF ALL STOPS DELIVERED
+                // ==================================================================
+                bool allDelivered = task.TaskStops.Any() &&
+                    task.TaskStops.All(s =>
+                        string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
+
+                if (!taskStatusManuallyChanged && allDelivered)
+                {
+                    task.Status = "completed";
+                    task.UpdatedAt = DateTime.UtcNow;
+
+                    await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+                }
+
+                // ==================================================================
+                // 6. RELEASE COMPARTMENTS WHEN TASK FINISHES
+                // ==================================================================
+                if (task.Status == "completed" ||
+                    task.Status == "failed" ||
+                    task.Status == "canceled")
+                {
+                    foreach (var stop in task.TaskStops)
+                    {
+                        foreach (var assign in stop.CompartmentAssignments)
+                        {
+                            await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                        }
+                    }
+                }
+
+                // Save, commit
                 await _repo.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Load lại để map ra DTO chuẩn
-                var result = await _repo.GetByIdAsync(task.Id);
-                if (result == null) return null;
+                var updatedTask = await _repo.GetByIdAsync(task.Id);
+                var response = MapToResponse(updatedTask!);
 
-                var response = MapToResponse(result);
                 await _taskHub.Clients.All.SendAsync("TaskUpdated", response);
 
                 return response;
@@ -497,8 +514,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
         }
 
+        // ======================================================================
+        // DELETE
+        // ======================================================================
         public Task<bool> DeleteAsync(ulong id) => _repo.DeleteAsync(id);
 
+        // ======================================================================
+        // DTO MAPPERS
+        // ======================================================================
         private TaskResponseDto MapToResponse(Models.Entities.Task task)
         {
             return new TaskResponseDto
@@ -513,10 +536,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 AssignedByFullName = task.AssignedByNavigation?.FullName,
                 Stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s =>
                 {
-                    var assignment = s.CompartmentAssignments.FirstOrDefault();
-                    var rxCode = assignment?.ItemDesc.Split(':').FirstOrDefault()?.Replace("RX#", "")?.Trim() ?? "";
+                    var assign = s.CompartmentAssignments.FirstOrDefault();
+                    var rxCode = assign?.ItemDesc.Split(':').FirstOrDefault()?.Replace("RX#", "")?.Trim() ?? "";
 
-                    // Lấy đơn thuốc từ DB
                     var rx = _repo.GetPrescriptionByCodeAsync(rxCode).Result;
 
                     return new TaskStopResponseDto
@@ -524,9 +546,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         SeqNo = s.SeqNo,
                         PatientName = s.Patient?.FullName,
                         DestinationName = s.Destination?.Name,
-                        CompartmentCode = assignment?.Compartment?.CompartmentCode,
-                        Prescription = rx != null
-                            ? new PrescriptionSummaryDto
+                        CompartmentCode = assign?.Compartment?.CompartmentCode,
+                        Prescription = rx == null
+                            ? null
+                            : new PrescriptionSummaryDto
                             {
                                 Code = rx.PrescriptionCode,
                                 Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
@@ -539,7 +562,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     Instructions = i.Instructions
                                 }).ToList()
                             }
-                            : null
                     };
                 }).ToList()
             };
@@ -559,58 +581,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 AssignedByFullName = task.AssignedByNavigation?.FullName,
                 MapName = task.Map?.MapName,
 
-                Stops = task.TaskStops
-                    .OrderBy(s => s.SeqNo)
-                    .Select(s =>
+                Stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s =>
+                {
+                    var assign = s.CompartmentAssignments.FirstOrDefault();
+                    var rx = s.Patient?.Prescriptions?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+
+                    return new TaskDetailStopDto
                     {
-                        var assignment = s.CompartmentAssignments.FirstOrDefault();
+                        SeqNo = s.SeqNo,
 
-                        // Lấy đơn thuốc newest của bệnh nhân (đã include trong repository)
-                        var rx = s.Patient?.Prescriptions?
-                            .OrderByDescending(p => p.CreatedAt)
-                            .FirstOrDefault();
+                        DestinationName = s.Destination?.Name ?? "",
 
-                        return new TaskDetailStopDto
+                        PatientName = s.Patient?.FullName ?? "",
+                        PatientCode = s.Patient?.PatientCode ?? "",
+                        RoomNumber = s.Patient?.RoomNumber,
+                        Department = s.Patient?.Department,
+
+                        CompartmentCode = assign?.Compartment?.CompartmentCode ?? "",
+                        CompartmentStatus = assign?.Compartment?.Status ?? "",
+                        CompartmentCategory = assign?.Compartment?.Category?.Name,
+
+                        ItemDesc = assign?.ItemDesc ?? "",
+                        AssignmentStatus = assign?.Status ?? "",
+
+                        Prescription = rx == null ? null : new PrescriptionFullDto
                         {
-                            SeqNo = s.SeqNo,
+                            PrescriptionCode = rx.PrescriptionCode,
+                            CreatedAt = rx.CreatedAt ?? DateTime.MinValue,
+                            Status = rx.Status,
 
-                            // DESTINATION
-                            DestinationName = s.Destination?.Name ?? "",
-
-                            // PATIENT
-                            PatientName = s.Patient?.FullName ?? "",
-                            PatientCode = s.Patient?.PatientCode ?? "",
-                            RoomNumber = s.Patient?.RoomNumber,
-                            Department = s.Patient?.Department,
-
-                            // COMPARTMENT
-                            CompartmentCode = assignment?.Compartment?.CompartmentCode ?? "",
-                            CompartmentStatus = assignment?.Compartment?.Status ?? "",
-                            CompartmentCategory = assignment?.Compartment?.Category?.Name,
-
-                            // ASSIGNMENT
-                            ItemDesc = assignment?.ItemDesc ?? "",
-                            AssignmentStatus = assignment?.Status ?? "",
-
-                            // PRESCRIPTION (FULL)
-                            Prescription = rx == null ? null : new PrescriptionFullDto
+                            Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
                             {
-                                PrescriptionCode = rx.PrescriptionCode,
-                                CreatedAt = rx.CreatedAt ?? DateTime.MinValue,     // tránh lỗi nullable
-                                Status = rx.Status,
-
-                                Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
-                                {
-                                    Id = i.Id,
-                                    MedicineName = i.Medicine.Name,
-                                    MedicineCode = i.Medicine.MedicineCode,
-                                    Quantity = i.Quantity,
-                                    Dosage = i.Dosage,
-                                    Instructions = i.Instructions
-                                }).ToList()
-                            }
-                        };
-                    }).ToList()
+                                Id = i.Id,
+                                MedicineCode = i.Medicine.MedicineCode,
+                                MedicineName = i.Medicine.Name,
+                                Quantity = i.Quantity,
+                                Dosage = i.Dosage,
+                                Instructions = i.Instructions
+                            }).ToList()
+                        }
+                    };
+                }).ToList()
             };
         }
 
@@ -619,34 +630,184 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return new TaskEditDto
             {
                 Id = task.Id,
-                MapId = task.MapId ?? 0UL,          // SAFE
+                MapId = task.MapId ?? 0,
                 RobotId = task.RobotId,
-
                 Priority = Enum.TryParse<TaskPriority>(task.Priority, out var p) ? p : TaskPriority.Normal,
                 ScheduledStartAt = task.ScheduledStartAt,
+                Status = task.Status,
+                Stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s =>
+                {
+                    var assign = s.CompartmentAssignments.FirstOrDefault();
 
-                Stops = task.TaskStops
-                    .OrderBy(s => s.SeqNo)
-                    .Select(s =>
+                    return new TaskEditStopDto
                     {
-                        var assignment = s.CompartmentAssignments.FirstOrDefault();
-
-                        return new TaskEditStopDto
-                        {
-                            StopId = s.Id,
-                            SeqNo = s.SeqNo,
-
-                            DestinationId = s.DestinationId ?? 0UL,
-                            PatientId = s.PatientId ?? 0UL,
-
-                            CategoryId = assignment?.Compartment?.CategoryId ?? 0UL,
-                            CompartmentId = assignment?.CompartmentId ?? 0UL,
-
-                            CustomName = s.CustomName,
-                            ItemDesc = assignment?.ItemDesc
-                        };
-                    }).ToList()
+                        StopId = s.Id,
+                        SeqNo = s.SeqNo,
+                        DestinationId = s.DestinationId ?? 0,
+                        PatientId = s.PatientId ?? 0,
+                        CategoryId = assign?.Compartment?.CategoryId ?? 0,
+                        CompartmentId = assign?.CompartmentId ?? 0,
+                        CustomName = s.CustomName,
+                        ItemDesc = assign?.ItemDesc,
+                        Status = s.Status
+                    };
+                }).ToList()
             };
         }
+
+        // ======================================================================
+        // STATIC SETTINGS
+        // ======================================================================
+        private static readonly HashSet<string> AllowedStatusForEdit = new()
+        {
+            "pending",
+            "in_progress",
+            "awaiting_handover",
+            "returning",
+            "at_station"
+        };
+
+        private static readonly HashSet<string> ValidTaskStatuses = new()
+        {
+            "pending",
+            "in_progress",
+            "awaiting_handover",
+            "returning",
+            "at_station",
+            "completed",
+            "failed",
+            "canceled"
+        };
+
+        private static readonly HashSet<string> ValidStopStatuses = new()
+        {
+            "pending",
+            "in_progress",
+            "awaiting_handover",
+            "delivered",
+            "skipped",
+            "failed"
+        };
+
+        private string MapTaskStatusToTaskStopStatus(string status)
+        {
+            return status.ToLower() switch
+            {
+                "completed" => "delivered",
+                "failed" => "failed",
+                "canceled" => "skipped",
+                _ => "pending"
+            };
+        }
+
+        public async Task<RunTaskInfoDto?> GetRunInfoAsync(ulong taskId)
+        {
+            var task = await _repo.GetTaskWithStopsAsync(taskId);
+            if (task == null) return null;
+
+            var stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s => new RunTaskStopDto
+            {
+                Order = s.SeqNo,
+                DestinationId = s.DestinationId ?? 0,
+                Name = s.Destination?.Name ?? "",
+                X = s.Destination?.X ?? 0,
+                Y = s.Destination?.Y ?? 0
+            }).ToList();
+
+            return new RunTaskInfoDto
+            {
+                TaskId = task.Id,
+                RobotId = task.RobotId,
+                MapId = task.MapId ?? 0,
+                MapName = task.Map?.MapName ?? "",
+                Stops = stops
+            };
+        }
+        public async Task<StopUpdateResultDto> UpdateStopStatusAsync(
+    ulong taskId, ulong stopId, string newStatus)
+        {
+            var task = await _repo.GetByIdAsync(taskId);
+            if (task == null)
+                return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
+
+            var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
+            if (stop == null)
+                return new StopUpdateResultDto { Success = false, Message = "Điểm dừng không tồn tại." };
+
+            newStatus = newStatus.Trim().ToLower();
+
+            if (!ValidStopStatuses.Contains(newStatus))
+                return new StopUpdateResultDto { Success = false, Message = $"Status '{newStatus}' không hợp lệ." };
+
+            // Update stop
+            stop.Status = newStatus;
+            stop.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var assign in stop.CompartmentAssignments)
+            {
+                assign.Status = newStatus;
+                assign.UpdatedAt = DateTime.UtcNow;
+            }
+
+            // Auto complete task nếu tất cả stop đều delivered
+            bool allDelivered = task.TaskStops.All(s => s.Status == "delivered");
+
+            if (allDelivered)
+            {
+                task.Status = "completed";
+                task.UpdatedAt = DateTime.UtcNow;
+
+                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+            }
+
+            await _repo.SaveChangesAsync();
+
+            return new StopUpdateResultDto
+            {
+                Success = true,
+                Task = MapToDetail(task)
+            };
+        }
+        public async Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId)
+        {
+            var task = await _repo.GetByIdAsync(taskId);
+            if (task == null)
+                return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
+
+            // Update all stops
+            foreach (var stop in task.TaskStops)
+            {
+                stop.Status = "delivered";
+                stop.UpdatedAt = DateTime.UtcNow;
+
+                foreach (var assign in stop.CompartmentAssignments)
+                {
+                    assign.Status = "delivered";
+                    assign.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            // Task
+            task.Status = "completed";
+            task.UpdatedAt = DateTime.UtcNow;
+
+            await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+            // Release all compartments
+            foreach (var stop in task.TaskStops)
+            {
+                foreach (var a in stop.CompartmentAssignments)
+                    await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+            }
+
+            await _repo.SaveChangesAsync();
+
+            return new StopUpdateResultDto
+            {
+                Success = true,
+                Task = MapToDetail(task)
+            };
+        }
+
     }
 }
