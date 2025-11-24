@@ -74,7 +74,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var ok = await _service.DeleteAsync(id);
             return ok ? Ok("Đã xoá nhiệm vụ.") : NotFound("Không tìm thấy nhiệm vụ để xoá.");
         }
-
+        [HttpPut("{taskId}/stops/{stopId}/status")]
+        public async Task<IActionResult> UpdateStopStatus(
+ulong taskId, ulong stopId, [FromBody] StopStatusChangeDto dto)
+        {
+            await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
+            return Ok(new { message = "Stop status updated successfully" });
+        }
         private ulong GetCurrentUserId()
         {
             return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
