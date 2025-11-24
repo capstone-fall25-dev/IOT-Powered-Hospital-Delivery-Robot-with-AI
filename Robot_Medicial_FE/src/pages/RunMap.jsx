@@ -35,24 +35,15 @@ export default function RobotRunMap() {
   const [selectedMapName, setSelectedMapName] = useState("");
 
   // ===================================
-  // 🔊 AUDIO STATE (WEB ↔ ROS2)
+  // 🔊 AUDIO STATE – WebRTC CALL
   // ===================================
-  // Mic Web → Robot
-  const [isWebMicOn, setIsWebMicOn] = useState(false);
-  const [webMicStatus, setWebMicStatus] = useState("Mic web đang tắt.");
-  const webAudioContextRef = useRef(null);
-  const webScriptNodeRef = useRef(null);
-  const webMediaStreamRef = useRef(null);
-  const webSourceNodeRef = useRef(null);
-  const webAudioConnRef = useRef(null); // 🔗 hub cho mic web
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [webRtcStatus, setWebRtcStatus] = useState("Cuộc gọi WebRTC đang tắt.");
 
-  // Robot Mic → Web
-  const [robotMicConnected, setRobotMicConnected] = useState(false);
-  const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
-  const robotAudioContextRef = useRef(null);
-  const robotAudioConnRef = useRef(null);
-  const robotPlaybackTimeRef = useRef(0);
-  const robotGainNodeRef = useRef(null);
+  const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const webRtcSignalConnRef = useRef(null);
 
   // ===================================
   // 🔗 SIGNALR (position + camera)
@@ -89,11 +80,61 @@ export default function RobotRunMap() {
     };
   }, []);
 
+  // ===================================
+  // 🔗 SIGNALR (WebRTC signaling)
+  // ===================================
+  useEffect(() => {
+    const conn = new signalR.HubConnectionBuilder()
+      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotaudio")
+      .withAutomaticReconnect()
+      .build();
+
+    conn.on("ReceiveAnswer", async (sdp) => {
+      console.log("[WebRTC] ReceiveAnswer");
+      const pc = pcRef.current;
+      if (!pc) return;
+      try {
+        const answer = new RTCSessionDescription({ type: "answer", sdp });
+        await pc.setRemoteDescription(answer);
+        setWebRtcStatus("Đã nhận ANSWER từ robot, cuộc gọi đang hoạt động.");
+      } catch (err) {
+        console.error("SetRemoteDescription(answer) error:", err);
+      }
+    });
+
+    conn.on("ReceiveIceCandidate", async (candidateJson) => {
+      const pc = pcRef.current;
+      if (!pc) return;
+      try {
+        const cand = JSON.parse(candidateJson);
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (err) {
+        console.error("addIceCandidate error:", err);
+      }
+    });
+
+    conn
+      .start()
+      .then(() => {
+        console.log("[WebRTC] SignalR robotaudio connected");
+        setWebRtcStatus("Hub WebRTC đã kết nối, sẵn sàng gọi.");
+      })
+      .catch((e) => {
+        console.error("SignalR robotaudio error:", e);
+        setWebRtcStatus("Không kết nối được hub WebRTC.");
+      });
+
+    webRtcSignalConnRef.current = conn;
+
+    return () => {
+      conn.stop();
+    };
+  }, []);
+
   // cleanup audio khi unmount
   useEffect(() => {
     return () => {
-      stopWebMic();
-      disconnectRobotMic();
+      stopWebRtcCall();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -194,7 +235,8 @@ export default function RobotRunMap() {
 
     setSelectedMapName(meta.mapName);
 
-    const imgUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
+    const imgUrl =
+      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
 
     const img = new Image();
     img.src = imgUrl;
@@ -227,7 +269,7 @@ export default function RobotRunMap() {
         iconAnchor: [12, 24],
       });
 
-      if (destinationMarker.current) destinationMarker.current.setLatLng(latlng);
+      if (destinationMarker.current) destinationMarker.current.setLatlng(latlng);
       else destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
     };
   }
@@ -264,6 +306,7 @@ export default function RobotRunMap() {
     };
     if (remoteMode) window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteMode]);
 
   async function toggleCompartment(id) {
@@ -356,267 +399,108 @@ export default function RobotRunMap() {
   }
 
   // ===================================
-  // 🔊 AUDIO HELPERS (WEB ↔ ROS2)
+  // 🔊 WebRTC AUDIO: START/STOP
   // ===================================
-  function floatTo16BitPCM(float32Array) {
-    const len = float32Array.length;
-    const result = new Int16Array(len);
-    for (let i = 0; i < len; i++) {
-      let s = Math.max(-1, Math.min(1, float32Array[i]));
-      result[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-    }
-    return result;
-  }
+  async function startWebRtcCall() {
+    if (isCallActive) return;
 
-  function base64Pcm16ToFloat32(b64) {
-    const binary = atob(b64);
-    const len = binary.length / 2;
-    const float32 = new Float32Array(len);
-    for (let i = 0; i < len; i++) {
-      const lo = binary.charCodeAt(2 * i);
-      const hi = binary.charCodeAt(2 * i + 1);
-      let val = (hi << 8) | lo;
-      if (val >= 0x8000) val = val - 0x10000;
-      float32[i] = val / 0x8000;
-    }
-    return float32;
-  }
-
-  function scheduleRobotAudio(float32Data, sampleRateFromData) {
-    const audioCtx = robotAudioContextRef.current;
-    const gainNode = robotGainNodeRef.current;
-    if (!audioCtx || !gainNode || !float32Data || float32Data.length === 0) return;
-
-    for (let i = 0; i < float32Data.length; i++) {
-      float32Data[i] *= 0.8;
+    const conn = webRtcSignalConnRef.current;
+    if (!conn || conn.state !== signalR.HubConnectionState.Connected) {
+      alert("Hub WebRTC chưa sẵn sàng.");
+      return;
     }
 
-    const sr = sampleRateFromData || audioCtx.sampleRate || 48000;
-
-    const buffer = audioCtx.createBuffer(1, float32Data.length, sr);
-    buffer.getChannelData(0).set(float32Data);
-
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(gainNode);
-
-    if (robotPlaybackTimeRef.current < audioCtx.currentTime + 0.05) {
-      robotPlaybackTimeRef.current = audioCtx.currentTime + 0.1;
-    }
-
-    const startAt = robotPlaybackTimeRef.current;
-    source.start(startAt);
-
-    const duration = buffer.length / buffer.sampleRate;
-    robotPlaybackTimeRef.current = startAt + duration;
-  }
-
-  // ===================================
-  // 🔊 Mic Web → Robot (qua HUB)
-  // ===================================
-    async function startWebMic() {
-    if (isWebMicOn) return;
     try {
-      setWebMicStatus("Đang xin quyền micro...");
+      setWebRtcStatus("Đang xin quyền micro...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
         },
+        video: false,
       });
-      webMediaStreamRef.current = stream;
+      localStreamRef.current = stream;
 
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) {
-        alert("Trình duyệt không hỗ trợ AudioContext");
-        setWebMicStatus("Trình duyệt không hỗ trợ audio.");
-        return;
-      }
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+        ],
+      });
 
-      const audioCtx = new AudioCtx();
-      await audioCtx.resume(); 
-      webAudioContextRef.current = audioCtx;
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-      const sampleRate = 48000; // ép SR gửi xuống ROS khớp aplay
-      const source = audioCtx.createMediaStreamSource(stream);
-      webSourceNodeRef.current = source;
-
-      const bufferSize = 2048;
-      const scriptNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
-      webScriptNodeRef.current = scriptNode;
-
-      scriptNode.onaudioprocess = (event) => {
-        const inputBuffer = event.inputBuffer.getChannelData(0);
-        const pcm16 = floatTo16BitPCM(inputBuffer);
-        const bytes = new Uint8Array(pcm16.buffer);
-
-        let binary = "";
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
+      pc.ontrack = (event) => {
+        console.log("[WebRTC] ontrack", event.streams);
+        const [remoteStream] = event.streams;
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = remoteStream;
         }
-        const base64Data = btoa(binary);
-
-        const payload = {
-          Audio_b64: base64Data,
-          SampleRate: sampleRate,
-          Channels: 1,
-          StreamId: "mic_main",
-          Timestamp: Date.now(),
-        };
-
-        // 🔍 LOG nhẹ cho debug (1 lần / vài gói)
-        console.debug("[WEB MIC] send chunk, bytes =", bytes.byteLength);
-
-        fetch(API_CONFIG.API_BASE1 + "/api/RobotAudio/SendChunk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-          .then((res) => {
-            if (!res.ok) {
-              console.error("SendChunk HTTP error", res.status);
-            }
-          })
-          .catch((err) => {
-            console.error("SendChunk fetch error", err);
-          });
       };
 
-      source.connect(scriptNode);
-      // 🔥 BẮT BUỘC: nếu không connect, ScriptProcessorNode sẽ không chạy
-      scriptNode.connect(audioCtx.destination);
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          const candJson = JSON.stringify(event.candidate.toJSON());
+          conn.invoke("SendIceCandidate", candJson).catch(console.error);
+        }
+      };
 
-      setIsWebMicOn(true);
-      setWebMicStatus("Mic web đang BẬT, đang gửi audio xuống robot...");
+      pc.onconnectionstatechange = () => {
+        console.log("[WebRTC] state:", pc.connectionState);
+        if (pc.connectionState === "connected") {
+          setWebRtcStatus("Đã kết nối WebRTC với robot.");
+        } else if (pc.connectionState === "failed") {
+          setWebRtcStatus("Kết nối WebRTC bị lỗi.");
+        }
+      };
+
+      pcRef.current = pc;
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      await conn.invoke("SendOfferToRobot", offer.sdp);
+      setIsCallActive(true);
+      setWebRtcStatus("Đã gửi OFFER, chờ ANSWER từ robot...");
     } catch (err) {
-      console.error(err);
-      setWebMicStatus("Không thể bật mic web.");
-      alert("Không thể truy cập micro: " + err.message);
+      console.error("startWebRtcCall error:", err);
+      setWebRtcStatus("Không thể bắt đầu WebRTC call.");
+      alert("Không thể bắt đầu WebRTC: " + err.message);
+      stopWebRtcCall();
     }
   }
 
-  function stopWebMic() {
-    const scriptNode = webScriptNodeRef.current;
-    if (scriptNode) {
-      scriptNode.disconnect();
-      scriptNode.onaudioprocess = null;
-      webScriptNodeRef.current = null;
+  function stopWebRtcCall() {
+    const pc = pcRef.current;
+    if (pc) {
+      try {
+        pc.getSenders().forEach((s) => {
+          if (s.track) s.track.stop();
+        });
+        pc.close();
+      } catch (err) {
+        console.error("close pc error:", err);
+      }
+      pcRef.current = null;
     }
 
-    const source = webSourceNodeRef.current;
-    if (source) {
-      source.disconnect();
-      webSourceNodeRef.current = null;
-    }
-
-    const audioCtx = webAudioContextRef.current;
-    if (audioCtx) {
-      audioCtx.close();
-      webAudioContextRef.current = null;
-    }
-
-    const stream = webMediaStreamRef.current;
+    const stream = localStreamRef.current;
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
-      webMediaStreamRef.current = null;
+      localStreamRef.current = null;
     }
 
-    setIsWebMicOn(false);
-    setWebMicStatus("Mic web đang tắt.");
-  }
-
-  function toggleWebMic() {
-    if (isWebMicOn) stopWebMic();
-    else startWebMic();
-  }
-
-  // ===================================
-  // 🔊 Robot Mic → Web (giữ nguyên)
-  // ===================================
-  async function connectRobotMic() {
-    if (robotMicConnected) return;
-
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) {
-        alert("Trình duyệt không hỗ trợ AudioContext");
-        setRobotMicStatus("Trình duyệt không hỗ trợ audio.");
-        return;
-      }
-
-      const audioCtx = new AudioCtx();
-      robotAudioContextRef.current = audioCtx;
-
-      const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.8;
-      gainNode.connect(audioCtx.destination);
-      robotGainNodeRef.current = gainNode;
-
-      robotPlaybackTimeRef.current = audioCtx.currentTime + 0.2;
-
-      const hubUrl = API_CONFIG.API_BASE1 + "/hubs/robotaudio";
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl)
-        .withAutomaticReconnect()
-        .build();
-
-      connection.on("ReceiveRobotMicChunk", (data) => {
-        const b64 = data.audio_b64 || data.Audio_b64;
-        if (!b64) return;
-        const float32 = base64Pcm16ToFloat32(b64);
-
-        const sr =
-          data.SampleRate ||
-          data.sampleRate ||
-          data.sample_rate ||
-          48000;
-
-        scheduleRobotAudio(float32, sr);
-      });
-
-      await connection.start();
-
-      robotAudioConnRef.current = connection;
-      setRobotMicConnected(true);
-      setRobotMicStatus("Đã kết nối Robot Mic, đang nghe audio từ ROS2...");
-    } catch (err) {
-      console.error(err);
-      setRobotMicStatus("Không kết nối được Robot Mic.");
-      alert("Không kết nối được Robot Mic: " + err.message);
-      if (robotAudioContextRef.current) {
-        robotAudioContextRef.current.close();
-        robotAudioContextRef.current = null;
-      }
-    }
-  }
-
-  async function disconnectRobotMic() {
-    const conn = robotAudioConnRef.current;
-    if (conn) {
-      try {
-        await conn.stop();
-      } catch {
-        // ignore
-      }
-      robotAudioConnRef.current = null;
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
     }
 
-    const audioCtx = robotAudioContextRef.current;
-    if (audioCtx) {
-      audioCtx.close();
-      robotAudioContextRef.current = null;
-    }
-
-    robotPlaybackTimeRef.current = 0;
-
-    setRobotMicConnected(false);
-    setRobotMicStatus("Robot mic đã ngắt kết nối.");
+    setIsCallActive(false);
+    setWebRtcStatus("Cuộc gọi WebRTC đang tắt.");
   }
 
-  function toggleRobotMic() {
-    if (robotMicConnected) disconnectRobotMic();
-    else connectRobotMic();
+  function toggleWebRtcCall() {
+    if (isCallActive) stopWebRtcCall();
+    else startWebRtcCall();
   }
 
   // ===================================
@@ -732,33 +616,34 @@ export default function RobotRunMap() {
                 <div className="mb-3">
                   <h6 className={styles.sectionTitle}>
                     <i className="bi bi-mic-fill"></i>
-                    Âm thanh
+                    Âm thanh (WebRTC)
                   </h6>
                   <div className="mt-2 d-flex flex-column gap-2">
                     <button
-                      className={isWebMicOn ? styles.btnDanger : styles.btnSuccess}
-                      onClick={toggleWebMic}
+                      className={isCallActive ? styles.btnDanger : styles.btnSuccess}
+                      onClick={toggleWebRtcCall}
                     >
-                      <i className="bi bi-mic me-1"></i>
-                      {isWebMicOn ? "Tắt Mic Web → Robot" : "Bật Mic Web → Robot"}
+                      <i className="bi bi-telephone-fill me-1"></i>
+                      {isCallActive ? "Tắt cuộc gọi WebRTC" : "Bật cuộc gọi WebRTC"}
                     </button>
 
-                    <button
-                      className={
-                        robotMicConnected ? styles.btnDanger : styles.btnOutlinePrimary
-                      }
-                      onClick={toggleRobotMic}
-                    >
+                    {/* Nút thứ 2 giữ layout, nhưng chỉ hiển thị thông tin */}
+                    <button className={styles.btnOutlinePrimary} disabled>
                       <i className="bi bi-broadcast-pin me-1"></i>
-                      {robotMicConnected
-                        ? "Tắt Robot Mic → Web"
-                        : "Bật Robot Mic → Web"}
+                      Audio Robot ↔ Web qua WebRTC
                     </button>
 
                     <small style={{ marginTop: "4px", opacity: 0.8 }}>
-                      {webMicStatus}
+                      {webRtcStatus}
                     </small>
-                    <small style={{ opacity: 0.8 }}>{robotMicStatus}</small>
+
+                    {/* Audio tag ẩn để phát tiếng từ robot */}
+                    <audio
+                      ref={remoteAudioRef}
+                      autoPlay
+                      playsInline
+                      style={{ display: "none" }}
+                    />
                   </div>
                 </div>
 
