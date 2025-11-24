@@ -252,56 +252,64 @@ export default function Sidebar() {
       {/* Content - Có scroll */}
       <div className="sidebar-content">
         <ul>
-          <li 
+          <li
             onClick={() => navigate("/dashboard")}
             className={isActive("/dashboard") ? "active" : ""}
           >
             <i className="bi bi-list-task"></i>
             <span>Nhiệm vụ</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/team")}
             className={isActive("/team") ? "active" : ""}
           >
             <i className="bi bi-robot"></i>
             <span>Robot</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/viewlistmap")}
             className={isActive("/viewlistmap") ? "active" : ""}
           >
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/users")}
             className={isActive("/users") ? "active" : ""}
           >
             <i className="bi bi-people"></i>
             <span>Người dùng</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/patients")}
             className={isActive("/patients") ? "active" : ""}
           >
             <i className="bi bi-person-lines-fill"></i>
             <span>Bệnh nhân</span>
           </li>
-          <li 
+
+          <li
+            onClick={() => navigate("/compartment-categories")}
+            className={isActive("/compartment-categories") ? "active" : ""}
+          >
+            <i className="bi bi-grid-3x3-gap-fill"></i>
+            <span>Loại ngăn chứa</span>
+          </li>
+          <li
             onClick={() => navigate("/rooms")}
             className={isActive("/rooms") ? "active" : ""}
           >
             <i className="bi bi-hospital"></i>
             <span>Phòng bệnh</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/prescriptions")}
             className={isActive("/prescriptions") ? "active" : ""}
           >
             <i className="bi bi-file-medical"></i>
             <span>Đơn thuốc</span>
           </li>
-          <li 
+          <li
             onClick={() => navigate("/medicines")}
             className={isActive("/medicines") ? "active" : ""}
           >

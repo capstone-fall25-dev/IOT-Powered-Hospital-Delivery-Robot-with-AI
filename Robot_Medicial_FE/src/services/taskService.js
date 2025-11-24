@@ -41,3 +41,12 @@ export const deleteTask = async (id) => {
     const res = await axios.delete(`${API_CONFIG.API_BASE}/tasks/${id}`);
     return res.data;
 };
+
+// 6. Update stop status
+export const updateStopStatus = async (taskId, stopId, status) => {
+    const res = await axios.put(
+        `${API_CONFIG.API_BASE}/tasks/${taskId}/stops/${stopId}/status`,
+        { status }
+    );
+    return res.data;
+};

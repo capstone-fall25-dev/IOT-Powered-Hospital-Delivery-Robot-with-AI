@@ -192,6 +192,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class TaskDetailStopDto
     {
+        public ulong StopId { get; set; }
+
         public int SeqNo { get; set; }
 
         // DESTINATION
@@ -210,7 +212,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         // ASSIGNMENT
         public string ItemDesc { get; set; } = "";
-        public string AssignmentStatus { get; set; } = "";
+        public string StopStatus { get; set; } = "";        // ⭐ TRẢ VỀ STATUS CHUẨN CỦA STOP
+        public string AssignmentStatus { get; set; } = "";  // ⭐ SẼ = StopStatus để FE hiển thị
 
         // PRESCRIPTION (FULL)
         public PrescriptionFullDto? Prescription { get; set; }
@@ -289,3 +292,5 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     }
 
 }
+
+

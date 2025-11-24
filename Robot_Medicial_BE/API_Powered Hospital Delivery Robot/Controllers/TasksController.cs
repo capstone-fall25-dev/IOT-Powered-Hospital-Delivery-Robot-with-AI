@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -106,17 +107,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
         [HttpPut("{taskId}/stops/{stopId}/status")]
         public async Task<IActionResult> UpdateStopStatus(
-     ulong taskId,
-     ulong stopId,
-     [FromBody] StopStatusChangeDto dto)
+     ulong taskId, ulong stopId, [FromBody] StopStatusChangeDto dto)
         {
-            var result = await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
-
-            if (!result.Success)
-                return BadRequest(result.Message);
-
-            return Ok(result.Task);
+            await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
+            return Ok(new { message = "Stop status updated successfully" });
         }
+
         [HttpPut("{taskId}/complete")]
         public async Task<IActionResult> CompleteTask(ulong taskId)
         {
@@ -134,3 +130,5 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
     }
 }
+
+

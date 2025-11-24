@@ -588,6 +588,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     return new TaskDetailStopDto
                     {
+                        StopId = s.Id,
                         SeqNo = s.SeqNo,
 
                         DestinationName = s.Destination?.Name ?? "",
@@ -602,7 +603,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         CompartmentCategory = assign?.Compartment?.Category?.Name,
 
                         ItemDesc = assign?.ItemDesc ?? "",
-                        AssignmentStatus = assign?.Status ?? "",
+                        StopStatus = s.Status,
+                        AssignmentStatus = s.Status,
 
                         Prescription = rx == null ? null : new PrescriptionFullDto
                         {
@@ -723,51 +725,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Stops = stops
             };
         }
-        public async Task<StopUpdateResultDto> UpdateStopStatusAsync(
-    ulong taskId, ulong stopId, string newStatus)
+        public async Task<bool> UpdateStopStatusAsync(ulong taskId, ulong stopId, string newStatus)
         {
             var task = await _repo.GetByIdAsync(taskId);
-            if (task == null)
-                return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
+            if (task == null) throw new Exception("Task not found");
 
             var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
-            if (stop == null)
-                return new StopUpdateResultDto { Success = false, Message = "Điểm dừng không tồn tại." };
+            if (stop == null) throw new Exception("Stop not found");
 
-            newStatus = newStatus.Trim().ToLower();
-
-            if (!ValidStopStatuses.Contains(newStatus))
-                return new StopUpdateResultDto { Success = false, Message = $"Status '{newStatus}' không hợp lệ." };
-
-            // Update stop
+            // ✔ CHỈ UPDATE STOP — KHÔNG ĐỤNG TỚI CompartmentAssignment
             stop.Status = newStatus;
             stop.UpdatedAt = DateTime.UtcNow;
 
-            foreach (var assign in stop.CompartmentAssignments)
-            {
-                assign.Status = newStatus;
-                assign.UpdatedAt = DateTime.UtcNow;
-            }
-
-            // Auto complete task nếu tất cả stop đều delivered
-            bool allDelivered = task.TaskStops.All(s => s.Status == "delivered");
-
-            if (allDelivered)
-            {
-                task.Status = "completed";
-                task.UpdatedAt = DateTime.UtcNow;
-
-                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
-            }
+            // Nếu trạng thái delivered → chỉ update stop, không update compartments
+            // Vì ENUM khác nhau
 
             await _repo.SaveChangesAsync();
-
-            return new StopUpdateResultDto
-            {
-                Success = true,
-                Task = MapToDetail(task)
-            };
+            return true;
         }
+
         public async Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId)
         {
             var task = await _repo.GetByIdAsync(taskId);
@@ -811,3 +787,5 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
     }
 }
+
+

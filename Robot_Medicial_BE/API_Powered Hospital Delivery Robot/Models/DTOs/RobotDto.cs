@@ -110,4 +110,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string MapName { get; set; } = null!;
         public string Message { get; set; } = null!; // VD: "Assigned successfully"
     }
+
+    public class UpdateRobotDto
+    {
+        public string? Name { get; set; } // Có thể để trống nếu không muốn đổi tên
+        public ulong? MapId { get; set; }
+        public List<UpdateCompartmentDto> Compartments { get; set; } = new();
+    }
+
+    public class UpdateCompartmentDto
+    {
+        public ulong CategoryId { get; set; }
+        public bool IsLocked { get; set; } = false;
+    }
 }

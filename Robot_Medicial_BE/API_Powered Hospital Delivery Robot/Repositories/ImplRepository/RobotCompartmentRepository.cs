@@ -117,10 +117,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             comp.CategoryId = null;
 
             if (comp.Status == "locked")
-                comp.Status = "unlocked"; 
+                comp.Status = "unlocked";
 
             _context.RobotCompartments.Update(comp);
             await _context.SaveChangesAsync();
+        }
+        public async System.Threading.Tasks.Task DeleteByRobotIdAsync(ulong robotId)
+        {
+            var compartments = await _context.RobotCompartments
+                .Where(rc => rc.RobotId == robotId)
+                .ToListAsync();
+
+            if (compartments.Any())
+            {
+                _context.RobotCompartments.RemoveRange(compartments);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

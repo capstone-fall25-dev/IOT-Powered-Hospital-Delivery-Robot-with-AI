@@ -1,5 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,6 +130,48 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         {
             var robots = await _service.GetAllAsync("at_station");
             return Ok(robots);
+        }
+
+
+        // UPDATE ROBOT: Chỉ sửa Tên + Danh sách loại ngăn chứa (CategoryId)
+        [HttpPut("{id}")]
+       
+        public async Task<IActionResult> UpdateRobot(ulong id, [FromBody] UpdateRobotDto dto)
+        {
+            if (dto == null)
+                return BadRequest(new { message = "Dữ liệu cập nhật không được để trống" });
+
+            if (dto.Compartments == null || !dto.Compartments.Any())
+                return BadRequest(new { message = "Danh sách ngăn chứa không được để trống" });
+
+            if (dto.Compartments.Count > 20) // tùy giới hạn robot của bạn
+                return BadRequest(new { message = "Số lượng ngăn chứa không được vượt quá 20" });
+
+            if (dto.Compartments.Any(c => c.CategoryId == 0))
+                return BadRequest(new { message = "CategoryId không hợp lệ" });
+
+            try
+            {
+                var result = await _service.UpdateAsync(id, dto);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Cập nhật robot thành công",
+                    data = result
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("không tìm thấy"))
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("nhiệm vụ"))
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Lỗi server", detail = ex.Message });
+            }
         }
 
     }

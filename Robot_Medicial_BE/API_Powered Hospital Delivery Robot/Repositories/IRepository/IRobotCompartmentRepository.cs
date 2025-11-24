@@ -5,7 +5,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
     public interface IRobotCompartmentRepository
     {
         Task<RobotCompartment?> GetByIdAsync(ulong id);
-
         System.Threading.Tasks.Task CreateManyAsync(IEnumerable<RobotCompartment> compartments);
         Task<RobotCompartment?> UpdateStatusAsync(ulong id, string status);
         Task<IEnumerable<RobotCompartment>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId);
@@ -14,5 +13,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<bool> AssignCategoryToCompartment(ulong compId, ulong categoryId);
         Task<IEnumerable<RobotCompartment>> GetFilteredByRobotAsync(ulong robotId, ulong? categoryId);
         System.Threading.Tasks.Task ReleaseCompartmentAsync(ulong compartmentId);
+        System.Threading.Tasks.Task DeleteByRobotIdAsync(ulong robotId);
     }
 }
