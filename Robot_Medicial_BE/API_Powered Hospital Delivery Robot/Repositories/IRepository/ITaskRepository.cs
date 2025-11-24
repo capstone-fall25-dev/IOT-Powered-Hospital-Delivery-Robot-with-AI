@@ -33,5 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<IDbContextTransaction> BeginTransactionAsync();
 
         Task<int> SaveChangesAsync();
+
+        Task<Models.Entities.Task?> GetTaskWithStopsAsync(ulong taskId);
+        Task<Map?> GetMapByTaskIdAsync(ulong taskId);
+
     }
 }

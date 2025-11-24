@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+
 import { getTaskById, updateStopStatus } from "@/services/taskService";
 import styles from "@/assets/styles/taskDetail.module.css";
+
 
 export default function TaskDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
 
+
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
 
+
     const [stopStatusEdit, setStopStatusEdit] = useState({});
+
 
     // ============================================
     // FORMAT DATETIME
@@ -20,6 +25,7 @@ export default function TaskDetail() {
         if (!dateStr) return "—";
         const d = new Date(dateStr);
         if (isNaN(d)) return "—";
+
 
         return d.toLocaleString("vi-VN", {
             day: "2-digit",
@@ -30,16 +36,19 @@ export default function TaskDetail() {
         });
     }
 
+
     function getScheduleClass(startTime) {
         if (!startTime) return "";
         const now = new Date();
         const start = new Date(startTime);
         const diffMin = (start - now) / 1000 / 60;
 
+
         if (diffMin <= 0) return styles.scheduleTimeOverdue;
         if (diffMin <= 1) return styles.scheduleTimeSoon;
         return styles.scheduleTimeUpcoming;
     }
+
 
     function getStatusBadgeClass(status) {
         if (status === "pending") return styles.badgePending;
@@ -51,6 +60,7 @@ export default function TaskDetail() {
         return styles.badgePending;
     }
 
+
     // ============================================
     // LOAD TASK DETAIL
     // ============================================
@@ -60,12 +70,14 @@ export default function TaskDetail() {
                 const data = await getTaskById(id);
                 setTask(data);
 
+
                 // Map trạng thái stop vào state để binding select
                 const mapped = {};
                 data.stops?.forEach((s) => {
                     mapped[s.seqNo] = s.assignmentStatus; // từ BE
                 });
                 setStopStatusEdit(mapped);
+
 
                 setLoading(false);
             } catch (err) {
@@ -74,8 +86,10 @@ export default function TaskDetail() {
             }
         }
 
+
         load();
     }, [id]);
+
 
     // ============================================
     // RULE: LOCK STOP
@@ -84,6 +98,7 @@ export default function TaskDetail() {
         return status === "delivered";
     }
 
+
     // ============================================
     // UPDATE STOP STATUS
     // ============================================
@@ -91,19 +106,24 @@ export default function TaskDetail() {
         const newStatus = stopStatusEdit[stop.seqNo];
         if (!newStatus) return alert("Chưa chọn trạng thái!");
 
+
         const sid = stop.stopId; // từ BE
+
 
         if (!sid) {
             console.error("Stop ID không tồn tại", stop);
             return alert("Không tìm thấy StopId!");
         }
 
+
         try {
             await updateStopStatus(id, sid, newStatus);
+
 
             // load lại
             const fresh = await getTaskById(id);
             setTask(fresh);
+
 
             alert("Cập nhật trạng thái điểm dừng thành công!");
         } catch (err) {
@@ -111,6 +131,7 @@ export default function TaskDetail() {
             alert("Lỗi khi cập nhật điểm dừng");
         }
     };
+
 
     // ============================================
     // RENDER UI
@@ -126,6 +147,7 @@ export default function TaskDetail() {
         );
     }
 
+
     if (!task) {
         return (
             <div className={styles.page}>
@@ -139,9 +161,11 @@ export default function TaskDetail() {
         );
     }
 
+
     return (
         <div className={styles.page}>
             <div className="container-xl py-4">
+
 
                 {/* BREADCRUMB */}
                 <nav aria-label="breadcrumb" className="mb-4">
@@ -164,9 +188,11 @@ export default function TaskDetail() {
                     </ol>
                 </nav>
 
+
                 {/* HEADER */}
                 <div className={`${styles.glass} p-4 p-md-5 mb-4`}>
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
 
                         <div>
                             <h1 className={styles.pageTitle}>Nhiệm vụ #{task.id}</h1>
@@ -174,10 +200,12 @@ export default function TaskDetail() {
                                 Robot: <strong>{task.robotName}</strong>
                             </p>
 
+
                             <span className={getStatusBadgeClass(task.status)}>
                                 {task.status.toUpperCase()}
                             </span>
                         </div>
+
 
                         <div className="d-flex gap-2 flex-wrap">
                             <button
@@ -187,6 +215,7 @@ export default function TaskDetail() {
                                 <i className="bi bi-pencil me-1"></i>Sửa
                             </button>
 
+
                             <button
                                 className={styles.btnBack}
                                 onClick={() => navigate("/dashboard")}
@@ -194,12 +223,14 @@ export default function TaskDetail() {
                                 <i className="bi bi-arrow-left me-1"></i>Quay lại
                             </button>
 
+
                             {/* Hidden theo yêu cầu */}
                             <button hidden className={styles.btnComplete}>
                                 Hoàn thành
                             </button>
                         </div>
                     </div>
+
 
                     {/* TASK INFO */}
                     <div className={styles.infoSection}>
@@ -213,6 +244,7 @@ export default function TaskDetail() {
                                     </div>
                                 </div>
 
+
                                 <div className="mb-3">
                                     <div className={styles.infoLabel}>Ngày tạo</div>
                                     <div className={styles.infoValue}>
@@ -221,6 +253,7 @@ export default function TaskDetail() {
                                 </div>
                             </div>
 
+
                             <div className="col-md-6">
                                 <div className="mb-3">
                                     <div className={styles.infoLabel}>Bắt đầu lúc</div>
@@ -228,6 +261,7 @@ export default function TaskDetail() {
                                         {formatVNDateTime(task.scheduledStartAt)}
                                     </span>
                                 </div>
+
 
                                 <div className="mb-3">
                                     <div className={styles.infoLabel}>Bản đồ</div>
@@ -240,12 +274,14 @@ export default function TaskDetail() {
                     </div>
                 </div>
 
+
                 {/* ===================== STOP LIST ===================== */}
                 <div className={`${styles.glass} p-4 p-md-5`}>
                     <h2 className={styles.sectionTitle}>
                         <i className="bi bi-geo-alt-fill"></i>
                         Danh sách điểm dừng
                     </h2>
+
 
                     {(!task.stops || task.stops.length === 0) ? (
                         <div className={styles.emptyState}>
@@ -256,23 +292,28 @@ export default function TaskDetail() {
                         task.stops.map((s) => {
                             const locked = isStopLocked(s.assignmentStatus);
 
+
                             return (
                                 <div key={s.seqNo} className={styles.stopCard}>
                                     <div className={styles.stopHeader}>
                                         <div className={styles.stopNumber}>{s.seqNo}</div>
                                         <div className={styles.stopTitle}>Điểm dừng #{s.seqNo}</div>
 
+
                                         <span className={getStatusBadgeClass(s.assignmentStatus)}>
                                             {s.assignmentStatus.toUpperCase()}
                                         </span>
                                     </div>
 
+
                                     <div className="row g-3">
+
 
                                         <div className="col-md-6">
                                             <div className={styles.infoLabel}>Điểm đến</div>
                                             <div className={styles.infoValue}>{s.destinationName}</div>
                                         </div>
+
 
                                         <div className="col-md-6">
                                             <div className={styles.infoLabel}>Bệnh nhân</div>
@@ -282,11 +323,14 @@ export default function TaskDetail() {
                                             </div>
                                         </div>
 
+
                                         {/* ===================== UPDATE STOP STATUS ===================== */}
                                         <div className="col-md-12 mt-3">
                                             <label className={styles.infoLabel}>Cập nhật trạng thái</label>
 
+
                                             <div className="d-flex align-items-center gap-2 mt-2">
+
 
                                                 <select
                                                     className="form-select"
@@ -309,6 +353,7 @@ export default function TaskDetail() {
                                                     <option value="failed">Thất bại</option>
                                                 </select>
 
+
                                                 <button
                                                     className="btn btn-primary"
                                                     disabled={locked}
@@ -319,6 +364,7 @@ export default function TaskDetail() {
                                             </div>
                                         </div>
 
+
                                         {s.itemDesc && (
                                             <div className="col-12">
                                                 <div className={styles.infoLabel}>Ghi chú hàng hóa</div>
@@ -326,7 +372,9 @@ export default function TaskDetail() {
                                             </div>
                                         )}
 
+
                                     </div>
+
 
                                     {/* ===================== PRESCRIPTION ===================== */}
                                     {s.prescription ? (
@@ -335,6 +383,7 @@ export default function TaskDetail() {
                                                 <i className="bi bi-file-medical-fill"></i>
                                                 Đơn thuốc: {s.prescription.prescriptionCode}
                                             </h6>
+
 
                                             {s.prescription.items.map((it, idx) => (
                                                 <div key={idx} className={styles.prescriptionItem}>
@@ -357,6 +406,7 @@ export default function TaskDetail() {
                                         </div>
                                     )}
 
+
                                 </div>
                             );
                         })
@@ -366,3 +416,6 @@ export default function TaskDetail() {
         </div>
     );
 }
+
+
+

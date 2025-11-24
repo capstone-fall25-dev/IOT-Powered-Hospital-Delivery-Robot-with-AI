@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -74,16 +75,60 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var ok = await _service.DeleteAsync(id);
             return ok ? Ok("Đã xoá nhiệm vụ.") : NotFound("Không tìm thấy nhiệm vụ để xoá.");
         }
+
+        [HttpPut("{id}/status")]
+        public async Task<ActionResult<TaskResponseDto>> ChangeStatus(
+    ulong id,
+    [FromBody] TaskStatusChangeDto dto)
+        {
+            try
+            {
+                var update = new UpdateTaskDto
+                {
+                    Status = dto.Status
+                };
+
+                var result = await _service.UpdateAsync(id, update);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("{taskId}/run-info")]
+        public async Task<ActionResult<RunTaskInfoDto>> GetRunInfo(ulong taskId)
+        {
+            var info = await _service.GetRunInfoAsync(taskId);
+            if (info == null) return NotFound("Task không tồn tại.");
+
+            return Ok(info);
+        }
         [HttpPut("{taskId}/stops/{stopId}/status")]
         public async Task<IActionResult> UpdateStopStatus(
-ulong taskId, ulong stopId, [FromBody] StopStatusChangeDto dto)
+     ulong taskId, ulong stopId, [FromBody] StopStatusChangeDto dto)
         {
             await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
             return Ok(new { message = "Stop status updated successfully" });
         }
+
+        [HttpPut("{taskId}/complete")]
+        public async Task<IActionResult> CompleteTask(ulong taskId)
+        {
+            var result = await _service.CompleteTaskAsync(taskId);
+
+            if (!result.Success)
+                return BadRequest(result.Message);
+
+            return Ok(result.Task);
+        }
+
         private ulong GetCurrentUserId()
         {
             return ulong.Parse(User.FindFirst("userId")?.Value ?? "1");
         }
     }
 }
+
+

@@ -10,8 +10,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<TaskEditDto?> GetEditDataAsync(ulong id);
         Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto);
         Task<bool> DeleteAsync(ulong id);
-
+        Task<RunTaskInfoDto?> GetRunInfoAsync(ulong taskId);
         Task<bool> UpdateStopStatusAsync(ulong taskId, ulong stopId, string newStatus);
-
+        Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId);
     }
 }
+
+

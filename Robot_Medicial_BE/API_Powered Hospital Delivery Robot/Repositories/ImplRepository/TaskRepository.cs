@@ -173,5 +173,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             return await _context.SaveChangesAsync();
         }
+
+        public async Task<Models.Entities.Task?> GetTaskWithStopsAsync(ulong taskId)
+        {
+            return await _context.Tasks
+                .Include(t => t.Map)
+                .Include(t => t.Robot)
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Destination)
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+        }
+
+        public async Task<Map?> GetMapByTaskIdAsync(ulong taskId)
+        {
+            return await _context.Tasks
+                .Where(t => t.Id == taskId)
+                .Select(t => t.Map)
+                .FirstOrDefaultAsync();
+        }
     }
 }
