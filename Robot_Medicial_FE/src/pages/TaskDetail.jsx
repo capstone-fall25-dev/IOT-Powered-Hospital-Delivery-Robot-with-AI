@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTaskById } from "@/services/taskService";
+import { getTaskById, updateTask } from "@/services/taskService";
 import styles from "@/assets/styles/taskDetail.module.css";
 
 export default function TaskDetail() {
@@ -9,6 +9,12 @@ export default function TaskDetail() {
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Local state để lưu trạng thái stop muốn update
+    const [stopStatusEdit, setStopStatusEdit] = useState({});
+
+    // ===========================
+    // FORMATTERS
+    // ===========================
     function formatVNDateTime(dateStr) {
         if (!dateStr) return "—";
         const d = new Date(dateStr);
@@ -38,6 +44,9 @@ export default function TaskDetail() {
         if (status === "in_progress") return styles.badgeInProgress;
         if (status === "completed") return styles.badgeCompleted;
         if (status === "canceled") return styles.badgeCanceled;
+        if (status === "delivered") return styles.badgeCompleted;
+        if (status === "failed") return styles.badgeCanceled;
+        if (status === "skipped") return styles.badgePending;
         return styles.badgePending;
     }
 
@@ -53,6 +62,9 @@ export default function TaskDetail() {
         return "Cao";
     }
 
+    // ===========================
+    // LOAD DATA
+    // ===========================
     useEffect(() => {
         async function load() {
             try {
@@ -67,6 +79,63 @@ export default function TaskDetail() {
         load();
     }, [id]);
 
+    // ===========================
+    // UPDATE STOP STATUS
+    // ===========================
+    const handleUpdateStop = async (stop) => {
+        const newStatus = stopStatusEdit[stop.seqNo];
+        if (!newStatus) return alert("Chưa chọn trạng thái!");
+
+        const payload = {
+            stops: [
+                {
+                    stopId: stop.stopId ?? stop.id ?? stop._id, // fallback
+                    status: newStatus
+                }
+            ]
+        };
+
+        try {
+            const updated = await updateTask(id, payload);
+            setTask(updated);
+
+            // Auto refresh
+            const fresh = await getTaskById(id);
+            setTask(fresh);
+            alert("Cập nhật điểm dừng thành công!");
+        } catch (err) {
+            console.error(err);
+            alert("Lỗi cập nhật điểm dừng");
+        }
+    };
+
+    // ===========================
+    // COMPLETE TASK
+    // ===========================
+    const handleCompleteTask = async () => {
+        if (!window.confirm("Xác nhận hoàn thành nhiệm vụ?")) return;
+
+        const payload = {
+            status: "completed"
+        };
+
+        try {
+            const updated = await updateTask(id, payload);
+            setTask(updated);
+
+            const fresh = await getTaskById(id);
+            setTask(fresh);
+
+            alert("Nhiệm vụ đã hoàn thành!");
+        } catch (err) {
+            console.error(err);
+            alert("Lỗi hoàn thành nhiệm vụ");
+        }
+    };
+
+    // ===========================
+    // UI
+    // ===========================
     if (loading) {
         return (
             <div className={styles.page}>
@@ -99,8 +168,8 @@ export default function TaskDetail() {
                 <nav aria-label="breadcrumb" className="mb-4">
                     <ol className={`breadcrumb ${styles.breadcrumb}`}>
                         <li className={styles.breadcrumbItem}>
-                            <a 
-                                href="#" 
+                            <a
+                                href="#"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     navigate("/dashboard");
@@ -116,7 +185,7 @@ export default function TaskDetail() {
                     </ol>
                 </nav>
 
-                {/* =================== TASK HEADER CARD =================== */}
+                {/* =================== TASK HEADER =================== */}
                 <div className={`${styles.glass} p-4 p-md-5 mb-4`}>
                     <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
                         <div>
@@ -130,23 +199,34 @@ export default function TaskDetail() {
                         </div>
 
                         <div className="d-flex gap-2 flex-wrap">
-                            <button 
+                            <button
                                 className={styles.btnEdit}
                                 onClick={() => navigate(`/task-edit/${task.id}`)}
                             >
                                 <i className="bi bi-pencil me-1"></i>
                                 Sửa
                             </button>
-                            <button 
+
+                            <button
                                 className={styles.btnBack}
                                 onClick={() => navigate("/dashboard")}
                             >
                                 <i className="bi bi-arrow-left me-1"></i>
                                 Quay lại
                             </button>
+
+                            <button
+                                className={styles.btnComplete}
+                                onClick={handleCompleteTask}
+                                style={{ background: "#28a745", color: "white" }}
+                            >
+                                <i className="bi bi-check-circle me-1"></i>
+                                Hoàn thành nhiệm vụ
+                            </button>
                         </div>
                     </div>
 
+                    {/* INFO */}
                     <div className={styles.infoSection}>
                         <div className="row g-4">
                             <div className="col-md-6">
@@ -159,13 +239,6 @@ export default function TaskDetail() {
                                     </div>
                                 </div>
 
-                                <div className="mb-3" hidden>
-                                    <div className={styles.infoLabel}>Độ ưu tiên</div>
-                                    <span className={getPriorityBadgeClass(task.priority)}>
-                                        {getPriorityText(task.priority)}
-                                    </span>
-                                </div>
-
                                 <div className="mb-3">
                                     <div className={styles.infoLabel}>Ngày tạo</div>
                                     <div className={`${styles.infoValue} text-muted`}>
@@ -176,10 +249,7 @@ export default function TaskDetail() {
 
                             <div className="col-md-6">
                                 <div className="mb-3">
-                                    <div className={styles.infoLabel}>
-                                        <i className="bi bi-clock me-1"></i>
-                                        Bắt đầu lúc
-                                    </div>
+                                    <div className={styles.infoLabel}>Bắt đầu lúc</div>
                                     <span className={`${styles.scheduleTime} ${getScheduleClass(task.scheduledStartAt)}`}>
                                         {formatVNDateTime(task.scheduledStartAt)}
                                     </span>
@@ -191,19 +261,12 @@ export default function TaskDetail() {
                                         {task.mapName}
                                     </div>
                                 </div>
-
-                                <div className="mb-3">
-                                    <div className={styles.infoLabel}>Tổng điểm dừng</div>
-                                    <span className={styles.badgeInfo}>
-                                        {task.stops?.length || 0} điểm
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* =================== STOPS SECTION =================== */}
+                {/* =================== STOP LIST =================== */}
                 <div className={`${styles.glass} p-4 p-md-5`}>
                     <h2 className={styles.sectionTitle}>
                         <i className="bi bi-geo-alt-fill"></i>
@@ -212,7 +275,7 @@ export default function TaskDetail() {
 
                     {!task.stops || task.stops.length === 0 ? (
                         <div className={styles.emptyState}>
-                            <i className="bi bi-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                            <i className="bi bi-inbox" style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}></i>
                             Chưa có điểm dừng nào
                         </div>
                     ) : (
@@ -226,6 +289,7 @@ export default function TaskDetail() {
                                     </span>
                                 </div>
 
+                                {/* STOP INFO */}
                                 <div className="row g-3">
                                     <div className="col-md-6">
                                         <div className={styles.infoLabel}>Điểm đến</div>
@@ -241,29 +305,43 @@ export default function TaskDetail() {
                                         </div>
                                     </div>
 
-                                    <div className="col-md-4">
-                                        <div className={styles.infoLabel}>Phòng</div>
-                                        <div className={styles.infoValue}>{s.roomNumber || '—'}</div>
-                                    </div>
+                                    <div className="col-md-12">
+                                        {/* ===================== UPDATE STOP STATUS ===================== */}
+                                        <div className="mt-3">
+                                            <label className={styles.infoLabel}>Cập nhật trạng thái điểm dừng</label>
 
-                                    <div className="col-md-4">
-                                        <div className={styles.infoLabel}>Khoa</div>
-                                        <div className={styles.infoValue}>{s.department || '—'}</div>
-                                    </div>
+                                            <div className="d-flex gap-2 align-items-center mt-2">
+                                                <select
+                                                    className="form-select"
+                                                    style={{ maxWidth: "220px" }}
+                                                    value={stopStatusEdit[s.seqNo] || ""}
+                                                    onChange={(e) =>
+                                                        setStopStatusEdit({
+                                                            ...stopStatusEdit,
+                                                            [s.seqNo]: e.target.value
+                                                        })
+                                                    }
+                                                >
+                                                    <option value="">-- Chọn trạng thái --</option>
+                                                    <option value="pending">Chờ xử lý</option>
+                                                    <option value="in_progress">Đang xử lý</option>
+                                                    <option value="awaiting_handover">Chờ bàn giao</option>
+                                                    <option value="delivered">Đã giao</option>
+                                                    <option value="skipped">Bỏ qua</option>
+                                                    <option value="failed">Thất bại</option>
+                                                </select>
 
-                                    <div className="col-md-4">
-                                        <div className={styles.infoLabel}>Ngăn chứa</div>
-                                        <div className={styles.infoValue}>
-                                            <strong>{s.compartmentCode}</strong>
-                                            <br />
-                                            <small className="text-muted">{s.compartmentCategory || '—'}</small>
-                                            <br />
-                                            <span className={s.compartmentStatus === 'locked' ? styles.badgeLocked : styles.badgeUnlocked}>
-                                                {s.compartmentStatus}
-                                            </span>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={() => handleUpdateStop(s)}
+                                                >
+                                                    Cập nhật
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
+                                    {/* ItemDesc */}
                                     {s.itemDesc && (
                                         <div className="col-12">
                                             <div className={styles.infoLabel}>Ghi chú hàng hóa</div>
@@ -282,33 +360,12 @@ export default function TaskDetail() {
                                             Đơn thuốc: {s.prescription.prescriptionCode}
                                         </h6>
 
-                                        <div className="row g-3 mb-3">
-                                            <div className="col-md-4">
-                                                <div className={styles.infoLabel}>Ngày tạo</div>
-                                                <div className={`${styles.infoValue} small`}>
-                                                    {formatVNDateTime(s.prescription.createdAt)}
-                                                </div>
-                                            </div>
-                                            <div className="col-md-4">
-                                                <div className={styles.infoLabel}>Trạng thái</div>
-                                                <span className={
-                                                    s.prescription.status === 'approved' ? styles.badgeCompleted :
-                                                    s.prescription.status === 'pending' ? styles.badgePending :
-                                                    styles.badgeCanceled
-                                                }>
-                                                    {s.prescription.status}
-                                                </span>
-                                            </div>
-                                        </div>
-
                                         {s.prescription.items.map((it, itemIdx) => (
                                             <div key={itemIdx} className={styles.prescriptionItem}>
-                                                <div className={styles.medicineName}>
-                                                    {it.medicineName}
-                                                </div>
+                                                <div className={styles.medicineName}>{it.medicineName}</div>
                                                 <div className={styles.medicineInfo}>
-                                                    <strong>Số lượng:</strong> {it.quantity} • 
-                                                    <strong> Liều dùng:</strong> {it.dosage}
+                                                    <strong>Số lượng:</strong> {it.quantity} •{" "}
+                                                    <strong>Liều dùng:</strong> {it.dosage}
                                                 </div>
                                                 <div className={styles.medicineInfo}>
                                                     <strong>Hướng dẫn:</strong> {it.instructions}
@@ -327,7 +384,6 @@ export default function TaskDetail() {
                         ))
                     )}
                 </div>
-
             </div>
         </div>
     );

@@ -4,12 +4,12 @@ import { getAllRobots } from "@/services/robotService";
 import { getAllTasks } from "@/services/taskService";
 import styles from "@/assets/styles/robotDashboard.module.css";
 
-export default function RobotDashboard() {
+export default function RobotTaskDashboard() {
     const navigate = useNavigate();
     const [robots, setRobots] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const tasksPerPage = 10;
+    const [tasksPerPage, setTasksPerPage] = useState(5);
 
     const statusMap = {
         transporting: "Đang vận chuyển",
@@ -55,11 +55,9 @@ export default function RobotDashboard() {
         async function fetchTasks() {
             try {
                 const data = await getAllTasks();
-                const activeTasks = data.filter(
-                    t => t.status !== "completed" && t.status !== "canceled"
-                );
 
-                const formatted = activeTasks.map(t => {
+                // 👉 Không lọc theo status nữa, hiển thị tất cả
+                const formatted = data.map(t => {
                     const patientCount = t.patients?.length || 0;
                     const firstPatient = t.patients?.[0]?.patientName || "—";
                     const medicineSummary = t.patients?.map(p => p.medicineSummary).join("; ") || "—";
@@ -186,22 +184,43 @@ export default function RobotDashboard() {
                             Tiến Trình Nhiệm Vụ
                         </h5>
 
-                        <div className="d-flex gap-2 flex-wrap">
-                            <button 
-                                className={styles.btnTeal}
-                                onClick={() => navigate("/addtasks")}
-                            >
-                                <i className="bi bi-plus-lg me-1"></i>
-                                Thêm Nhiệm Vụ
-                            </button>
-                            <button 
-                                className={styles.btnTeal}
-                                onClick={() => navigate("/history-mission")}
-                            >
-                                <i className="bi bi-clock-history me-1"></i>
-                                Lịch sử hoạt động
-                            </button>
-                        </div>
+                       <div className="d-flex gap-2 flex-wrap align-items-center">
+
+                        {/* DROPDOWN chọn số bản ghi */}
+                        <select
+                            className="form-select"
+                            style={{
+                                width: "150px",
+                            }}
+                            value={tasksPerPage}
+                            onChange={(e) => {
+                                setTasksPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <option value={5}>5 / trang</option>
+                            <option value={10}>10 / trang</option>
+                            <option value={20}>20 / trang</option>
+                            <option value={50}>50 / trang</option>
+                        </select>
+
+                        {/* BUTTONS */}
+                        <button 
+                            className={styles.btnTeal}
+                            onClick={() => navigate("/addtasks")}
+                        >
+                            <i className="bi bi-plus-lg me-1"></i>
+                            Thêm Nhiệm Vụ
+                        </button>
+                        <button 
+                            className={styles.btnTeal}
+                            onClick={() => navigate("/history-mission")}
+                        >
+                            <i className="bi bi-clock-history me-1"></i>
+                            Lịch sử hoạt động
+                        </button>
+
+                    </div>
                     </div>
 
                     <div className="table-responsive">
@@ -269,7 +288,7 @@ export default function RobotDashboard() {
                                                 <div className="d-flex gap-1 justify-content-end">
                                                     <button
                                                         className={styles.btnSecondary}
-                                                        onClick={() => navigate(`/run-map`)}
+                                                        onClick={() => navigate(`/run-task/${t.id}`)}
                                                         title="Theo dõi"
                                                     >
                                                         <i className="bi bi-eye"></i>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
@@ -11,12 +11,33 @@ import {
 import { getAllPrescriptions } from "@/services/prescriptionServices";
 import { getAvailableRobots } from "@/services/robotService";
 import * as signalR from "@microsoft/signalr";
+import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/taskForm.module.css";
 
 export default function AddTask() {
     const navigate = useNavigate();
 
-    // ===================== STATE =====================
+    // ============================================================
+    // DATETIME HELPERS
+    // ============================================================
+    function getMinDateTime() {
+        const now = new Date();
+
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const HH = String(now.getHours()).padStart(2, "0");
+        const MM = String(now.getMinutes()).padStart(2, "0");
+        const SS = String(now.getSeconds()).padStart(2, "0");
+
+        return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
+    }
+
+    const realtimeEnabled = useRef(true);
+
+    // ============================================================
+    // STATE
+    // ============================================================
     const [maps, setMaps] = useState([]);
     const [robots, setRobots] = useState([]);
     const [destinations, setDestinations] = useState([]);
@@ -27,21 +48,23 @@ export default function AddTask() {
         mapId: "",
         robotId: "",
         priority: 1,
-        scheduledStartAt: new Date().toISOString().slice(0, 16),
+        scheduledStartAt: getMinDateTime(),
         taskStops: [],
     });
 
     const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState(""); // success, error, info
+    const [messageType, setMessageType] = useState("");
     const [baseCompartments, setBaseCompartments] = useState([]);
 
     const canAddStop = form.robotId;
     const canStart = form.robotId && form.taskStops.length > 0;
 
-    // ===================== SIGNALR =====================
+    // ============================================================
+    // SIGNALR
+    // ============================================================
     useEffect(() => {
         const conn = new signalR.HubConnectionBuilder()
-            .withUrl("http://localhost:5170/hubs/task", {
+            .withUrl(API_CONFIG.API_BASE1 + "/hubs/task", {
                 transport: signalR.HttpTransportType.WebSockets,
                 skipNegotiation: true,
             })
@@ -60,7 +83,9 @@ export default function AddTask() {
         return () => conn.stop();
     }, []);
 
-    // ===================== LOAD DATA =====================
+    // ============================================================
+    // LOAD DATA
+    // ============================================================
     useEffect(() => {
         async function load() {
             setMaps(await getAllMaps());
@@ -71,13 +96,29 @@ export default function AddTask() {
         load();
     }, []);
 
+    // ============================================================
+    // REALTIME CLOCK (update mỗi 1 giây)
+    // ============================================================
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!realtimeEnabled.current) return; // user đã chỉnh tay → không realtime nữa
+
+            setForm((f) => ({
+                ...f,
+                scheduledStartAt: getMinDateTime(),
+            }));
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // ============================================================
+    // MAP SELECTION
+    // ============================================================
     async function handleSelectMap(mapId) {
         setForm((f) => ({ ...f, mapId }));
 
-        if (!mapId) {
-            setDestinations([]);
-            return;
-        }
+        if (!mapId) return setDestinations([]);
 
         const mapDetail = await getMapById(mapId);
         setDestinations(
@@ -88,6 +129,9 @@ export default function AddTask() {
         );
     }
 
+    // ============================================================
+    // ROBOT SELECTION
+    // ============================================================
     async function handleSelectRobot(robotId) {
         setForm((f) => ({
             ...f,
@@ -95,17 +139,25 @@ export default function AddTask() {
             taskStops: [],
         }));
 
-        if (!robotId) {
-            setBaseCompartments([]);
-            return;
-        }
+        if (!robotId) return setBaseCompartments([]);
 
         const data = await getUnlockedCompartments(robotId);
         setBaseCompartments(data);
     }
 
+    // ============================================================
+    // SELECTED COMPARTMENTS (prevent duplicates)
+    // ============================================================
+    const selectedCompartments = form.taskStops
+        .map(s => Number(s.compartmentId))
+        .filter(id => id > 0);
+
+    // ============================================================
+    // ADD STOP
+    // ============================================================
     function addStop() {
         const nextSeq = form.taskStops.length + 1;
+
         setForm((f) => ({
             ...f,
             taskStops: [
@@ -116,18 +168,35 @@ export default function AddTask() {
                     patientId: "",
                     categoryId: "",
                     compartmentId: "",
+                    filteredCompartments: [],
                     prescriptionPreview: null,
                     customName: "",
-                    itemDesc: ""
+                    itemDesc: "",
                 },
             ],
         }));
     }
 
+    // ============================================================
+    // REMOVE STOP
+    // ============================================================
     function removeStop(idx) {
-        setForm(f => ({ ...f, taskStops: f.taskStops.filter((_, i) => i !== idx) }));
+        setForm((f) => {
+            const newStops = f.taskStops.filter((_, i) => i !== idx);
+
+            return {
+                ...f,
+                taskStops: newStops.map((s, i) => ({
+                    ...s,
+                    seqNo: i + 1,
+                })),
+            };
+        });
     }
 
+    // ============================================================
+    // UPDATE STOP
+    // ============================================================
     async function updateStop(idx, key, value) {
         const clone = [...form.taskStops];
         clone[idx][key] = value;
@@ -136,10 +205,13 @@ export default function AddTask() {
             clone[idx].compartmentId = "";
 
             if (value) {
-                const comps = await getCompartmentsByRobotAndCategory(
+                let comps = await getCompartmentsByRobotAndCategory(
                     form.robotId,
                     value
                 );
+
+                comps = comps.filter(c => !selectedCompartments.includes(c.id));
+
                 clone[idx].filteredCompartments = comps;
             } else {
                 clone[idx].filteredCompartments = [];
@@ -149,24 +221,52 @@ export default function AddTask() {
         setForm((f) => ({ ...f, taskStops: clone }));
     }
 
+    // ============================================================
+    // PATIENT → LOAD LAST PRESCRIPTION
+    // ============================================================
     async function handleSelectPatient(patientId, idx) {
         updateStop(idx, "patientId", patientId);
+
         if (!patientId) return updateStop(idx, "prescriptionPreview", null);
 
         const list = await getAllPrescriptions(patientId, "approved");
+
         if (list.length === 0) return updateStop(idx, "prescriptionPreview", null);
 
-        const latest = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+        const latest = list.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        )[0];
+
         updateStop(idx, "prescriptionPreview", latest);
     }
 
+    // ============================================================
+    // SUBMIT
+    // ============================================================
     async function startMission() {
         try {
+            const now = new Date();
+            const selected = new Date(form.scheduledStartAt);
+
+            // Nếu thời gian đã trễ → tự cập nhật
+            if (selected < now) {
+                const newTime = getMinDateTime();
+                realtimeEnabled.current = true;
+
+                setForm(f => ({
+                    ...f,
+                    scheduledStartAt: newTime,
+                }));
+
+                form.scheduledStartAt = newTime;
+            }
+
             const payload = {
                 mapId: Number(form.mapId),
                 robotId: Number(form.robotId),
                 priority: Number(form.priority),
                 scheduledStartAt: new Date(form.scheduledStartAt).toISOString(),
+
                 stops: form.taskStops.map(s => ({
                     seqNo: s.seqNo,
                     destinationId: Number(s.destinationId),
@@ -174,28 +274,45 @@ export default function AddTask() {
                     compartmentId: Number(s.compartmentId),
                     categoryId: Number(s.categoryId),
                     customName: s.customName ?? "",
-                    itemDesc: s.itemDesc ?? ""
+                    itemDesc: s.itemDesc ?? "",
                 })),
             };
 
             await createTask(payload);
+
             setMessage("🎉 Tạo nhiệm vụ thành công!");
             setMessageType("success");
-            setForm((f) => ({ ...f, taskStops: [] }));
+
+            // RESET FORM và bật lại realtime
+            realtimeEnabled.current = true;
+
+            setForm({
+                mapId: "",
+                robotId: "",
+                priority: 1,
+                scheduledStartAt: getMinDateTime(),
+                taskStops: [],
+            });
+
+            setDestinations([]);
+            setBaseCompartments([]);
+
         } catch (err) {
             setMessage(`❌ Lỗi: ${err.response?.data || err.message}`);
             setMessageType("error");
         }
     }
 
-    // ===================== RENDER =====================
+    // ============================================================
+    // RENDER
+    // ============================================================
     return (
         <div className={styles.page}>
             <div className="container-xl py-4">
                 <div className="row justify-content-center">
                     <div className="col-lg-11 col-xl-10">
 
-                        {/* =================== HEADER =================== */}
+                        {/* HEADER */}
                         <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
                             <div className="d-flex align-items-center gap-3">
                                 <span className={styles.chip}>
@@ -214,7 +331,7 @@ export default function AddTask() {
                             </button>
                         </div>
 
-                        {/* =================== FORM =================== */}
+                        {/* FORM */}
                         <div className={`${styles.glass} p-4 p-md-5`}>
 
                             {/* MAP + ROBOT */}
@@ -249,13 +366,13 @@ export default function AddTask() {
                                         <option value="">— Chọn robot —</option>
                                         {robots.map((r) => (
                                             <option key={r.id} value={r.id}>
-                                                #{r.id} • {r.name} 
-                                                <span style={{ marginLeft: '8px' }}>🔋 {r.batteryPercent}%</span>
+                                                #{r.id} • {r.name} 🔋 {r.batteryPercent}%
                                             </option>
                                         ))}
                                     </select>
                                 </div>
 
+                                {/* REALTIME DATETIME */}
                                 <div className="col-md-4">
                                     <label className={`form-label ${styles.formLabel}`}>
                                         Thời gian bắt đầu
@@ -264,17 +381,19 @@ export default function AddTask() {
                                         type="datetime-local"
                                         className={`form-control ${styles.formControl}`}
                                         value={form.scheduledStartAt}
-                                        onChange={(e) =>
+                                        min={getMinDateTime()}
+                                        onChange={(e) => {
+                                            realtimeEnabled.current = false; // chỉ tắt realtime khi người dùng thay đổi giá trị
                                             setForm((f) => ({
                                                 ...f,
                                                 scheduledStartAt: e.target.value,
-                                            }))
-                                        }
+                                            }));
+                                        }}
                                     />
                                 </div>
                             </div>
 
-                            {/* PRIORITY + TIME */}
+                            {/* PRIORITY (HIDDEN) */}
                             <div className="row g-4 mb-4" hidden>
                                 <div className="col-md-6">
                                     <label className={`form-label ${styles.formLabel}`}>
@@ -299,11 +418,11 @@ export default function AddTask() {
 
                             <hr className={styles.divider} />
 
-                            {/* ADD STOP BUTTON */}
+                            {/* ADD STOP */}
                             <div className="text-end mb-4">
-                                <button 
+                                <button
                                     className={styles.btnAddStop}
-                                    onClick={addStop} 
+                                    onClick={addStop}
                                     disabled={!canAddStop}
                                 >
                                     <i className="bi bi-plus-circle me-2"></i>
@@ -329,7 +448,6 @@ export default function AddTask() {
 
                                     <div className="row g-3">
 
-                                        {/* DESTINATION */}
                                         <div className="col-md-6">
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Điểm đến <span className="text-danger">*</span>
@@ -342,13 +460,14 @@ export default function AddTask() {
                                                 }
                                             >
                                                 <option value="">— Chọn điểm đến —</option>
-                                                {destinations.map(d => 
-                                                    <option key={d.id} value={d.id}>{d.name}</option>
-                                                )}
+                                                {destinations.map((d) => (
+                                                    <option key={d.id} value={d.id}>
+                                                        {d.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
 
-                                        {/* PATIENT */}
                                         <div className="col-md-6">
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Bệnh nhân <span className="text-danger">*</span>
@@ -361,13 +480,14 @@ export default function AddTask() {
                                                 }
                                             >
                                                 <option value="">— Chọn bệnh nhân —</option>
-                                                {patients.map(p => 
-                                                    <option key={p.id} value={p.id}>{p.fullName}</option>
-                                                )}
+                                                {patients.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.fullName}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
 
-                                        {/* CATEGORY */}
                                         <div className="col-md-4">
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Loại ngăn <span className="text-danger">*</span>
@@ -381,12 +501,13 @@ export default function AddTask() {
                                             >
                                                 <option value="">— Chọn loại —</option>
                                                 {categories.map((c) => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        {/* COMPARTMENT */}
                                         <div className="col-md-4">
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Ngăn chứa <span className="text-danger">*</span>
@@ -412,7 +533,6 @@ export default function AddTask() {
                                             </select>
                                         </div>
 
-                                        {/* CUSTOM NAME */}
                                         <div className="col-md-4">
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Ghi chú riêng
@@ -427,10 +547,8 @@ export default function AddTask() {
                                                 }
                                             />
                                         </div>
-
                                     </div>
 
-                                    {/* PRESCRIPTION */}
                                     {s.prescriptionPreview && (
                                         <div className={styles.rxBox}>
                                             <h6 className={styles.rxTitle}>
@@ -455,7 +573,6 @@ export default function AddTask() {
                                                 </div>
                                             ))}
 
-                                            {/* ITEM DESC */}
                                             <div className="mt-3">
                                                 <label className={`form-label ${styles.formLabel}`}>
                                                     Mô tả vật phẩm (tùy chọn)
@@ -463,9 +580,11 @@ export default function AddTask() {
                                                 <input
                                                     type="text"
                                                     className={`form-control ${styles.formControl}`}
-                                                    placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
+                                                    placeholder="VD: 2 túi dịch truyền..."
                                                     value={s.itemDesc}
-                                                    onChange={(e) => updateStop(idx, "itemDesc", e.target.value)}
+                                                    onChange={(e) =>
+                                                        updateStop(idx, "itemDesc", e.target.value)
+                                                    }
                                                 />
                                             </div>
                                         </div>
@@ -473,7 +592,7 @@ export default function AddTask() {
                                 </div>
                             ))}
 
-                            {/* START BUTTON */}
+                            {/* SUBMIT */}
                             <button
                                 className={`${styles.btnTeal} w-100 mt-4`}
                                 disabled={!canStart}
@@ -483,17 +602,20 @@ export default function AddTask() {
                                 Bắt đầu nhiệm vụ
                             </button>
 
-                            {/* MESSAGE */}
                             {message && (
-                                <div className={`${styles.message} ${
-                                    messageType === 'success' ? styles.messageSuccess :
-                                    messageType === 'error' ? styles.messageError : ''
-                                }`}>
+                                <div
+                                    className={`${styles.message} ${
+                                        messageType === "success"
+                                            ? styles.messageSuccess
+                                            : messageType === "error"
+                                            ? styles.messageError
+                                            : ""
+                                    }`}
+                                >
                                     {message}
                                 </div>
                             )}
                         </div>
-
                     </div>
                 </div>
             </div>

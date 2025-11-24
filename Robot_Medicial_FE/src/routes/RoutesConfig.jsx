@@ -44,6 +44,7 @@ import RobotDashBoard from "@/pages/RobotDashBoard";
 import AddTask from "@/pages/AddTask";
 import TaskDetail from "@/pages/TaskDetail";
 import EditTask from "../pages/EditTask";
+import RunTask from "@/pages/RunTask";
 
 import ProjectMapListView from "@/pages/ViewListMap";
 import RunMap from "@/pages/RunMap";
@@ -96,6 +97,7 @@ const routes = [
   { path: "/addtasks", element: <MainLayout><AddTask /></MainLayout> },
   { path: "/task-detail/:id", element: <MainLayout><TaskDetail /></MainLayout> },
   { path: "/task-edit/:id", element: <MainLayout><EditTask /></MainLayout> },
+  { path: "/run-task/:taskId", element: <MainLayout><RunTask /></MainLayout> },
 
   { path: "/viewlistmap", element: <MainLayout><ProjectMapListView /></MainLayout> },
   { path: "/create-map", element: <MainLayout><CreateMap /></MainLayout> },
