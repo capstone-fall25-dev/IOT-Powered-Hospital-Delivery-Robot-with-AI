@@ -117,6 +117,85 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         }
 
+        public async Task<RobotResponseDto> UpdateAsync(ulong robotId, UpdateRobotDto updateDto)
+        {
+            // 1. Lấy robot hiện tại
+            var existingRobot = await _robotRepository.GetByIdAsync(robotId, includeCompartments: true, includeTasks: true);
+            if (existingRobot == null)
+                throw new InvalidOperationException("Robot không tồn tại");
+
+            // 2. Không cho sửa nếu robot đang chạy nhiệm vụ
+            if (existingRobot.Tasks.Any(t => t.Status is "in_progress" or "transporting"))
+                throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
+
+            // 3. Cập nhật Tên (nếu có)
+            if (!string.IsNullOrWhiteSpace(updateDto.Name))
+                existingRobot.Name = updateDto.Name.Trim();
+
+            // 4. Cập nhật Map (nếu có thay đổi)
+            if (updateDto.MapId.HasValue)
+            {
+                var map = await _mapRepository.GetByIdAsync(updateDto.MapId.Value);
+                if (map == null)
+                    throw new InvalidOperationException($"Map với ID {updateDto.MapId.Value} không tồn tại");
+                existingRobot.MapId = updateDto.MapId.Value;
+            }
+            else
+            {
+                existingRobot.MapId = null; // Bỏ gán map
+            }
+
+            // 5. Xóa hết compartments cũ + tạo mới
+            await _robotCompartmentRepository.DeleteByRobotIdAsync(robotId);
+
+            var newCompartments = updateDto.Compartments
+                .Select((c, index) => new RobotCompartment
+                {
+                    RobotId = robotId,
+                    CompartmentCode = $"C{index + 1:000}",
+                    CategoryId = c.CategoryId,
+                    Status = c.IsLocked ? "locked" : "unlocked",
+                    IsActive = true
+                })
+                .ToList();
+
+            await _robotCompartmentRepository.CreateManyAsync(newCompartments);
+
+            // 6. Cập nhật thời gian
+            existingRobot.UpdatedAt = DateTime.UtcNow;
+
+            // 7. Lưu robot
+            var updatedRobot = await _robotRepository.UpdateAsync(existingRobot);
+
+            // 8. Log hành động
+            var mapChange = updateDto.MapId.HasValue
+                ? $"gán map '{updatedRobot.Map?.MapName}'"
+                : "bỏ gán map";
+
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = robotId,
+                LogType = "info",
+                Message = $"Robot {updatedRobot.Code} ({updatedRobot.Name}) đã được cập nhật: tên, loại ngăn chứa và {mapChange}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            // 9. Trả về response đầy đủ
+            return new RobotResponseDto
+            {
+                Id = updatedRobot.Id,
+                Code = updatedRobot.Code,
+                Name = updatedRobot.Name,
+                Status = updatedRobot.Status,
+                BatteryPercent = updatedRobot.BatteryPercent,
+                MapId = updatedRobot.MapId,
+                Compartments = updatedRobot.RobotCompartments.Select(c => new CompartmentDto
+                {
+                    Code = c.CompartmentCode,
+                    CategoryId = c.CategoryId
+                }).ToList()
+            };
+        }
 
         public async Task<IEnumerable<RobotResponseDto>> GetAllAsync(string? status = null)
         {

@@ -177,6 +177,14 @@ export default function RobotDetail() {
             </div>
           </div>
 
+          <button 
+  className={styles.btnTeal}
+  onClick={() => navigate(`/robot-edit/${robot.id}`)}
+>
+  <i className="bi bi-pencil-square me-1"></i>
+  Chỉnh sửa
+</button>
+
           {/* =================== DETAIL + TASKS =================== */}
           <div className="row g-4 mt-3">
             
