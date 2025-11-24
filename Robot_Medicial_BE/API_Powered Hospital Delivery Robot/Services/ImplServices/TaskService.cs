@@ -648,5 +648,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     }).ToList()
             };
         }
+
+        public async Task<bool> UpdateStopStatusAsync(ulong taskId, ulong stopId, string newStatus)
+        {
+            var task = await _repo.GetByIdAsync(taskId);
+            if (task == null) throw new Exception("Task not found");
+
+            var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
+            if (stop == null) throw new Exception("Stop not found");
+
+            // ✔ CHỈ UPDATE STOP — KHÔNG ĐỤNG TỚI CompartmentAssignment
+            stop.Status = newStatus;
+            stop.UpdatedAt = DateTime.UtcNow;
+
+            // Nếu trạng thái delivered → chỉ update stop, không update compartments
+            // Vì ENUM khác nhau
+
+            await _repo.SaveChangesAsync();
+            return true;
+        }
     }
 }
