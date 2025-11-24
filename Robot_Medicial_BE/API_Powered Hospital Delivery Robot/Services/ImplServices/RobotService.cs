@@ -75,7 +75,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // map robot từ DTO
             var robot = _mapper.Map<Robot>(robotDto);
 
-            robot.Status = "completed";
+            robot.Status = "at_station";
             robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.UtcNow;
 
             // Lưu robot trước
