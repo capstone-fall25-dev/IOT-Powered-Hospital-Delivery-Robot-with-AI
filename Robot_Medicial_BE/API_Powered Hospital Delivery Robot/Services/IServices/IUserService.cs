@@ -1,32 +1,60 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
-using Microsoft.AspNetCore.Identity.Data;
 using Task = System.Threading.Tasks.Task;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
     public interface IUserService
     {
+        // Lấy danh sách người dùng (có thể lọc theo trạng thái hoạt động)
         Task<IEnumerable<UserResponseDto>> GetAllAsync(bool? isActive = null);
-        Task<UserResponseDto?> GetByIdAsync(ulong id); // Include Tasks & ActiveSessions
-        Task<UserStatusDto> GetUserStatusAsync(ulong id); // Real-time status
+
+        // Lấy thông tin chi tiết người dùng theo ID (có thể include Tasks & Sessions)
+        Task<UserResponseDto?> GetByIdAsync(ulong id);
+
+        // Lấy trạng thái thực tế của user (đang online/offline, session hiện tại...)
+        Task<UserStatusDto> GetUserStatusAsync(ulong id);
+
+        // Tạo mới người dùng (admin tạo hoặc đăng ký)
         Task<UserResponseDto> CreateAsync(UserDto userDto);
+
+        // Cập nhật thông tin người dùng
         Task<UserResponseDto?> UpdateAsync(ulong id, UserDto userDto);
+
+        // Kích hoạt / vô hiệu hóa tài khoản
         Task<bool> ToggleActiveAsync(ulong id, bool isActive);
 
-        // interface login, logout, verifil user
+        // Băm mật khẩu (dùng cho register và reset password)
         string HashPassword(string password);
 
+        // Thêm user trực tiếp vào DB (dùng trong register)
         Task AddUserAsync(User user);
+
+        // Lấy user theo email (dùng trong login, forgot password)
         Task<User?> GetByEmailAsync(string email);
+
+        // Cập nhật entity user (sau khi thay đổi)
         Task UpdateUserAsync(User user);
 
-        Task<string> RegisterAsync(Models.DTOs.RegisterRequest request);
+        // Đăng ký tài khoản mới (gửi OTP)
+        Task<string> RegisterAsync(RegisterRequest request);
+
+        // Xác thực OTP khi đăng ký
         Task<string> VerifyOtpAsync(VerifyOtpRequest request);
+
+        // Đăng nhập (trả về JWT token)
         Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context);
+
+        // Đăng xuất (xóa refresh token, session)
         Task<string> LogoutAsync(HttpContext context, string username);
-        Task<string> RequestForgotPasswordAsync(Models.DTOs.ForgotPasswordRequest request);
+
+        // Yêu cầu quên mật khẩu (gửi OTP qua email)
+        Task<string> RequestForgotPasswordAsync(ForgotPasswordRequest request);
+
+        // Xác thực OTP quên mật khẩu
         Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request);
+
+        // Admin reset mật khẩu người dùng (gửi mật khẩu mới qua email)
         Task<string> AdminResetPasswordAsync(string email);
     }
 }

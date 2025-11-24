@@ -1,13 +1,12 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize] 
     public class RoomsController : ControllerBase
     {
         private readonly IRoomService _service;
@@ -17,29 +16,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách phòng (include map)
+        // Lấy danh sách tất cả các phòng
         [HttpGet]
-       // // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAll()
         {
             var rooms = await _service.GetAllAsync();
             return Ok(rooms);
         }
 
-        // Lấy chi tiết phòng 
+        // Lấy thông tin chi tiết một phòng theo id
         [HttpGet("{id}")]
-       // // [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<RoomResponseDto>> GetById(ulong id)
         {
             var room = await _service.GetByIdAsync(id);
-            if (room == null) return NotFound();
-            return Ok(room);
+            return room == null
+                ? NotFound("Không tìm thấy phòng.")
+                : Ok(room);
         }
 
-        // Tạo phòng mới 
+        // Tạo phòng mới
         [HttpPost]
-        // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<RoomResponseDto>> Create(RoomDto roomDto)
+        public async Task<ActionResult<RoomResponseDto>> Create([FromBody] RoomDto roomDto)
         {
             try
             {
@@ -52,16 +49,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật phòng (location/map) - UC 25: Update Location Information (Map Management)
+        // Cập nhật thông tin phòng (số phòng, loại phòng, trạng thái...)
         [HttpPut("{id}")]
-        // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<RoomResponseDto>> Update(ulong id, RoomDto roomDto)
+        public async Task<ActionResult<RoomResponseDto>> Update(ulong id, [FromBody] RoomDto roomDto)
         {
             try
             {
                 var updated = await _service.UpdateAsync(id, roomDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
+                return updated == null
+                    ? NotFound("Không tìm thấy phòng để cập nhật.")
+                    : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -69,30 +66,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        // Xóa phòng (chỉ xóa khi không có bệnh nhân hoặc không có nhiệm vụ liên quan)
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(ulong id)
         {
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { message = "Xóa phòng thành công!" });
+                return Ok(new { message = "Đã xóa phòng thành công." });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        // Chuyển bệnh nhân từ phòng hiện tại sang phòng mới
         [HttpPatch("{id}/move-room")]
         public async Task<IActionResult> MoveRoom(ulong id, [FromBody] PatientMoveRoomDto dto)
         {
             try
             {
-                var updated = await _service.MoveRoomAsync(id, dto.NewRoomId);
+                var updatedPatient = await _service.MoveRoomAsync(id, dto.NewRoomId);
                 return Ok(new
                 {
                     message = "Chuyển phòng thành công!",
-                    patient = updated
+                    patient = updatedPatient
                 });
             }
             catch (InvalidOperationException ex)

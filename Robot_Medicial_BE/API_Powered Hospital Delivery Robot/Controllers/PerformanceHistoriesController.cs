@@ -6,6 +6,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize] 
     public class PerformanceHistoriesController : ControllerBase
     {
         private readonly IPerformanceHistoryService _service;
@@ -15,26 +16,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách lịch sử hiệu suất (lọc robotId) 
+        // Lấy danh sách lịch sử hiệu suất (có thể lọc theo robot)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PerformanceHistoryResponseDto>>> GetAll([FromQuery] ulong? robotId = null)
+        public async Task<ActionResult<IEnumerable<PerformanceHistoryResponseDto>>> GetAll(
+            [FromQuery] ulong? robotId = null)
         {
             var histories = await _service.GetAllAsync(robotId);
             return Ok(histories);
         }
 
-        // Lấy chi tiết lịch sử hiệu suất 
+        // Lấy chi tiết một bản ghi hiệu suất theo id
         [HttpGet("{id}")]
         public async Task<ActionResult<PerformanceHistoryResponseDto>> GetById(ulong id)
         {
             var history = await _service.GetByIdAsync(id);
-            if (history == null) return NotFound();
-            return Ok(history);
+            return history == null
+                ? NotFound("Không tìm thấy bản ghi hiệu suất.")
+                : Ok(history);
         }
 
-        // Tạo lịch sử hiệu suất (auto completion_date for test, integrate auto from task complete) 
+        // Tạo mới bản ghi hiệu suất (thường do robot hoặc hệ thống tự động ghi lại)
         [HttpPost]
-        public async Task<ActionResult<PerformanceHistoryResponseDto>> Create(PerformanceHistoryDto historyDto)
+        public async Task<ActionResult<PerformanceHistoryResponseDto>> Create([FromBody] PerformanceHistoryDto historyDto)
         {
             try
             {

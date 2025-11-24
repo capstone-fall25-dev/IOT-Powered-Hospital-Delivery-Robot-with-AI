@@ -1,7 +1,4 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Http;
-using System.Linq;
-using System.Threading.Tasks;
 
 public class SingleDeviceMiddleware
 {
@@ -21,9 +18,10 @@ public class SingleDeviceMiddleware
         {
             var token = authHeader.Substring("Bearer ".Length).Trim();
 
-            // Giải mã JWT để lấy username
+            // Giải mã JWT 
             var jwtHandler = new JwtSecurityTokenHandler();
             JwtSecurityToken? jwtToken = null;
+
             try
             {
                 jwtToken = jwtHandler.ReadJwtToken(token);
@@ -31,36 +29,35 @@ public class SingleDeviceMiddleware
             catch
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync("Invalid token format.");
+                await context.Response.WriteAsync("Định dạng mã thông báo không hợp lệ.");
                 return;
             }
 
-            var username = jwtToken?.Claims.FirstOrDefault(c =>
-                c.Type == "unique_name" || c.Type == "sub")?.Value;
+            var email = jwtToken?.Claims.FirstOrDefault(c => c.Type == "unique_name" || c.Type == "sub")?.Value;
 
-            if (!string.IsNullOrEmpty(username))
+            if (!string.IsNullOrEmpty(email))
             {
                 // Kiểm tra token trong session
-                var sessionToken = context.Session.GetString($"UserToken_{username}");
+                var sessionToken = context.Session.GetString($"UserToken_{email}");
 
-                // 🔹 Nếu session hết hạn hoặc chưa có
+                // Nếu session hết hạn hoặc chưa có
                 if (sessionToken == null)
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("Session expired due to inactivity (auto logout after 5 minutes).");
+                    await context.Response.WriteAsync("Phiên đã hết hạn do không hoạt động (tự động đăng xuất sau 5 phút).");
                     return;
                 }
 
-                // 🔹 Nếu đăng nhập từ thiết bị khác (token thay đổi)
+                // Nếu đăng nhập từ thiết bị khác (token thay đổi)
                 if (sessionToken != token)
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("You have been logged out because you logged in on another device.");
+                    await context.Response.WriteAsync("Bạn đã bị đăng xuất vì đã đăng nhập trên một thiết bị khác.");
                     return;
                 }
 
-                // 🔹 Nếu session còn hợp lệ → “chạm” lại session để reset IdleTimeout
-                context.Session.SetString($"UserToken_{username}", sessionToken);
+                // Nếu session còn hợp lệ → “chạm” lại session để reset IdleTimeout
+                context.Session.SetString($"UserToken_{email}", sessionToken);
             }
         }
 

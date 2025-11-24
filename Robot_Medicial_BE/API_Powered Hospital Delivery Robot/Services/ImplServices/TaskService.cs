@@ -733,16 +733,39 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
             if (stop == null) throw new Exception("Stop not found");
 
-            // ✔ CHỈ UPDATE STOP — KHÔNG ĐỤNG TỚI CompartmentAssignment
+            // Update stop status
             stop.Status = newStatus;
             stop.UpdatedAt = DateTime.UtcNow;
 
-            // Nếu trạng thái delivered → chỉ update stop, không update compartments
-            // Vì ENUM khác nhau
+            // ============================================================
+            // AUTO COMPLETE TASK NẾU TẤT CẢ STOP = delivered
+            // ============================================================
+            bool allDelivered = task.TaskStops.Any() &&
+                task.TaskStops.All(s =>
+                    string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
+
+            if (allDelivered)
+            {
+                task.Status = "completed";
+                task.UpdatedAt = DateTime.UtcNow;
+
+                // Robot về lại trạm
+                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                // Giải phóng khoang
+                foreach (var s in task.TaskStops)
+                {
+                    foreach (var a in s.CompartmentAssignments)
+                    {
+                        await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+                    }
+                }
+            }
 
             await _repo.SaveChangesAsync();
             return true;
         }
+
 
         public async Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId)
         {

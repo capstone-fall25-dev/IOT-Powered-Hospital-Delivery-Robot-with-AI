@@ -1,7 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -10,9 +8,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
 {
     public static class JwtHelper
     {
+        /// <summary>
+        /// Tạo JWT Token cho người dùng sau khi đăng nhập thành công
+        /// </summary>
+        /// <param name="user">Thông tin người dùng</param>
+        /// <param name="configuration">Cấu hình từ appsettings.json</param>
+        /// <returns>Chuỗi JWT Token</returns>
         public static string GenerateToken(User user, IConfiguration configuration)
         {
-            // Add information Claims
+            // Tạo các claim (thông tin đưa vào token)
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -22,15 +26,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 new Claim("CreatedAt", user.CreatedAt.ToString("O"))
             };
 
-            // Create ket for token
+            // Tạo key token
             var secretKey = configuration["Jwt:Secret"];
             if (string.IsNullOrEmpty(secretKey))
-                throw new Exception("JWT Secret key is missing in appsettings.json");
+                throw new Exception("Thiếu cấu hình JWT Secret Key trong appsettings.json");
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // create token 
+            // Tạo token 
             var token = new JwtSecurityToken(
                 issuer: configuration["Jwt:Issuer"],
                 audience: configuration["Jwt:Audience"],

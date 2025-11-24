@@ -6,6 +6,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize]
     public class PatientsController : ControllerBase
     {
         private readonly IPatientService _service;
@@ -15,31 +16,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // GET ALL
+        // Lấy danh sách tất cả bệnh nhân
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetAll()
         {
-            return Ok(await _service.GetAllAsync());
+            var patients = await _service.GetAllAsync();
+            return Ok(patients);
         }
 
-        // FILTER
+        // Tìm kiếm và lọc bệnh nhân theo nhiều tiêu chí
         [HttpPost("filter")]
-        public async Task<ActionResult<IEnumerable<PatientResponseDto>>> Filter(PatientFilterDto filter)
+        public async Task<ActionResult<IEnumerable<PatientResponseDto>>> Filter([FromBody] PatientFilterDto filter)
         {
-            return Ok(await _service.FilterAsync(filter));
+            var patients = await _service.FilterAsync(filter);
+            return Ok(patients);
         }
 
-        // GET BY ID
+        // Lấy thông tin chi tiết bệnh nhân theo id
         [HttpGet("{id}")]
         public async Task<ActionResult<PatientResponseDto>> GetById(ulong id)
         {
-            var res = await _service.GetByIdAsync(id);
-            return res == null ? NotFound() : Ok(res);
+            var patient = await _service.GetByIdAsync(id);
+            return patient == null
+                ? NotFound("Không tìm thấy bệnh nhân.")
+                : Ok(patient);
         }
 
-        // CREATE
+        // Tạo mới bệnh nhân (nhập viện)
         [HttpPost]
-        public async Task<ActionResult> Create(PatientCreateDto dto)
+        public async Task<ActionResult<PatientResponseDto>> Create([FromBody] PatientCreateDto dto)
         {
             try
             {
@@ -52,14 +57,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // UPDATE
+        // Cập nhật thông tin bệnh nhân
         [HttpPut("{id}")]
-        public async Task<ActionResult> Update(ulong id, PatientUpdateDto dto)
+        public async Task<ActionResult<PatientResponseDto>> Update(ulong id, [FromBody] PatientUpdateDto dto)
         {
             try
             {
                 var updated = await _service.UpdateAsync(id, dto);
-                return updated == null ? NotFound() : Ok(updated);
+                return updated == null
+                    ? NotFound("Không tìm thấy bệnh nhân để cập nhật.")
+                    : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -67,28 +74,51 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // DISCHARGE
+        // Xuất viện cho bệnh nhân
         [HttpPatch("{id}/discharge")]
         public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id, [FromBody] DischargeDto dto)
         {
-            var updated = await _service.DischargeAsync(id, dto.Reason);
-            if (updated == null) return NotFound();
-
-            return Ok(updated);
+            try
+            {
+                var updated = await _service.DischargeAsync(id, dto.Reason);
+                return updated == null
+                    ? NotFound("Không tìm thấy bệnh nhân để xuất viện.")
+                    : Ok(updated);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
-        // MEDICINE HISTORY
+        // Lấy lịch sử nhận thuốc của bệnh nhân (liên quan đến đơn thuốc và robot giao)
         [HttpGet("{id}/medicine-history")]
-        public async Task<ActionResult> History(ulong id)
+        public async Task<IActionResult> MedicineHistory(ulong id)
         {
-            return Ok(await _service.GetMedicineHistoryAsync(id));
+            try
+            {
+                var history = await _service.GetMedicineHistoryAsync(id);
+                return Ok(history);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
-        // REPORT
+        // Lấy báo cáo tổng hợp tình trạng bệnh nhân (có thể dùng cho bác sĩ)
         [HttpGet("{id}/report")]
-        public async Task<ActionResult> Report(ulong id)
+        public async Task<IActionResult> Report(ulong id)
         {
-            return Ok(await _service.GetReportAsync(id));
+            try
+            {
+                var report = await _service.GetReportAsync(id);
+                return Ok(report);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
     }
 }

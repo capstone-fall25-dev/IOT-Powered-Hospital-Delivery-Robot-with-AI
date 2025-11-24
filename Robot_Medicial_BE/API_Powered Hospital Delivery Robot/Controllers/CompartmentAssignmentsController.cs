@@ -1,13 +1,12 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize] 
     public class CompartmentAssignmentsController : ControllerBase
     {
         private readonly ICompartmentAssignmentService _service;
@@ -17,29 +16,29 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách ngăn chứa (lọc taskId/status) - UC 36: View list Compartment 
+        // Lấy danh sách phân khoang (có thể lọc theo nhiệm vụ và trạng thái)
         [HttpGet]
-        // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> GetAll([FromQuery] ulong? taskId = null, [FromQuery] string? status = null)
+        public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> GetAll(
+            [FromQuery] ulong? taskId = null,
+            [FromQuery] string? status = null)
         {
             var assignments = await _service.GetAllAsync(taskId, status);
             return Ok(assignments);
         }
 
-        // Lấy chi tiết ngăn chứa 
+        // Lấy thông tin chi tiết một phân khoang theo id
         [HttpGet("{id}")]
-      //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> GetById(ulong id)
         {
             var assignment = await _service.GetByIdAsync(id);
-            if (assignment == null) return NotFound();
-            return Ok(assignment);
+            return assignment == null
+                ? NotFound("Không tìm thấy phân khoang.")
+                : Ok(assignment);
         }
 
-        // Tạo hộp - UC 34: Compartment Creation
+        // Tạo mới phân khoang (gán thuốc vào khoang robot)
         [HttpPost]
-     //   [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Create(CompartmentAssignmentDto assignmentDto)
+        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Create([FromBody] CompartmentAssignmentDto assignmentDto)
         {
             try
             {
@@ -56,16 +55,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật hộp - UC 35: Update Compartment
+        // Cập nhật thông tin phân khoang
         [HttpPut("{id}")]
-      //  [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Update(ulong id, CompartmentAssignmentDto assignmentDto)
+        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Update(
+            ulong id,
+            [FromBody] CompartmentAssignmentDto assignmentDto)
         {
             try
             {
                 var updated = await _service.UpdateAsync(id, assignmentDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
+                return updated == null
+                    ? NotFound("Không tìm thấy phân khoang để cập nhật.")
+                    : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -77,16 +78,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Load item vào ngăn chứa (set status="loaded", validate pending/locked, log) 
+        // Xác nhận đã nạp thuốc vào khoang (khi nhân viên dược nạp thuốc cho robot)
         [HttpPatch("{id}/load")]
-    //    [Authorize(Roles = "admin, doctor, pharmacist")]
-        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Load(ulong id, LoadCompartmentDto loadDto)
+        public async Task<ActionResult<CompartmentAssignmentResponseDto>> Load(
+            ulong id,
+            [FromBody] LoadCompartmentDto loadDto)
         {
             try
             {
                 var loaded = await _service.LoadAsync(id, loadDto);
-                if (loaded == null) return NotFound();
-                return Ok(loaded);
+                return loaded == null
+                    ? NotFound("Không tìm thấy phân khoang để nạp thuốc.")
+                    : Ok(loaded);
             }
             catch (InvalidOperationException ex)
             {
@@ -94,15 +97,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Bulk load items vào ngăn chứa cho task (validate match count, log) 
+        // Nạp thuốc hàng loạt cho toàn bộ khoang của một nhiệm vụ (rất tiện khi chuẩn bị robot)
         [HttpPost("tasks/{taskId}/load-compartments")]
-       // [Authorize(Roles = "admin, doctor, pharmacist")]
-        public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> BulkLoad(ulong taskId, List<LoadCompartmentDto> loadDtos)
+        public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> BulkLoad(
+            ulong taskId,
+            [FromBody] List<LoadCompartmentDto> loadDtos)
         {
             try
             {
                 var loaded = await _service.BulkLoadForTaskAsync(taskId, loadDtos);
-                return Ok(loaded);
+                return Ok(new
+                {
+                    message = "Nạp thuốc cho toàn bộ khoang thành công.",
+                    data = loaded
+                });
             }
             catch (InvalidOperationException ex)
             {

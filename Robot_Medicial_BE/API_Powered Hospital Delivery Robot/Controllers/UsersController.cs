@@ -1,13 +1,13 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize] 
     public class UsersController : ControllerBase
     {
         private readonly IUserService _service;
@@ -17,34 +17,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả user (lọc theo isActive) - UC 8: View User List (User Management)
+        // Lấy danh sách người dùng (có thể lọc theo trạng thái hoạt động)
         [HttpGet]
-        // [Authorize(Roles = "admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAll([FromQuery] bool? isActive = null)
         {
             var users = await _service.GetAllAsync(isActive);
             return Ok(users);
         }
 
-        // Lấy thông tin chi tiết user
+        // Lấy thông tin chi tiết một người dùng theo id
         [HttpGet("{id}")]
-        // [Authorize]
         public async Task<ActionResult<UserResponseDto>> GetById(ulong id)
         {
             var user = await _service.GetByIdAsync(id);
-            if (user == null) return NotFound();
-            return Ok(user); // Include Tasks và ActiveSessions
+            return user == null
+                ? NotFound("Không tìm thấy người dùng.")
+                : Ok(user);
         }
 
-        // Xem trạng thái real-time của user
+        // Lấy trạng thái online/offline hoặc thông tin hoạt động của người dùng
         [HttpGet("{id}/status")]
-        // [Authorize]
         public async Task<ActionResult<UserStatusDto>> GetStatus(ulong id)
         {
             try
             {
                 var status = await _service.GetUserStatusAsync(id);
-                return Ok(status); // IsOnline, ActiveSessions, LastActivity
+                return Ok(status);
             }
             catch (InvalidOperationException ex)
             {
@@ -52,10 +50,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Tạo user mới - UC 5: Provide an account (User Management)
+        // Tạo người dùng mới
         [HttpPost]
-        // [Authorize(Roles = "admin")]
-        public async Task<ActionResult<UserResponseDto>> Create(UserDto userDto)
+        public async Task<ActionResult<UserResponseDto>> Create([FromBody] UserDto userDto)
         {
             try
             {
@@ -68,16 +65,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin user (email/fullname/role/password) - UC 6: Update user (User Management)
+        // Cập nhật thông tin người dùng
         [HttpPut("{id}")]
-        // [Authorize]
-        public async Task<ActionResult<UserResponseDto>> Update(ulong id, UserDto userDto)
+        public async Task<ActionResult<UserResponseDto>> Update(ulong id, [FromBody] UserDto userDto)
         {
             try
             {
                 var updated = await _service.UpdateAsync(id, userDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
+                return updated == null
+                    ? NotFound("Không tìm thấy người dùng để cập nhật.")
+                    : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -85,16 +82,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Kích hoạt user (set isActive=true) - UC 7: Activate/Deactivate User Account (User Management)
+        // Kích hoạt tài khoản người dùng
         [HttpPatch("{id}/activate")]
-        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> Activate(ulong id)
         {
             try
             {
                 var success = await _service.ToggleActiveAsync(id, true);
-                if (!success) return NotFound();
-                return NoContent();
+                return success
+                    ? NoContent()
+                    : NotFound("Không tìm thấy người dùng để kích hoạt.");
             }
             catch (InvalidOperationException ex)
             {
@@ -102,16 +99,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Vô hiệu hóa user (set isActive=false, protect admin) - UC7
+        // Vô hiệu hóa tài khoản người dùng
         [HttpPatch("{id}/deactivate")]
-        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> Deactivate(ulong id)
         {
             try
             {
                 var success = await _service.ToggleActiveAsync(id, false);
-                if (!success) return NotFound();
-                return NoContent();
+                return success
+                    ? NoContent()
+                    : NotFound("Không tìm thấy người dùng để vô hiệu hóa.");
             }
             catch (InvalidOperationException ex)
             {

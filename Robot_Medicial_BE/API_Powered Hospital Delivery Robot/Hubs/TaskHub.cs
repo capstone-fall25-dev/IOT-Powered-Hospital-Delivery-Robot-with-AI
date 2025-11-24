@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using System.Text.RegularExpressions;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
@@ -7,14 +6,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
     {
         public override async Task OnConnectedAsync()
         {
-            Console.WriteLine($"📡 [TaskHub] Client connected: {Context.ConnectionId}");
-            await Clients.Caller.SendAsync("ConnectedToTaskHub", new { message = "Connected to TaskHub successfully" });
+            Console.WriteLine($"📡 [TaskHub] Thiết bị kết nối: {Context.ConnectionId}");
+            await Clients.Caller.SendAsync("ConnectedToTaskHub", new { message = "Kết nối tới TaskHub thành công" });
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? ex)
         {
-            Console.WriteLine($"⚡ [TaskHub] Client disconnected: {Context.ConnectionId}, Reason: {ex?.Message}");
+            Console.WriteLine($"⚡ [TaskHub] Thiết bị ngắt kết nối: {Context.ConnectionId}, Lý do: {ex?.Message}");
             await base.OnDisconnectedAsync(ex);
         }
 
@@ -22,13 +21,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         public async Task JoinRobotGroup(string robotCode)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, robotCode);
-            Console.WriteLine($"👥 Client {Context.ConnectionId} joined group {robotCode}");
+            Console.WriteLine($"👥 Client {Context.ConnectionId} đã tham gia nhóm {robotCode}");
         }
 
         public async Task LeaveRobotGroup(string robotCode)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, robotCode);
-            Console.WriteLine($"👋 Client {Context.ConnectionId} left group {robotCode}");
+            Console.WriteLine($"👋 Client {Context.ConnectionId} đã rời nhóm {robotCode}");
         }
     }
 }

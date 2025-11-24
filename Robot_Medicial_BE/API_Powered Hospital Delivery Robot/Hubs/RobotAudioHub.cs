@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
@@ -8,13 +6,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
     {
         public override Task OnConnectedAsync()
         {
-            Console.WriteLine($"[RobotAudioHub] Client connected: {Context.ConnectionId}");
+            Console.WriteLine($"[RobotAudioHub] Client đã kết nối: {Context.ConnectionId}");
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            Console.WriteLine($"[RobotAudioHub] Client disconnected: {Context.ConnectionId}");
+            Console.WriteLine($"[RobotAudioHub] Client bị ngắt kết nối: {Context.ConnectionId}");
             return base.OnDisconnectedAsync(exception);
         }
 

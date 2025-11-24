@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Threading.Tasks;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
     /// <summary>
-    /// 🧠 Hub trung tâm giao tiếp thời gian thực giữa Robot - Backend - Client UI
+    /// 🧠 Hub trung tâm giao tiếp thời gian thực giữa Robot - Backend - Giao diện người dùng
     /// </summary>
     public class RobotPositionHub : Hub
     {
@@ -13,7 +11,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         public override async Task OnConnectedAsync()
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"✅ [SignalR] Client connected: {Context.ConnectionId}");
+            Console.WriteLine($"✅ [SignalR] Thiết bị đã kết nối: {Context.ConnectionId}");
             Console.ResetColor();
             await base.OnConnectedAsync();
         }
@@ -22,27 +20,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"⚠️ [SignalR] Client disconnected: {Context.ConnectionId}");
+            Console.WriteLine($"⚠️ [SignalR] Thiết bị ngắt kết nối: {Context.ConnectionId}");
             if (exception != null)
-                Console.WriteLine($"   → Reason: {exception.Message}");
+                Console.WriteLine($" → Lý do: {exception.Message}");
             Console.ResetColor();
             await base.OnDisconnectedAsync(exception);
         }
 
         /// <summary>
-        /// 📡 Gửi dữ liệu vị trí robot (x, y, theta)
+        /// 📡 Gửi dữ liệu vị trí robot (x, y, theta) đến tất cả client
         /// </summary>
         public async Task BroadcastPosition(object position)
         {
             try
             {
                 await Clients.All.SendAsync("ReceivePosition", position);
-                Console.WriteLine($"📍 [Broadcast] Position: {System.Text.Json.JsonSerializer.Serialize(position)}");
+                Console.WriteLine($"📍 [Broadcast] Vị trí robot: {System.Text.Json.JsonSerializer.Serialize(position)}");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ [BroadcastPosition] Error: {ex.Message}");
+                Console.WriteLine($"❌ [BroadcastPosition] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
@@ -55,12 +53,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             try
             {
                 await Clients.All.SendAsync("ReceiveCompartmentSignal", signal);
-                Console.WriteLine($"📦 [Broadcast] Compartment Signal: {System.Text.Json.JsonSerializer.Serialize(signal)}");
+                Console.WriteLine($"📦 [Broadcast] Tín hiệu ngăn thuốc: {System.Text.Json.JsonSerializer.Serialize(signal)}");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ [BroadcastCompartmentSignal] Error: {ex.Message}");
+                Console.WriteLine($"❌ [BroadcastCompartmentSignal] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
@@ -73,12 +71,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             try
             {
                 await Clients.All.SendAsync("ReceiveRobotCommand", command);
-                Console.WriteLine($"🧩 [Broadcast] Robot Command: {System.Text.Json.JsonSerializer.Serialize(command)}");
+                Console.WriteLine($"🧩 [Broadcast] Lệnh robot: {System.Text.Json.JsonSerializer.Serialize(command)}");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ [BroadcastRobotCommand] Error: {ex.Message}");
+                Console.WriteLine($"❌ [BroadcastRobotCommand] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
@@ -91,41 +89,41 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             try
             {
                 await Clients.All.SendAsync("ReceiveMotorCommand", command);
-                Console.WriteLine($"🕹️ [Broadcast] Motor Command: {System.Text.Json.JsonSerializer.Serialize(command)}");
+                Console.WriteLine($"🕹️ [Broadcast] Lệnh động cơ: {System.Text.Json.JsonSerializer.Serialize(command)}");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ [BroadcastMotorCommand] Error: {ex.Message}");
+                Console.WriteLine($"❌ [BroadcastMotorCommand] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
 
-        // ✅ Bổ sung mới: gửi list điểm đến xuống robot
+        // Gửi danh sách điểm đến (lộ trình giao thuốc) xuống robot
         public async Task BroadcastDestinationRoute(object route)
         {
             try
             {
                 await Clients.All.SendAsync("ReceiveDestinationRoute", route);
                 Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"🧭 [Broadcast] Destination Route: {System.Text.Json.JsonSerializer.Serialize(route)}");
+                Console.WriteLine($"🧭 [Broadcast] Lộ trình điểm đến: {System.Text.Json.JsonSerializer.Serialize(route)}");
                 Console.ResetColor();
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ [BroadcastDestinationRoute] Error: {ex.Message}");
+                Console.WriteLine($"❌ [BroadcastDestinationRoute] Lỗi: {ex.Message}");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 👥 Tham gia nhóm (ví dụ robot theo id)
+        /// 👥 Tham gia vào một nhóm (ví dụ: nhóm theo mã robot hoặc phòng bệnh)
         /// </summary>
         public async Task JoinGroup(string groupName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            Console.WriteLine($"👥 Client {Context.ConnectionId} joined group '{groupName}'");
+            Console.WriteLine($"👥 Client {Context.ConnectionId} đã tham gia nhóm '{groupName}'");
         }
 
         /// <summary>
@@ -134,7 +132,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         public async Task LeaveGroup(string groupName)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
-            Console.WriteLine($"🚪 Client {Context.ConnectionId} left group '{groupName}'");
+            Console.WriteLine($"🚪 Client {Context.ConnectionId} đã rời nhóm '{groupName}'");
         }
     }
 }

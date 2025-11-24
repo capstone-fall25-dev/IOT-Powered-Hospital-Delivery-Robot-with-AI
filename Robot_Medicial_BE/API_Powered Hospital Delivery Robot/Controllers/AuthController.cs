@@ -2,10 +2,8 @@
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -20,64 +18,78 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _userService = userService;
         }
 
+        // Tạo tài khoản mới (gửi OTP qua email/sms)
         [HttpPost("provide-account")]
+        [AllowAnonymous]
         public async Task<IActionResult> ProvideAccount([FromBody] RegisterRequest request)
         {
             var result = await _userService.RegisterAsync(request);
-            return Ok(result);
+            return Ok(new { message = result });
         }
 
+        // Xác thực OTP để kích hoạt tài khoản
         [HttpPatch("verify-otp")]
+        [AllowAnonymous]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
         {
             var result = await _userService.VerifyOtpAsync(request);
-            return Ok(result);
+            return Ok(new { message = result });
         }
 
+        // Đăng nhập hệ thống
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
             var (token, message) = await _userService.LoginAsync(request, HttpContext);
+
             if (string.IsNullOrEmpty(token))
                 return Unauthorized(new { message });
 
             return Ok(new { token, message });
         }
 
+        // Đăng xuất (xóa session token)
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout([FromQuery] string username)
+        public async Task<IActionResult> Logout()
         {
+            var username = User.FindFirst(ClaimTypes.Name)?.Value
+                        ?? User.FindFirst("unique_name")?.Value;
+
             var result = await _userService.LogoutAsync(HttpContext, username);
             return Ok(new { message = result });
         }
 
+        // Yêu cầu quên mật khẩu (gửi OTP đặt lại)
         [HttpPost("forgot-password")]
+        [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             var result = await _userService.RequestForgotPasswordAsync(request);
             return Ok(new { message = result });
         }
 
+        // Xác nhận OTP và đặt lại mật khẩu
         [HttpPost("verify-forgot-password")]
+        [AllowAnonymous]
         public async Task<IActionResult> VerifyForgotPassword([FromBody] VerifyForgotPasswordRequest request)
         {
             var result = await _userService.VerifyForgotPasswordAsync(request);
             return Ok(new { message = result });
         }
 
+        // Kiểm tra trạng thái đăng nhập (chống login nhiều nơi)
         [HttpGet("check-login-status")]
         [Authorize]
         public async Task<IActionResult> CheckLoginStatus()
         {
-            // 1️. Lấy token từ header
-            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            var authHeader = Request.Headers.Authorization.FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return Unauthorized(new { Message = "Thiếu hoặc sai định dạng Authorization header." });
+                return Unauthorized(new { message = "Thiếu hoặc sai định dạng token." });
 
-            var token = authHeader.Substring("Bearer ".Length).Trim();
+            var token = authHeader["Bearer ".Length..].Trim();
 
-            // 2️. Đọc token để lấy email (dùng email làm key session)
             JwtSecurityToken jwtToken;
             try
             {
@@ -85,48 +97,65 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
             catch
             {
-                return Unauthorized(new { Message = "Token không hợp lệ." });
+                return Unauthorized(new { message = "Token không hợp lệ." });
             }
 
             var email = jwtToken.Claims.FirstOrDefault(c =>
-                                 c.Type == ClaimTypes.Email ||
-                                 c.Type == "email" ||
-                                 c.Type == "unique_name" ||
-                                 c.Type == "sub" ||
-                                 c.Type == ClaimTypes.Name)?.Value;
+                c.Type == ClaimTypes.Email ||
+                c.Type == "email" ||
+                c.Type == "unique_name" ||
+                c.Type == "sub")?.Value;
 
             if (string.IsNullOrEmpty(email))
-                return Unauthorized(new { Message = "Token không hợp lệ — không tìm thấy email." });
+                return Unauthorized(new { message = "Token không chứa thông tin người dùng." });
 
-            // 3️. Kiểm tra session theo email
+            // Kiểm tra session hiện tại
             var sessionToken = HttpContext.Session.GetString($"UserToken_{email}");
             if (sessionToken == null)
-                return Unauthorized(new { Message = "Phiên đăng nhập đã hết hạn hoặc người dùng chưa đăng nhập." });
+                return Unauthorized(new { message = "Phiên đăng nhập đã hết hạn." });
 
             if (sessionToken != token)
-                return Unauthorized(new { Message = "Token không khớp — người dùng đã đăng nhập ở nơi khác." });
+                return Unauthorized(new { message = "Bạn đã bị đăng xuất do đăng nhập ở nơi khác." });
 
-            // 4️. Lấy thông tin user từ DB (tùy chọn)
             var user = await _userService.GetByEmailAsync(email);
             if (user == null)
-                return Unauthorized(new { Message = "Không tìm thấy người dùng." });
+                return Unauthorized(new { message = "Tài khoản không tồn tại." });
 
-            // 5️. Thành công
             return Ok(new
             {
-                Message = "Người dùng đã đăng nhập và token hợp lệ.",
-                Email = email,
-                Username = user.FullName,
-                Token = token
+                message = "Đăng nhập hợp lệ.",
+                email = email,
+                fullName = user.FullName,
+                role = user.Role,
+                token
             });
         }
 
+        // Admin reset mật khẩu người dùng (chỉ admin mới được dùng)
         [HttpPost("admin-reset-password")]
-        // [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> AdminResetPassword([FromQuery] string email)
         {
+            if (string.IsNullOrWhiteSpace(email))
+                return BadRequest(new { message = "Email không được để trống." });
+
             var result = await _userService.AdminResetPasswordAsync(email);
             return Ok(new { message = result });
+        }
+
+        // Lấy UserId hiện tại từ JWT (dùng chung toàn dự án)
+        private ulong GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(claim =>
+                claim.Type == ClaimTypes.NameIdentifier ||
+                claim.Type == "userId" ||
+                claim.Type == "sub" ||
+                claim.Type == "id");
+
+            if (userIdClaim == null || !ulong.TryParse(userIdClaim.Value, out ulong userId))
+                return 1;
+
+            return userId;
         }
     }
 }

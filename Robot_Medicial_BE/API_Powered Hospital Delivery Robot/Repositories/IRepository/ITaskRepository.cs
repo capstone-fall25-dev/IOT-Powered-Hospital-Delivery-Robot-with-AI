@@ -6,36 +6,58 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 {
     public interface ITaskRepository
     {
-        // List nhẹ dành cho TaskListItemDto
+        // Lấy danh sách task (dạng nhẹ, có thể lọc)
         Task<IEnumerable<Models.Entities.Task>> GetListAsync(TaskFilterDto? filter);
 
-        // Detail đầy đủ
+        // Lấy chi tiết một task theo ID
         Task<Models.Entities.Task?> GetByIdAsync(ulong id);
 
+        // Tạo task mới
         Task<Models.Entities.Task> CreateAsync(Models.Entities.Task task);
+
+        // Cập nhật task theo ID
         Task<Models.Entities.Task?> UpdateAsync(ulong id, Models.Entities.Task task);
+
+        // Xóa task theo ID
         Task<bool> DeleteAsync(ulong id);
 
+        // Tạo mới một điểm dừng của task
         Task<TaskStop> CreateStopAsync(TaskStop stop);
+
+        // Tạo phân bổ ngăn chứa cho task
         Task<CompartmentAssignment> CreateAssignmentAsync(CompartmentAssignment assignment);
 
-        // Helpers
+        // Lấy thông tin robot theo ID
         Task<Robot?> GetRobotAsync(ulong id);
+
+        // Lấy thông tin bản đồ theo ID
         Task<Map?> GetMapAsync(ulong id);
+
+        // Lấy thông tin ngăn chứa của robot
         Task<RobotCompartment?> GetCompartmentAsync(ulong id);
+
+        // Kiểm tra ngăn chứa đang được dùng chưa
         Task<bool> IsCompartmentBusyAsync(ulong id);
 
+        // Lấy đơn thuốc mới nhất của bệnh nhân
         Task<Prescription?> GetLatestPrescriptionForPatientAsync(ulong patientId);
+
+        // Lấy đơn thuốc theo mã code
         Task<Prescription?> GetPrescriptionByCodeAsync(string code);
 
+        // Cập nhật trạng thái robot
         System.Threading.Tasks.Task UpdateRobotStatusAsync(ulong robotId, string status);
 
+        // Bắt đầu transaction
         Task<IDbContextTransaction> BeginTransactionAsync();
 
+        // Lưu thay đổi vào database
         Task<int> SaveChangesAsync();
 
+        // Lấy task kèm danh sách các điểm dừng
         Task<Models.Entities.Task?> GetTaskWithStopsAsync(ulong taskId);
-        Task<Map?> GetMapByTaskIdAsync(ulong taskId);
 
+        // Lấy bản đồ liên quan đến task
+        Task<Map?> GetMapByTaskIdAsync(ulong taskId);
     }
 }

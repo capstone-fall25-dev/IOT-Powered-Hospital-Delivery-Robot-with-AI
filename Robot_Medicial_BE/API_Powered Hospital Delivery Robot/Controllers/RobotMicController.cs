@@ -1,9 +1,7 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -30,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public async Task<IActionResult> SendChunk([FromBody] AudioChunkDto req)
         {
             if (string.IsNullOrWhiteSpace(req.Audio_b64))
-                return BadRequest("Audio_b64 is required");
+                return BadRequest("Audio_b64 là bắt buộc và không được để trống.");
 
             try
             {
@@ -45,7 +43,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to send robot mic chunk");
+                _logger.LogError(ex, "Lỗi khi chuyển tiếp audio chunk từ robot");
                 return StatusCode(500, new { error = ex.Message });
             }
         }
