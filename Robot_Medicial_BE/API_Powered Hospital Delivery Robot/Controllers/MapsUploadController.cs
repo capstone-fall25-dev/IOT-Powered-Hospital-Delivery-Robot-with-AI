@@ -11,7 +11,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class MapsUploadController : ControllerBase
     {
         private readonly IMapUploadService _uploadService;
