@@ -107,5 +107,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             _context.RobotCompartments.AddRange(compartments);
             await _context.SaveChangesAsync();
         }
+
+        public async System.Threading.Tasks.Task DeleteByRobotIdAsync(ulong robotId)
+        {
+            var compartments = await _context.RobotCompartments
+                .Where(rc => rc.RobotId == robotId)
+                .ToListAsync();
+
+            if (compartments.Any())
+            {
+                _context.RobotCompartments.RemoveRange(compartments);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

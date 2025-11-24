@@ -39,7 +39,7 @@ import CreateRobot from "@/pages/CreateRobot";
 import RobotDetail from "@/pages/RobotDetail";
 import RobotMissionHistory from "@/pages/MissionHistory";
 import RobotDetailMisson from "@/pages/RobotDetailMisson";
-
+import RobotEdit from "@/pages/RobotEdit";
 
 import RobotDashBoard from "@/pages/RobotDashBoard";
 import AddTask from "@/pages/AddTask";
@@ -106,6 +106,7 @@ const routes = [
   { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
 
   { path: "/compartment-categories", element: <MainLayout><CompartmentCategoryManager /></MainLayout> },
+  { path: "/robot-edit/:id", element: <MainLayout><RobotEdit /></MainLayout> },
 ];
 
 export default routes;

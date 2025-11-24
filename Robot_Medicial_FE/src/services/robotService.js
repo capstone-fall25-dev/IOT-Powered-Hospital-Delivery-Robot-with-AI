@@ -47,3 +47,9 @@ export const getAvailableRobots = async () => {
     const res = await axios.get(`${BASE_URL}/available`);
     return res.data;
 };
+
+// 4. CẬP NHẬT ROBOT (PUT) - DÙNG CHO TRANG CHỈNH SỬA
+export const updateRobot = async (id, robotDto) => {
+    const res = await axios.put(`${BASE_URL}/${id}`, robotDto);
+    return res.data;
+};

@@ -21,5 +21,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<Robot?> UpdatePositionAsync(ulong id, decimal lat, decimal lng);
         Task<Robot?> AssignMapToRobotAsync(ulong robotId, ulong mapId);
 
+        Task<Robot> UpdateAsync(Robot robot);
+       
+
+
     }
 }

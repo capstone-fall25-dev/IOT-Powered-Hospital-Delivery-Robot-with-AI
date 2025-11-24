@@ -12,6 +12,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId);
         Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto positionDto);
 
+        Task<RobotResponseDto> UpdateAsync(ulong robotId, UpdateRobotDto updateDto);
+
+
         // ✅ ROS gửi status (theo Code)
         Task<RobotResponseDto?> UpdateStatusAsync(RobotStatusUpdateDto dto);
     }
