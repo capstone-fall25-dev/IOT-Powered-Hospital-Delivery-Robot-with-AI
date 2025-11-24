@@ -32,7 +32,6 @@ public partial class Destination
     [Column("y")]
     public float? Y { get; set; }
 
-    // 🧭 Thêm khóa ngoại mapId
     [Column("map_id")]
     public ulong? MapId { get; set; }
 

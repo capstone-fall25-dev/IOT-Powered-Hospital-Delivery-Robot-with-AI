@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -28,7 +29,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// </summary>
         public class CompartmentSignalRequest
         {
+            [Required(ErrorMessage = "CompartmentId là bắt buộc")]
             public ulong CompartmentId { get; set; }
+
+            [Required(ErrorMessage = "Action là bắt buộc")]
             public string? Action { get; set; } // "open" hoặc "close"
         }
 
@@ -39,27 +43,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public async Task<IActionResult> SendCompartmentSignal([FromBody] CompartmentSignalRequest req)
         {
             if (req.CompartmentId == 0)
-                return BadRequest("CompartmentId is required");
+                return BadRequest("CompartmentId là bắt buộc");
 
             if (string.IsNullOrWhiteSpace(req.Action))
-                return BadRequest("Action must be 'open' or 'close'");
+                return BadRequest("Action là bắt buộc (open hoặc close).");
 
             string action = req.Action.Trim().ToLower();
 
             if (action is not ("open" or "close"))
-                return BadRequest("Invalid action: must be 'open' or 'close'");
+                return BadRequest("Action không hợp lệ. Chỉ chấp nhận: 'open' hoặc 'close'.");
 
             try
             {
-                // 1️⃣ Cập nhật trạng thái trong DB
+                // 1. Cập nhật trạng thái trong DB
                 var compartment = action == "open"
                     ? await _service.OpenCompartmentAsync(req.CompartmentId)
                     : await _service.CloseCompartmentAsync(req.CompartmentId);
 
                 if (compartment == null)
-                    return NotFound($"Compartment with ID={req.CompartmentId} not found.");
+                    return NotFound($"Không tìm thấy ngăn chứa có ID = {req.CompartmentId}.");
 
-                // 2️⃣ Gửi tín hiệu tới ROS2 qua SignalR
+                // 2️. Gửi tín hiệu tới ROS2 qua SignalR
                 var signalData = new
                 {
                     type = "compartment_control",
@@ -71,7 +75,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 await _hubContext.Clients.All.SendAsync("ReceiveCompartmentSignal", signalData);
                 _logger.LogInformation("📦 Sent compartment signal: {Code} => {Action}", compartment.CompartmentCode, action.ToUpper());
 
-                // 3️⃣ Trả về kết quả
+                // 3. Trả về kết quả thành công
                 return Ok(new
                 {
                     status = "sent",
@@ -91,10 +95,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Internal error while sending compartment signal");
+                _logger.LogError(ex, "Lỗi nghiêm trọng khi gửi tín hiệu mở/đóng khoang thuốc");
                 return StatusCode(500, new
                 {
-                    error = "Internal server error",
+                    error = "Lỗi hệ thống khi điều khiển khoang thuốc.",
                     message = ex.Message
                 });
             }

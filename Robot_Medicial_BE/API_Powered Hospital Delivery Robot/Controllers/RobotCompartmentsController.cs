@@ -1,12 +1,11 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
-using API_Powered_Hospital_Delivery_Robot.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
+﻿using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize]
     public class RobotCompartmentsController : ControllerBase
     {
         private readonly IRobotCompartmentService _service;
@@ -17,7 +16,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         [HttpGet("category/{categoryId}/robot/{robotId}")]
-        public async Task<IActionResult> GetByCategoryAndRobot([FromRoute] ulong categoryId, [FromRoute] ulong robotId)
+        public async Task<IActionResult> GetByCategoryAndRobot(
+            [FromRoute] ulong categoryId, 
+            [FromRoute] ulong robotId)
         {
             var result = await _service.GetByCategoryAndRobotAsync(categoryId, robotId);
             if (!result.Any())
@@ -33,12 +34,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var result = await _service.GetByRobotAsync(robotId);
 
             if (!result.Any())
-                return NotFound($"Robot ID = {robotId} không có compartment nào.");
+                return NotFound($"Robot ID = {robotId} không có ngăn chứa nào được cấu hình.");
 
             return Ok(result);
         }
-
-        // ==== API MỚI DÙNG CHO TẠO TASK ====
 
         // Lấy tất cả compartment unlocked của robot
         [HttpGet("robot/{robotId}/all")]
@@ -51,7 +50,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         // Lấy compartment unlocked + filter category
         [HttpGet("robot/{robotId}/category/{categoryId}")]
         public async Task<IActionResult> GetFilteredByCategory(
-            ulong robotId, ulong categoryId)
+            ulong robotId, 
+            ulong categoryId)
         {
             var result = await _service.GetFilteredByRobotAsync(robotId, categoryId);
             return Ok(result);

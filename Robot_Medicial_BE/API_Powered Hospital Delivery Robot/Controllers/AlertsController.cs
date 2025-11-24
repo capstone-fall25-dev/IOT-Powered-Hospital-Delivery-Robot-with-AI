@@ -1,12 +1,12 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize]
     public class AlertsController : ControllerBase
     {
         private readonly IAlertService _service;
@@ -16,26 +16,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách cảnh báo (lọc robotId/status/severity/prescriptionItemId)
+        // Lấy danh sách cảnh báo (có thể lọc theo robot, trạng thái, mức độ nghiêm trọng, mục thuốc...)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AlertResponseDto>>> GetAll([FromQuery] ulong? robotId = null, [FromQuery] string? status = null, [FromQuery] string? severity = null, [FromQuery] ulong? prescriptionItemId = null)
+        public async Task<ActionResult<IEnumerable<AlertResponseDto>>> GetAll(
+            [FromQuery] ulong? robotId = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? severity = null,
+            [FromQuery] ulong? prescriptionItemId = null)
         {
             var alerts = await _service.GetAllAsync(robotId, status, severity, prescriptionItemId);
             return Ok(alerts);
         }
 
-        // Lấy chi tiết cảnh báo 
+        // Lấy chi tiết một cảnh báo theo id
         [HttpGet("{id}")]
         public async Task<ActionResult<AlertResponseDto>> GetById(ulong id)
         {
             var alert = await _service.GetByIdAsync(id);
-            if (alert == null) return NotFound();
-            return Ok(alert);
+            return alert == null
+                ? NotFound("Không tìm thấy cảnh báo.")
+                : Ok(alert);
         }
 
-        // Tạo cảnh báo mới (auto created_at)
+        // Tạo cảnh báo mới (thường do robot hoặc hệ thống tự động sinh)
         [HttpPost]
-        public async Task<ActionResult<AlertResponseDto>> Create(AlertDto alertDto)
+        public async Task<ActionResult<AlertResponseDto>> Create([FromBody] AlertDto alertDto)
         {
             try
             {
@@ -48,15 +53,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật cảnh báo (e.g., resolve, set resolved_at)
+        // Cập nhật cảnh báo (ví dụ: xác nhận đã xử lý, thay đổi trạng thái)
         [HttpPut("{id}")]
-        public async Task<ActionResult<AlertResponseDto>> Update(ulong id, AlertDto alertDto)
+        public async Task<ActionResult<AlertResponseDto>> Update(ulong id, [FromBody] AlertDto alertDto)
         {
             try
             {
                 var updated = await _service.UpdateAsync(id, alertDto);
-                if (updated == null) return NotFound();
-                return Ok(updated);
+                return updated == null
+                    ? NotFound("Không tìm thấy cảnh báo để cập nhật.")
+                    : Ok(updated);
             }
             catch (InvalidOperationException ex)
             {

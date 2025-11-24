@@ -1,21 +1,23 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
-     public class RobotAudioHub : Hub
+    public class RobotAudioHub : Hub
     {
         public override Task OnConnectedAsync()
         {
-            Console.WriteLine($"[RobotAudioHub] Client connected: {Context.ConnectionId}");
+            Console.WriteLine($"[RobotAudioHub] Thiết bị kết nối: {Context.ConnectionId}");
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            Console.WriteLine($"[RobotAudioHub] Client disconnected: {Context.ConnectionId}");
+            Console.WriteLine($"[RobotAudioHub] Thiết bị ngắt kết nối: {Context.ConnectionId}");
+            if (exception != null)
+            {
+                Console.WriteLine($"Lý do ngắt: {exception.Message}");
+            }
             return base.OnDisconnectedAsync(exception);
         }
 
@@ -56,5 +58,5 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             // Python đang nghe event "ReceiveAudioChunk"
             await Clients.Others.SendAsync("ReceiveAudioChunk", msg);
         }
-        }
+    }
 }
