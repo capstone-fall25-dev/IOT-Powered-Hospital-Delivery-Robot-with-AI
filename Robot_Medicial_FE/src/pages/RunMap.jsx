@@ -46,6 +46,24 @@ export default function RobotRunMap() {
   const webRtcSignalConnRef = useRef(null);
 
   // ===================================
+  // 🔊 AUDIO STATE – Mic Web ↔ Robot (kiểu cũ)
+  // ===================================
+  const [isWebMicOn, setIsWebMicOn] = useState(false);
+  const [webMicStatus, setWebMicStatus] = useState("Mic web đang tắt.");
+  const [robotMicConnected, setRobotMicConnected] = useState(false);
+  const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
+
+  const webAudioContextRef = useRef(null);
+  const webScriptNodeRef = useRef(null);
+  const webMediaStreamRef = useRef(null);
+  const webSourceNodeRef = useRef(null);
+
+  const robotAudioContextRef = useRef(null);
+  const robotAudioConnRef = useRef(null);
+  const robotPlaybackTimeRef = useRef(0);
+  const robotGainNodeRef = useRef(null);
+
+  // ===================================
   // 🔗 SIGNALR (position + camera)
   // ===================================
   useEffect(() => {
@@ -135,6 +153,8 @@ export default function RobotRunMap() {
   useEffect(() => {
     return () => {
       stopWebRtcCall();
+      stopWebMic();
+      disconnectRobotMic();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -398,6 +418,207 @@ export default function RobotRunMap() {
     if (dest) loadNavigationMapForDestination(dest);
   }
 
+  // =========================================================
+  // MIC WEB → ROBOT (kiểu cũ, SendChunk)
+  // =========================================================
+  function floatTo16BitPCM(float32Array) {
+    const len = float32Array.length;
+    const out = new Int16Array(len);
+    for (let i = 0; i < len; i++) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return out;
+  }
+
+  async function startWebMic() {
+    if (isWebMicOn) return;
+
+    try {
+      setWebMicStatus("Đang xin quyền micro...");
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+
+      webMediaStreamRef.current = stream;
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      await audioCtx.resume();
+
+      webAudioContextRef.current = audioCtx;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      webSourceNodeRef.current = source;
+
+      const scriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
+      webScriptNodeRef.current = scriptNode;
+
+      scriptNode.onaudioprocess = (event) => {
+        const chunk = event.inputBuffer.getChannelData(0);
+        const pcm16 = floatTo16BitPCM(chunk);
+        const bytes = new Uint8Array(pcm16.buffer);
+
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+
+        const payload = {
+          Audio_b64: btoa(binary),
+          SampleRate: 48000,
+          Channels: 1,
+          StreamId: "mic_main",
+          Timestamp: Date.now(),
+        };
+
+        fetch(`${API_CONFIG.API_BASE1}/api/RobotAudio/SendChunk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch(() => {});
+      };
+
+      source.connect(scriptNode);
+      scriptNode.connect(audioCtx.destination);
+
+      setIsWebMicOn(true);
+      setWebMicStatus("Mic web đang bật...");
+    } catch (err) {
+      console.error(err);
+      setWebMicStatus("Không thể bật mic.");
+    }
+  }
+
+  function stopWebMic() {
+    const scriptNode = webScriptNodeRef.current;
+    if (scriptNode) {
+      scriptNode.disconnect();
+      scriptNode.onaudioprocess = null;
+      webScriptNodeRef.current = null;
+    }
+
+    const source = webSourceNodeRef.current;
+    if (source) {
+      source.disconnect();
+      webSourceNodeRef.current = null;
+    }
+
+    const audioCtx = webAudioContextRef.current;
+    if (audioCtx) {
+      audioCtx.close();
+      webAudioContextRef.current = null;
+    }
+
+    const stream = webMediaStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      webMediaStreamRef.current = null;
+    }
+
+    setIsWebMicOn(false);
+    setWebMicStatus("Mic web đang tắt.");
+  }
+
+  // =========================================================
+  // ROBOT MIC → WEB (kiểu cũ, ReceiveRobotMicChunk)
+  // =========================================================
+  function base64Pcm16ToFloat32(b64) {
+    const bin = atob(b64);
+    const len = bin.length / 2;
+    const out = new Float32Array(len);
+    for (let i = 0; i < len; i++) {
+      let lo = bin.charCodeAt(i * 2);
+      let hi = bin.charCodeAt(i * 2 + 1);
+      let v = (hi << 8) | lo;
+      if (v >= 0x8000) v -= 0x10000;
+      out[i] = v / 0x8000;
+    }
+    return out;
+  }
+
+  function scheduleRobotAudio(float32Data, sampleRate) {
+    const audioCtx = robotAudioContextRef.current;
+    const gainNode = robotGainNodeRef.current;
+    if (!audioCtx || !gainNode) return;
+
+    const sr = sampleRate || 48000;
+    const buffer = audioCtx.createBuffer(1, float32Data.length, sr);
+    buffer.getChannelData(0).set(float32Data);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(gainNode);
+
+    if (robotPlaybackTimeRef.current < audioCtx.currentTime + 0.05) {
+      robotPlaybackTimeRef.current = audioCtx.currentTime + 0.1;
+    }
+
+    const start = robotPlaybackTimeRef.current;
+    source.start(start);
+
+    robotPlaybackTimeRef.current = start + buffer.duration;
+  }
+
+  async function connectRobotMic() {
+    if (robotMicConnected) return;
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    robotAudioContextRef.current = audioCtx;
+
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.8;
+    gainNode.connect(audioCtx.destination);
+    robotGainNodeRef.current = gainNode;
+
+    robotPlaybackTimeRef.current = audioCtx.currentTime + 0.1;
+
+    const conn = new signalR.HubConnectionBuilder()
+      .withUrl(`${API_CONFIG.API_BASE1}/hubs/robotaudio`)
+      .withAutomaticReconnect()
+      .build();
+
+    conn.on("ReceiveRobotMicChunk", (data) => {
+      const b64 = data.Audio_b64 || data.audio_b64;
+      if (!b64) return;
+      const floatData = base64Pcm16ToFloat32(b64);
+      const sr = data.SampleRate || 48000;
+      scheduleRobotAudio(floatData, sr);
+    });
+
+    await conn.start().catch(() => {});
+
+    robotAudioConnRef.current = conn;
+    setRobotMicConnected(true);
+    setRobotMicStatus("Đã kết nối Robot Mic.");
+  }
+
+  async function disconnectRobotMic() {
+    const conn = robotAudioConnRef.current;
+    if (conn) {
+      try {
+        await conn.stop();
+      } catch {}
+      robotAudioConnRef.current = null;
+    }
+
+    const audioCtx = robotAudioContextRef.current;
+    if (audioCtx) {
+      audioCtx.close();
+      robotAudioContextRef.current = null;
+    }
+
+    robotPlaybackTimeRef.current = 0;
+    setRobotMicConnected(false);
+    setRobotMicStatus("Robot mic đã tắt.");
+  }
+
   // ===================================
   // 🔊 WebRTC AUDIO: START/STOP
   // ===================================
@@ -411,7 +632,7 @@ export default function RobotRunMap() {
     }
 
     try {
-      setWebRtcStatus("Đang xin quyền micro...");
+      setWebRtcStatus("Đang xin quyền micro (WebRTC)...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -423,9 +644,7 @@ export default function RobotRunMap() {
       localStreamRef.current = stream;
 
       const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-        ],
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -462,6 +681,10 @@ export default function RobotRunMap() {
       await conn.invoke("SendOfferToRobot", offer.sdp);
       setIsCallActive(true);
       setWebRtcStatus("Đã gửi OFFER, chờ ANSWER từ robot...");
+
+      // ⚡️ Thêm: bật audio kiểu cũ Web ↔ Robot
+      startWebMic();
+      connectRobotMic();
     } catch (err) {
       console.error("startWebRtcCall error:", err);
       setWebRtcStatus("Không thể bắt đầu WebRTC call.");
@@ -492,6 +715,14 @@ export default function RobotRunMap() {
 
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
+    }
+
+    // ⚡️ Thêm: tắt audio kiểu cũ Web ↔ Robot
+    if (isWebMicOn) {
+      stopWebMic();
+    }
+    if (robotMicConnected) {
+      disconnectRobotMic();
     }
 
     setIsCallActive(false);
@@ -627,17 +858,21 @@ export default function RobotRunMap() {
                       {isCallActive ? "Tắt cuộc gọi WebRTC" : "Bật cuộc gọi WebRTC"}
                     </button>
 
-                    {/* Nút thứ 2 giữ layout, nhưng chỉ hiển thị thông tin */}
+                    {/* Nút thứ 2 giữ layout, hiển thị info */}
                     <button className={styles.btnOutlinePrimary} disabled>
                       <i className="bi bi-broadcast-pin me-1"></i>
-                      Audio Robot ↔ Web qua WebRTC
+                      Audio Robot ↔ Web qua WebRTC + API mic
                     </button>
 
                     <small style={{ marginTop: "4px", opacity: 0.8 }}>
                       {webRtcStatus}
+                      <br />
+                      {webMicStatus}
+                      <br />
+                      {robotMicStatus}
                     </small>
 
-                    {/* Audio tag ẩn để phát tiếng từ robot */}
+                    {/* Audio tag ẩn để phát tiếng từ robot (WebRTC) */}
                     <audio
                       ref={remoteAudioRef}
                       autoPlay
