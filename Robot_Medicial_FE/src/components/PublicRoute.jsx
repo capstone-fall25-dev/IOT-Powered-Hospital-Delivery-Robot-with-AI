@@ -1,13 +1,13 @@
-// src/components/ProtectedRoute.jsx
+// src/components/PublicRoute.jsx
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/utils/authContext";
 
 /**
- * ProtectedRoute: Yêu cầu đăng nhập
- * Cho phép kiểm tra role nếu có
+ * PublicRoute: Chỉ cho phép truy cập khi CHƯA đăng nhập
+ * Nếu đã đăng nhập -> redirect về dashboard
  */
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const PublicRoute = ({ children }) => {
     const { user, loading } = useAuth();
 
     // Đang loading
@@ -21,20 +21,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         );
     }
 
-    // Chưa đăng nhập
-    if (!user) {
-        return <Navigate to="/login" replace />;
+    // Đã đăng nhập -> redirect về dashboard
+    if (user) {
+        return <Navigate to="/dashboard" replace />;
     }
 
-    // Kiểm tra role (nếu có)
-    if (allowedRoles && allowedRoles.length > 0) {
-        if (!allowedRoles.includes(user.role)) {
-            return <Navigate to="/dashboard" replace />;
-        }
-    }
-
-    // Có quyền truy cập
+    // Chưa đăng nhập -> cho phép truy cập
     return children;
 };
 
-export default ProtectedRoute;
+export default PublicRoute;
