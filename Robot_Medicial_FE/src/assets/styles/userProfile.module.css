@@ -1,0 +1,179 @@
+/* src/assets/styles/userProfile.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
+}
+
+/* =================== GLASS CARD - ĐỒNG BỘ THEME =================== */
+.glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13, 148, 136, 0.5) 0%, rgba(8, 145, 178, 0.5) 100%);
+}
+
+/* =================== GIỮ NGUYÊN TẤT CẢ STYLING BÊN TRONG =================== */
+.title {
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    color: #0b1432;
+}
+
+.btnTeal {
+    background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+    border: none;
+    color: white;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.btnTeal:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(13, 148, 136, 0.3);
+    color: white;
+}
+
+.btnTeal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btnEdit {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #2563eb;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.btnEdit:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+    color: #2563eb;
+}
+
+.btnCancel {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.btnCancel:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: translateY(-2px);
+    color: #dc2626;
+}
+
+.chip {
+    display: inline-block;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(13, 148, 136, 0.15);
+    color: #0d3b3a;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.avatar {
+    width: 104px;
+    height: 104px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(8, 145, 178, 0.1) 100%);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border: 3px solid rgba(13, 148, 136, 0.2);
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.spec {
+    border: 1px dashed rgba(15, 23, 42, 0.12);
+    transition: all 0.2s;
+}
+
+.spec.active {
+    border: 1px solid rgba(13, 148, 136, 0.55);
+    background: rgba(13, 148, 136, 0.18);
+    color: #0d3b3a;
+}
+
+.spec:hover {
+    transform: translateY(-2px);
+}
+
+.formControl:focus {
+    border-color: #0d9488;
+    box-shadow: 0 0 0 0.2rem rgba(13, 148, 136, 0.15);
+}
+
+.roleBadge {
+    background: rgba(13, 148, 136, 0.15);
+    color: #0d3b3a;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* =================== LOADING =================== */
+.loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner {
+    color: #0d9488;
+}
+
+.btnChangePassword {
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.3);
+    color: #0d9488;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btnChangePassword:hover {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.2) 0%, rgba(8, 145, 178, 0.2) 100%);
+    border-color: rgba(13, 148, 136, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+    color: #0d9488;
+}
