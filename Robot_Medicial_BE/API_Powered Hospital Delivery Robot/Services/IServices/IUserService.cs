@@ -56,5 +56,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Admin reset mật khẩu người dùng (gửi mật khẩu mới qua email)
         Task<string> AdminResetPasswordAsync(string email);
+
+        // Lấy profile của user theo email
+        Task<ProfileResponseDto?> GetProfileByEmailAsync(string email);
+
+        // Update profile (không cho đổi email, role)
+        Task<ProfileResponseDto?> UpdateProfileAsync(string email, UpdateProfileDto dto);
+
+        // Đổi mật khẩu
+        Task<string> ChangePasswordAsync(string email, ChangePasswordDto dto);
     }
 }

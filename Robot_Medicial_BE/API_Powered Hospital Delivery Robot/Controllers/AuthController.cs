@@ -81,7 +81,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         // Kiểm tra trạng thái đăng nhập (chống login nhiều nơi)
         [HttpGet("check-login-status")]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> CheckLoginStatus()
         {
             var authHeader = Request.Headers.Authorization.FirstOrDefault();
