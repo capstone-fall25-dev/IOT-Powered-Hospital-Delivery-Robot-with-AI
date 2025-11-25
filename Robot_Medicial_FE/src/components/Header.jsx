@@ -1,23 +1,63 @@
+// src/components/Header.jsx
 import React, { useState } from "react";
 import { Navbar, Nav, Container, Dropdown, Image } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/utils/authContext";
+import { logout as logoutAPI } from "@/services/authService";
 import logo from '../assets/image/logo.png';
 
 const Header = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
 
-    const userName = localStorage.getItem("userName") || "User";
-    const userRole = localStorage.getItem("userRole") || "Staff";
+    // Lấy thông tin user từ AuthContext
+    const userName = user?.fullName || "User";
+    const userRole = user?.role || "guest";
 
-    const handleNavigate = (path) => {
+    // Map role sang tiếng Việt
+    const getRoleDisplay = (role) => {
+        switch(role) {
+            case "admin":
+                return "Quản trị viên";
+            case "doctor":
+                return "Bác sĩ";
+            case "pharmacist":
+                return "Dược sĩ";
+            default:
+                return "Người dùng";
+        }
+    };
+
+    // Get role color for badge
+    const getRoleColor = (role) => {
+        switch(role) {
+            case "admin":
+                return "#dc2626"; // Red
+            case "doctor":
+                return "#0891b2"; // Teal
+            case "pharmacist":
+                return "#16a34a"; // Green
+            default:
+                return "#64748b"; // Gray
+        }
+    };
+
+    const handleNavigate = async (path) => {
         if (path === "logout") {
-            localStorage.removeItem("token");
-            localStorage.removeItem("userName");
-            localStorage.removeItem("userRole");
-            console.log("Logging out...");
-            navigate("/login");
+            try {
+                // Gọi API logout
+                if (user?.email) {
+                    await logoutAPI(user.email);
+                }
+            } catch (error) {
+                console.error("Lỗi khi logout:", error);
+            } finally {
+                // Xóa token và user info
+                logout();
+                navigate("/login");
+            }
         } else {
             navigate(`/${path}`);
         }
@@ -27,6 +67,11 @@ const Header = () => {
     const isActive = (path) => {
         return location.pathname === path;
     };
+
+    // Nếu chưa login, không hiển thị header
+    if (!user) {
+        return null;
+    }
 
     return (
         <Navbar 
@@ -44,7 +89,6 @@ const Header = () => {
                         alignItems: "center",
                         color: "white"
                     }}
-                    onClick={() => navigate("/")}
                 >
                     <img
                         src={logo}
@@ -104,18 +148,18 @@ const Header = () => {
                         </Nav.Link>
 
                         <Nav.Link
-                            onClick={() => handleNavigate("tasks")}
-                            className={isActive("/tasks") ? "active" : ""}
+                            onClick={() => handleNavigate("dashboard")}
+                            className={isActive("/dashboard") ? "active" : ""}
                             style={{
                                 color: "white",
-                                fontWeight: isActive("/tasks") ? "bold" : "normal",
-                                borderBottom: isActive("/tasks") ? "2px solid white" : "none",
+                                fontWeight: isActive("/dashboard") ? "bold" : "normal",
+                                borderBottom: isActive("/dashboard") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
                                 transition: "all 0.3s"
                             }}
                             onMouseEnter={(e) => {
-                                if (!isActive("/tasks")) {
+                                if (!isActive("/dashboard")) {
                                     e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
                                 }
                             }}
@@ -128,18 +172,18 @@ const Header = () => {
                         </Nav.Link>
 
                         <Nav.Link
-                            onClick={() => handleNavigate("robots")}
-                            className={isActive("/robots") ? "active" : ""}
+                            onClick={() => handleNavigate("team")}
+                            className={isActive("/team") ? "active" : ""}
                             style={{
                                 color: "white",
-                                fontWeight: isActive("/robots") ? "bold" : "normal",
-                                borderBottom: isActive("/robots") ? "2px solid white" : "none",
+                                fontWeight: isActive("/team") ? "bold" : "normal",
+                                borderBottom: isActive("/team") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
                                 transition: "all 0.3s"
                             }}
                             onMouseEnter={(e) => {
-                                if (!isActive("/robots")) {
+                                if (!isActive("/team")) {
                                     e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
                                 }
                             }}
@@ -194,7 +238,7 @@ const Header = () => {
                                         {userName}
                                     </div>
                                     <div style={{ fontSize: "10px", opacity: 0.85 }}>
-                                        {userRole}
+                                        {getRoleDisplay(userRole)}
                                     </div>
                                 </div>
                             </Dropdown.Toggle>
@@ -213,8 +257,26 @@ const Header = () => {
                                     borderRadius: "8px",
                                     color: "white"
                                 }}>
-                                    <div className="fw-bold" style={{ fontSize: "15px" }}>{userName}</div>
-                                    <small style={{ opacity: 0.9 }}>{userRole}</small>
+                                    <div className="fw-bold" style={{ fontSize: "15px" }}>
+                                        {userName}
+                                    </div>
+                                    <div className="d-flex align-items-center gap-2 mt-1">
+                                        <small style={{ opacity: 0.9 }}>
+                                            {getRoleDisplay(userRole)}
+                                        </small>
+                                        <span 
+                                            style={{
+                                                fontSize: "9px",
+                                                padding: "2px 8px",
+                                                borderRadius: "10px",
+                                                backgroundColor: "rgba(255, 255, 255, 0.25)",
+                                                textTransform: "uppercase",
+                                                fontWeight: "600"
+                                            }}
+                                        >
+                                            {userRole}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <Dropdown.Item 
@@ -241,7 +303,7 @@ const Header = () => {
                                 </Dropdown.Item>
 
                                 <Dropdown.Item 
-                                    onClick={() => handleNavigate("settings")}
+                                    onClick={() => handleNavigate("change-password")}
                                     className="rounded my-1 d-flex align-items-center"
                                     style={{ 
                                         transition: "all 0.2s",
@@ -256,11 +318,11 @@ const Header = () => {
                                         e.currentTarget.style.transform = "translateX(0)";
                                     }}
                                 >
-                                    <i className="bi bi-gear me-2" style={{ 
+                                    <i className="bi bi-key me-2" style={{ 
                                         fontSize: "18px", 
                                         color: "#64748b" 
                                     }}></i> 
-                                    <span>Cài đặt</span>
+                                    <span>Đổi mật khẩu</span>
                                 </Dropdown.Item>
 
                                 <Dropdown.Divider className="my-2" />
