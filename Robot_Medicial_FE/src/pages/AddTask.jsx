@@ -34,6 +34,7 @@ export default function AddTask() {
     }
 
     const realtimeEnabled = useRef(true);
+    const connectionRef = useRef(null); // Lưu connection để tránh tạo nhiều lần
 
     // ============================================================
     // STATE
@@ -63,25 +64,79 @@ export default function AddTask() {
     // SIGNALR
     // ============================================================
     useEffect(() => {
+        let isMounted = true; // Track component mounted state
+        
+        // Nếu đã có connection, không tạo mới
+        if (connectionRef.current) return;
+
         const conn = new signalR.HubConnectionBuilder()
             .withUrl(API_CONFIG.API_BASE1 + "/hubs/task", {
                 transport: signalR.HttpTransportType.WebSockets,
                 skipNegotiation: true,
             })
             .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Information)
             .build();
 
-        conn.start()
-            .then(() => console.log("SignalR Connected"))
-            .catch((err) => console.error("SignalR Connect Error:", err));
-
+        // Register event handlers BEFORE starting connection
         conn.on("TaskCreated", (task) => {
-            setMessage(`📡 Nhiệm vụ mới được tạo #${task.id}`);
-            setMessageType("info");
+            if (isMounted) {
+                setMessage(`📡 Nhiệm vụ mới được tạo #${task.id}`);
+                setMessageType("info");
+            }
         });
 
-        return () => conn.stop();
-    }, []);
+        // Handle server's connection confirmation event
+        conn.on("ConnectedToTaskHub", (message) => {
+            console.log("🔗 Server confirmed:", message);
+        });
+
+        conn.onreconnecting(() => {
+            console.log("🔄 SignalR đang kết nối lại...");
+        });
+
+        conn.onreconnected(() => {
+            console.log("✅ SignalR đã kết nối lại");
+        });
+
+        conn.onclose(() => {
+            console.log("🔌 SignalR đã ngắt kết nối");
+        });
+
+        connectionRef.current = conn;
+
+        // Start connection
+        const startConnection = async () => {
+            if (!isMounted) return; // Don't start if unmounted
+
+            try {
+                await conn.start();
+                if (isMounted) {
+                    console.log("✅ SignalR Connected");
+                }
+            } catch (err) {
+                console.error("❌ SignalR Connect Error:", err);
+                // Retry sau 5 giây nếu component vẫn mounted
+                if (isMounted) {
+                    setTimeout(startConnection, 5000);
+                }
+            }
+        };
+
+        startConnection();
+
+        // Cleanup
+        return () => {
+            isMounted = false; // Mark as unmounted
+            
+            if (connectionRef.current) {
+                connectionRef.current.stop()
+                    .then(() => console.log("🔌 SignalR stopped gracefully"))
+                    .catch(err => console.error("⚠️ Error stopping SignalR:", err));
+                connectionRef.current = null;
+            }
+        };
+    }, []); // Empty dependency array - chỉ chạy 1 lần
 
     // ============================================================
     // LOAD DATA
@@ -90,7 +145,8 @@ export default function AddTask() {
         async function load() {
             setMaps(await getAllMaps());
             setPatients(await getAllPatients());
-            setRobots(await getAvailableRobots());
+            const robotsRes = await getAvailableRobots();
+             setRobots(robotsRes.data); 
             setCategories(await getAllCategories());
         }
         load();

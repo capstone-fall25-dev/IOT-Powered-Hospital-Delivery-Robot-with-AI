@@ -211,6 +211,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var user = _mapper.Map<User>(request);
             user.PasswordHash = HashPassword(request.Password);
             user.IsActive = false;
+            user.Role = "doctor";
 
             await AddUserAsync(user);
 
@@ -379,6 +380,73 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var random = new Random();
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        // Services/ImplServices/UserService.cs
+        // THÊM VÀO CUỐI CLASS UserService
+
+        public async Task<ProfileResponseDto?> GetProfileByEmailAsync(string email)
+        {
+            var user = await _repository.GetByEmailAsync(email);
+            if (user == null) return null;
+
+            return new ProfileResponseDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
+            };
+        }
+
+        public async Task<ProfileResponseDto?> UpdateProfileAsync(string email, UpdateProfileDto dto)
+        {
+            var user = await _repository.GetByEmailAsync(email);
+            if (user == null)
+                throw new InvalidOperationException("Không tìm thấy người dùng.");
+
+            // Chỉ update FullName và các field được phép
+            user.FullName = dto.FullName;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _repository.UpdateUserAsync(user);
+
+            return new ProfileResponseDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
+            };
+        }
+
+        public async Task<string> ChangePasswordAsync(string email, ChangePasswordDto dto)
+        {
+            var user = await _repository.GetByEmailAsync(email);
+            if (user == null)
+                throw new InvalidOperationException("Không tìm thấy người dùng.");
+
+            // Kiểm tra mật khẩu hiện tại
+            if (user.PasswordHash != HashPassword(dto.CurrentPassword))
+                return "Mật khẩu hiện tại không đúng.";
+
+            // Kiểm tra mật khẩu mới không trùng mật khẩu cũ
+            if (dto.CurrentPassword == dto.NewPassword)
+                return "Mật khẩu mới phải khác mật khẩu hiện tại.";
+
+            // Cập nhật mật khẩu mới
+            user.PasswordHash = HashPassword(dto.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _repository.UpdateUserAsync(user);
+
+            return "Đổi mật khẩu thành công!";
         }
     }
 }

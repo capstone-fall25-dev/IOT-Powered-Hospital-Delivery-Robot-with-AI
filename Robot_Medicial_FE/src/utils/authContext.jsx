@@ -1,52 +1,69 @@
-// src/utils/authContext.js
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getUserBySessionToken, loginUser } from "../services/authService";
+import { getUserByToken, login } from "@/services/authService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchUser() {
-            // ĐỔI TỪ "sessionToken" THÀNH "token"
-            const token = sessionStorage.getItem("token");
-            if (token) {
-                try {
-                    const userData = await getUserBySessionToken(token);
-                    setUser(userData);
-                } catch (err) {
-                    console.error("Không lấy được user từ token:", err);
-                    sessionStorage.removeItem("token");
-                }
-            }
-            setLoading(false);
-        }
-        fetchUser();
-    }, []);
-
-    const login = async (username, password) => {
+  /*==============================
+      LẤY USER TỪ TOKEN
+  ==============================*/
+  useEffect(() => {
+    async function loadUser() {
+      const token = sessionStorage.getItem("token");
+      if (token) {
         try {
-            const { token, user: userData } = await loginUser(username, password);
-            sessionStorage.setItem("token", token); // Dùng key "token"
-            setUser(userData);
-            return userData;
-        } catch (err) {
-            throw err;
+          const userData = await getUserByToken(token);
+          setUser(userData);
+        } catch {
+          sessionStorage.removeItem("token");
+          setUser(null);
         }
-    };
+      }
+      setLoading(false);
+    }
+    loadUser();
+  }, []);
 
-    const logout = () => {
-        sessionStorage.removeItem("token"); // Dùng key "token"
-        setUser(null);
-    };
+  /*==============================
+      LOGIN USER
+  ==============================*/
+  const loginUser = async (email, password) => {
+    const result = await login(email, password);
 
-    return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
-            {children}
-        </AuthContext.Provider>
-    );
+    // 💥 LƯU TOKEN NGUYÊN BẢN (KHÔNG "Bearer ")
+    const token = result.token;
+
+    sessionStorage.setItem("token", token);
+
+    const userData = await getUserByToken(token);
+    setUser(userData);
+
+    return userData;
+  };
+
+  /*==============================
+      LOGOUT
+  ==============================*/
+  const logoutUser = () => {
+    sessionStorage.removeItem("token");
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login: loginUser,
+        logout: logoutUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => useContext(AuthContext);

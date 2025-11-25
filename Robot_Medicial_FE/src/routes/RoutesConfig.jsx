@@ -1,5 +1,5 @@
 // src/routes/RoutesConfig.jsx
-
+import ProtectedRoute from "@/components/ProtectedRoute"; 
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import MainLayout from "@/layouts/MainLayout";
@@ -55,20 +55,60 @@ import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
 
 const routes = [
-
+  // Public routes - không cần đăng nhập
+  { path: "/", element: <Home /> },
   { path: "/login", element: <Login /> },
   { path: "/reset-password", element: <ChangePasswordPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
-  { path: "/change-password", element: <MainLayout><ChangePasswordPage /></MainLayout> },
-
-  { path: "/", element: <Home /> },
-
-  { path: "/user-profile", element: <MainLayout><UserProfile /></MainLayout> },
-
-  { path: "/users", element: <MainLayout><UserManagementPage /></MainLayout> },
-  { path: "/user-detail/:userId", element: <MainLayout><UserDetail /></MainLayout> },
-  { path: "/users/create", element: <MainLayout><UserCreate /></MainLayout> },
-  { path: "/users/edit/:userId", element: <MainLayout><UserEdit /></MainLayout> },
+ 
+  { 
+    path: "/user-profile", 
+    element: (
+      <ProtectedRoute>
+        <MainLayout><UserProfile /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: "/change-password", 
+    element: (
+      <ProtectedRoute>
+        <MainLayout><ChangePasswordPage /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: "/users", 
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <MainLayout><UserManagementPage /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: "/user-detail/:userId", 
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <MainLayout><UserDetail /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: "/users/create", 
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <MainLayout><UserCreate /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { 
+    path: "/users/edit/:userId", 
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <MainLayout><UserEdit /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
 
   { path: "/patients", element: <MainLayout><PatientsManagement /></MainLayout> },
   { path: "/patient/:id", element: <MainLayout><PatientDetail /></MainLayout> },
@@ -107,7 +147,14 @@ const routes = [
   { path: "/create-map", element: <MainLayout><CreateMap /></MainLayout> },
   { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
 
-  { path: "/compartment-categories", element: <MainLayout><CompartmentCategoryManager /></MainLayout> },
+  { 
+    path: "/compartment-categories", 
+    element: (
+      <ProtectedRoute allowedRoles={["admin", "doctor"]}>
+        <MainLayout><CompartmentCategoryManager /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
   { path: "/robot-edit/:id", element: <MainLayout><RobotEdit /></MainLayout> },
 ];
 

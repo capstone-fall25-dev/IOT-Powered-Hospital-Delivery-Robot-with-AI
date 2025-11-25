@@ -1,6 +1,7 @@
+// src/pages/Login.jsx
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "@/services/authService";
+import { useAuth } from "@/utils/authContext"; 
 import logo from '@/assets/image/logo.png';
 import styles from '@/assets/styles/login.module.css';
 
@@ -12,6 +13,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const pwdRef = useRef(null);
+  const { login } = useAuth(); 
 
   function onKeyUp(e) {
     if (e.getModifierState) setCapsLock(!!e.getModifierState("CapsLock"));
@@ -37,9 +39,16 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const data = await login(form.email, form.password);
-      sessionStorage.setItem("token", data.token);
-      navigate("/dashboard");
+      const userData = await login(form.email, form.password);
+      
+      console.log("Login thành công:", userData);
+      
+      // Redirect dựa trên role
+      if (userData.role === "admin" || userData.role === "doctor") {
+        navigate("/dashboard");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       console.error("Lỗi đăng nhập:", err);
       setError(err.message || "Đăng nhập thất bại, vui lòng thử lại.");

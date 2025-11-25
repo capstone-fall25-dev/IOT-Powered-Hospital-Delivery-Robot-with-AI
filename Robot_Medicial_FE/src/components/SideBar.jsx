@@ -1,9 +1,11 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/utils/authContext";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -21,6 +23,10 @@ export default function Sidebar() {
   const isActive = (path) => {
     return location.pathname === path;
   };
+
+  // Kiểm tra quyền truy cập menu
+  const isAdmin = user?.role === "admin";
+  const isDoctor = user?.role === "doctor"
 
   return (
     <div className="sidebar glass d-flex flex-column">
@@ -273,6 +279,9 @@ export default function Sidebar() {
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
           </li>
+
+          {/* Người dùng - CHỈ ADMIN */}
+          {isAdmin && (
           <li
             onClick={() => navigate("/users")}
             className={isActive("/users") ? "active" : ""}
@@ -280,6 +289,8 @@ export default function Sidebar() {
             <i className="bi bi-people"></i>
             <span>Người dùng</span>
           </li>
+          )}
+
           <li
             onClick={() => navigate("/patients")}
             className={isActive("/patients") ? "active" : ""}
@@ -287,7 +298,6 @@ export default function Sidebar() {
             <i className="bi bi-person-lines-fill"></i>
             <span>Bệnh nhân</span>
           </li>
-
           <li
             onClick={() => navigate("/compartment-categories")}
             className={isActive("/compartment-categories") ? "active" : ""}
