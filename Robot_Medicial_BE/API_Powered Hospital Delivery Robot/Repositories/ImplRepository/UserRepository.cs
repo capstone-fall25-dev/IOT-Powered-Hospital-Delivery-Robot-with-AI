@@ -86,5 +86,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             return await _context.Users.AnyAsync(u => u.Email == username);
         }
+
+        public async System.Threading.Tasks.Task CreateSessionAsync(Session session)
+        {
+            _context.Sessions.Add(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task UpdateSessionAsync(Session session)
+        {
+            _context.Sessions.Update(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Session?> GetSessionByTokenHashAsync(string tokenHash)
+        {
+            return await _context.Sessions.FirstOrDefaultAsync(s => s.SessionToken == tokenHash);
+        }
     }
 }

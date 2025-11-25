@@ -2,8 +2,9 @@
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -48,18 +49,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             return Ok(new { token, message });
         }
-
-        // Đăng xuất (xóa session token)
-        [HttpPost("logout")]
-        [Authorize]
-        public async Task<IActionResult> Logout()
-        {
-            var username = User.FindFirst(ClaimTypes.Name)?.Value
-                        ?? User.FindFirst("unique_name")?.Value;
-
-            var result = await _userService.LogoutAsync(HttpContext, username);
-            return Ok(new { message = result });
-        }
+       
 
         // Yêu cầu quên mật khẩu (gửi OTP đặt lại)
         [HttpPost("forgot-password")]
@@ -79,56 +69,57 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
-        // Kiểm tra trạng thái đăng nhập (chống login nhiều nơi)
-        [HttpGet("check-login-status")]
-        [AllowAnonymous]
-        public async Task<IActionResult> CheckLoginStatus()
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
         {
             var authHeader = Request.Headers.Authorization.FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return Unauthorized(new { message = "Thiếu hoặc sai định dạng token." });
+                return BadRequest(new { message = "Thiếu token." });
 
             var token = authHeader["Bearer ".Length..].Trim();
+            await _userService.LogoutAsync(token);
 
-            JwtSecurityToken jwtToken;
-            try
-            {
-                jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
-            }
-            catch
-            {
-                return Unauthorized(new { message = "Token không hợp lệ." });
-            }
+            return Ok(new { message = "Đăng xuất thành công!" });
+        }
 
-            var email = jwtToken.Claims.FirstOrDefault(c =>
-                c.Type == ClaimTypes.Email ||
-                c.Type == "email" ||
-                c.Type == "unique_name" ||
-                c.Type == "sub")?.Value;
+        [HttpGet("check-login-status")]
+        [Authorize]
+        public async Task<IActionResult> CheckLoginStatus()
+        {
+            var email = User.FindFirst(ClaimTypes.Email)?.Value
+                        ?? User.FindFirst("email")?.Value;
 
             if (string.IsNullOrEmpty(email))
-                return Unauthorized(new { message = "Token không chứa thông tin người dùng." });
+                return Unauthorized(new { message = "Token không hợp lệ." });
 
-            // Kiểm tra session hiện tại
-            var sessionToken = HttpContext.Session.GetString($"UserToken_{email}");
-            if (sessionToken == null)
-                return Unauthorized(new { message = "Phiên đăng nhập đã hết hạn." });
-
-            if (sessionToken != token)
-                return Unauthorized(new { message = "Bạn đã bị đăng xuất do đăng nhập ở nơi khác." });
-
+            var token = Request.Headers.Authorization.ToString()["Bearer ".Length..].Trim();
             var user = await _userService.GetByEmailAsync(email);
             if (user == null)
                 return Unauthorized(new { message = "Tài khoản không tồn tại." });
 
+            string tokenHash = HashToken(token);
+            bool isValidSession = user.Sessions?.Any(s =>
+                s.SessionToken == tokenHash && s.ExpiresAt > DateTime.UtcNow) == true;
+
+            if (!isValidSession)
+                return Unauthorized(new { message = "Bạn đã bị đăng xuất do đăng nhập ở thiết bị khác." });
+
             return Ok(new
             {
                 message = "Đăng nhập hợp lệ.",
-                email = email,
+                email = user.Email,
                 fullName = user.FullName,
-                role = user.Role,
-                token
+                role = user.Role
             });
+        }
+
+        private string HashToken(string token)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(token);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);
         }
 
         // Admin reset mật khẩu người dùng (chỉ admin mới được dùng)

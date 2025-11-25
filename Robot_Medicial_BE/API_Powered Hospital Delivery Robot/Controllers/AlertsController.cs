@@ -6,7 +6,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
     public class AlertsController : ControllerBase
     {
         private readonly IAlertService _service;
