@@ -8,6 +8,11 @@ export default function RobotCreateMap() {
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
 
+  // ⭐ Lưu bounds (world coords) dùng chung cho mọi frame
+  const mapBoundsRef = useRef(null);
+  // ⭐ Zoom thêm sau khi fitBounds (scale map to ra, nhưng KHÔNG phá tọa độ)
+  const INITIAL_ZOOM_DELTA = 1; // Có thể tăng lên 2 nếu muốn to hơn
+
   // ===================================
   // STATE
   // ===================================
@@ -89,10 +94,20 @@ export default function RobotCreateMap() {
     const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
     const imgSrc = `data:image/png;base64,${base64}`;
-    const bounds = [
+
+    // ====== BOUNDS GỐC TỪ ROS (world coords, mét) ======
+    const baseBounds = [
       [oy, ox],
       [oy + h * res, ox + w * res],
     ];
+
+    // Lưu bounds 1 lần → các frame sau dùng lại, không đổi
+    if (!mapBoundsRef.current) {
+      mapBoundsRef.current = baseBounds;
+      console.log("[CreateMap] init bounds", mapBoundsRef.current);
+    }
+
+    const bounds = mapBoundsRef.current;
 
     // ⭐ Tạo map lần đầu
     if (!mapRef.current) {
@@ -100,11 +115,24 @@ export default function RobotCreateMap() {
         crs: L.CRS.Simple,
         zoomControl: false,
       });
+
       L.control
         .zoom({
           position: "bottomright",
         })
         .addTo(mapRef.current);
+
+      // Fit toàn bộ map vào view lần đầu
+      mapRef.current.fitBounds(bounds);
+
+      // Zoom thêm lên để "scale to" map
+      const currentZoom = mapRef.current.getZoom();
+      mapRef.current.setZoom(currentZoom + INITIAL_ZOOM_DELTA);
+
+      // Fix bug container chưa có size
+      setTimeout(() => {
+        mapRef.current && mapRef.current.invalidateSize();
+      }, 100);
     }
 
     // Xóa layer cũ nếu có
@@ -112,16 +140,12 @@ export default function RobotCreateMap() {
       mapRef.current.removeLayer(mapLayer.current);
     }
 
-    // Thêm overlay mới
+    // Thêm overlay mới với cùng bounds → tọa độ (x,y) luôn khớp
     mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
       mapRef.current
     );
 
-    // Fit bản đồ + fix bug kích thước
-    mapRef.current.fitBounds(bounds);
-    setTimeout(() => {
-      mapRef.current && mapRef.current.invalidateSize();
-    }, 100);
+    // ❌ KHÔNG fitBounds nữa, để giữ nguyên zoom/center hiện tại
   }
 
   function updateRobotPosition(pos) {
@@ -135,6 +159,7 @@ export default function RobotCreateMap() {
       iconAnchor: [12, 12],
     });
 
+    // ROS: x,y theo world coords (mét) → dùng trực tiếp
     const latlng = [pos.y, pos.x];
 
     if (!robotMarker.current)
@@ -423,7 +448,9 @@ export default function RobotCreateMap() {
               </div>
 
               {/* Map Section */}
-              <div className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}>
+              <div
+                className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}
+              >
                 <div className={styles.headerBar}>
                   <div className={styles.sectionTitle}>
                     <i className="bi bi-map-fill"></i>
@@ -444,13 +471,10 @@ export default function RobotCreateMap() {
                     </button>
                   </div>
                 </div>
-                <div
-                  className={styles.mapBox}
-                  style={{ minHeight: "400px" }} // ⭐ đảm bảo có chiều cao
-                >
+                <div className={styles.mapBox}>
                   <div
                     id="map"
-                    style={{ width: "100%", height: "100%" }}
+                    style={{ width: "100%", height: "350px" }}
                   ></div>
                 </div>
               </div>
