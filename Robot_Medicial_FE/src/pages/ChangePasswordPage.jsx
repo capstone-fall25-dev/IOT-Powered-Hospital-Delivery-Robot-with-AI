@@ -1,8 +1,9 @@
 // src/pages/ChangePasswordPage.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/utils/authContext";
 import { changePassword } from "@/services/authService";
+import styles from "@/assets/styles/changePassword.module.css";
 
 export default function ChangePasswordPage() {
     const navigate = useNavigate();
@@ -15,6 +16,9 @@ export default function ChangePasswordPage() {
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState(false);
     const [error, setError] = useState("");
+    
+    // ✨ NEW: Countdown timer state
+    const [countdown, setCountdown] = useState(60);
 
     // Strength rules
     const rules = useMemo(() => ([
@@ -37,6 +41,24 @@ export default function ChangePasswordPage() {
         return { label: "", variant: "secondary", width: "0%" };
     }
 
+    // ✨ NEW: Countdown timer effect
+    useEffect(() => {
+        if (done) {
+            const timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        navigate("/user-profile");
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            
+            return () => clearInterval(timer);
+        }
+    }, [done, navigate]);
+
     async function onSubmit(e) {
         e.preventDefault();
         if (!canSubmit) return;
@@ -53,11 +75,6 @@ export default function ChangePasswordPage() {
 
             setSubmitting(false);
             setDone(true);
-
-            // Redirect về user profile sau 2 giây
-            setTimeout(() => {
-                navigate("/user-profile");
-            }, 2000);
         } catch (err) {
             setSubmitting(false);
             setError(err.message || "Đổi mật khẩu thất bại");
@@ -65,38 +82,18 @@ export default function ChangePasswordPage() {
     }
 
     return (
-        <div style={{
-            fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-            minHeight: '100vh',
-            background: `radial-gradient(900px 500px at 20% 10%, rgba(76,225,198,.16), transparent 60%),
-                  radial-gradient(800px 400px at 85% 8%, rgba(76,225,198,.12), transparent 60%),
-                  linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%)`
-        }}>
-            <style>{`
-                :root{--teal:#0d9488;--ink:#0f172a}
-                .glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);box-shadow:0 18px 56px rgba(15,23,42,.08);}
-                .rounded-2xl{border-radius:22px}
-                .btn-teal{background:linear-gradient(135deg, #0d9488 0%, #0891b2 100%);border:none;color:white;font-weight:700;transition:all 0.3s}
-                .btn-teal:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(13,148,136,0.3)}
-                .btn-teal:disabled{opacity:0.6;cursor:not-allowed;transform:none}
-                .title{font-weight:800; letter-spacing:.2px; color:#0b1432}
-                .subtitle{color:#3f556e}
-                .hero-emoji{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg, #0d9488, #0891b2);color:#fff}
-                .rule i{width:18px}
-                .form-control:focus{border-color:#0d9488;box-shadow:0 0 0 0.2rem rgba(13,148,136,0.15)}
-            `}</style>
-
-            <div className="container py-5 d-flex align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
-                <div className="glass rounded-2xl p-4 p-md-5" style={{ width: '100%', maxWidth: 520 }}>
+        <div className={styles.page}>
+            <div className={`container py-5 ${styles.container}`}>
+                <div className={`${styles.glass} p-4 p-md-5`}>
                     {!done ? (
                         <>
                             <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
-                                <span className="hero-emoji">
+                                <span className={styles.heroEmoji}>
                                     <i className="bi bi-key"></i>
                                 </span>
-                                <h4 className="title mb-0">Đổi Mật Khẩu</h4>
+                                <h4 className={`${styles.title} mb-0`}>Đổi Mật Khẩu</h4>
                             </div>
-                            <p className="subtitle text-center mb-4">
+                            <p className={`${styles.subtitle} text-center mb-4`}>
                                 Tạo mật khẩu mới đủ mạnh để bảo vệ tài khoản của bạn.
                             </p>
 
@@ -117,7 +114,7 @@ export default function ChangePasswordPage() {
                                     </label>
                                     <input
                                         type={show ? 'text' : 'password'}
-                                        className="form-control form-control-lg rounded-pill"
+                                        className={`form-control form-control-lg rounded-pill ${styles.formControl}`}
                                         placeholder="Nhập mật khẩu hiện tại"
                                         value={currentPwd}
                                         onChange={e => {
@@ -136,7 +133,7 @@ export default function ChangePasswordPage() {
                                     </label>
                                     <input
                                         type={show ? 'text' : 'password'}
-                                        className="form-control form-control-lg rounded-pill"
+                                        className={`form-control form-control-lg rounded-pill ${styles.formControl}`}
                                         placeholder="Tối thiểu 8 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt"
                                         value={pwd}
                                         onChange={e => {
@@ -155,7 +152,7 @@ export default function ChangePasswordPage() {
                                     </label>
                                     <input
                                         type={show ? 'text' : 'password'}
-                                        className={`form-control form-control-lg rounded-pill ${pwd2 && !match ? 'is-invalid' : ''}`}
+                                        className={`form-control form-control-lg rounded-pill ${styles.formControl} ${pwd2 && !match ? 'is-invalid' : ''}`}
                                         placeholder="Nhập lại mật khẩu mới"
                                         value={pwd2}
                                         onChange={e => {
@@ -207,7 +204,7 @@ export default function ChangePasswordPage() {
                                 {/* Rules Checklist */}
                                 <div className="row g-2 small mb-4">
                                     {rules.map(r => (
-                                        <div key={r.key} className="col-sm-6 rule d-flex align-items-center gap-2">
+                                        <div key={r.key} className={`col-sm-6 ${styles.rule} d-flex align-items-center gap-2`}>
                                             <i className={`bi ${r.ok ? 'bi-check-circle-fill text-success' : 'bi-dot text-muted'}`}></i>
                                             <span className={r.ok ? 'text-success fw-semibold' : 'text-muted'}>
                                                 {r.label}
@@ -220,17 +217,16 @@ export default function ChangePasswordPage() {
                                 <div className="d-flex align-items-center justify-content-between gap-2">
                                     <button
                                         type="button"
-                                        className="btn btn-outline-secondary rounded-pill"
+                                        className={`btn ${styles.btnOutline} rounded-pill`}
                                         onClick={() => navigate("/user-profile")}
                                         disabled={submitting}
-                                        style={{ borderColor: '#0d9488', color: '#0d9488' }}
                                     >
                                         <i className="bi bi-arrow-left me-1"></i> Quay lại
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={!canSubmit}
-                                        className="btn btn-teal rounded-pill px-4"
+                                        className={`btn ${styles.btnTeal} rounded-pill px-4`}
                                     >
                                         {submitting && (
                                             <span className="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -244,34 +240,45 @@ export default function ChangePasswordPage() {
                     ) : (
                         <div className="text-center">
                             <div className="mb-3">
-                                <div
-                                    className="d-inline-flex align-items-center justify-content-center rounded-circle"
-                                    style={{
-                                        width: '80px',
-                                        height: '80px',
-                                        background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 100%)',
-                                        color: 'white',
-                                        fontSize: '36px'
-                                    }}
-                                >
+                                <div className={styles.successIcon}>
                                     <i className="bi bi-check-lg"></i>
                                 </div>
                             </div>
                             <h5 className="fw-bold mb-2">Mật khẩu đã được cập nhật</h5>
-                            <p className="subtitle mb-4">
-                                Bạn đã đổi mật khẩu thành công. Đang chuyển về trang hồ sơ...
+                            <p className={`${styles.subtitle} mb-3`}>
+                                Bạn đã đổi mật khẩu thành công!
                             </p>
+
+                            {/* ✨ COUNTDOWN TIMER WITH PROGRESS BAR */}
+                            <div className="mb-4">
+                                <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+                                    <i className="bi bi-clock-history" style={{ color: '#0d9488' }}></i>
+                                    <span className="text-muted small">
+                                        Tự động chuyển hướng sau <strong style={{ color: '#0d9488', fontSize: '1.1rem' }}>{countdown}</strong> giây
+                                    </span>
+                                </div>
+                                <div className="progress mx-auto" style={{ height: '6px', maxWidth: '300px' }}>
+                                    <div
+                                        className="progress-bar"
+                                        style={{
+                                            width: `${(countdown / 60) * 100}%`,
+                                            transition: 'width 1s linear',
+                                            background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 100%)'
+                                        }}
+                                    ></div>
+                                </div>
+                            </div>
+
                             <div className="d-flex justify-content-center gap-2">
                                 <button
-                                    className="btn btn-outline-secondary rounded-pill px-4"
+                                    className={`btn ${styles.btnOutline} rounded-pill px-4`}
                                     onClick={() => navigate("/user-profile")}
-                                    style={{ borderColor: '#0d9488', color: '#0d9488' }}
                                 >
                                     <i className="bi bi-person-circle me-1"></i>
                                     Về hồ sơ
                                 </button>
                                 <button
-                                    className="btn btn-teal rounded-pill px-4"
+                                    className={`btn ${styles.btnTeal} rounded-pill px-4`}
                                     onClick={() => navigate("/dashboard")}
                                 >
                                     <i className="bi bi-house-door me-1"></i>
