@@ -36,8 +36,15 @@ export default function RobotCreateMap() {
       .withAutomaticReconnect()
       .build();
 
-    posConn.on("ReceiveMapUpdate", (map) => drawMap(map));
-    posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    posConn.on("ReceiveMapUpdate", (map) => {
+      console.log("[CreateMap] ReceiveMapUpdate", map);
+      drawMap(map);
+    });
+
+    posConn.on("ReceivePosition", (pos) => {
+      // console.log("[CreateMap] ReceivePosition", pos);
+      updateRobotPosition(pos);
+    });
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64) {
@@ -48,7 +55,10 @@ export default function RobotCreateMap() {
     posConn
       .start()
       .then(() => setStatus("Đã kết nối robot"))
-      .catch((e) => console.error("Position Hub:", e));
+      .catch((e) => {
+        console.error("Position Hub lỗi:", e);
+        setStatus("Không kết nối được robot");
+      });
 
     camConn.start().catch((e) => console.error("Camera Hub:", e));
 
@@ -60,7 +70,6 @@ export default function RobotCreateMap() {
 
   // ===================================
   // MAP + ROBOT POSITION
-  // (giống logic drawLiveMap bên RobotRunMap)
   // ===================================
   function drawMap(mapData) {
     if (!window.L) return;
@@ -68,7 +77,10 @@ export default function RobotCreateMap() {
 
     const base64 =
       mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-    if (!base64) return;
+    if (!base64) {
+      console.warn("[CreateMap] Không có Data_b64 trong mapData");
+      return;
+    }
 
     const res = mapData.Resolution || mapData.resolution || 0.05;
     const w = mapData.Width || mapData.width || 800;
@@ -82,17 +94,21 @@ export default function RobotCreateMap() {
       [oy + h * res, ox + w * res],
     ];
 
-    // ⭐ Tạo map lần đầu giống hệt live-map (chỉ khác ID "map")
+    // ⭐ Tạo map lần đầu
     if (!mapRef.current) {
       mapRef.current = L.map("map", {
         crs: L.CRS.Simple,
         zoomControl: false,
       });
-      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+      L.control
+        .zoom({
+          position: "bottomright",
+        })
+        .addTo(mapRef.current);
     }
 
     // Xóa layer cũ nếu có
-    if (mapLayer.current) {
+    if (mapLayer.current && mapRef.current.hasLayer(mapLayer.current)) {
       mapRef.current.removeLayer(mapLayer.current);
     }
 
@@ -101,8 +117,11 @@ export default function RobotCreateMap() {
       mapRef.current
     );
 
-    // Fit bản đồ
+    // Fit bản đồ + fix bug kích thước
     mapRef.current.fitBounds(bounds);
+    setTimeout(() => {
+      mapRef.current && mapRef.current.invalidateSize();
+    }, 100);
   }
 
   function updateRobotPosition(pos) {
@@ -408,7 +427,7 @@ export default function RobotCreateMap() {
                 <div className={styles.headerBar}>
                   <div className={styles.sectionTitle}>
                     <i className="bi bi-map-fill"></i>
-                    Bản đồ bệnh viện
+                    Bản đồ bệnh viện (Mapping)
                   </div>
                   <div
                     className={styles.inputGroup}
@@ -425,7 +444,10 @@ export default function RobotCreateMap() {
                     </button>
                   </div>
                 </div>
-                <div className={styles.mapBox}>
+                <div
+                  className={styles.mapBox}
+                  style={{ minHeight: "400px" }} // ⭐ đảm bảo có chiều cao
+                >
                   <div
                     id="map"
                     style={{ width: "100%", height: "100%" }}
