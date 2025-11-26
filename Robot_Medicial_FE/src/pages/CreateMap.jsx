@@ -8,6 +8,11 @@ export default function RobotCreateMap() {
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
 
+  // ⭐ Lưu bounds (world coords) dùng chung cho mọi frame
+  const mapBoundsRef = useRef(null);
+  // ⭐ Zoom thêm sau khi fitBounds (scale map to ra, nhưng KHÔNG phá tọa độ)
+  const INITIAL_ZOOM_DELTA = 1; // Có thể tăng lên 2 nếu muốn to hơn
+
   // ===================================
   // STATE
   // ===================================
@@ -36,8 +41,15 @@ export default function RobotCreateMap() {
       .withAutomaticReconnect()
       .build();
 
-    posConn.on("ReceiveMapUpdate", (map) => drawMap(map));
-    posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    posConn.on("ReceiveMapUpdate", (map) => {
+      console.log("[CreateMap] ReceiveMapUpdate", map);
+      drawMap(map);
+    });
+
+    posConn.on("ReceivePosition", (pos) => {
+      // console.log("[CreateMap] ReceivePosition", pos);
+      updateRobotPosition(pos);
+    });
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64) {
@@ -48,7 +60,10 @@ export default function RobotCreateMap() {
     posConn
       .start()
       .then(() => setStatus("Đã kết nối robot"))
-      .catch((e) => console.error("Position Hub:", e));
+      .catch((e) => {
+        console.error("Position Hub lỗi:", e);
+        setStatus("Không kết nối được robot");
+      });
 
     camConn.start().catch((e) => console.error("Camera Hub:", e));
 
@@ -60,7 +75,6 @@ export default function RobotCreateMap() {
 
   // ===================================
   // MAP + ROBOT POSITION
-  // (giống logic drawLiveMap bên RobotRunMap)
   // ===================================
   function drawMap(mapData) {
     if (!window.L) return;
@@ -68,7 +82,10 @@ export default function RobotCreateMap() {
 
     const base64 =
       mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-    if (!base64) return;
+    if (!base64) {
+      console.warn("[CreateMap] Không có Data_b64 trong mapData");
+      return;
+    }
 
     const res = mapData.Resolution || mapData.resolution || 0.05;
     const w = mapData.Width || mapData.width || 800;
@@ -77,32 +94,58 @@ export default function RobotCreateMap() {
     const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
     const imgSrc = `data:image/png;base64,${base64}`;
-    const bounds = [
+
+    // ====== BOUNDS GỐC TỪ ROS (world coords, mét) ======
+    const baseBounds = [
       [oy, ox],
       [oy + h * res, ox + w * res],
     ];
 
-    // ⭐ Tạo map lần đầu giống hệt live-map (chỉ khác ID "map")
+    // Lưu bounds 1 lần → các frame sau dùng lại, không đổi
+    if (!mapBoundsRef.current) {
+      mapBoundsRef.current = baseBounds;
+      console.log("[CreateMap] init bounds", mapBoundsRef.current);
+    }
+
+    const bounds = mapBoundsRef.current;
+
+    // ⭐ Tạo map lần đầu
     if (!mapRef.current) {
       mapRef.current = L.map("map", {
         crs: L.CRS.Simple,
         zoomControl: false,
       });
-      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+
+      L.control
+        .zoom({
+          position: "bottomright",
+        })
+        .addTo(mapRef.current);
+
+      // Fit toàn bộ map vào view lần đầu
+      mapRef.current.fitBounds(bounds);
+
+      // Zoom thêm lên để "scale to" map
+      const currentZoom = mapRef.current.getZoom();
+      mapRef.current.setZoom(currentZoom + INITIAL_ZOOM_DELTA);
+
+      // Fix bug container chưa có size
+      setTimeout(() => {
+        mapRef.current && mapRef.current.invalidateSize();
+      }, 100);
     }
 
     // Xóa layer cũ nếu có
-    if (mapLayer.current) {
+    if (mapLayer.current && mapRef.current.hasLayer(mapLayer.current)) {
       mapRef.current.removeLayer(mapLayer.current);
     }
 
-    // Thêm overlay mới
+    // Thêm overlay mới với cùng bounds → tọa độ (x,y) luôn khớp
     mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
       mapRef.current
     );
 
-    // Fit bản đồ
-    mapRef.current.fitBounds(bounds);
+    // ❌ KHÔNG fitBounds nữa, để giữ nguyên zoom/center hiện tại
   }
 
   function updateRobotPosition(pos) {
@@ -116,6 +159,7 @@ export default function RobotCreateMap() {
       iconAnchor: [12, 12],
     });
 
+    // ROS: x,y theo world coords (mét) → dùng trực tiếp
     const latlng = [pos.y, pos.x];
 
     if (!robotMarker.current)
@@ -404,11 +448,13 @@ export default function RobotCreateMap() {
               </div>
 
               {/* Map Section */}
-              <div className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}>
+              <div
+                className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}
+              >
                 <div className={styles.headerBar}>
                   <div className={styles.sectionTitle}>
                     <i className="bi bi-map-fill"></i>
-                    Bản đồ bệnh viện
+                    Bản đồ bệnh viện (Mapping)
                   </div>
                   <div
                     className={styles.inputGroup}
@@ -428,7 +474,7 @@ export default function RobotCreateMap() {
                 <div className={styles.mapBox}>
                   <div
                     id="map"
-                    style={{ width: "100%", height: "100%" }}
+                    style={{ width: "100%", height: "350px" }}
                   ></div>
                 </div>
               </div>

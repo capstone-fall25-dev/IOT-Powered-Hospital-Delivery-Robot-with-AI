@@ -1,0 +1,7 @@
+image: map_duong.pgm
+mode: trinary
+resolution: 0.050
+origin: [-3.243, -2.363, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
