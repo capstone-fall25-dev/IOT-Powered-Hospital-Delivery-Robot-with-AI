@@ -157,3 +157,6 @@ ros2 launch turtlebot3_navigation2 navigation2.launch.py use_sim_time:=True map:
 ```
 ## run map 
 nav-restart duong12
+
+## mic 
+ros2 launch robot_api audio_launch.py

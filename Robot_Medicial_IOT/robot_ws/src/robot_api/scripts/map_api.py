@@ -74,6 +74,15 @@ def restart_stm32():
     except Exception as e:
         print(f"⚠️ Error restarting stm32: {e}")
 
+def stop_slam():
+    try:
+        print("🔄 Stop slam_launch.service...")
+        subprocess.run(["bash", "-c", "sudo systemctl stop slam_launch.service"], check=False)
+        time.sleep(2)
+    except Exception as e:
+        print(f"⚠️ Error restarting stm32: {e}")
+
+
 
 # ==========================================================
 # 🔧 Helper: Restart navigation service
@@ -189,6 +198,7 @@ class MapSignalSubscriber(Node):
                     elif mode == "run_map":
                         print(f"🗺️ Running navigation on map '{map_name}'...")
                         restart_stm32()
+                        stop_slam()
                         restart_navigation(map_name)
 
                     else:
