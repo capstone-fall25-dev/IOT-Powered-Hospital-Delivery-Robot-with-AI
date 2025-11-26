@@ -289,7 +289,7 @@ export default function RobotRunMap() {
         iconAnchor: [12, 24],
       });
 
-      if (destinationMarker.current) destinationMarker.current.setLatlng(latlng);
+      if (destinationMarker.current) destinationMarker.current.setLatLng(latlng);
       else destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
     };
   }
