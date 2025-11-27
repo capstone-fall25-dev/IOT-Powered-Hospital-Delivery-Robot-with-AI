@@ -160,3 +160,9 @@ nav-restart duong12
 
 ## mic 
 ros2 launch robot_api audio_launch.py
+
+## open AI model off
+cd ~/tts_project && source venv/bin/activate
+
+## out AI
+deactivate
