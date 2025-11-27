@@ -14,7 +14,7 @@ export default function RobotRunMap() {
   const liveMapRef = useRef(null);
   const liveMapLayer = useRef(null);
   const robotMarker = useRef(null);
-
+  const liveMapViewRef = useRef({ center: null, zoom: null });
   // ===================================
   // 🧩 STATE
   // ===================================
@@ -179,38 +179,85 @@ export default function RobotRunMap() {
   // LIVE MAP (ROS2)
   // ===================================
   function drawLiveMap(mapData) {
-    if (!window.L) return;
-    const L = window.L;
+  if (!window.L) return;
+  const L = window.L;
 
-    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-    if (!base64) return;
+  const base64 =
+    mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+  if (!base64) return;
 
-    const res = mapData.Resolution || mapData.resolution || 0.05;
-    const w = mapData.Width || mapData.width || 800;
-    const h = mapData.Height || mapData.height || 800;
-    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
+  const res = mapData.Resolution || mapData.resolution || 0.05;
+  const w = mapData.Width || mapData.width || 800;
+  const h = mapData.Height || mapData.height || 800;
+  const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+  const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-    const imgSrc = `data:image/png;base64,${base64}`;
-    const bounds = [
-      [oy, ox],
-      [oy + h * res, ox + w * res],
-    ];
+  const imgSrc = `data:image/png;base64,${base64}`;
 
-    if (!liveMapRef.current) {
-      liveMapRef.current = L.map("live-map", {
-        crs: L.CRS.Simple,
-        zoomControl: false,
-      });
-      L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+  // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
+  const bounds = [
+    [oy, ox],
+    [oy + h * res, ox + w * res],
+  ];
+
+  // ================= LẦN ĐẦU TẠO MAP =================
+  if (!liveMapRef.current) {
+    liveMapRef.current = L.map("live-map", {
+      crs: L.CRS.Simple,
+      zoomControl: false,
+    });
+
+    L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+
+    // Lúc nào user zoom/pan xong thì lưu lại view
+    liveMapRef.current.on("moveend zoomend", () => {
+      if (!liveMapRef.current) return;
+      liveMapViewRef.current = {
+        center: liveMapRef.current.getCenter(),
+        zoom: liveMapRef.current.getZoom(),
+      };
+    });
+
+    // Tạo overlay lần đầu + fitBounds 1 lần duy nhất
+    if (liveMapLayer.current) {
+      liveMapRef.current.removeLayer(liveMapLayer.current);
     }
-
-    if (liveMapLayer.current) liveMapRef.current.removeLayer(liveMapLayer.current);
     liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
       liveMapRef.current
     );
+
     liveMapRef.current.fitBounds(bounds);
+
+    // Lưu lại view sau khi fitBounds
+    liveMapViewRef.current = {
+      center: liveMapRef.current.getCenter(),
+      zoom: liveMapRef.current.getZoom(),
+    };
+
+    return;
   }
+
+  // ================= CÁC LẦN UPDATE TIẾP THEO =================
+  // Lưu lại view hiện tại / view đã lưu (nếu có)
+  const currentCenter =
+    liveMapViewRef.current.center || liveMapRef.current.getCenter();
+  const currentZoom =
+    typeof liveMapViewRef.current.zoom === "number"
+      ? liveMapViewRef.current.zoom
+      : liveMapRef.current.getZoom();
+
+  // Thay overlay nhưng KHÔNG fitBounds lại
+  if (liveMapLayer.current) {
+    liveMapRef.current.removeLayer(liveMapLayer.current);
+  }
+  liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+    liveMapRef.current
+  );
+
+  // Restore lại đúng center + zoom cũ để không bị reset khi có map mới
+  liveMapRef.current.setView(currentCenter, currentZoom, { animate: false });
+}
+
 
   // ============================================================
   // 🧭 ROBOT POSITION

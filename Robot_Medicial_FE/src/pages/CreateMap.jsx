@@ -7,11 +7,7 @@ export default function RobotCreateMap() {
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
-
-  // ⭐ Lưu bounds (world coords) dùng chung cho mọi frame
-  const mapBoundsRef = useRef(null);
-  // ⭐ Zoom thêm sau khi fitBounds (scale map to ra, nhưng KHÔNG phá tọa độ)
-  const INITIAL_ZOOM_DELTA = 1; // Có thể tăng lên 2 nếu muốn to hơn
+  const liveMapViewRef = useRef({ center: null, zoom: null });
 
   // ===================================
   // STATE
@@ -95,57 +91,73 @@ export default function RobotCreateMap() {
 
     const imgSrc = `data:image/png;base64,${base64}`;
 
-    // ====== BOUNDS GỐC TỪ ROS (world coords, mét) ======
-    const baseBounds = [
+    // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
+    const bounds = [
       [oy, ox],
       [oy + h * res, ox + w * res],
     ];
 
-    // Lưu bounds 1 lần → các frame sau dùng lại, không đổi
-    if (!mapBoundsRef.current) {
-      mapBoundsRef.current = baseBounds;
-      console.log("[CreateMap] init bounds", mapBoundsRef.current);
-    }
-
-    const bounds = mapBoundsRef.current;
-
-    // ⭐ Tạo map lần đầu
+    // =============== LẦN ĐẦU TẠO MAP ===============
     if (!mapRef.current) {
       mapRef.current = L.map("map", {
         crs: L.CRS.Simple,
         zoomControl: false,
       });
 
-      L.control
-        .zoom({
-          position: "bottomright",
-        })
-        .addTo(mapRef.current);
+      L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
 
-      // Fit toàn bộ map vào view lần đầu
+      // Lúc user pan/zoom thì lưu lại view
+      mapRef.current.on("moveend zoomend", () => {
+        if (!mapRef.current) return;
+        liveMapViewRef.current = {
+          center: mapRef.current.getCenter(),
+          zoom: mapRef.current.getZoom(),
+        };
+      });
+
+      // Overlay lần đầu + fitBounds 1 lần
+      if (mapLayer.current) {
+        mapRef.current.removeLayer(mapLayer.current);
+      }
+      mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+        mapRef.current
+      );
+
       mapRef.current.fitBounds(bounds);
 
-      // Zoom thêm lên để "scale to" map
-      const currentZoom = mapRef.current.getZoom();
-      mapRef.current.setZoom(currentZoom + INITIAL_ZOOM_DELTA);
+      // Lưu lại view sau khi fitBounds
+      liveMapViewRef.current = {
+        center: mapRef.current.getCenter(),
+        zoom: mapRef.current.getZoom(),
+      };
 
       // Fix bug container chưa có size
       setTimeout(() => {
         mapRef.current && mapRef.current.invalidateSize();
       }, 100);
+
+      return;
     }
 
-    // Xóa layer cũ nếu có
-    if (mapLayer.current && mapRef.current.hasLayer(mapLayer.current)) {
+    // =============== CÁC LẦN UPDATE SAU ===============
+    // Lấy lại view đã lưu (nếu có), fallback sang view hiện tại
+    const currentCenter =
+      liveMapViewRef.current.center || mapRef.current.getCenter();
+    const currentZoom =
+      typeof liveMapViewRef.current.zoom === "number"
+        ? liveMapViewRef.current.zoom
+        : mapRef.current.getZoom();
+
+    // Thay overlay nhưng KHÔNG fitBounds lại
+    if (mapLayer.current) {
       mapRef.current.removeLayer(mapLayer.current);
     }
-
-    // Thêm overlay mới với cùng bounds → tọa độ (x,y) luôn khớp
     mapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
       mapRef.current
     );
 
-    // ❌ KHÔNG fitBounds nữa, để giữ nguyên zoom/center hiện tại
+    // Restore lại đúng center + zoom cũ
+    mapRef.current.setView(currentCenter, currentZoom, { animate: false });
   }
 
   function updateRobotPosition(pos) {
