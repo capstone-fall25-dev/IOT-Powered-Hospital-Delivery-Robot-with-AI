@@ -289,7 +289,7 @@ export default function RobotRunMap() {
         iconAnchor: [12, 24],
       });
 
-      if (destinationMarker.current) destinationMarker.current.setLatlng(latlng);
+      if (destinationMarker.current) destinationMarker.current.setLatLng(latlng);
       else destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
     };
   }
@@ -362,11 +362,13 @@ export default function RobotRunMap() {
     }
   }
 
+  // 🔥 HÀM NÀY ĐÃ ĐƯỢC THÊM GỌI API TTS
   async function startRunMap() {
     if (!selectedDestination) return alert("Chọn điểm đến!");
     if (!selectedMapName) return alert("Không có mapName!");
 
     try {
+      // 1️⃣ Gửi mode run_map cho robot như cũ
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -375,6 +377,20 @@ export default function RobotRunMap() {
           mapName: selectedMapName,
         }),
       });
+
+      // 2️⃣ Gửi text xuống API TTS -> TTSHub -> tts_server.py
+      const ttsText = `Robot bắt đầu chạy trên ${selectedMapName} đang đi đến điểm ${selectedDestination.name}`;
+
+      try {
+        await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: ttsText }),
+        });
+      } catch (ttsErr) {
+        console.error("Gửi TTS lỗi:", ttsErr);
+      }
+
       alert("Đã gửi lệnh run_map!");
     } catch {
       // ignore
@@ -1062,7 +1078,7 @@ export default function RobotRunMap() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> 
         </div>
       </div>
     </div>

@@ -54,6 +54,7 @@ import CreateMap from "@/pages/CreateMap";
 
 import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
+import ForgotPasswordChangePage from "@/pages/ForgotPasswordChange";
 
 const routes = [
   /*=============================================
@@ -76,10 +77,26 @@ const routes = [
     ),
   },
   {
+    path: "/reset-password",
+    element: (
+      <PublicRoute>
+        <ChangePasswordPage />
+      </PublicRoute>
+    ),
+  },
+  {
     path: "/forgot-password",
     element: (
       <PublicRoute>
         <ForgotPasswordPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: "/forgot-password-change",
+    element: (
+      <PublicRoute>
+        <ForgotPasswordChangePage />
       </PublicRoute>
     ),
   },

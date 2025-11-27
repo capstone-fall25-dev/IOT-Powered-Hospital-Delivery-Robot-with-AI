@@ -176,5 +176,5 @@ app.MapHub<RobotCameraHub>("/hubs/robotcamera");
 app.MapHub<RobotHub>("/hubs/robot");
 app.MapHub<TaskHub>("/hubs/task");
 app.MapHub<RobotAudioHub>("/hubs/robotaudio");
-
+app.MapHub<TTSHub>("/hubs/ttsHub");
 app.Run();

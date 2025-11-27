@@ -62,3 +62,23 @@ function decodeJwt(token) {
     return {};
   }
 }
+
+// =======================
+// FORGOT PASSWORD
+// =======================
+
+// Step 1 — gửi OTP
+export async function requestForgotPassword(email) {
+  return apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+// Step 2 — verify OTP + mật khẩu mới
+export async function verifyForgotPassword({ email, otp, newPassword }) {
+  return apiFetch("/auth/verify-forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, newPassword }),
+  });
+}
