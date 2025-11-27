@@ -1,68 +1,41 @@
-import { API_CONFIG } from "@/utils/apiConfig";
+// src/services/medicineService.js
+import { apiFetch } from "./api";
 
-// =============== CATEGORY API ==================
+export const getAllCategories = () =>
+  apiFetch(`/medicine/categories`);
 
-export async function getAllCategories() {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/categories`);
-    return res.json();
-}
+export const createCategory = (data) =>
+  apiFetch(`/medicine/categories`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
-export async function createCategory(data) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/categories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
-    return res.json();
-}
+export const updateCategory = (id, data) =>
+  apiFetch(`/medicine/categories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 
-export async function updateCategory(id, data) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/categories/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
-    return res.json();
-}
+export const deleteCategory = (id) =>
+  apiFetch(`/medicine/categories/${id}`, { method: "DELETE" });
 
-export async function deleteCategory(id) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/categories/${id}`, {
-        method: "DELETE"
-    });
-    return res.json();
-}
+export const getAllMedicines = () =>
+  apiFetch(`/medicine/list`);
 
-// =============== MEDICINE API ==================
+export const getMedicine = (id) =>
+  apiFetch(`/medicine/${id}`);
 
-export async function getAllMedicines() {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/list`);
-    return res.json();
-}
+export const createMedicine = (data) =>
+  apiFetch(`/medicine`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
-export async function getMedicine(id) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/${id}`);
-    return res.json();
-}
+export const updateMedicine = (id, data) =>
+  apiFetch(`/medicine/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 
-export async function createMedicine(data) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
-    return res.json();
-}
-
-export async function updateMedicine(id, data) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    });
-    return res.json();
-}
-
-export async function deleteMedicine(id) {
-    const res = await fetch(`${API_CONFIG.API_BASE}/medicine/${id}`, { method: "DELETE" });
-    return res.json();
-}
+export const deleteMedicine = (id) =>
+  apiFetch(`/medicine/${id}`, { method: "DELETE" });

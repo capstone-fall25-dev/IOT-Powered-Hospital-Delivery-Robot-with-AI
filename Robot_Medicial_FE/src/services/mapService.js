@@ -1,70 +1,30 @@
-import { API_CONFIG } from "@/utils/apiConfig";
+// src/services/mapService.js
+import { apiFetch } from "./api";
 
-const BASE_URL = `${API_CONFIG.API_BASE}/maps`;
+const BASE = "/maps";
 
-export async function getAllMaps() {
-    const res = await fetch(BASE_URL);
-    if (!res.ok) throw new Error("Failed to fetch maps");
-    return res.json();
-}
-
-export async function getMapById(id) {
-    const res = await fetch(`${BASE_URL}/${id}`);
-    if (!res.ok) throw new Error(`Failed to fetch map with id ${id}`);
-    return res.json();
-}
+export const getAllMaps = () => apiFetch(BASE);
+export const getMapById = (id) => apiFetch(`${BASE}/${id}`);
 
 export async function getMapImage(id) {
-    const res = await fetch(`${BASE_URL}/${id}/image`);
-    if (!res.ok) throw new Error(`Failed to fetch map image with id ${id}`);
-    const blob = await res.blob();
-    return URL.createObjectURL(blob); // trả về URL tạm thời để dùng <img src={...} />
+  const blob = await apiFetch(`${BASE}/${id}/image`, {
+    method: "GET",
+  });
+  return URL.createObjectURL(blob);
 }
 
-export async function createMap(mapDto, imageFile) {
-    const formData = new FormData();
-    for (const key in mapDto) {
-        if (mapDto[key] !== undefined && mapDto[key] !== null) {
-            formData.append(key, mapDto[key]);
-        }
-    }
-    if (imageFile) {
-        formData.append("imageFile", imageFile);
-    }
+export const createMap = (mapDto, imageFile) => {
+  const formData = new FormData();
+  Object.entries(mapDto).forEach(([k, v]) => formData.append(k, v));
+  if (imageFile) formData.append("imageFile", imageFile);
 
-    const res = await fetch(BASE_URL, {
-        method: "POST",
-        body: formData,
-    });
+  return apiFetch(BASE, { method: "POST", body: formData });
+};
 
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Failed to create map");
-    }
+export const updateMap = (id, mapDto, imageFile) => {
+  const formData = new FormData();
+  Object.entries(mapDto).forEach(([k, v]) => formData.append(k, v));
+  if (imageFile) formData.append("imageFile", imageFile);
 
-    return res.json();
-}
-
-export async function updateMap(id, mapDto, imageFile) {
-    const formData = new FormData();
-    for (const key in mapDto) {
-        if (mapDto[key] !== undefined && mapDto[key] !== null) {
-            formData.append(key, mapDto[key]);
-        }
-    }
-    if (imageFile) {
-        formData.append("imageFile", imageFile);
-    }
-
-    const res = await fetch(`${BASE_URL}/${id}`, {
-        method: "PUT",
-        body: formData,
-    });
-
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || `Failed to update map with id ${id}`);
-    }
-
-    return res.json();
-}
+  return apiFetch(`${BASE}/${id}`, { method: "PUT", body: formData });
+};

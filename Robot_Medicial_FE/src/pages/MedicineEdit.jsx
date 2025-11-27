@@ -42,15 +42,32 @@ export default function MedicineEdit() {
 
     async function handleSubmit(e) {
         e.preventDefault();
-        
+
         if (!form.categoryId) {
             alert("Vui lòng chọn danh mục!");
             return;
         }
 
+        // convert date "yyyy-mm-dd" → ISO format
+        let isoExpiry = form.expiryDate 
+            ? new Date(form.expiryDate).toISOString()
+            : null;
+
+        const payload = {
+            medicineCode: form.medicineCode,
+            name: form.name,
+            unit: form.unit,
+            stockQuantity: Number(form.stockQuantity),
+            description: form.description || "",
+            categoryId: Number(form.categoryId),
+            expiryDate: isoExpiry,
+            status: Number(form.status)
+        };
+
         setSubmitting(true);
+
         try {
-            await updateMedicine(id, form);
+            await updateMedicine(id, payload);
             alert("Cập nhật thuốc thành công!");
             navigate("/medicines");
         } catch (err) {

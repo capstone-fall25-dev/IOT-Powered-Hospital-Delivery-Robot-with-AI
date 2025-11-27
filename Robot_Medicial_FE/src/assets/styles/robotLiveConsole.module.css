@@ -586,3 +586,15 @@
         font-size: 0.85rem;
     }
 }
+
+/* Quan trọng: giữ kích thước icon cố định khi zoom */
+.custom-stop-marker,
+.selected-destination-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}

@@ -146,7 +146,7 @@ export default function AddTask() {
             setMaps(await getAllMaps());
             setPatients(await getAllPatients());
             const robotsRes = await getAvailableRobots();
-             setRobots(robotsRes.data); 
+            setRobots(robotsRes.data);
             setCategories(await getAllCategories());
         }
         load();
@@ -285,7 +285,10 @@ export default function AddTask() {
 
         if (!patientId) return updateStop(idx, "prescriptionPreview", null);
 
-        const list = await getAllPrescriptions(patientId, "approved");
+        const list = await getAllPrescriptions({
+            patientId,
+            status: "approved",
+        });
 
         if (list.length === 0) return updateStop(idx, "prescriptionPreview", null);
 

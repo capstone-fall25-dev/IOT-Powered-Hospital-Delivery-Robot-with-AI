@@ -1,52 +1,61 @@
-import axios from "axios";
-import { API_CONFIG } from "@/utils/apiConfig";
+// src/services/taskService.js
+import { apiFetch } from "./api";
 
-// 1. Lấy toàn bộ task (list view)
-export const getAllTasks = async (filters = {}) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/tasks`, {
-        params: {
-            robotId: filters.robotId,
-            status: filters.status,
-            priority: filters.priority
-        }
-    });
-    return res.data; // TaskListItemDto[]
+/**
+ * 1. Lấy toàn bộ task (list view)
+ */
+export const getAllTasks = (filters = {}) => {
+  const query = new URLSearchParams({
+    robotId: filters.robotId || "",
+    status: filters.status || "",
+    priority: filters.priority || "",
+  }).toString();
+
+  return apiFetch(`/tasks?${query}`);
 };
 
-// 2. Lấy chi tiết task theo ID (TaskDetailDto)
-export const getTaskById = async (id) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/tasks/${id}`);
-    return res.data; 
-};
+/**
+ * 2. Lấy chi tiết task theo ID
+ */
+export const getTaskById = (id) => apiFetch(`/tasks/${id}`);
 
-// 3. Tạo task
-export const createTask = async (dto) => {
-    const res = await axios.post(`${API_CONFIG.API_BASE}/tasks`, dto);
-    return res.data; // TaskResponseDto
-};
+/**
+ * 3. Tạo task
+ */
+export const createTask = (dto) =>
+  apiFetch("/tasks", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
 
-export const getTaskEditData = async (id) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/tasks/${id}/edit`);
-    return res.data;
-};
+/**
+ * Lấy data cho trang edit (task + stop + meta)
+ */
+export const getTaskEditData = (id) =>
+  apiFetch(`/tasks/${id}/edit`);
 
-// 4. Cập nhật task (status / priority...)
-export const updateTask = async (id, dto) => {
-    const res = await axios.put(`${API_CONFIG.API_BASE}/tasks/${id}`, dto);
-    return res.data; // TaskResponseDto
-};
+/**
+ * 4. Cập nhật task (status / priority / name / robotId...)
+ */
+export const updateTask = (id, dto) =>
+  apiFetch(`/tasks/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(dto),
+  });
 
-// 5. Xóa task
-export const deleteTask = async (id) => {
-    const res = await axios.delete(`${API_CONFIG.API_BASE}/tasks/${id}`);
-    return res.data;
-};
+/**
+ * 5. Xóa task
+ */
+export const deleteTask = (id) =>
+  apiFetch(`/tasks/${id}`, {
+    method: "DELETE",
+  });
 
-// 6. Update stop status
-export const updateStopStatus = async (taskId, stopId, status) => {
-    const res = await axios.put(
-        `${API_CONFIG.API_BASE}/tasks/${taskId}/stops/${stopId}/status`,
-        { status }
-    );
-    return res.data;
-};
+/**
+ * 6. Update stop status
+ */
+export const updateStopStatus = (taskId, stopId, status) =>
+  apiFetch(`/tasks/${taskId}/stops/${stopId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });

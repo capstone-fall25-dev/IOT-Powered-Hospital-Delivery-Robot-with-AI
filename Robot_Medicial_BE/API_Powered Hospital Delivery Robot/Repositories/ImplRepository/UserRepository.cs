@@ -32,7 +32,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            return await _context.Users
+                .Include(u => u.Sessions)          // 👈 THÊM DÒNG NÀY
+                .FirstOrDefaultAsync(u => u.Email == email);
         }
 
         public async Task<User?> GetByIdAsync(ulong id, bool includeTasks = false, bool includeSessions = false)
@@ -85,6 +87,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         public async Task<bool> ExistsByUsernameAsync(string username)
         {
             return await _context.Users.AnyAsync(u => u.Email == username);
+        }
+
+        public async System.Threading.Tasks.Task CreateSessionAsync(Session session)
+        {
+            _context.Sessions.Add(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task UpdateSessionAsync(Session session)
+        {
+            _context.Sessions.Update(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Session?> GetSessionByTokenHashAsync(string tokenHash)
+        {
+            return await _context.Sessions.FirstOrDefaultAsync(s => s.SessionToken == tokenHash);
         }
     }
 }

@@ -1,5 +1,6 @@
+// src/utils/authContext.jsx
 import React, { createContext, useState, useEffect, useContext } from "react";
-import { getUserByToken, login } from "@/services/authService";
+import { login, getUserByToken, logout } from "@/services/authService";
 
 const AuthContext = createContext();
 
@@ -7,60 +8,47 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /*==============================
-      LẤY USER TỪ TOKEN
-  ==============================*/
   useEffect(() => {
-    async function loadUser() {
-      const token = sessionStorage.getItem("token");
-      if (token) {
-        try {
-          const userData = await getUserByToken(token);
-          setUser(userData);
-        } catch {
-          sessionStorage.removeItem("token");
-          setUser(null);
-        }
+    const loadUser = async () => {
+      const rawToken = sessionStorage.getItem("token");
+      if (!rawToken) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    }
+
+      const cleanToken = rawToken.replace(/^Bearer\s+/i, "").trim();
+      try {
+        const userData = await getUserByToken(cleanToken);
+        setUser(userData);
+      } catch {
+        sessionStorage.removeItem("token");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadUser();
   }, []);
 
-  /*==============================
-      LOGIN USER
-  ==============================*/
   const loginUser = async (email, password) => {
     const result = await login(email, password);
+    if (!result?.token) throw new Error("Không nhận được token");
 
-    // 💥 LƯU TOKEN NGUYÊN BẢN (KHÔNG "Bearer ")
-    const token = result.token;
+    sessionStorage.setItem("token", result.token); // có Bearer cũng được
 
-    sessionStorage.setItem("token", token);
-
-    const userData = await getUserByToken(token);
+    const cleanToken = result.token.replace(/^Bearer\s+/i, "").trim();
+    const userData = await getUserByToken(cleanToken);
     setUser(userData);
-
     return userData;
   };
 
-  /*==============================
-      LOGOUT
-  ==============================*/
   const logoutUser = () => {
-    sessionStorage.removeItem("token");
+    logout();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login: loginUser,
-        logout: logoutUser,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, login: loginUser, logout: logoutUser }}>
       {children}
     </AuthContext.Provider>
   );

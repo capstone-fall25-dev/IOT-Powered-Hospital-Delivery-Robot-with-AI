@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/utils/authContext";
-import { getMyProfile, updateMyProfile } from "@/services/authService";
+import { getMyProfile, updateMyProfile } from "@/services/profileService";
 import styles from "@/assets/styles/userProfile.module.css";
 
 export default function UserProfile() {

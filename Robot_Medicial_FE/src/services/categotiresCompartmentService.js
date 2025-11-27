@@ -1,57 +1,23 @@
-import { API_CONFIG } from "@/utils/apiConfig";
+// src/services/categoriesCompartmentService.js
+import { apiFetch } from "./api";
 
-const BASE_URL = `${API_CONFIG.API_BASE}/CompartmentCategories`;
+const API = "/CompartmentCategories";
 
-export async function getAllCategoryCompartment() {
-    const res = await fetch(BASE_URL);
-    if (!res.ok) throw new Error("Failed to fetch compartment categories");
-    return res.json();
-}
+export const getAllCategoryCompartment = () => apiFetch(API);
 
+export const getCategoryById = (id) => apiFetch(`${API}/${id}`);
 
-export async function getCategoryById(id) {
-const res = await fetch(`${BASE_URL}/${id}`);
-if (!res.ok) throw new Error("Failed to fetch category by id");
-return res.json();
-}
+export const createCategory = (payload) =>
+  apiFetch(API, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
+export const updateCategory = (id, payload) =>
+  apiFetch(`${API}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 
-// CREATE
-export async function createCategory(payload) {
-const res = await fetch(BASE_URL, {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify(payload),
-});
-
-
-const body = await res.json();
-if (!res.ok) throw body;
-return body;
-}
-
-
-// UPDATE
-export async function updateCategory(id, payload) {
-const res = await fetch(`${BASE_URL}/${id}`, {
-method: "PUT",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify(payload),
-});
-
-
-const body = await res.json();
-if (!res.ok) throw body;
-return body;
-}
-
-
-// DELETE
-export async function deleteCategory(id) {
-const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
-
-
-const body = await res.json();
-if (!res.ok) throw body;
-return body;
-}
+export const deleteCategory = (id) =>
+  apiFetch(`${API}/${id}`, { method: "DELETE" });

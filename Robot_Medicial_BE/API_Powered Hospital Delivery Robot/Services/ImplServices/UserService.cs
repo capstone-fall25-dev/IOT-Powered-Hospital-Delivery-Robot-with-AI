@@ -248,51 +248,79 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return "Xác nhận thành công, tài khoản của bạn đã được kích hoạt!";
         }
 
+        private string HashToken(string token)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(token);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);
+        }
+
         public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
         {
             var user = await GetByEmailAsync(request.Email);
-            if (user == null)
-                return (string.Empty, "Email hoặc mật khẩu không hợp lệ.");
+            if (user == null || user.IsActive == false)
+                return (string.Empty, "Email hoặc mật khẩu không hợp lệ hoặc tài khoản bị khóa.");
 
-            // Nếu tài khoản đã bị khóa
-            if (user.IsActive == false)
-                return (string.Empty, "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ với quản trị viên.");
-
-            // Kiểm tra số lần đăng nhập sai từ cache
+            // Kiểm tra mật khẩu sai nhiều lần
             string failKey = $"LOGIN_FAIL_{user.Email}";
             _cache.TryGetValue(failKey, out int failCount);
 
-            // Kiểm tra mật khẩu
             if (user.PasswordHash != HashPassword(request.Password))
             {
                 failCount++;
-                _cache.Set(failKey, failCount, TimeSpan.FromMinutes(10)); // Đếm trong 10 phút
-
+                _cache.Set(failKey, failCount, TimeSpan.FromMinutes(10));
                 if (failCount >= 5)
                 {
                     user.IsActive = false;
-                    user.UpdatedAt = DateTime.UtcNow;
                     await UpdateUserAsync(user);
-
-                    _cache.Remove(failKey); // Xóa bộ đếm khi khóa tài khoản
-
-                    return (string.Empty, "Tài khoản của bạn đã bị khóa sau quá nhiều lần đăng nhập không thành công. Vui lòng liên hệ với quản trị viên.");
+                    _cache.Remove(failKey);
+                    return (string.Empty, "Tài khoản đã bị khóa do nhập sai quá nhiều lần.");
                 }
-
-                int remaining = 5 - failCount;
-                return (string.Empty, $"Mật khẩu không hợp lệ. Bạn còn {remaining} lần thử nữa trước khi tài khoản của bạn bị khóa.");
+                return (string.Empty, $"Sai mật khẩu. Còn {5 - failCount} lần thử.");
             }
 
-            // Đăng nhập thành công → reset bộ đếm
+            // Đăng nhập thành công
             _cache.Remove(failKey);
 
-            // Sinh token mới
             string token = JwtHelper.GenerateToken(user, _configuration);
+            string tokenHash = HashToken(token);
 
-            // Lưu token vào session (mỗi user chỉ có 1 token hợp lệ)
-            context.Session.SetString($"UserToken_{user.Email}", token);
+            // Xóa tất cả session cũ → chỉ cho phép 1 thiết bị
+            if (user.Sessions != null)
+            {
+                foreach (var session in user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow))
+                {
+                    session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+                }
+            }
 
-            return ($"Bearer {token}", "Đăng nhập thành công.");
+            // Tạo session mới
+            var newSession = new Session
+            {
+                UserId = user.Id,
+                SessionToken = tokenHash,
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers["User-Agent"].ToString(),
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            await _repository.CreateSessionAsync(newSession);
+            return ($"Bearer { token}", "Đăng nhập thành công.");
+        }
+
+        public async System.Threading.Tasks.Task LogoutAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return;
+
+            string tokenHash = HashToken(token);
+            var session = await _repository.GetSessionByTokenHashAsync(tokenHash);
+            if (session != null)
+            {
+                session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+                await _repository.UpdateSessionAsync(session);
+            }
         }
 
         public Task<string> LogoutAsync(HttpContext context, string username)

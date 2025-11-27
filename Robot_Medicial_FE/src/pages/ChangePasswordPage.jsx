@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/utils/authContext";
-import { changePassword } from "@/services/authService";
+import { changePassword } from "@/services/profileService";
 import styles from "@/assets/styles/changePassword.module.css";
 
 export default function ChangePasswordPage() {
