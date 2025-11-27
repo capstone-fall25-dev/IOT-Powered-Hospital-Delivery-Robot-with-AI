@@ -1,5 +1,5 @@
 // src/routes/RoutesConfig.jsx
-import ProtectedRoute from "@/components/ProtectedRoute"; 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import MainLayout from "@/layouts/MainLayout";
@@ -53,56 +53,56 @@ import CreateMap from "@/pages/CreateMap";
 
 import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
-
+import ForgotPasswordChangePage from "@/pages/ForgotPasswordChange";
 const routes = [
   // Public routes - không cần đăng nhập
   { path: "/", element: <Home /> },
   { path: "/login", element: <Login /> },
   { path: "/reset-password", element: <ChangePasswordPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
- 
-  { 
-    path: "/user-profile", 
+  { path: "/forgot-password-change", element: <ForgotPasswordChangePage /> },
+  {
+    path: "/user-profile",
     element: (
       <ProtectedRoute>
         <MainLayout><UserProfile /></MainLayout>
       </ProtectedRoute>
     )
   },
-  { 
-    path: "/change-password", 
+  {
+    path: "/change-password",
     element: (
       <ProtectedRoute>
         <MainLayout><ChangePasswordPage /></MainLayout>
       </ProtectedRoute>
     )
   },
-  { 
-    path: "/users", 
+  {
+    path: "/users",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
         <MainLayout><UserManagementPage /></MainLayout>
       </ProtectedRoute>
     )
   },
-  { 
-    path: "/user-detail/:userId", 
+  {
+    path: "/user-detail/:userId",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
         <MainLayout><UserDetail /></MainLayout>
       </ProtectedRoute>
     )
   },
-  { 
-    path: "/users/create", 
+  {
+    path: "/users/create",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
         <MainLayout><UserCreate /></MainLayout>
       </ProtectedRoute>
     )
   },
-  { 
-    path: "/users/edit/:userId", 
+  {
+    path: "/users/edit/:userId",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
         <MainLayout><UserEdit /></MainLayout>
@@ -147,8 +147,8 @@ const routes = [
   { path: "/create-map", element: <MainLayout><CreateMap /></MainLayout> },
   { path: "/run-map", element: <MainLayout><RunMap /></MainLayout> },
 
-  { 
-    path: "/compartment-categories", 
+  {
+    path: "/compartment-categories",
     element: (
       <ProtectedRoute allowedRoles={["admin", "doctor"]}>
         <MainLayout><CompartmentCategoryManager /></MainLayout>

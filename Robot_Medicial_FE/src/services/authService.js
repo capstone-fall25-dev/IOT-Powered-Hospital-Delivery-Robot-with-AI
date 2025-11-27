@@ -10,7 +10,7 @@ async function apiFetch(url, options = {}) {
     ...options.headers,
   };
   const response = await fetch(BASE_URL + url, { ...options, headers });
-  
+
   if (!response.ok) {
     let responseText = '';
     let errData = null;
@@ -23,11 +23,11 @@ async function apiFetch(url, options = {}) {
       console.error('Failed to parse error body:', parseErr, 'Raw text:', responseText);
       throw new Error(`Lỗi HTTP ${response.status}`);
     }
-    
+
     const errorMessage = errData?.message || `Lỗi HTTP ${response.status}`;
     throw new Error(errorMessage);
   }
-  
+
   return await response.json();
 }
 
@@ -55,7 +55,7 @@ export async function login(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  
+
   return response;
 }
 
@@ -70,7 +70,7 @@ export async function getUserByToken(token) {
         Authorization: token,
       },
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       return {
@@ -82,33 +82,33 @@ export async function getUserByToken(token) {
   } catch (error) {
     console.error("Lỗi gọi check-login-status:", error);
   }
-  
+
   // Option 2: Fallback - decode token locally
   const decoded = decodeToken(token);
-  
+
   if (decoded) {
     // ⬇️ FIX: Kiểm tra cả FullName (chữ hoa) và fullName (chữ thường)
     const userData = {
-      email: decoded.email 
-          || decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
-          || decoded.unique_name 
-          || decoded.sub,
-      
+      email: decoded.email
+        || decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
+        || decoded.unique_name
+        || decoded.sub,
+
       // ⬇️ QUAN TRỌNG: Kiểm tra FullName (chữ F HOA) trước
       fullName: decoded.FullName        // ⬅️ Backend dùng chữ F HOA
-             || decoded.fullName        // ⬅️ Fallback chữ f thường
-             || decoded.name 
-             || decoded.given_name 
-             || "User",
-      
-      role: decoded.role 
-         || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
-         || "user",
+        || decoded.fullName        // ⬅️ Fallback chữ f thường
+        || decoded.name
+        || decoded.given_name
+        || "User",
+
+      role: decoded.role
+        || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
+        || "user",
     };
-    
+
     return userData;
   }
-  
+
   throw new Error("Không thể lấy thông tin user từ token");
 }
 
@@ -139,5 +139,26 @@ export async function changePassword(passwordData) {
   return apiFetch("/profile/change-password", {
     method: "PUT",
     body: JSON.stringify(passwordData),
+  });
+}
+
+
+// =======================
+// FORGOT PASSWORD
+// =======================
+
+// Step 1 — gửi OTP
+export async function requestForgotPassword(email) {
+  return apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+// Step 2 — verify OTP + mật khẩu mới
+export async function verifyForgotPassword({ email, otp, newPassword }) {
+  return apiFetch("/auth/verify-forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, newPassword }),
   });
 }
