@@ -1,78 +1,42 @@
 // src/services/prescriptionServices.js
-import axios from "axios";
-import { API_CONFIG } from "@/utils/apiConfig";
+import { apiFetch } from "./api";
 
-// ========== PRESCRIPTION ==========
+export const getAllPrescriptions = (filters = {}) =>
+  apiFetch(`/prescriptions?${new URLSearchParams(filters)}`);
 
-// GET: danh sách đơn (có thể filter theo patientId, status)
-export const getAllPrescriptions = async (filters = {}) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/prescriptions`, {
-        params: {
-            patientId: filters.patientId || undefined,
-            status: filters.status || undefined,
-        },
-    });
-    return res.data; // PrescriptionResponseDto[]
-};
+export const getPrescriptionById = (id) =>
+  apiFetch(`/prescriptions/${id}`);
 
-// GET: chi tiết đơn
-export const getPrescriptionById = async (id) => {
-    const res = await axios.get(`${API_CONFIG.API_BASE}/prescriptions/${id}`);
-    return res.data; // PrescriptionResponseDto
-};
+export const createPrescription = (dto) =>
+  apiFetch(`/prescriptions`, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
 
-// POST: tạo đơn (chỉ tạo prescription, chưa thêm items)
-export const createPrescription = async (dto) => {
-    // dto: { prescriptionCode, patientId }
-    const res = await axios.post(`${API_CONFIG.API_BASE}/prescriptions`, dto);
-    return res.data; // PrescriptionResponseDto
-};
+export const updatePrescription = (id, dto) =>
+  apiFetch(`/prescriptions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(dto),
+  });
 
-// PUT: update đơn (code/patient/status)
-export const updatePrescription = async (id, dto) => {
-    // dto: { prescriptionCode?, patientId?, status? }
-    const res = await axios.put(`${API_CONFIG.API_BASE}/prescriptions/${id}`, dto);
-    return res.data; // PrescriptionResponseDto
-};
+export const softDeletePrescription = (id) =>
+  apiFetch(`/prescriptions/${id}`, { method: "DELETE" });
 
-// DELETE: soft delete (status = canceled)
-export const softDeletePrescription = async (id) => {
-    const res = await axios.delete(`${API_CONFIG.API_BASE}/prescriptions/${id}`);
-    return res.data; // true/false or PrescriptionResponseDto (tùy BE)
-};
+export const restorePrescription = (id) =>
+  apiFetch(`/prescriptions/${id}/restore`, { method: "PATCH" });
 
-// PATCH: restore (status từ canceled → pending)
-export const restorePrescription = async (id) => {
-    const res = await axios.patch(`${API_CONFIG.API_BASE}/prescriptions/${id}/restore`);
-    return res.data; // PrescriptionResponseDto
-};
+// -------- ITEMS ----------
+export const addPrescriptionItem = (prescriptionId, dto) =>
+  apiFetch(`/prescriptions/${prescriptionId}/items`, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
 
-// ========== PRESCRIPTION ITEMS ==========
+export const updatePrescriptionItem = (itemId, dto) =>
+  apiFetch(`/prescriptions/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(dto),
+  });
 
-// POST: thêm item vào đơn
-export const addPrescriptionItem = async (prescriptionId, dto) => {
-    // dto: { medicineId, quantity, dosage, instructions }
-    const res = await axios.post(
-        `${API_CONFIG.API_BASE}/prescriptions/${prescriptionId}/items`,
-        dto
-    );
-    return res.data; // PrescriptionItemResponseDto
-};
-
-// PUT: update item
-export const updatePrescriptionItem = async (itemId, dto) => {
-    // dto: { medicineId, quantity, dosage, instructions }
-    const res = await axios.put(
-        `${API_CONFIG.API_BASE}/prescriptions/items/${itemId}`,
-        dto
-    );
-    return res.data; // PrescriptionItemResponseDto
-};
-
-// DELETE: xóa item khỏi đơn
-export const deletePrescriptionItem = async (itemId) => {
-    const res = await axios.delete(
-        `${API_CONFIG.API_BASE}/prescriptions/items/${itemId}`
-    );
-    return res.data; // bool
-};
+export const deletePrescriptionItem = (itemId) =>
+  apiFetch(`/prescriptions/items/${itemId}`, { method: "DELETE" });

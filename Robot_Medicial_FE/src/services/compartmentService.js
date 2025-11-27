@@ -1,65 +1,32 @@
-import axios from "axios";
-import { API_CONFIG } from "@/utils/apiConfig";
+// src/services/compartmentService.js
+import { apiFetch } from "./api";
 
-const BASE_URL = `${API_CONFIG.API_BASE}/CompartmentAssignments`;
+const API = "/CompartmentAssignments";
 
-export async function getAllCompartments() {
-    // params = { taskId: number, status: string }
-    try {
-        const response = await axios.get(BASE_URL);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi getAllCompartments:", err);
-        return [];
-    }
-}
+export const getAllCompartments = () => apiFetch(API);
 
-export async function getCompartmentById(id) {
-    try {
-        const response = await axios.get(`${BASE_URL}/${id}`);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi getCompartmentById:", err);
-        return null;
-    }
-}
+export const getCompartmentById = (id) => apiFetch(`${API}/${id}`);
 
-export async function createCompartment(assignmentDto) {
-    try {
-        const response = await axios.post(BASE_URL, assignmentDto);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi createCompartment:", err);
-        throw err;
-    }
-}
+export const createCompartment = (dto) =>
+  apiFetch(API, {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
 
-export async function updateCompartment(id, assignmentDto) {
-    try {
-        const response = await axios.put(`${BASE_URL}/${id}`, assignmentDto);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi updateCompartment:", err);
-        throw err;
-    }
-}
+export const updateCompartment = (id, dto) =>
+  apiFetch(`${API}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(dto),
+  });
 
-export async function loadCompartment(id, loadDto) {
-    try {
-        const response = await axios.patch(`${BASE_URL}/${id}/load`, loadDto);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi loadCompartment:", err);
-        throw err;
-    }
-}
+export const loadCompartment = (id, loadDto) =>
+  apiFetch(`${API}/${id}/load`, {
+    method: "PATCH",
+    body: JSON.stringify(loadDto),
+  });
 
-export async function bulkLoadCompartments(taskId, loadDtos) {
-    try {
-        const response = await axios.post(`${BASE_URL}/tasks/${taskId}/load-compartments`, loadDtos);
-        return response.data;
-    } catch (err) {
-        console.error("Lỗi bulkLoadCompartments:", err);
-        throw err;
-    }
-}
+export const bulkLoadCompartments = (taskId, loadDtos) =>
+  apiFetch(`${API}/tasks/${taskId}/load-compartments`, {
+    method: "POST",
+    body: JSON.stringify(loadDtos),
+  });

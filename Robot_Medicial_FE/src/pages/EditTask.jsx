@@ -1,3 +1,4 @@
+// src/pages/EditTask.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -121,7 +122,7 @@ export default function EditTask() {
                 const data = await getTaskEditData(id);
 
                 // Nếu robot hiện tại không nằm trong danh sách available → thêm robot "không khả dụng" vào list
-                if (!robots.some((r) => r.id === data.robotId)) {
+                if (Array.isArray(robots) && !robots.some((r) => r.id === data.robotId)) {
                     setRobots((prev) => [
                         ...prev,
                         {
@@ -505,7 +506,8 @@ console.log("payload gửi lên BE:", payload);
                                         <option value="">
                                             — Chọn robot —
                                         </option>
-                                        {robots.map((r) => (
+                                        {Array.isArray(robots) &&
+                                            robots.map((r) => (
                                             <option value={r.id} key={r.id}>
                                                 #{r.id} - {r.name}
                                                 {typeof r.batteryPercent ===

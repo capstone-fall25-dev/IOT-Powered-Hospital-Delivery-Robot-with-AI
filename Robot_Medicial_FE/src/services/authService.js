@@ -4,7 +4,6 @@ import { API_CONFIG } from "@/utils/apiConfig";
 
 const BASE_URL = API_CONFIG.API_BASE;
 
-// Login không cần token
 export async function login(email, password) {
   const response = await fetch(BASE_URL + "/auth/login", {
     method: "POST",
@@ -15,7 +14,9 @@ export async function login(email, password) {
   if (!response.ok) {
     const err = await response.text();
     let msg = "Đăng nhập thất bại";
-    try { msg = JSON.parse(err).message || msg; } catch {}
+    try {
+      msg = JSON.parse(err).message || msg;
+    } catch {}
     throw new Error(msg);
   }
   return response.json();
@@ -31,10 +32,8 @@ export async function logout() {
   }
 }
 
-export async function getUserByToken(token) {
-  const cleanToken = (token || "").replace(/^Bearer\s+/i, "").trim();
-  if (!cleanToken) throw new Error("Không có token");
-
+// Dùng để check token còn sống không khi load app
+export async function getUserByToken() {
   try {
     const data = await apiFetch("/auth/check-login-status");
     return {
@@ -43,29 +42,23 @@ export async function getUserByToken(token) {
       role: data.role,
     };
   } catch (err) {
-    console.warn("check-login-status failed:", err.message);
-    function decodeJwt(token) {
-      const base64 = token.split('.')[1]
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
+    throw err; // để AuthProvider bắt và xóa token
+  }
+}
 
-      const jsonPayload = decodeURIComponent(
-        atob(base64).split('').map(c =>
-          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-        ).join('')
-      );
-
-      return JSON.parse(jsonPayload);
-    }
-
-    try {
-      const payload = decodeJwt(cleanToken);
-      return {
-        email: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] || payload.email || "user@example.com", 
-        fullName: payload.FullName || payload.fullName || "User", 
-        role: payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || payload.role || "user", };
-    } catch {
-      throw new Error("Token không hợp lệ");
-    }
+// Decode JWT fallback (khi BE trả 401 nhưng token vẫn còn payload)
+function decodeJwt(token) {
+  try {
+    const payload = token.split('.')[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return {};
   }
 }

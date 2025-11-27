@@ -73,8 +73,21 @@ export default function CreatePatient() {
         setError("");
         setLoading(true);
 
+        const payload = {
+            patientCode: form.patientCode,
+            fullName: form.fullName,
+            gender: form.gender,
+            dob: new Date(form.dob).toISOString(),
+            address: form.address,
+            phone: form.phone,
+            department: form.department,
+            roomNumber: form.roomName || "",
+            roomId: Number(form.roomId),
+            status: form.status
+        };
+
         try {
-            await createPatient(form);
+            await createPatient(payload);
             alert("Tạo bệnh nhân thành công!");
             navigate("/patients");
         } catch (err) {
