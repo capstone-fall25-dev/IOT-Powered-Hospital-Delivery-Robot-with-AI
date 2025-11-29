@@ -34,6 +34,13 @@ export default function RobotRunMap() {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
 
+
+  // ⭐ NEW: tiến độ điều hướng
+  const [navProgress, setNavProgress] = useState({
+    percent: 0,
+    robotCode: "",
+    pointName: "",
+  });
   // ===================================
   // 🔊 AUDIO STATE – WebRTC CALL
   // ===================================
@@ -79,6 +86,38 @@ export default function RobotRunMap() {
 
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    
+      // ⭐ NEW: nhận tiến độ từ backend
+    posConn.on("ReceiveNavigationProgress", (msg) => {
+      try {
+        // payload từ C#: { type, text, timestamp }
+        const raw =
+          msg?.text || msg?.Text || ""; // phòng trường hợp backend dùng Text
+        if (!raw || typeof raw !== "string") {
+          // nếu không parse được, để nguyên state cũ (mặc định ban đầu là 0%)
+          return;
+        }
+
+        const parts = raw.split("|");
+        const robotCode = parts[0] || "";
+        const percentStr = parts[1] || "0";
+        const pointName = parts[2] || "";
+
+        let percent = parseFloat(percentStr);
+        if (Number.isNaN(percent) || !Number.isFinite(percent)) {
+          percent = 0;
+        }
+        percent = Math.min(100, Math.max(0, percent));
+
+        setNavProgress({
+          percent,
+          robotCode,
+          pointName,
+        });
+      } catch (err) {
+        console.error("Parse ReceiveNavigationProgress error:", err);
+      }
+    });
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64)
@@ -966,7 +1005,63 @@ export default function RobotRunMap() {
                       </option>
                     ))}
                   </select>
+                  
+                     {/* ⭐ NEW: Thanh hiển thị % hoàn thành */}
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      marginBottom: "6px",
+                      padding: "6px 8px",
+                      borderRadius: "8px",
+                      background:
+                        "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        marginBottom: "4px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>
+                        Tiến độ nhiệm vụ:
+                      </span>
+                      <span>
+                        {navProgress.robotCode || "Robot ?"} •{" "}
+                        {navProgress.percent.toFixed(1)}%
+                      </span>
+                    </div>
 
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "8px",
+                        borderRadius: "999px",
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${navProgress.percent}%`,
+                          height: "100%",
+                          borderRadius: "999px",
+                          background:
+                            "linear-gradient(90deg, #0d6efd, #20c997)",
+                          transition: "width 0.2s ease-out",
+                        }}
+                      ></div>
+                    </div>
+
+                    <div style={{ marginTop: "4px", opacity: 0.8 }}>
+                      Đi đến:{" "}
+                      {navProgress.pointName || "Chưa nhận được điểm từ robot"}
+                    </div>
+                  </div>
+                  
                   <button
                     className={`${styles.btnTeal} mt-2`}
                     onClick={startRunMap}

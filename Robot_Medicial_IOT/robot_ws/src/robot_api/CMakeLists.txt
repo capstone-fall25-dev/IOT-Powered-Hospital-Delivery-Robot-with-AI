@@ -43,6 +43,8 @@ install(PROGRAMS
   scripts/control_robot_status.py
   scripts/audio_player_signalr.py
   scripts/robot_mic_streamer.py
+  scripts/scan_obstacle.py
+  scripts/goto_position.py
   DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

@@ -1,7 +1,7 @@
-image: abc.pgm
+image: tang2.pgm
 mode: trinary
 resolution: 0.050
-origin: [-0.843, -3.506, 0]
+origin: [-6.489, -8.084, 0]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196
