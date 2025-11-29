@@ -205,7 +205,6 @@ controller_server:
         max_angle_to_furthest: 1.0
         mode: 0
 
-
 local_costmap:
   local_costmap:
     ros__parameters:  
@@ -259,7 +258,7 @@ local_costmap:
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
-          observation_persistence: 20.0
+          observation_persistence: 10.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
@@ -311,6 +310,8 @@ global_costmap:
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
+          observation_persistence: 10.0
+
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True

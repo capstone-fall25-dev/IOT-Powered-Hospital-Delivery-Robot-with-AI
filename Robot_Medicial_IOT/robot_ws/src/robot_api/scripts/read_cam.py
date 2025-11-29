@@ -7,8 +7,10 @@ import cv2
 import base64
 import requests
 import time
+import os
 from get_api_url import get_api
 
+os.environ['OPENCV_LOG_LEVEL'] = 'OFF'
 BASE_URL = get_api()
 
 class WebcamPublisher(Node):
@@ -48,7 +50,7 @@ class WebcamPublisher(Node):
                 # self.get_logger().info(f"✅ Webcam mở thành công tại index {i}")
                 return True
 
-        self.get_logger().warn("❌ Không tìm thấy camera. Chờ kết nối lại...")
+        # self.get_logger().warn("❌ Không tìm thấy camera. Chờ kết nối lại...")
         return False
 
     # ------------------------------------------------------

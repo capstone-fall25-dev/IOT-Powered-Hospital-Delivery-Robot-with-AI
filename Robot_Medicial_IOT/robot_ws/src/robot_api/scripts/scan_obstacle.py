@@ -107,7 +107,7 @@ class ScanObstacleAlert(Node):
         if min_dist is None:
             return False
 
-        return  min_dist <= 0.40
+        return  30 <= min_dist <= 0.40
 
     def scan_callback(self, msg: LaserScan):
         self.laser_obstacle = self.check_laserscan_front(msg)
@@ -140,18 +140,19 @@ class ScanObstacleAlert(Node):
         self.scan_emg_pub.publish(emg_msg)
 
         now = time.time()
-        if (
-            has_obstacle
-            and not self.last_state
-        ):
-            self.last_tts_time = now
-            self.send_tts_alert_async("Phía trước có vật cản, vui lòng kiểm tra.")
-        if has_obstacle and self.laser_obstacle and (now - self.last_tts_time) >= self.tts_cooldown_sec:
-            self.send_tts_alert_async("Phía trước có vật cản, vui lòng kiểm tra.")
-            self.last_tts_time = now
 
-
+        if has_obstacle:
+            if not self.last_state:
+                # Vừa mới xuất hiện vật cản
+                self.last_tts_time = now
+                self.send_tts_alert_async("Phía trước có vật cản, vui lòng kiểm tra.")
+            elif self.laser_obstacle and (now - self.last_tts_time) >= self.tts_cooldown_sec:
+                # Vật cản vẫn còn (LIDAR), đọc lại theo cooldown
+                self.send_tts_alert_async("Phía trước có vật cản, vui lòng kiểm tra.")
+                self.last_tts_time = now
+        # Nếu không có vật cản: chỉ cần cập nhật lại last_state
         self.last_state = has_obstacle
+
 
     # =========================
     # GỬI TTS LÊN API

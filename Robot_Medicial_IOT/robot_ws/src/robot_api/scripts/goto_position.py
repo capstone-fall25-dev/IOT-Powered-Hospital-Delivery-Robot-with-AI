@@ -40,7 +40,7 @@ class APIConfig:
         # API cập nhật trạng thái robot
         self.send_status_url = f"{BASE_URL}/api/robots/update-status"
         # ⭐ API text-only nhận % progress
-        self.send_progress_url = f"{BASE_URL}/api/robots/navigation-progress"
+        self.send_progress_url = f"{BASE_URL}/api/RobotMode/navigation-progress"
 
         # Code robot (lấy từ env hoặc default)
         self.robot_code = os.environ.get('ROBOT_CODE', 'RB-01')

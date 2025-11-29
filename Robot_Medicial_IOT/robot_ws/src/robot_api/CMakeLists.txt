@@ -32,7 +32,7 @@ install(DIRECTORY
 
 install(PROGRAMS
   scripts/control_box.py
-  scripts/gotoPos.py
+  # scripts/gotoPos.py
   scripts/position_pos.py
   scripts/read_cam.py
   scripts/map_api.py
