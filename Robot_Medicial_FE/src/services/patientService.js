@@ -31,6 +31,9 @@ export const getMedicineHistory = (id) =>
 export const getReport = (id) =>
   apiFetch(`${API}/${id}/report`);
 
+export const getPatientsWithApprovedPrescription = () =>
+  apiFetch(`${API}/with-approved-prescription`);
+
 export const patientService = {
   getAllPatients,
   getPatientById,
