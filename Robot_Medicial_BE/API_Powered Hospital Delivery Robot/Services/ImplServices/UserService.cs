@@ -256,6 +256,60 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return Convert.ToBase64String(hash);
         }
 
+        //public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
+        //{
+        //    var user = await GetByEmailAsync(request.Email);
+        //    if (user == null || user.IsActive == false)
+        //        return (string.Empty, "Email hoặc mật khẩu không hợp lệ hoặc tài khoản bị khóa.");
+
+        //    // Kiểm tra mật khẩu sai nhiều lần
+        //    string failKey = $"LOGIN_FAIL_{user.Email}";
+        //    _cache.TryGetValue(failKey, out int failCount);
+
+        //    if (user.PasswordHash != HashPassword(request.Password))
+        //    {
+        //        failCount++;
+        //        _cache.Set(failKey, failCount, TimeSpan.FromMinutes(10));
+        //        if (failCount >= 5)
+        //        {
+        //            user.IsActive = false;
+        //            await UpdateUserAsync(user);
+        //            _cache.Remove(failKey);
+        //            return (string.Empty, "Tài khoản đã bị khóa do nhập sai quá nhiều lần.");
+        //        }
+        //        return (string.Empty, $"Sai mật khẩu. Còn {5 - failCount} lần thử.");
+        //    }
+
+        //    // Đăng nhập thành công
+        //    _cache.Remove(failKey);
+
+        //    string token = JwtHelper.GenerateToken(user, _configuration);
+        //    string tokenHash = HashToken(token);
+
+        //    // Xóa tất cả session cũ → chỉ cho phép 1 thiết bị
+        //    if (user.Sessions != null)
+        //    {
+        //        foreach (var session in user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow))
+        //        {
+        //            session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        //        }
+        //    }
+
+        //    // Tạo session mới
+        //    var newSession = new Session
+        //    {
+        //        UserId = user.Id,
+        //        SessionToken = tokenHash,
+        //        IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+        //        UserAgent = context.Request.Headers["User-Agent"].ToString(),
+        //        CreatedAt = DateTime.UtcNow,
+        //        ExpiresAt = DateTime.UtcNow.AddHours(24)
+        //    };
+
+        //    await _repository.CreateSessionAsync(newSession);
+        //    return ($"Bearer { token}", "Đăng nhập thành công.");
+        //}
+
         public async Task<(string Token, string Message)> LoginAsync(LoginDto request, HttpContext context)
         {
             var user = await GetByEmailAsync(request.Email);
@@ -270,6 +324,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 failCount++;
                 _cache.Set(failKey, failCount, TimeSpan.FromMinutes(10));
+
                 if (failCount >= 5)
                 {
                     user.IsActive = false;
@@ -277,6 +332,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     _cache.Remove(failKey);
                     return (string.Empty, "Tài khoản đã bị khóa do nhập sai quá nhiều lần.");
                 }
+
                 return (string.Empty, $"Sai mật khẩu. Còn {5 - failCount} lần thử.");
             }
 
@@ -286,16 +342,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             string token = JwtHelper.GenerateToken(user, _configuration);
             string tokenHash = HashToken(token);
 
-            // Xóa tất cả session cũ → chỉ cho phép 1 thiết bị
-            if (user.Sessions != null)
-            {
-                foreach (var session in user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow))
-                {
-                    session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
-                }
-            }
+            // ❌ KHÔNG xoá session cũ — CHO PHÉP login nhiều thiết bị
+            // CHỈ tạo session mới
 
-            // Tạo session mới
             var newSession = new Session
             {
                 UserId = user.Id,
@@ -307,8 +356,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
 
             await _repository.CreateSessionAsync(newSession);
-            return ($"Bearer { token}", "Đăng nhập thành công.");
+
+            return ($"Bearer {token}", "Đăng nhập thành công.");
         }
+
 
         public async System.Threading.Tasks.Task LogoutAsync(string token)
         {

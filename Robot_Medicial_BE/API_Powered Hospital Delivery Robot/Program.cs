@@ -165,7 +165,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("CORSPolicy");        
 app.UseSession();                
 app.UseHttpsRedirection();
-app.UseMiddleware<SingleDeviceMiddleware>();
+//app.UseMiddleware<SingleDeviceMiddleware>();
 app.UseAuthentication();          
 app.UseAuthorization();           
 app.MapControllers();
