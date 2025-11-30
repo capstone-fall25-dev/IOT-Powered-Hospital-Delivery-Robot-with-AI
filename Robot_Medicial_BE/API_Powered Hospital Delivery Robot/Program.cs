@@ -16,18 +16,17 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// 1. BASIC SERVICES CONFIGURATION
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 2. DATABASE CONFIGURATION
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
-//  Swagger + Bearer
+// 3. SWAGGER WITH JWT BEARER CONFIGURATION
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Hospital Delivery Robot API", Version = "v1" });
@@ -58,9 +57,10 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Config
+// 4. JWT AUTHENTICATION CONFIGURATION
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Secret"];
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -83,32 +83,48 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// CORS
+// 5. CORS CONFIGURATION
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("CORSPolicy", builder => builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true));
+    opts.AddPolicy("CORSPolicy", builder => builder
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()
+        .SetIsOriginAllowed((host) => true));
 });
 
-// Repository
+// 6. REPOSITORY REGISTRATION
+// User & Authentication
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Robot Management
 builder.Services.AddScoped<IRobotRepository, RobotRepository>();
-builder.Services.AddScoped<IMapRepository, MapRepository>();
-builder.Services.AddScoped<ITaskRepository, TaskRepository>();
-builder.Services.AddScoped<ICompartmentAssignmentRepository, CompartmentAssignmentRepository>();
+builder.Services.AddScoped<IRobotCompartmentRepository, RobotCompartmentRepository>();
 builder.Services.AddScoped<IRobotMaintenanceLogRepository, RobotMaintenanceLogRepository>();
-builder.Services.AddScoped<IPerformanceHistoryRepository, PerformanceHistoryRepository>();
-builder.Services.AddScoped<ILogRepository, LogRepository>();
-builder.Services.AddScoped<IAlertRepository, AlertRepository>();
+builder.Services.AddScoped<ICompartmentAssignmentRepository, CompartmentAssignmentRepository>();
+
+// Task Management
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<ITaskHistoryRepository, TaskHistoryRepository>();
+
+// Map & Navigation
+builder.Services.AddScoped<IMapRepository, MapRepository>();
+builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+
+// Medical Management
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
 builder.Services.AddScoped<IDrugCategoryRepository, DrugCategoryRepository>();
 builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
 builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
 builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
-builder.Services.AddScoped<IRoomRepository, RoomRepository>();
-builder.Services.AddScoped<IDestinationRepository, DestinationRepository>();
-builder.Services.AddScoped<IMapRepository, MapRepository>();
 
-// Service
+// Monitoring & Logs
+builder.Services.AddScoped<IPerformanceHistoryRepository, PerformanceHistoryRepository>();
+builder.Services.AddScoped<ILogRepository, LogRepository>();
+builder.Services.AddScoped<IAlertRepository, AlertRepository>();
+
+// 7. HELPER & SESSION CONFIGURATION
 builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddMemoryCache();
 builder.Services.AddDistributedMemoryCache();
@@ -120,25 +136,38 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// 8. SERVICE REGISTRATION
+// User & Authentication
 builder.Services.AddScoped<IUserService, UserService>();
+
+// Robot Management
 builder.Services.AddScoped<IRobotService, RobotService>();
-builder.Services.AddScoped<IMapService, MapService>();
-builder.Services.AddScoped<ITaskService, TaskService>();
-builder.Services.AddScoped<ICompartmentAssignmentService, CompartmentAssignmentService>();
+builder.Services.AddScoped<IRobotCompartmentService, RobotCompartmentService>();
 builder.Services.AddScoped<IRobotMaintenanceLogService, RobotMaintenanceLogService>();
-builder.Services.AddScoped<IPerformanceHistoryService, PerformanceHistoryService>();
-builder.Services.AddScoped<ILogService, LogService>();
-builder.Services.AddScoped<IAlertService, AlertService>();
+builder.Services.AddScoped<ICompartmentAssignmentService, CompartmentAssignmentService>();
+
+// Task Management
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ITaskHistoryService, TaskHistoryService>();
+
+// Map & Navigation
+builder.Services.AddScoped<IMapService, MapService>();
+builder.Services.AddScoped<IMapUploadService, MapUploadService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+
+// Medical Management
 builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IMedicineService, MedicineService>();
 builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 builder.Services.AddScoped<IPrescriptionItemService, PrescriptionItemService>();
-builder.Services.AddScoped<IRoomService, RoomService>();
-builder.Services.AddScoped<IDestinationService, DestinationService>();
-builder.Services.AddScoped<IMapUploadService, MapUploadService>();
-builder.Services.AddScoped<IRobotCompartmentService, RobotCompartmentService>();
-builder.Services.AddScoped<IRobotCompartmentRepository, RobotCompartmentRepository>();
-// AutoMap
+
+// Monitoring & Logs
+builder.Services.AddScoped<IPerformanceHistoryService, PerformanceHistoryService>();
+builder.Services.AddScoped<ILogService, LogService>();
+builder.Services.AddScoped<IAlertService, AlertService>();
+
+// 9. AUTOMAPPER CONFIGURATION
 builder.Services.AddAutoMapper(typeof(UserProfile));
 builder.Services.AddAutoMapper(typeof(RobotProfile));
 builder.Services.AddAutoMapper(typeof(MapProfile));
@@ -151,25 +180,37 @@ builder.Services.AddAutoMapper(typeof(DestinationProfile));
 builder.Services.AddAutoMapper(typeof(UserMappingProfile));
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// SignalR
+// 10. SIGNALR CONFIGURATION
 builder.Services.AddSignalR();
 
+// 11. BUILD APPLICATION
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 12. MIDDLEWARE PIPELINE CONFIGURATION
+// Swagger (Development only)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("CORSPolicy");        
-app.UseSession();                
+
+// CORS
+app.UseCors("CORSPolicy");
+
+// Session
+app.UseSession();
+
+// HTTPS Redirection
 app.UseHttpsRedirection();
-app.UseAuthentication();          
-app.UseAuthorization();           
+
+// Authentication & Authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Controllers
 app.MapControllers();
 
-// Map Hubs
+// 13. SIGNALR HUB MAPPING
 app.MapHub<AlertHub>("/hubs/alert");
 app.MapHub<RobotPositionHub>("/hubs/robotposition");
 app.MapHub<RobotCameraHub>("/hubs/robotcamera");
@@ -177,4 +218,34 @@ app.MapHub<RobotHub>("/hubs/robot");
 app.MapHub<TaskHub>("/hubs/task");
 app.MapHub<RobotAudioHub>("/hubs/robotaudio");
 app.MapHub<TTSHub>("/hubs/ttsHub");
+
+// 14. DATABASE INITIALIZATION & SEED DATA
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<RobotManagerContext>();
+    context.Database.EnsureCreated();
+
+    // Seed Admin User
+    if (!context.Users.Any(u => u.Email == "admin@hospital.com"))
+    {
+        string adminPass = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes("1"))
+        );
+
+        context.Users.Add(new User
+        {
+            Email = "admin@hospital.com",
+            FullName = "Hệ Thống",
+            Role = "admin",
+            IsActive = true,
+            PasswordHash = adminPass,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        context.SaveChanges();
+    }
+}
+
+// 15. RUN APPLICATION
 app.Run();

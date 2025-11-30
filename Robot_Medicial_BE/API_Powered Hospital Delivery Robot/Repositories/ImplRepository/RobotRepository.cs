@@ -42,6 +42,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await query.ToListAsync();
         }
 
+        public async Task<IEnumerable<Robot>> GetAllByMapWithCompartmentsAsync(ulong mapId)
+        {
+            return await _context.Robots
+                .Include(r => r.RobotCompartments)
+                .Where(r => r.MapId == mapId)
+                .ToListAsync();
+        }
+
         public async Task<Robot?> GetByCodeAsync(string code)
         {
             return await _context.Robots.FirstOrDefaultAsync(r => r.Code == code);

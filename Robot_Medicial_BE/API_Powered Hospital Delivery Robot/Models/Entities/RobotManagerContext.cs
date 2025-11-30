@@ -59,6 +59,10 @@ public partial class RobotManagerContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<TaskHistory> TaskHistories { get; set; } = null!;
+
+    public virtual DbSet<TaskStopHistory> TaskStopHistories { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -147,8 +151,8 @@ public partial class RobotManagerContext : DbContext
 
             entity.Property(e => e.Status)
                 .HasConversion(
-                    v => v.ToString().ToLower(),  // Enum -> string ("active", "expired")
-                    v => (MedicineStatus)Enum.Parse(typeof(MedicineStatus), v, true)  // string -> Enum
+                    v => v.ToString().ToLower(),
+                    v => (MedicineStatus)Enum.Parse(typeof(MedicineStatus), v, true)
                 );
 
             entity.HasOne(d => d.Category).WithMany(p => p.Medicines)
@@ -323,6 +327,32 @@ public partial class RobotManagerContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .ValueGeneratedOnAddOrUpdate()
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<TaskHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.Property(e => e.RecordedAt)
+                  .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+            entity.HasOne<Task>()
+                  .WithMany()
+                  .HasForeignKey(e => e.TaskId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Robot>()
+                  .WithMany()
+                  .HasForeignKey(e => e.RobotId);
+        });
+
+        modelBuilder.Entity<TaskStopHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            entity.HasOne<TaskHistory>()
+                  .WithMany(h => h.StopHistories)
+                  .HasForeignKey(e => e.TaskHistoryId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

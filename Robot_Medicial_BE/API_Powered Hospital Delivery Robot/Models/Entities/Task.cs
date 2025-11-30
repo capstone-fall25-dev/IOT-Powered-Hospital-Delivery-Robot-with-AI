@@ -39,6 +39,9 @@ public partial class Task
     [Column("total_errors")]
     public int TotalErrors { get; set; }
 
+    [Column("final_status", TypeName = "varchar(20)")]
+    public string? FinalStatus { get; set; } // completed, canceled, failed
+
     [Column("created_at", TypeName = "datetime")]
     public DateTime CreatedAt { get; set; }
 

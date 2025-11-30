@@ -40,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<bool> IsCompartmentBusyAsync(ulong id);
 
         // Lấy đơn thuốc mới nhất của bệnh nhân
-        Task<Prescription?> GetLatestPrescriptionForPatientAsync(ulong patientId);
+        Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId);
 
         // Lấy đơn thuốc theo mã code
         Task<Prescription?> GetPrescriptionByCodeAsync(string code);

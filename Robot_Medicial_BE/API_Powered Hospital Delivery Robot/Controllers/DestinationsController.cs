@@ -114,6 +114,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+
+        [HttpGet("by-map/{mapId}")]
+        public async Task<ActionResult<IEnumerable<DestinationResponseDto>>> GetByMap(ulong mapId)
+        {
+            var destinations = await _service.GetAllAsync();
+            var filtered = destinations.Where(d => d.MapId == mapId).OrderBy(d => d.Name);
+
+            return Ok(filtered);
+        }
     }
 
     // ============================================================

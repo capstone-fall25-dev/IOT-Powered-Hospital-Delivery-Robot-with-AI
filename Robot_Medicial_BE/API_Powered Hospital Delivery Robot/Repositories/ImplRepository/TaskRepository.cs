@@ -135,7 +135,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                                a.Status != "canceled");
         }
 
-        public async Task<Prescription?> GetLatestPrescriptionForPatientAsync(ulong patientId)
+        public async Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId)
         {
             return await _context.Prescriptions
                 .Include(p => p.PrescriptionItems)

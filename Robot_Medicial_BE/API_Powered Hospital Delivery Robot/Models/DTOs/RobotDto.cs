@@ -42,6 +42,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class CompartmentDto
     {
+        public ulong Id { get; set; }
         public string? Name { get; set; }
         public string? Code { get; set; }
         public bool IsLocked { get; set; }

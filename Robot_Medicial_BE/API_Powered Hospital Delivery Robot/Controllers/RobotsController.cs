@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -191,6 +192,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     detail = ex.Message
                 });
             }
+        }
+
+        [HttpGet("by-map/{mapId}")]
+        public async Task<ActionResult> GetByMap(ulong mapId)
+        {
+            var robots = await _service.GetByMapAsync(mapId);
+
+            return Ok(new
+            {
+                data = robots,
+                count = robots.Count()
+            });
         }
     }
 }

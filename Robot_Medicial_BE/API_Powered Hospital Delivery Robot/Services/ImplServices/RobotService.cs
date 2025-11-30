@@ -324,5 +324,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var updated = await _robotRepository.UpdateStatusAsync(id, dto.Status);
             return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
         }
+
+        public async Task<IEnumerable<RobotResponseDto>> GetByMapAsync(ulong mapId)
+        {
+            var robots = await _robotRepository.GetAllByMapWithCompartmentsAsync(mapId);
+
+            return robots.Select(r => new RobotResponseDto
+            {
+                Id = r.Id,
+                Code = r.Code ?? "",
+                Name = r.Name,
+                Status = r.Status ?? "unknown",
+                BatteryPercent = r.BatteryPercent,
+                MapId = r.MapId,
+
+                Compartments = r.RobotCompartments.Select(c => new CompartmentDto
+                {
+                    Id = c.Id,
+                    Code = c.CompartmentCode,
+                    CategoryId = c.CategoryId,
+                    IsLocked = c.Status == "locked"
+                }).ToList()
+            });
+        }
     }
 }

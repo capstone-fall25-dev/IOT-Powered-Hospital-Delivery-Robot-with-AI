@@ -28,6 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         {
             return await _context.Patients
                 .Include(p => p.Room)
+                .Include(p => p.Prescriptions)
                 .ToListAsync();
         }
 

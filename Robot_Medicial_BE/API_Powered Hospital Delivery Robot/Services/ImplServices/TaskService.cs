@@ -14,19 +14,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IRobotCompartmentRepository _repoRobotCom;
         private readonly IPatientRepository _repoPatient;
         private readonly IHubContext<TaskHub> _taskHub;
+        private readonly ITaskHistoryService _taskHistoryService;
 
         public TaskService(
             ITaskRepository repo,
             IRobotRepository repoRobot,
             IRobotCompartmentRepository repoRobotCom,
             IPatientRepository repoPatient,
-            IHubContext<TaskHub> taskHub)
+            IHubContext<TaskHub> taskHub,
+            ITaskHistoryService taskHistoryService)
         {
             _repo = repo;
             _repoRobot = repoRobot;
             _repoRobotCom = repoRobotCom;
             _repoPatient = repoPatient;
             _taskHub = taskHub;
+            _taskHistoryService = taskHistoryService;
         }
 
         // ======================================================================
@@ -87,12 +90,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var robot = await _repo.GetRobotAsync(dto.RobotId)
                     ?? throw new InvalidOperationException("Robot không tồn tại.");
 
-                // Ensure robot matches the map
+                // Robot must have at least 1 compartment to deliver
+                if (robot.RobotCompartments == null || robot.RobotCompartments.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Robot '{robot.Name}' không có khoang chứa, không thể giao nhiệm vụ.");
+                }
+
                 if (robot.MapId != dto.MapId)
                 {
-                    var updated = await _repoRobot.AssignMapToRobotAsync(robot.Id, dto.MapId);
-                    if (updated == null)
-                        throw new InvalidOperationException("Không thể gán map mới cho robot.");
+                    throw new InvalidOperationException(
+                        $"Robot '{robot.Name ?? robot.Code}' không thuộc bản đồ đã chọn. " +
+                        $"Vui lòng chọn robot phù hợp với Map ID = {dto.MapId}");
                 }
 
                 // Robot must be at_station to accept task
@@ -147,8 +156,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     if (comp.PatientId == null)
                         await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
 
-                    var rx = await _repo.GetLatestPrescriptionForPatientAsync(s.PatientId)
-                        ?? throw new InvalidOperationException($"Bệnh nhân {s.PatientId} chưa có đơn thuốc.");
+                    var rx = await _repo.GetLatestApprovedPrescriptionForPatientAsync(s.PatientId)
+    ?? throw new InvalidOperationException(
+           $"Bệnh nhân {s.PatientId} chưa có đơn thuốc được duyệt."
+       );
+
+                    if (rx.Status?.ToLower() != "approved")
+                        throw new InvalidOperationException(
+                            $"Đơn thuốc mới nhất của bệnh nhân {s.PatientId} chưa được duyệt."
+                        );
 
                     var patient = await _repoPatient.GetByIdAsync(s.PatientId)
                         ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
@@ -206,8 +222,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 {
                     await _repo.UpdateAsync(task.Id, task);
                 }
-
+                
                 await transaction.CommitAsync();
+                await RecordTaskHistory(task);
 
                 var result = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(result!);
@@ -258,6 +275,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     var newRobot = await _repo.GetRobotAsync(dto.RobotId.Value)
                         ?? throw new InvalidOperationException("Robot mới không tồn tại.");
+
+                    if (newRobot.RobotCompartments == null || newRobot.RobotCompartments.Count == 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Robot '{newRobot.Name}' không có khoang chứa, không thể nhận nhiệm vụ.");
+                    }
 
                     if (newRobot.Status != "at_station")
                         throw new InvalidOperationException("Robot mới đang bận.");
@@ -351,6 +374,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             assign.Status = stopStatus;
                             assign.UpdatedAt = DateTime.UtcNow;
                         }
+
                     }
 
                     // Robot về trạm khi task kết thúc
@@ -495,11 +519,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         }
                     }
                 }
-
+          
                 // Save, commit
                 await _repo.SaveChangesAsync();
+                
                 await transaction.CommitAsync();
-
+                await RecordTaskHistory(task);
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(updatedTask!);
 
@@ -728,10 +753,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<bool> UpdateStopStatusAsync(ulong taskId, ulong stopId, string newStatus)
         {
             var task = await _repo.GetByIdAsync(taskId);
-            if (task == null) throw new Exception("Task not found");
+            if (task == null)
+                throw new Exception("Task not found");
 
             var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
-            if (stop == null) throw new Exception("Stop not found");
+            if (stop == null)
+                throw new Exception("Stop not found");
 
             // Update stop status
             stop.Status = newStatus;
@@ -741,15 +768,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // AUTO COMPLETE TASK NẾU TẤT CẢ STOP = delivered
             // ============================================================
             bool allDelivered = task.TaskStops.Any() &&
-                task.TaskStops.All(s =>
-                    string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
+                task.TaskStops.All(s => string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
 
             if (allDelivered)
             {
                 task.Status = "completed";
                 task.UpdatedAt = DateTime.UtcNow;
 
-                // Robot về lại trạm
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
                 // Giải phóng khoang
@@ -762,9 +787,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 }
             }
 
+            // Lưu DB
             await _repo.SaveChangesAsync();
+
+            await RecordTaskHistory(task);
+
             return true;
         }
+
 
 
         public async Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId)
@@ -800,7 +830,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             await _repo.SaveChangesAsync();
-
+            await RecordTaskHistory(task);
             return new StopUpdateResultDto
             {
                 Success = true,
@@ -808,6 +838,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
         }
 
+        private async System.Threading.Tasks.Task RecordTaskHistory(Models.Entities.Task task)
+        {
+            var fullTask = await _repo.GetByIdAsync(task.Id); // load full includes
+
+            // Lấy history gần nhất
+            var lastHistory = await _taskHistoryService.GetLastHistoryAsync(task.Id);
+
+            // Nếu chưa có history → luôn lưu
+            if (lastHistory == null)
+            {
+                await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!);
+                return;
+            }
+
+            // SO SÁNH CÁC TRƯỜNG QUAN TRỌNG
+            bool changed =
+                lastHistory.FinalStatus != fullTask!.Status ||
+                lastHistory.Priority != fullTask.Priority ||
+                lastHistory.MapId != fullTask.MapId ||
+                lastHistory.RobotId != fullTask.RobotId ||
+                lastHistory.DeliveredStops != fullTask.TaskStops.Count(s => s.Status == "delivered") ||
+                lastHistory.FailedStops != fullTask.TaskStops.Count(s => s.Status == "failed") ||
+                lastHistory.SkippedStops != fullTask.TaskStops.Count(s => s.Status == "skipped");
+
+            // Nếu không có thay đổi → KHÔNG LƯU
+            if (!changed)
+                return;
+
+            // Nếu có thay đổi → lưu bản ghi mới
+            await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!);
+        }
     }
 }
 

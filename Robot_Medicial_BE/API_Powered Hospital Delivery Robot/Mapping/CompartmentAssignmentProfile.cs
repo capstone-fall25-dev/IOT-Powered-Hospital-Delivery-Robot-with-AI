@@ -18,6 +18,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
 
             CreateMap<LoadCompartmentDto, CompartmentAssignment>() // Partial map for item_desc
                 .ForMember(dest => dest.ItemDesc, opt => opt.MapFrom(src => src.ItemDesc));
+
+            CreateMap<RobotCompartment, CompartmentDto>()
+    .ForMember(d => d.Code, o => o.MapFrom(s => s.CompartmentCode))
+    .ForMember(d => d.Id, o => o.MapFrom(s => s.Id));
+
         }
     }
 }

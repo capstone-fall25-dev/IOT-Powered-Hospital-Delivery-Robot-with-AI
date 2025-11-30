@@ -94,5 +94,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             return _mapper.Map<PatientReportDto>(p);
         }
+
+        public async Task<IEnumerable<PatientResponseDto>> GetPatientsWithApprovedPrescriptionAsync()
+        {
+            var patients = await _repo.GetAllAsync(); // Lấy từ repo → có include Prescriptions
+
+            var validPatients = patients
+                .Where(p => p.Prescriptions != null &&
+                            p.Prescriptions.Any(pr =>
+                                pr.Status?.Equals("approved", StringComparison.OrdinalIgnoreCase) == true))
+                .ToList();
+
+            return _mapper.Map<IEnumerable<PatientResponseDto>>(validPatients);
+        }
     }
 }
