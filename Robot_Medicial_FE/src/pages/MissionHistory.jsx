@@ -361,40 +361,72 @@ export default function TaskHistoryPage() {
             <div className="container-lg py-4 py-lg-5">
 
                 {/* Header */}
-                <div className="d-flex justify-content-between flex-wrap mb-4">
-                    <div>
-                        <h2 className="fw-bold">Lịch sử nhiệm vụ robot</h2>
-                        <div className="chip mt-2">
+                <div className="row align-items-start mb-4">
+                    {/* Left: Title */}
+                    <div className="col-lg-5">
+                        <h2 className="fw-bold mb-2">Lịch sử nhiệm vụ robot</h2>
+                        <div className="chip">
                             Tra cứu hành trình • Xem timeline theo Task • Lọc nâng cao
                         </div>
                     </div>
-                     {/* STATS CARD */}
-                    <div className="col-lg-4">
-                         <div className="d-flex flex-column align-items-end gap-2">
-                            <div>
-                                <h5 className="fw-bold mb-3">Thống kê nhanh</h5>
-                                <div className="small lh-lg">
-                                    <div>Tổng task: <strong>{stats.total}</strong></div>
-                                    <div className="text-success">Hoàn thành: {stats.completed}</div>
-                                    <div className="text-primary">Đang chạy: {stats.in_progress}</div>
-                                    <div className="text-danger">Lỗi: {stats.failed}</div>
-                                    <div className="text-warning">Chờ bàn giao: {stats.awaiting}</div>
-                                    <div className="text-muted">Đã hủy: {stats.canceled}</div>
+
+                    {/* Right: Stats & View Toggle */}
+                    <div className="col-lg-7">
+                        <div className="glass p-3 rounded-2xl">
+                            <div className="row g-3">
+                                {/* Stats */}
+                                <div className="col-md-8">
+                                    <div className="fw-semibold mb-2">Thống kê nhanh</div>
+                                    <div className="row g-2 small">
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-muted">Tổng task</div>
+                                            <div className="fs-5 fw-bold">{stats.totalTasks}</div>
+                                        </div>
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-success">Hoàn thành</div>
+                                            <div className="fs-5 fw-bold text-success">{stats.completed}</div>
+                                        </div>
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-primary">Đang chạy</div>
+                                            <div className="fs-5 fw-bold text-primary">{stats.inProgress}</div>
+                                        </div>
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-danger">Lỗi</div>
+                                            <div className="fs-5 fw-bold text-danger">{stats.failed}</div>
+                                        </div>
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-warning">Chờ giao</div>
+                                            <div className="fs-5 fw-bold text-warning">{stats.awaiting}</div>
+                                        </div>
+                                        <div className="col-6 col-sm-4">
+                                            <div className="text-muted">Đã hủy</div>
+                                            <div className="fs-5 fw-bold text-muted">{stats.canceled}</div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="mt-4 d-flex gap-2">
-                                <button className={`btn flex-fill ${view === 'table' ? styles.btnTeal : styles.btnOutlineTeal}`} onClick={() => setView('table')}>
-                                    <i className="bi bi-table me-1"></i> Bảng
-                                </button>
-                                <button className={`btn flex-fill ${view === 'timeline' ? styles.btnTeal : styles.btnOutlineTeal}`} onClick={() => setView('timeline')}>
-                                    <i className="bi bi-clock-history me-1"></i> Timeline
-                                </button>
+
+                                {/* View Toggle */}
+                                <div className="col-md-4">
+                                    <div className="fw-semibold mb-2">Chế độ xem</div>
+                                    <div className="d-flex flex-column gap-2">
+                                        <button 
+                                            className={`btn ${view === 'table' ? 'btn-teal' : 'btn-outline-secondary'}`}
+                                            onClick={() => setView('table')}
+                                        >
+                                            <i className="bi bi-table me-1"></i> Bảng
+                                        </button>
+                                        <button 
+                                            className={`btn ${view === 'timeline' ? 'btn-teal' : 'btn-outline-secondary'}`}
+                                            onClick={() => setView('timeline')}
+                                        >
+                                            <i className="bi bi-clock-history me-1"></i> Timeline
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
                 </div>
-
                 {/* Filters */}
                 <div className="glass p-4 rounded-2xl mb-4">
                     <div className="row g-3">
