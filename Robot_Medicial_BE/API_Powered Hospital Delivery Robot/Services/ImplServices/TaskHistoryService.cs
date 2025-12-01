@@ -81,6 +81,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             return await _repo.GetLastHistoryAsync(taskId);
         }
+        public async Task<TaskHistoryResponseDto?> GetDetailAsync(ulong historyId)
+        {
+            var entity = await _repo.GetByIdAsync(historyId);
+            if (entity == null) return null;
 
+            return _mapper.Map<TaskHistoryResponseDto>(entity);
+        }
     }
 }

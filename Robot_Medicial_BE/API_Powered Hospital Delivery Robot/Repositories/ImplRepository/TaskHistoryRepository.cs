@@ -105,5 +105,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             => await _context.TaskHistories
                 .Include(h => h.StopHistories)
                 .FirstOrDefaultAsync(h => h.TaskId == taskId);
+
+        public async Task<TaskHistory?> GetByIdAsync(ulong id)
+        {
+            return await _context.TaskHistories
+                .Include(h => h.StopHistories)
+                .FirstOrDefaultAsync(h => h.Id == id);
+        }
     }
 }

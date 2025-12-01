@@ -20,5 +20,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             var result = await _service.GetHistoryAsync(filter);
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<TaskHistoryResponseDto>> GetDetail(ulong id)
+        {
+            var result = await _service.GetDetailAsync(id);
+            return result == null ? NotFound("Không tìm thấy lịch sử.") : Ok(result);
+        }
     }
 }

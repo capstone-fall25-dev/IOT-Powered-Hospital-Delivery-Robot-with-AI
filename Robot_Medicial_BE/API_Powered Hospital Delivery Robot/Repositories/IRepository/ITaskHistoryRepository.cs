@@ -10,5 +10,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         Task<int> GetHistoryCountAsync(TaskHistoryFilterDto filter);
         Task<TaskHistory?> GetByTaskIdAsync(ulong taskId);
         Task<TaskHistory?> GetLastHistoryAsync(ulong taskId);
+        Task<TaskHistory?> GetByIdAsync(ulong id);
     }
 }

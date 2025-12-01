@@ -4,13 +4,13 @@ public class TaskHistoryResponseDto
 {
     public ulong Id { get; set; }
     public ulong TaskId { get; set; }
-
+    public ulong RobotId { get; set; }
     public string RobotCode { get; set; } = null!;
     public string? RobotName { get; set; }
 
     public string AssignedByName { get; set; } = null!;
     public string AssignedByEmail { get; set; } = null!;
-
+    public string? PatientName { get; set; } = null!;
     public string? MapName { get; set; }
 
     public string Priority { get; set; } = null!;

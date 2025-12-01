@@ -8,5 +8,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task);
         Task<PagedTaskHistoryDto> GetHistoryAsync(TaskHistoryFilterDto filter);
         Task<TaskHistory?> GetLastHistoryAsync(ulong taskId);
+        Task<TaskHistoryResponseDto?> GetDetailAsync(ulong historyId);
     }
 }
