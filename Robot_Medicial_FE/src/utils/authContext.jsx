@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const rawToken = sessionStorage.getItem("token");
+      const rawToken = localStorage.getItem("token");
       if (!rawToken) {
         setLoading(false);
         return;
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
         const userData = await getUserByToken(cleanToken);
         setUser(userData);
       } catch {
-        sessionStorage.removeItem("token");
+        localStorage.removeItem("token");
         setUser(null);
       } finally {
         setLoading(false);
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
     const result = await login(email, password);
     if (!result?.token) throw new Error("Không nhận được token");
 
-    sessionStorage.setItem("token", result.token); // có Bearer cũng được
+    localStorage.setItem("token", result.token); // có Bearer cũng được
 
     const cleanToken = result.token.replace(/^Bearer\s+/i, "").trim();
     const userData = await getUserByToken(cleanToken);
