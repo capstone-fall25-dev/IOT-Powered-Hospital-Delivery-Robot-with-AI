@@ -56,6 +56,9 @@ import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
 import ForgotPasswordChangePage from "@/pages/ForgotPasswordChange";
 
+
+import ReportDashboard from "@/pages/ReportDashboard";
+
 const routes = [
   /*=============================================
     PUBLIC ROUTES - Chỉ cho phép khi CHƯA login
@@ -362,6 +365,13 @@ const routes = [
   { path: "/robot-edit/:id", element: (
       <ProtectedRoute>
         <MainLayout><RobotEdit /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+
+  { path: "/report", element: (
+      <ProtectedRoute>
+        <MainLayout><ReportDashboard /></MainLayout>
       </ProtectedRoute>
     )
   },
