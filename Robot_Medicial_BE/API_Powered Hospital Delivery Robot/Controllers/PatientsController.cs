@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -119,6 +120,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 return NotFound(ex.Message);
             }
+        }
+
+        [HttpGet("with-approved-prescription")]
+        public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetPatientsWithApprovedPrescription()
+        {
+            var patients = await _service.GetPatientsWithApprovedPrescriptionAsync();
+            return Ok(patients);
         }
     }
 }

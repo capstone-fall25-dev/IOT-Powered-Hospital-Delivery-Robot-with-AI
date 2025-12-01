@@ -7,6 +7,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Lấy danh sách robot (có thể lọc theo trạng thái)
         Task<IEnumerable<Robot>> GetAllAsync(string? status = null);
 
+        Task<IEnumerable<Robot>> GetAllByMapWithCompartmentsAsync(ulong mapId);
+
         // Lấy robot theo ID, có thể include các quan hệ
         Task<Robot?> GetByIdAsync(
             ulong id,

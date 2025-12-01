@@ -81,6 +81,12 @@
     background: white;
 }
 
+select.form-select option[disabled] {
+    color: #a0a0a0;
+    font-style: italic;
+    background: #f4f4f4;
+}
+
 /* =================== BUTTONS =================== */
 .btnTeal {
     background: linear-gradient(135deg, rgba(13, 148, 136, 0.74) 0%, rgba(8, 145, 178, 0.74) 100%);
@@ -313,4 +319,23 @@
     .rxBox {
         padding: 1rem;
     }
+}
+
+.floatingAddStop {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  background: #0cc0b0;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 999;
+}
+
+.floatingAddStop:hover {
+  background: #0f766e;
+  transform: scale(1.05);
 }

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -46,7 +47,8 @@ public partial class Medicine
     public DateTime? ExpiryDate { get; set; }
 
     [Column("status", TypeName = "enum('active','expired')")]
-    public MedicineStatus Status { get; set; } 
+    [DefaultValue("active")]  
+    public MedicineStatus? Status { get; set; }
 
     [ForeignKey("CategoryId")]
     [InverseProperty("Medicines")]

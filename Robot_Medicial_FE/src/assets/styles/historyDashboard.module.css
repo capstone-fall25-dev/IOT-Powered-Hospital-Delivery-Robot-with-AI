@@ -1,0 +1,156 @@
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+
+/* PAGE BACKGROUND */
+.page {
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76,225,198,.18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76,225,198,.12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
+    color: #0b1324;
+    font-family: Inter, system-ui, sans-serif;
+}
+
+
+/* GLASS CARD */
+.glass {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(13,148,136,0.12);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(15,23,42,0.08);
+    position: relative;
+}
+
+.glass::before {
+    content: "";
+    position: absolute;
+    top:0; left:0; right:0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13,148,136,.5), rgba(8,145,178,.5));
+}
+
+
+/* BTN TEAL */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13,148,136,.75), rgba(8,145,178,.75));
+    border: none;
+    color: white !important;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: .45rem 1rem;
+    transition: .2s;
+    box-shadow: 0 2px 6px rgba(13,148,136,.2);
+}
+
+.btnTeal:hover {
+    background: linear-gradient(135deg, rgba(13,148,136,.9), rgba(8,145,178,.9));
+    box-shadow: 0 4px 12px rgba(13,148,136,.35);
+}
+
+
+/* TABLE HEADER */
+.tableHeader th {
+    background: linear-gradient(135deg, rgba(13,148,136,0.08), rgba(8,145,178,0.06)) !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    font-size: .8rem;
+    border: none !important;
+}
+
+
+/* BADGE */
+.badgeStatus {
+    padding: .38rem .75rem;
+    font-size: .85rem;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+.statusCompleted {
+    background: rgba(34,197,94,0.15);
+    color:#15803d;
+    border:1px solid rgba(34,197,94,0.2);
+}
+
+.statusInProgress {
+    background: rgba(59,130,246,0.15);
+    color:#2563eb;
+    border:1px solid rgba(59,130,246,0.25);
+}
+
+.statusFailed {
+    background: rgba(239,68,68,0.15);
+    color:#dc2626;
+    border:1px solid rgba(239,68,68,0.25);
+}
+
+.statusCanceled {
+    background: rgba(107,114,128,0.15);
+    color:#4b5563;
+    border:1px solid rgba(107,114,128,0.25);
+}
+
+.statusAwaiting {
+    background: rgba(251,191,36,0.15);
+    color:#d97706;
+    border:1px solid rgba(251,191,36,0.25);
+}
+
+
+/* TIMELINE */
+.timeline {
+    padding-left: 26px;
+    position: relative;
+}
+
+.timeline::before {
+    content:"";
+    position:absolute;
+    top:10px; bottom:10px;
+    left:12px;
+    width:3px;
+    background: linear-gradient(180deg, rgba(13,148,136,0.6), rgba(13,148,136,0));
+}
+
+.timelineItem {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.timelineItem::before {
+    content:"";
+    position:absolute;
+    left:-15px; top:4px;
+    width:12px; height:12px;
+    border-radius:50%;
+    background: var(--teal);
+    box-shadow:0 0 0 4px rgba(13,148,136,0.25);
+}
+
+.timelineDot {
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    border:2px solid white;
+}
+
+.timelineDotActive {
+    background: var(--teal) !important;
+    box-shadow:0 0 0 4px rgba(76,225,198,0.35);
+}
+
+
+/* CARD */
+.card {
+    background: rgba(255,255,255,0.7);
+    border:1px solid rgba(13,148,136,0.12) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+}

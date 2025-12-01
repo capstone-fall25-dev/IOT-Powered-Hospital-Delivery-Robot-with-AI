@@ -65,6 +65,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                         Dosage = i.Dosage,
                         Instructions = i.Instructions
                     }).ToList()));
+
+            CreateMap<TaskHistory, TaskHistoryResponseDto>()
+            .ForMember(d => d.Stops, o => o.MapFrom(s => s.StopHistories));
+            CreateMap<TaskStopHistory, TaskStopHistoryDto>();
         }
 
         // Helper method: parse text like "RX#PR-001: Paracetamol x 10; VitaminC x 5"

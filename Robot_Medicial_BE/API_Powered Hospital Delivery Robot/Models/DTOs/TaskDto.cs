@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
@@ -24,14 +25,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [Required(ErrorMessage = "Vui lòng chọn robot.")]
         public ulong RobotId { get; set; }
 
-        [Required(ErrorMessage = "Vui lòng chọn mức độ ưu tiên.")]
-        public TaskPriority Priority { get; set; }
+        public TaskPriority Priority { get; set; } = TaskPriority.Normal;
 
+        [FutureDate(ErrorMessage = "Thời gian bắt đầu phải là trong tương lai.")]
         public DateTime? ScheduledStartAt { get; set; }
 
         [Required(ErrorMessage = "Cần ít nhất một điểm dừng.")]
         [MinLength(1, ErrorMessage = "Phải có ít nhất một điểm dừng.")]
-        public List<CreateTaskStopDto> Stops { get; set; } = new();
+        public List<CreateTaskStopDto> Stops { get; set; } = null!;
     }
 
     public class CreateTaskStopDto

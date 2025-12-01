@@ -39,7 +39,7 @@ import RobotManagement from "@/pages/RobotManagement";
 import CreateRobot from "@/pages/CreateRobot";
 import RobotDetail from "@/pages/RobotDetail";
 import RobotMissionHistory from "@/pages/MissionHistory";
-import RobotDetailMisson from "@/pages/RobotDetailMisson";
+import TaskHistoryDetail from "@/pages/TaskHistoryDetail";
 import RobotEdit from "@/pages/RobotEdit";
 
 import RobotDashBoard from "@/pages/RobotDashBoard";
@@ -296,9 +296,9 @@ const routes = [
       </ProtectedRoute>
     )
   },
-  { path: "/robot-tasks", element: (
+  { path: "/tasks/history/:id", element: (
       <ProtectedRoute>
-        <MainLayout><RobotDetailMisson /></MainLayout>
+        <MainLayout><TaskHistoryDetail /></MainLayout>
       </ProtectedRoute>
     )
   },

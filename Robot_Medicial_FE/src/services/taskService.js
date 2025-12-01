@@ -59,3 +59,13 @@ export const updateStopStatus = (taskId, stopId, status) =>
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+
+
+  export async function fetchTaskHistory(params) {
+    const query = new URLSearchParams(params).toString();
+    return await apiFetch(`/taskhistory?${query}`);
+}
+
+export async function fetchTaskHistoryDetail(id) {
+    return await apiFetch(`/taskhistory/${id}`);
+}
