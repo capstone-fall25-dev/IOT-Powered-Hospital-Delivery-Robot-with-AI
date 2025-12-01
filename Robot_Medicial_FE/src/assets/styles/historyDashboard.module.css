@@ -1,0 +1,262 @@
+/* src/assets/styles/historyDashboard.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+    --bg-gradient: radial-gradient(1200px 600px at 15% 10%, rgba(76,225,198,.18), transparent 60%),
+                    radial-gradient(900px 500px at 90% 5%, rgba(76,225,198,.12), transparent 60%),
+                    linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: var(--bg-gradient);
+    min-height: 100vh;
+}
+
+/* =================== TYPOGRAPHY =================== */
+.pageTitle {
+    font-weight: 800;
+    color: var(--ink);
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(76,225,198,.15);
+    color: var(--teal-dark);
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border: 1px solid rgba(13,148,136,0.2);
+}
+
+/* =================== GLASS CARD =================== */
+.glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--teal), rgba(13,148,136,0.6));
+}
+
+/* =================== BUTTONS =================== */
+.btnTeal {
+    background: linear-gradient(135deg, rgba(13,148,136,0.85), rgba(8,145,178,0.85));
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 0.65rem 1.4rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(13,148,136,0.3);
+}
+
+.btnTeal:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(13,148,136,1), rgba(8,145,178,1));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(13,148,136,0.4);
+}
+
+.btnOutlineTeal {
+    background: rgba(255,255,255,0.95);
+    border: 2px solid rgba(13,148,136,0.3);
+    color: var(--teal-dark);
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 0.65rem 1.4rem;
+    transition: all 0.2s ease;
+}
+
+.btnOutlineTeal:hover {
+    background: rgba(13,148,136,0.08);
+    border-color: var(--teal-dark);
+}
+
+/* =================== STATUS BADGES =================== */
+.badge {
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.84rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.badgeCompleted   { background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(22,163,74,0.12)); color: #15803d; border: 1px solid rgba(34,197,94,0.2); }
+.badgeInProgress  { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.12)); color: #2563eb; border: 1px solid rgba(59,130,246,0.2); }
+.badgeFailed      { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.12)); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+.badgeCanceled    { background: linear-gradient(135deg, rgba(107,114,128,0.15), rgba(75,85,99,0.12)); color: #4b5563; border: 1px solid rgba(107,114,128,0.2); }
+.badgeAwaiting    { background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.12)); color: #d97706; border: 1px solid rgba(251,191,36,0.2); }
+
+/* Priority */
+.badgeUrgent  { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.12)); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+.badgeHigh    { background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(249,115,22,0.12)); color: #ea580c; border: 1px solid rgba(251,146,60,0.2); }
+.badgeNormal  { background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(8,145,178,0.12)); color: var(--teal-dark); border: 1px solid rgba(13,148,136,0.2); }
+
+/* =================== STATUS DOT =================== */
+.statusDot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.8);
+}
+
+.statusDotCompleted { background: #22c55e; }
+.statusDotInProgress { background: #0ea5e5; }
+.statusDotFailed { background: #ef4444; }
+.statusDotCanceled { background: #94a3b8; }
+.statusDotAwaiting { background: #eab308; }
+
+/* =================== TABLE =================== */
+.table thead th {
+    background: rgba(13,148,136,0.06);
+    font-weight: 700;
+    color: #334155;
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 1.1rem 0.75rem;
+    border: none;
+}
+
+.table tbody td {
+    padding: 1.1rem 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(13,148,136,0.08);
+    color: #334155;
+}
+
+.table tbody tr:hover {
+    background: rgba(13,148,136,0.04);
+}
+
+/* =================== TIMELINE =================== */
+.timeline {
+    position: relative;
+    padding-left: 36px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--teal), rgba(76,225,198,0.15));
+    border-radius: 3px;
+}
+
+.timelineItem {
+    position: relative;
+    margin-bottom: 3rem;
+}
+
+.timelineItem::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 12px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 0 6px rgba(76,225,198,0.25);
+    border: 3px solid white;
+    z-index: 2;
+}
+
+.timelineCard {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    border: 1px solid rgba(13,148,136,0.1);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.timelineCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+
+/* =================== STATS BOX =================== */
+.statsBox {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 6px 20px rgba(15,23,42,0.1);
+    border: 1px solid rgba(13,148,136,0.2);
+}
+
+.statsTitle {
+    font-weight: 800;
+    color: var(--ink);
+    font-size: 1.15rem;
+    margin-bottom: 1rem;
+}
+
+.statsValue {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--teal-dark);
+}
+
+/* =================== PAGINATION =================== */
+.paginationInfo {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.paginationBtn {
+    min-width: 40px;
+    height: 38px;
+    border-radius: 8px;
+    background: white;
+    border: 1.5px solid rgba(13,148,136,0.25);
+    color: var(--teal-dark);
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.paginationBtn:hover:not(:disabled) {
+    background: rgba(13,148,136,0.1);
+    border-color: var(--teal-dark);
+}
+
+.paginationBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =================== RESPONSIVE =================== */
+@media (max-width: 992px) {
+    .pageTitle { font-size: 1.5rem; }
+    .glass { border-radius: 16px; }
+}
+
+@media (max-width: 768px) {
+    .timeline { padding-left: 24px; }
+    .timelineItem::before { left: -20px; }
+}
