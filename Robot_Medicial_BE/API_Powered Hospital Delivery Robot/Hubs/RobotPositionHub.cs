@@ -134,5 +134,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
             Console.WriteLine($"🚪 Client {Context.ConnectionId} đã rời nhóm '{groupName}'");
         }
+
+         /// <summary>
+        /// 📊 Broadcast tiến độ điều hướng (navigation progress) cho client
+        /// </summary>
+        public async Task BroadcastNavigationProgress(object progress)
+        {
+            try
+            {
+                await Clients.All.SendAsync("ReceiveNavigationProgress", progress);
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.WriteLine($"📊 [BroadcastProgress] {System.Text.Json.JsonSerializer.Serialize(progress)}");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ [BroadcastNavigationProgress] Lỗi: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
     }
 }

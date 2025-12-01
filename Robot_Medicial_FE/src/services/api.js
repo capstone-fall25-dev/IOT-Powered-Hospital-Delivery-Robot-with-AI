@@ -4,7 +4,7 @@ import { API_CONFIG } from "@/utils/apiConfig";
 const BASE_URL = API_CONFIG.API_BASE;
 
 function getCleanToken() {
-  const raw = sessionStorage.getItem("token") || "";
+  const raw = localStorage.getItem("token") || "";
   return raw.replace(/^Bearer\s+/i, "").trim();
 }
 
@@ -29,7 +29,7 @@ export async function apiFetch(url, options = {}) {
 
   // TỰ ĐỘNG LOGOUT KHI 401
   if (response.status === 401) {
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
     window.location.href = "/login";
     return;
   }
@@ -48,7 +48,7 @@ export async function apiFetch(url, options = {}) {
     throw error;
   }
 
-   // Nếu response rỗng (204 No Content) → trả về null
+  // Nếu response rỗng (204 No Content) → trả về null
   const text = await response.text();
   return text ? JSON.parse(text) : null;
 }

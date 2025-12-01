@@ -16,7 +16,7 @@ export async function login(email, password) {
     let msg = "Đăng nhập thất bại";
     try {
       msg = JSON.parse(err).message || msg;
-    } catch {}
+    } catch { }
     throw new Error(msg);
   }
   return response.json();
@@ -28,7 +28,7 @@ export async function logout() {
   } catch (e) {
     console.warn("Logout API failed:", e.message);
   } finally {
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
   }
 }
 

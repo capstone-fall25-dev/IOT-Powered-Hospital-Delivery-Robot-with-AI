@@ -1,0 +1,104 @@
+.reportDashboard {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.card {
+  composes: bg-white from global;
+  border-radius: 28px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.12);
+  overflow: hidden;
+  transition: all 0.4s ease;
+}
+
+.card:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 35px 70px rgba(0,0,0,0.18);
+}
+
+.headerStatus {
+  background: linear-gradient(120deg, #0ea5e9, #06b6d4);
+  padding: 2rem;
+  color: white;
+}
+
+.headerTimeline {
+  background: linear-gradient(120deg, #c084fc, #ec4899);
+  padding: 2rem;
+  color: white;
+}
+
+.title {
+  font-size: 2.3rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.btnExport {
+  background: white;
+  color: #0ea5e9;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(14,165,233,0.35);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btnExport:hover {
+  transform: scale(1.1) translateY(-4px);
+  box-shadow: 0 20px 40px rgba(14,165,233,0.5);
+}
+
+.filterGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filterInput {
+  padding: 1rem 1.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 1rem;
+  background: #fafbfc;
+  transition: all 0.3s;
+}
+
+.filterInput:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 5px rgba(14,165,233,0.18);
+  background: white;
+}
+
+.btnFilter {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(14,165,233,0.4);
+  transition: all 0.3s;
+}
+
+.btnFilter:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(14,165,233,0.55);
+}
+
+.chartContainer {
+  padding: 2rem;
+  background: #fafafa;
+}

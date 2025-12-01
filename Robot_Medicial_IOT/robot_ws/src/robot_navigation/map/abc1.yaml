@@ -1,7 +1,7 @@
-image: abc.pgm
+image: abc1.pgm
 mode: trinary
 resolution: 0.050
-origin: [-0.843, -3.506, 0]
+origin: [-2.875, -2.553, 0]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196

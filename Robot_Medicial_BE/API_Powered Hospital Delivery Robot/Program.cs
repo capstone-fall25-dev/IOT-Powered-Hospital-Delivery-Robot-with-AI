@@ -86,11 +86,9 @@ builder.Services.AddAuthentication(options =>
 // 5. CORS CONFIGURATION
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("CORSPolicy", builder => builder
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials()
-        .SetIsOriginAllowed((host) => true));
+    opts.AddPolicy("CORSPolicy", builder =>
+    builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed((host) => true).
+    WithExposedHeaders("Content-Disposition"));
 });
 
 // 6. REPOSITORY REGISTRATION

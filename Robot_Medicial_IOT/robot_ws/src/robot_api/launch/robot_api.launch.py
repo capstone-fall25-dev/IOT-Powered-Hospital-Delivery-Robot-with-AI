@@ -19,8 +19,8 @@ def generate_launch_description():
 
     goto_pose_node = Node(
         package="robot_api",
-        executable="gotoPos.py",
-        name="goto_pose_node",
+        executable="goto_position.py",
+        name="goto_pose_node_",
         output="screen"
     )
 
@@ -51,12 +51,12 @@ def generate_launch_description():
         output="screen"
     )   
     
-    # voice_control_node = Node(
-    # package='robot_api',
-    # executable='audio_call_node.py',
-    # name='audio_call_robot_node',
-    # output='screen'
-    # )
+    scan_obstacle_node = Node(
+        package='robot_api',
+        executable='scan_obstacle.py',
+        name='scan_obstacle_node',
+        output='screen'
+    )
 
     ld = LaunchDescription()
     ld.add_action(control_box_node)
@@ -66,6 +66,6 @@ def generate_launch_description():
     ld.add_action(control_robot_node)
     ld.add_action(map_api_node)
     ld.add_action(goto_pose_node)
-    #ld.add_action(voice_control_node)
+    ld.add_action(scan_obstacle_node)
     return ld
     

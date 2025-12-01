@@ -143,6 +143,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+
+
+
+        // =======================================================
+        // 🆕 NHẬN % HOÀN THÀNH TASK DẠNG TEXT
+        // Format text: "RB-01|37.5|Phòng 102"
+        // =======================================================
+        public class ProgressTextRequest
+        {
+            public string Text { get; set; } = string.Empty;
+        }
+
+        [HttpPost("navigation-progress")]
+        public async Task<IActionResult> NavigationProgress([FromBody] ProgressTextRequest req)
+        {
+            if (req == null || string.IsNullOrWhiteSpace(req.Text))
+                return BadRequest("Text is required");
+
+            try
+            {
+                var payload = new
+                {
+                    type = "navigation_progress",
+                    text = req.Text,            // ví dụ "RB-01|37.5|Phòng 102"
+                    timestamp = DateTime.UtcNow
+                };
+
+                // Broadcast cho tất cả client đang nối với Hub
+                await _hubContext.Clients.All.SendAsync("ReceiveNavigationProgress", payload);
+
+                _logger.LogInformation("📊 [Progress] {Text}", req.Text);
+
+                return Ok(new { status = "broadcasted", text = req.Text });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to broadcast navigation progress");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         // =======================================================
         // ⚙️ GỬI LỆNH ĐIỀU KHIỂN ĐỘNG CƠ (A, W, D, S, X)
         // =======================================================

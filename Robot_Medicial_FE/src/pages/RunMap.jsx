@@ -14,7 +14,7 @@ export default function RobotRunMap() {
   const liveMapRef = useRef(null);
   const liveMapLayer = useRef(null);
   const robotMarker = useRef(null);
-
+  const liveMapViewRef = useRef({ center: null, zoom: null });
   // ===================================
   // 🧩 STATE
   // ===================================
@@ -34,6 +34,13 @@ export default function RobotRunMap() {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
 
+
+  // ⭐ NEW: tiến độ điều hướng
+  const [navProgress, setNavProgress] = useState({
+    percent: 0,
+    robotCode: "",
+    pointName: "",
+  });
   // ===================================
   // 🔊 AUDIO STATE – WebRTC CALL
   // ===================================
@@ -79,6 +86,38 @@ export default function RobotRunMap() {
 
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    
+      // ⭐ NEW: nhận tiến độ từ backend
+    posConn.on("ReceiveNavigationProgress", (msg) => {
+      try {
+        // payload từ C#: { type, text, timestamp }
+        const raw =
+          msg?.text || msg?.Text || ""; // phòng trường hợp backend dùng Text
+        if (!raw || typeof raw !== "string") {
+          // nếu không parse được, để nguyên state cũ (mặc định ban đầu là 0%)
+          return;
+        }
+
+        const parts = raw.split("|");
+        const robotCode = parts[0] || "";
+        const percentStr = parts[1] || "0";
+        const pointName = parts[2] || "";
+
+        let percent = parseFloat(percentStr);
+        if (Number.isNaN(percent) || !Number.isFinite(percent)) {
+          percent = 0;
+        }
+        percent = Math.min(100, Math.max(0, percent));
+
+        setNavProgress({
+          percent,
+          robotCode,
+          pointName,
+        });
+      } catch (err) {
+        console.error("Parse ReceiveNavigationProgress error:", err);
+      }
+    });
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64)
@@ -179,38 +218,85 @@ export default function RobotRunMap() {
   // LIVE MAP (ROS2)
   // ===================================
   function drawLiveMap(mapData) {
-    if (!window.L) return;
-    const L = window.L;
+  if (!window.L) return;
+  const L = window.L;
 
-    const base64 = mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-    if (!base64) return;
+  const base64 =
+    mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+  if (!base64) return;
 
-    const res = mapData.Resolution || mapData.resolution || 0.05;
-    const w = mapData.Width || mapData.width || 800;
-    const h = mapData.Height || mapData.height || 800;
-    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
+  const res = mapData.Resolution || mapData.resolution || 0.05;
+  const w = mapData.Width || mapData.width || 800;
+  const h = mapData.Height || mapData.height || 800;
+  const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+  const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-    const imgSrc = `data:image/png;base64,${base64}`;
-    const bounds = [
-      [oy, ox],
-      [oy + h * res, ox + w * res],
-    ];
+  const imgSrc = `data:image/png;base64,${base64}`;
 
-    if (!liveMapRef.current) {
-      liveMapRef.current = L.map("live-map", {
-        crs: L.CRS.Simple,
-        zoomControl: false,
-      });
-      L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+  // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
+  const bounds = [
+    [oy, ox],
+    [oy + h * res, ox + w * res],
+  ];
+
+  // ================= LẦN ĐẦU TẠO MAP =================
+  if (!liveMapRef.current) {
+    liveMapRef.current = L.map("live-map", {
+      crs: L.CRS.Simple,
+      zoomControl: false,
+    });
+
+    L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+
+    // Lúc nào user zoom/pan xong thì lưu lại view
+    liveMapRef.current.on("moveend zoomend", () => {
+      if (!liveMapRef.current) return;
+      liveMapViewRef.current = {
+        center: liveMapRef.current.getCenter(),
+        zoom: liveMapRef.current.getZoom(),
+      };
+    });
+
+    // Tạo overlay lần đầu + fitBounds 1 lần duy nhất
+    if (liveMapLayer.current) {
+      liveMapRef.current.removeLayer(liveMapLayer.current);
     }
-
-    if (liveMapLayer.current) liveMapRef.current.removeLayer(liveMapLayer.current);
     liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
       liveMapRef.current
     );
+
     liveMapRef.current.fitBounds(bounds);
+
+    // Lưu lại view sau khi fitBounds
+    liveMapViewRef.current = {
+      center: liveMapRef.current.getCenter(),
+      zoom: liveMapRef.current.getZoom(),
+    };
+
+    return;
   }
+
+  // ================= CÁC LẦN UPDATE TIẾP THEO =================
+  // Lưu lại view hiện tại / view đã lưu (nếu có)
+  const currentCenter =
+    liveMapViewRef.current.center || liveMapRef.current.getCenter();
+  const currentZoom =
+    typeof liveMapViewRef.current.zoom === "number"
+      ? liveMapViewRef.current.zoom
+      : liveMapRef.current.getZoom();
+
+  // Thay overlay nhưng KHÔNG fitBounds lại
+  if (liveMapLayer.current) {
+    liveMapRef.current.removeLayer(liveMapLayer.current);
+  }
+  liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+    liveMapRef.current
+  );
+
+  // Restore lại đúng center + zoom cũ để không bị reset khi có map mới
+  liveMapRef.current.setView(currentCenter, currentZoom, { animate: false });
+}
+
 
   // ============================================================
   // 🧭 ROBOT POSITION
@@ -919,7 +1005,63 @@ export default function RobotRunMap() {
                       </option>
                     ))}
                   </select>
+                  
+                     {/* ⭐ NEW: Thanh hiển thị % hoàn thành */}
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      marginBottom: "6px",
+                      padding: "6px 8px",
+                      borderRadius: "8px",
+                      background:
+                        "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        marginBottom: "4px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>
+                        Tiến độ nhiệm vụ:
+                      </span>
+                      <span>
+                        {navProgress.robotCode || "Robot ?"} •{" "}
+                        {navProgress.percent.toFixed(1)}%
+                      </span>
+                    </div>
 
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "8px",
+                        borderRadius: "999px",
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${navProgress.percent}%`,
+                          height: "100%",
+                          borderRadius: "999px",
+                          background:
+                            "linear-gradient(90deg, #0d6efd, #20c997)",
+                          transition: "width 0.2s ease-out",
+                        }}
+                      ></div>
+                    </div>
+
+                    <div style={{ marginTop: "4px", opacity: 0.8 }}>
+                      Đi đến:{" "}
+                      {navProgress.pointName || "Chưa nhận được điểm từ robot"}
+                    </div>
+                  </div>
+                  
                   <button
                     className={`${styles.btnTeal} mt-2`}
                     onClick={startRunMap}
