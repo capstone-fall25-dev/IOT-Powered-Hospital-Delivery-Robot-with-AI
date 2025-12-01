@@ -258,6 +258,14 @@ export default function Sidebar() {
       {/* Content - Có scroll */}
       <div className="sidebar-content">
         <ul>
+                  <li
+            onClick={() => navigate("/report")}
+            className={isActive("/report") ? "active" : ""}
+          >
+            <i className="bi bi-bar-chart-line"></i>
+            <span>Thống kê task</span>
+          </li>
+
           <li
             onClick={() => navigate("/dashboard")}
             className={isActive("/dashboard") ? "active" : ""}
