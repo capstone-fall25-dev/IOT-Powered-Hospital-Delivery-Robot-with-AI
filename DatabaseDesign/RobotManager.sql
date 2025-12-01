@@ -127,12 +127,12 @@ CREATE TABLE `destinations` (
   `floor` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `x` float DEFAULT NULL,
   `y` float DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `map_id` bigint unsigned DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name1` (`name`),
-  KEY `fk_destination_map` (`map_id`),
-  CONSTRAINT `fk_destination_map` FOREIGN KEY (`map_id`) REFERENCES `maps` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+  KEY `IX_destinations_map_id` (`map_id`),
+  CONSTRAINT `FK_destinations_maps_map_id` FOREIGN KEY (`map_id`) REFERENCES `maps` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -258,7 +258,7 @@ CREATE TABLE `medicines` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `category_id` bigint unsigned DEFAULT NULL,
   `expiry_date` datetime DEFAULT NULL,
-  `status` enum('active','expired') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `status` enum('active','expired') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   PRIMARY KEY (`id`),
   UNIQUE KEY `medicine_code` (`medicine_code`),
   KEY `fk_medicine_category` (`category_id`),
@@ -573,6 +573,56 @@ LOCK TABLES `sessions` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `task_histories`
+--
+
+DROP TABLE IF EXISTS `task_histories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `task_histories` (
+  `Id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `TaskId` bigint unsigned NOT NULL,
+  `RobotId` bigint unsigned NOT NULL,
+  `RobotCode` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `RobotName` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `AssignedBy` bigint unsigned DEFAULT NULL,
+  `AssignedByName` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `AssignedByEmail` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `MapId` bigint unsigned DEFAULT NULL,
+  `MapName` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `Priority` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `FinalStatus` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `CreatedAt` datetime(6) NOT NULL,
+  `ScheduledStartAt` datetime(6) DEFAULT NULL,
+  `StartedAt` datetime(6) DEFAULT NULL,
+  `CompletedAt` datetime(6) DEFAULT NULL,
+  `TotalDurationS` int DEFAULT NULL,
+  `TotalErrors` int NOT NULL,
+  `TotalStops` int NOT NULL,
+  `DeliveredStops` int NOT NULL,
+  `SkippedStops` int NOT NULL,
+  `FailedStops` int NOT NULL,
+  `RecordedAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`Id`),
+  KEY `IX_task_histories_CompletedAt` (`CompletedAt`),
+  KEY `IX_task_histories_FinalStatus` (`FinalStatus`),
+  KEY `IX_task_histories_RobotId` (`RobotId`),
+  KEY `IX_task_histories_TaskId` (`TaskId`),
+  CONSTRAINT `FK_task_histories_robots_RobotId` FOREIGN KEY (`RobotId`) REFERENCES `robots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_task_histories_tasks_TaskId` FOREIGN KEY (`TaskId`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `task_histories`
+--
+
+LOCK TABLES `task_histories` WRITE;
+/*!40000 ALTER TABLE `task_histories` DISABLE KEYS */;
+/*!40000 ALTER TABLE `task_histories` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `task_patient_assignments`
 --
 
@@ -598,6 +648,46 @@ CREATE TABLE `task_patient_assignments` (
 LOCK TABLES `task_patient_assignments` WRITE;
 /*!40000 ALTER TABLE `task_patient_assignments` DISABLE KEYS */;
 /*!40000 ALTER TABLE `task_patient_assignments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `task_stop_histories`
+--
+
+DROP TABLE IF EXISTS `task_stop_histories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `task_stop_histories` (
+  `Id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `TaskHistoryId` bigint unsigned NOT NULL,
+  `SeqNo` int NOT NULL,
+  `DestinationId` bigint unsigned DEFAULT NULL,
+  `DestinationName` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `PatientId` bigint unsigned DEFAULT NULL,
+  `PatientCode` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `PatientName` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `RoomNumber` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `CompartmentId` bigint unsigned DEFAULT NULL,
+  `CompartmentCode` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `ItemDesc` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `Status` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `ArrivedAt` datetime(6) DEFAULT NULL,
+  `DeliveredAt` datetime(6) DEFAULT NULL,
+  `DurationSeconds` int DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `IX_task_stop_histories_SeqNo` (`SeqNo`),
+  KEY `IX_task_stop_histories_TaskHistoryId` (`TaskHistoryId`),
+  CONSTRAINT `FK_task_stop_histories_task_histories_TaskHistoryId` FOREIGN KEY (`TaskHistoryId`) REFERENCES `task_histories` (`Id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `task_stop_histories`
+--
+
+LOCK TABLES `task_stop_histories` WRITE;
+/*!40000 ALTER TABLE `task_stop_histories` DISABLE KEYS */;
+/*!40000 ALTER TABLE `task_stop_histories` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -657,6 +747,7 @@ CREATE TABLE `tasks` (
   `completed_at` datetime DEFAULT NULL,
   `total_duration_s` int DEFAULT NULL,
   `total_errors` int NOT NULL,
+  `final_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `map_id` bigint unsigned DEFAULT NULL,
@@ -709,7 +800,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin@hospital.com','jZae727K08KaOmKSgOaGzww/XVqGr/PKEgIMkjrcbJI=','Quản trị viên','admin',1,'2025-11-16 07:07:31','2025-11-16 14:08:27');
+INSERT INTO `users` VALUES (1,'admin@hospital.com','a4ayc/80/OGda4BO/1o/V0etpOqiLx1JwB5S3beHW0s=','Hệ Thống','admin',1,'2025-12-01 17:27:48','2025-12-02 00:27:48');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -722,4 +813,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-16 14:25:20
+-- Dump completed on 2025-12-02  0:29:26
