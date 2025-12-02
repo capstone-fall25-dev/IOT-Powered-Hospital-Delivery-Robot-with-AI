@@ -16,6 +16,7 @@ export default function CompartmentCategoryManagerPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [form, setForm] = useState({ id: null, name: "", description: "" });
   const [mode, setMode] = useState("create");
+  const [showModal, setShowModal] = useState(false);
 
   const [toast, setToast] = useState({ show: false, type: "", message: "", onConfirm: null });
 
@@ -56,6 +57,7 @@ export default function CompartmentCategoryManagerPage() {
       }
       setForm({ id: null, name: "", description: "" });
       setMode("create");
+      setShowModal(false);
       loadCategories();
     } catch (err) {
       showToast("error", err?.response?.data?.message || "Có lỗi xảy ra!");
@@ -67,7 +69,7 @@ export default function CompartmentCategoryManagerPage() {
   const handleEdit = (row) => {
     setForm({ id: row.id, name: row.name, description: row.description || "" });
     setMode("edit");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setShowModal(true);
   };
 
   const handleDelete = (id) => {
@@ -82,6 +84,18 @@ export default function CompartmentCategoryManagerPage() {
     });
   };
 
+  const openCreateModal = () => {
+    setForm({ id: null, name: "", description: "" });
+    setMode("create");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setForm({ id: null, name: "", description: "" });
+    setMode("create");
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -90,9 +104,9 @@ export default function CompartmentCategoryManagerPage() {
           <div className={styles.toastOverlay} onClick={() => setToast({ show: false })}>
             <div className={styles.toast} onClick={e => e.stopPropagation()}>
               <div className={`${styles.toastHeader} ${styles[toast.type]}`}>
-                {toast.type === "success" && "Thành công"}
-                {toast.type === "error" && "Lỗi"}
-                {toast.type === "confirm" && "Xác nhận xóa"}
+                {toast.type === "success" && "✓ Thành công"}
+                {toast.type === "error" && "✕ Lỗi"}
+                {toast.type === "confirm" && "⚠ Xác nhận xóa"}
               </div>
               <div className={styles.toastMessage}>{toast.message}</div>
               {toast.type === "confirm" ? (
@@ -115,76 +129,81 @@ export default function CompartmentCategoryManagerPage() {
           </div>
         )}
 
+        {/* Form Modal */}
+        {showModal && (
+          <div className={styles.modalOverlay} onClick={closeModal}>
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h2 className={styles.modalTitle}>
+                  {mode === "create" ? "➕ Tạo danh mục mới" : "✏️ Chỉnh sửa danh mục"}
+                </h2>
+                <button className={styles.modalClose} onClick={closeModal}>✕</button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className={styles.modalBody}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>
+                    Tên danh mục <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className={styles.input}
+                    placeholder="Nhập tên danh mục..."
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Mô tả</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className={styles.textarea}
+                    placeholder="Mô tả chi tiết (không bắt buộc)"
+                  />
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button type="button" onClick={closeModal} className={styles.btnCancel} disabled={formLoading}>
+                    Hủy
+                  </button>
+                  <button type="submit" disabled={formLoading} className={styles.btnPrimary}>
+                    {formLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Đang xử lý...
+                      </>
+                    ) : mode === "create" ? "✓ Tạo danh mục" : "✓ Cập nhật"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className={styles.header}>
           <h1 className={styles.title}>
-            Quản lý danh mục ngăn chứa
+            📁 Quản lý danh mục ngăn chứa
           </h1>
-          <button onClick={() => navigate("/dashboard")} className={styles.btnBack}>
-            Quay lại
-          </button>
-        </div>
-
-        {/* Form Card */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>
-              {mode === "create" ? "Tạo danh mục mới" : "Chỉnh sửa danh mục"}
-            </h2>
+          <div className={styles.headerActions}>
+            <button onClick={openCreateModal} className={styles.btnCreate}>
+              ➕ Tạo mới
+            </button>
+            <button onClick={() => navigate("/dashboard")} className={styles.btnBack}>
+              Quay lại
+            </button>
           </div>
-          <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Tên danh mục <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={styles.input}
-                placeholder="Nhập tên danh mục..."
-                required
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Mô tả</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className={styles.textarea}
-                placeholder="Mô tả (không bắt buộc)"
-              />
-            </div>
-
-            <div className={styles.btnGroup}>
-              <button type="submit" disabled={formLoading} className={styles.btnPrimary}>
-                {formLoading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2"></span>
-                    Đang xử lý...
-                  </>
-                ) : mode === "create" ? "Tạo danh mục" : "Cập nhật"}
-              </button>
-
-              {mode === "edit" && (
-                <button
-                  type="button"
-                  onClick={() => { setForm({ id: null, name: "", description: "" }); setMode("create"); }}
-                  className={styles.btnCancel}
-                >
-                  Hủy
-                </button>
-              )}
-            </div>
-          </form>
         </div>
 
         {/* Table Card */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>
-              Danh sách danh mục
+              📋 Danh sách danh mục ({rows.length})
             </h2>
           </div>
           <div className={styles.tableContainer}>
@@ -214,22 +233,22 @@ export default function CompartmentCategoryManagerPage() {
                 ) : rows.length === 0 ? (
                   <tr>
                     <td colSpan={4} className={styles.emptyRow}>
-                      Chưa có danh mục nào
+                      📭 Chưa có danh mục nào. Nhấn "Tạo mới" để bắt đầu!
                     </td>
                   </tr>
                 ) : (
                   rows.map((row) => (
                     <tr key={row.id}>
                       <td>#{row.id}</td>
-                      <td className="font-semibold">{row.name}</td>
+                      <td className="font-semibold">🏷️ {row.name}</td>
                       <td>{row.description || <span className="text-gray-400 italic">—</span>}</td>
                       <td>
                         <div className={styles.actionBtns}>
                           <button onClick={() => handleEdit(row)} className={styles.btnEdit}>
-                            Sửa
+                            ✏️ Sửa
                           </button>
                           <button onClick={() => handleDelete(row.id)} className={styles.btnDelete}>
-                            Xóa
+                            🗑️ Xóa
                           </button>
                         </div>
                       </td>
@@ -244,3 +263,4 @@ export default function CompartmentCategoryManagerPage() {
     </div>
   );
 }
+
