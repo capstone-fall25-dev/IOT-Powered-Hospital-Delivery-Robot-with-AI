@@ -20,9 +20,16 @@ L.Icon.Default.mergeOptions({
 export default function ProjectMapListView() {
   const mapRef = useRef(null);
   const worldPosRef = useRef(null);
+
+  // layer chứa marker tất cả phòng
+  const roomsLayerRef = useRef(null);
+
   const [maps, setMaps] = useState([]);
   const [selectedMap, setSelectedMap] = useState(null);
   const [mapInfo, setMapInfo] = useState(null);
+
+  // danh sách phòng theo map hiện tại
+  const [rooms, setRooms] = useState([]);
 
   const [isSelecting, setIsSelecting] = useState(false);
   const [newMarker, setNewMarker] = useState(null);
@@ -67,6 +74,68 @@ export default function ProjectMapListView() {
     fetchMapInfo();
   }, [selectedMap]);
 
+  // 2b️⃣ Load danh sách phòng theo map hiện tại
+  useEffect(() => {
+    async function fetchRooms() {
+      if (!selectedMap) return;
+      try {
+        const res = await fetch(API_CONFIG.API_BASE1 + "/api/Rooms");
+        const data = await res.json();
+
+        // lọc phòng thuộc map đang chọn
+        const filtered = data.filter(
+          (r) => String(r.mapId) === String(selectedMap.id)
+        );
+        setRooms(filtered);
+      } catch (err) {
+        console.error("❌ Lỗi tải phòng:", err);
+      }
+    }
+    fetchRooms();
+  }, [selectedMap]);
+
+  // =====================================================================
+  // Helper: vẽ tất cả phòng lên bản đồ
+  // =====================================================================
+  function refreshRoomMarkers() {
+    if (!mapRef.current || !mapInfo) return;
+
+    // tạo layer group nếu chưa có
+    if (!roomsLayerRef.current) {
+      roomsLayerRef.current = L.layerGroup().addTo(mapRef.current);
+    }
+
+    roomsLayerRef.current.clearLayers();
+
+    rooms.forEach((room) => {
+      if (room.latitude == null || room.longitude == null) return;
+
+      const worldX = Number(room.longitude);
+      const worldY = Number(room.latitude);
+      if (Number.isNaN(worldX) || Number.isNaN(worldY)) return;
+
+      const originX = mapInfo.originX;
+      const originY = mapInfo.originY;
+
+      const localX = worldX - originX;
+      const localY = worldY - originY;
+
+      const latlng = L.latLng(localY, localX);
+      const marker = L.marker(latlng);
+
+      if (room.roomName) {
+        marker.bindTooltip(room.roomName, {
+          permanent: true,
+          direction: "top",
+          offset: [0, -8],
+          className: styles.roomLabel || "",
+        });
+      }
+
+      roomsLayerRef.current.addLayer(marker);
+    });
+  }
+
   // =====================================================================
   // 3️⃣ Render map + logic load map & chọn điểm
   // =====================================================================
@@ -80,6 +149,12 @@ export default function ProjectMapListView() {
       mapRef.current = null;
     }
 
+    // dọn layer phòng cũ
+    if (roomsLayerRef.current) {
+      roomsLayerRef.current.clearLayers();
+      roomsLayerRef.current = null;
+    }
+
     const map = L.map("map", {
       crs: L.CRS.Simple,
       minZoom: -5,
@@ -87,7 +162,8 @@ export default function ProjectMapListView() {
       zoomControl: false,
     });
 
-    const imageUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${selectedMap.id}/image`;
+    const imageUrl =
+      API_CONFIG.API_BASE1 + `/api/MapsUpload/${selectedMap.id}/image`;
 
     const res = mapInfo.resolution;
     const originX = mapInfo.originX;
@@ -149,7 +225,9 @@ export default function ProjectMapListView() {
       }
 
       div.classList.add(styles.show);
-      div.textContent = `World: (${world.x.toFixed(2)}m, ${world.y.toFixed(2)}m)`;
+      div.textContent = `World: (${world.x.toFixed(
+        2
+      )}m, ${world.y.toFixed(2)}m)`;
     }
 
     function isClick(mouseDownTime, hasMouseMoved) {
@@ -239,6 +317,9 @@ export default function ProjectMapListView() {
 
     mapRef.current = map;
 
+    // sau khi map sẵn sàng -> vẽ các phòng nếu đã load
+    refreshRoomMarkers();
+
     // Cleanup
     return () => {
       container.removeEventListener("mousedown", handleMouseDown);
@@ -251,8 +332,19 @@ export default function ProjectMapListView() {
         mapRef.current.remove();
         mapRef.current = null;
       }
+
+      if (roomsLayerRef.current) {
+        roomsLayerRef.current.clearLayers();
+        roomsLayerRef.current = null;
+      }
     };
   }, [mapInfo, selectedMap, isSelecting]);
+
+  // mỗi khi rooms hoặc mapInfo thay đổi -> vẽ lại marker phòng
+  useEffect(() => {
+    refreshRoomMarkers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms, mapInfo]);
 
   // ==========================================================
   // 4️⃣ Toggle chế độ chọn điểm
@@ -262,7 +354,9 @@ export default function ProjectMapListView() {
     setIsSelecting(next);
 
     if (next) {
-      alert("🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!");
+      alert(
+        "🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!"
+      );
     } else {
       alert("❌ Đã tắt chế độ chọn tọa độ");
     }
@@ -339,13 +433,15 @@ export default function ProjectMapListView() {
     <div className={styles.page}>
       <div className="container-fluid py-4">
         <div className="container-xl">
-          
           {/* =================== HEADER =================== */}
           <div className={styles.headerSection}>
             <div>
               <h2 className={styles.pageTitle}>
-                <i className="bi bi-map me-2" style={{ color: 'var(--teal-dark)' }}></i>
-                Bản đồ 
+                <i
+                  className="bi bi-map me-2"
+                  style={{ color: "var(--teal-dark)" }}
+                ></i>
+                Bản đồ
               </h2>
               <div className={styles.subtitle}>
                 <i className="bi bi-geo-alt me-1"></i>
@@ -354,7 +450,10 @@ export default function ProjectMapListView() {
             </div>
 
             <div className={styles.headerActions}>
-              <button className={styles.btnTeal} onClick={handleSelectPointMode}>
+              <button
+                className={styles.btnTeal}
+                onClick={handleSelectPointMode}
+              >
                 <i className="bi bi-geo-alt me-1"></i>
                 {isSelecting ? "Đang chọn điểm..." : "Chọn điểm đến"}
               </button>
@@ -369,7 +468,6 @@ export default function ProjectMapListView() {
 
         <div className="container-fluid">
           <div className="row g-3">
-            
             {/* =================== SIDEBAR =================== */}
             <div className="col-lg-4 col-xl-3">
               <div className={styles.sidebar}>
@@ -413,10 +511,7 @@ export default function ProjectMapListView() {
 
             {/* =================== MAP =================== */}
             <div className="col-lg-8 col-xl-9 position-relative">
-              <div
-                id="map"
-                className={styles.mapContainer}
-              />
+              <div id="map" className={styles.mapContainer} />
 
               <div id="coordinates" className={styles.coordinateDisplay}>
                 World: (...)

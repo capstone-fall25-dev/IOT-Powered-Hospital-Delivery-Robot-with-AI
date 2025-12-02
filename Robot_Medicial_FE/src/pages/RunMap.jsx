@@ -10,6 +10,7 @@ export default function RobotRunMap() {
   const navMapRef = useRef(null);
   const navMapLayer = useRef(null);
   const destinationMarker = useRef(null);
+const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng trên nav-map
 
   const liveMapRef = useRef(null);
   const liveMapLayer = useRef(null);
@@ -326,119 +327,202 @@ export default function RobotRunMap() {
   // NAVIGATION MAP (map trên)
   // ===================================
   async function loadNavigationMapForDestination(destination) {
-    if (!destination) return;
-    if (!window.L) return;
-    const L = window.L;
+  if (!destination) return;
+  if (!window.L) return;
+  const L = window.L;
 
-    let meta;
-    try {
-      const metaRes = await fetch(
-        API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
-      );
-      meta = await metaRes.json();
-    } catch (err) {
-      console.error("Không lấy được metadata bản đồ:", err);
+  let meta;
+  try {
+    const metaRes = await fetch(
+      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
+    );
+    meta = await metaRes.json();
+  } catch (err) {
+    console.error("Không lấy được metadata bản đồ:", err);
+    return;
+  }
+
+  // ⭐ Đảm bảo resolution/origin là số hợp lệ
+  let resolution = Number(
+    meta?.resolution ?? meta?.Resolution ?? meta?.mapResolution ?? 0.05
+  );
+  if (!Number.isFinite(resolution) || resolution <= 0) {
+    resolution = 0.05;
+  }
+
+  let originX = Number(
+    meta?.originX ?? meta?.OriginX ?? meta?.origin?.x ?? 0
+  );
+  if (!Number.isFinite(originX)) originX = 0;
+
+  let originY = Number(
+    meta?.originY ?? meta?.OriginY ?? meta?.origin?.y ?? 0
+  );
+  if (!Number.isFinite(originY)) originY = 0;
+
+  setSelectedMapName(meta?.mapName || meta?.name || "");
+
+  // ================== LẤY DANH SÁCH PHÒNG CỦA MAP NÀY ==================
+  let roomsForMap = [];
+  try {
+    const roomsRes = await fetch(API_CONFIG.API_BASE1 + "/api/Rooms");
+    const allRooms = await roomsRes.json();
+    roomsForMap = (allRooms || []).filter(
+      (r) => Number(r.mapId) === Number(destination.mapId)
+    );
+  } catch (err) {
+    console.error("Không lấy được danh sách phòng:", err);
+  }
+
+  const imgUrl =
+    API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
+
+  const img = new Image();
+  img.src = imgUrl;
+
+  img.onload = () => {
+    const widthMeters = img.width * resolution;
+    const heightMeters = img.height * resolution;
+
+    if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) {
+      console.error("Kích thước bản đồ không hợp lệ:", {
+        widthMeters,
+        heightMeters,
+      });
       return;
     }
 
-    // ⭐ FIX: đảm bảo resolution/origin là số hợp lệ, tránh NaN -> crash
-    let resolution = Number(
-      meta?.resolution ?? meta?.Resolution ?? meta?.mapResolution ?? 0.05
+    const bounds = L.latLngBounds(
+      L.latLng(0, 0),
+      L.latLng(heightMeters, widthMeters)
     );
-    if (!Number.isFinite(resolution) || resolution <= 0) {
-      resolution = 0.05;
+
+    // ================== INIT NAV MAP ==================
+    if (!navMapRef.current) {
+      navMapRef.current = L.map("nav-map", { crs: L.CRS.Simple });
+      L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
     }
 
-    let originX = Number(
-      meta?.originX ?? meta?.OriginX ?? meta?.origin?.x ?? 0
-    );
-    if (!Number.isFinite(originX)) originX = 0;
+    // overlay bản đồ
+    if (navMapLayer.current) navMapRef.current.removeLayer(navMapLayer.current);
+    navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
+    navMapRef.current.fitBounds(bounds);
 
-    let originY = Number(
-      meta?.originY ?? meta?.OriginY ?? meta?.origin?.y ?? 0
-    );
-    if (!Number.isFinite(originY)) originY = 0;
+    // ================== VẼ ĐIỂM ĐẾN ==================
+    const destX =
+      destination.x ??
+      destination.X ??
+      destination.posX ??
+      destination.world_x ??
+      0;
+    const destY =
+      destination.y ??
+      destination.Y ??
+      destination.posY ??
+      destination.world_y ??
+      0;
 
-    setSelectedMapName(meta?.mapName || meta?.name || "");
+    const destLocalX = Number(destX) - originX;
+    const destLocalY = Number(destY) - originY;
 
-    const imgUrl =
-      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
+    if (!Number.isFinite(destLocalX) || !Number.isFinite(destLocalY)) {
+      console.error("Toạ độ điểm đến không hợp lệ:", {
+        destX,
+        destY,
+        originX,
+        originY,
+      });
+    } else {
+      const destLatLng = [destLocalY, destLocalX];
 
-    const img = new Image();
-    img.src = imgUrl;
-
-    img.onload = () => {
-      const widthMeters = img.width * resolution;
-      const heightMeters = img.height * resolution;
-
-      if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) {
-        console.error("Kích thước bản đồ không hợp lệ:", {
-          widthMeters,
-          heightMeters,
-        });
-        return;
-      }
-
-      const bounds = L.latLngBounds(
-        L.latLng(0, 0),
-        L.latLng(heightMeters, widthMeters)
-      );
-
-      if (!navMapRef.current) {
-        navMapRef.current = L.map("nav-map", { crs: L.CRS.Simple });
-        L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
-      }
-
-      if (navMapLayer.current) navMapRef.current.removeLayer(navMapLayer.current);
-      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
-      navMapRef.current.fitBounds(bounds);
-
-      // ⭐ FIX: lấy toạ độ điểm đến, chống undefined/NaN
-      const destX =
-        destination.x ??
-        destination.X ??
-        destination.posX ??
-        destination.world_x ??
-        0;
-      const destY =
-        destination.y ??
-        destination.Y ??
-        destination.posY ??
-        destination.world_y ??
-        0;
-
-      const localX = Number(destX) - originX;
-      const localY = Number(destY) - originY;
-
-      if (!Number.isFinite(localX) || !Number.isFinite(localY)) {
-        console.error("Toạ độ điểm đến không hợp lệ:", {
-          destX,
-          destY,
-          originX,
-          originY,
-        });
-        return;
-      }
-
-      const latlng = [localY, localX];
-
-      const icon = L.divIcon({
+      const destIcon = L.divIcon({
         html: `<div style="font-size:20px;">📍</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 24],
       });
 
-      if (destinationMarker.current) destinationMarker.current.setLatLng(latlng);
+      if (destinationMarker.current)
+        destinationMarker.current.setLatLng(destLatLng);
       else
-        destinationMarker.current = L.marker(latlng, { icon }).addTo(
-          navMapRef.current
-        );
-    };
+        destinationMarker.current = L.marker(destLatLng, {
+          icon: destIcon,
+        }).addTo(navMapRef.current);
+    }
 
-    img.onerror = (err) => {
-      console.error("Không tải được ảnh bản đồ:", err);
-    };
-  }
+    // ================== VẼ CÁC PHÒNG TRÊN MAP ==================
+    if (!navRoomsLayerRef.current) {
+      navRoomsLayerRef.current = L.layerGroup().addTo(navMapRef.current);
+    } else {
+      navRoomsLayerRef.current.clearLayers();
+    }
+
+    // ⭐ Icon phòng: hình tròn xanh + icon bệnh viện Bootstrap
+    const roomIcon = L.divIcon({
+      className: "",
+      html: `
+        <div
+          style="
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+          "
+        >
+          <i
+            class="bi bi-hospital-fill"
+            style="font-size: 14px; color: #ffffff;"
+          ></i>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 24],
+    });
+
+    roomsForMap.forEach((room) => {
+      if (
+        room.latitude == null ||
+        room.longitude == null ||
+        room.latitude === "" ||
+        room.longitude === ""
+      )
+        return;
+
+      const worldX = Number(room.longitude);
+      const worldY = Number(room.latitude);
+      if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+      const localX = worldX - originX;
+      const localY = worldY - originY;
+      if (!Number.isFinite(localX) || !Number.isFinite(localY)) return;
+
+      const latlng = L.latLng(localY, localX);
+
+      const label =
+        room.roomName || room.name || `Phòng ${room.id ?? "không tên"}`;
+
+      const marker = L.marker(latlng, { icon: roomIcon });
+
+      // 🎯 Giống DestinationByMapView: tooltip cố định phía trên
+      marker.bindTooltip(label, {
+        permanent: true,
+        direction: "top",
+        offset: L.point(0, -10),
+        opacity: 0.9,
+      });
+
+      marker.addTo(navRoomsLayerRef.current);
+    });
+  };
+
+  img.onerror = (err) => {
+    console.error("Không tải được ảnh bản đồ:", err);
+  };
+}
+
 
   // ===================================
   // CONTROL KEYS
