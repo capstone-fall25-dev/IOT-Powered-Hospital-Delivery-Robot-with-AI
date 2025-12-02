@@ -287,6 +287,14 @@ export default function Sidebar() {
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
           </li>
+          {/* ⭐ MỤC ĐIỂM ĐẾN MỚI THÊM ⭐ */}
+          <li
+            onClick={() => navigate("/destinationlist")}
+            className={isActive("/destinationlist") ? "active" : ""}
+          >
+            <i className="bi bi-geo-alt-fill"></i>
+            <span>Điểm đến</span>
+          </li>
 
           {/* Người dùng - CHỈ ADMIN */}
           {isAdmin && (

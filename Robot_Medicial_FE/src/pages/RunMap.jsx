@@ -34,13 +34,16 @@ export default function RobotRunMap() {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
 
-
   // ⭐ NEW: tiến độ điều hướng
   const [navProgress, setNavProgress] = useState({
     percent: 0,
     robotCode: "",
     pointName: "",
   });
+
+  // ⭐ NEW: text tiếng Việt cho robot đọc (TTS thủ công)
+  const [ttsTextCustom, setTtsTextCustom] = useState("");
+
   // ===================================
   // 🔊 AUDIO STATE – WebRTC CALL
   // ===================================
@@ -86,15 +89,13 @@ export default function RobotRunMap() {
 
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
-    
-      // ⭐ NEW: nhận tiến độ từ backend
+
+    // ⭐ NEW: nhận tiến độ từ backend
     posConn.on("ReceiveNavigationProgress", (msg) => {
       try {
         // payload từ C#: { type, text, timestamp }
-        const raw =
-          msg?.text || msg?.Text || ""; // phòng trường hợp backend dùng Text
+        const raw = msg?.text || msg?.Text || "";
         if (!raw || typeof raw !== "string") {
-          // nếu không parse được, để nguyên state cũ (mặc định ban đầu là 0%)
           return;
         }
 
@@ -218,46 +219,74 @@ export default function RobotRunMap() {
   // LIVE MAP (ROS2)
   // ===================================
   function drawLiveMap(mapData) {
-  if (!window.L) return;
-  const L = window.L;
+    if (!window.L) return;
+    const L = window.L;
 
-  const base64 =
-    mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
-  if (!base64) return;
+    const base64 =
+      mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
+    if (!base64) return;
 
-  const res = mapData.Resolution || mapData.resolution || 0.05;
-  const w = mapData.Width || mapData.width || 800;
-  const h = mapData.Height || mapData.height || 800;
-  const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
-  const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
+    const res = mapData.Resolution || mapData.resolution || 0.05;
+    const w = mapData.Width || mapData.width || 800;
+    const h = mapData.Height || mapData.height || 800;
+    const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
+    const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
-  const imgSrc = `data:image/png;base64,${base64}`;
+    const imgSrc = `data:image/png;base64,${base64}`;
 
-  // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
-  const bounds = [
-    [oy, ox],
-    [oy + h * res, ox + w * res],
-  ];
+    // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
+    const bounds = [
+      [oy, ox],
+      [oy + h * res, ox + w * res],
+    ];
 
-  // ================= LẦN ĐẦU TẠO MAP =================
-  if (!liveMapRef.current) {
-    liveMapRef.current = L.map("live-map", {
-      crs: L.CRS.Simple,
-      zoomControl: false,
-    });
+    // ================= LẦN ĐẦU TẠO MAP =================
+    if (!liveMapRef.current) {
+      liveMapRef.current = L.map("live-map", {
+        crs: L.CRS.Simple,
+        zoomControl: false,
+      });
 
-    L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
+      L.control.zoom({ position: "bottomright" }).addTo(liveMapRef.current);
 
-    // Lúc nào user zoom/pan xong thì lưu lại view
-    liveMapRef.current.on("moveend zoomend", () => {
-      if (!liveMapRef.current) return;
+      // Lúc nào user zoom/pan xong thì lưu lại view
+      liveMapRef.current.on("moveend zoomend", () => {
+        if (!liveMapRef.current) return;
+        liveMapViewRef.current = {
+          center: liveMapRef.current.getCenter(),
+          zoom: liveMapRef.current.getZoom(),
+        };
+      });
+
+      // Tạo overlay lần đầu + fitBounds 1 lần duy nhất
+      if (liveMapLayer.current) {
+        liveMapRef.current.removeLayer(liveMapLayer.current);
+      }
+      liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
+        liveMapRef.current
+      );
+
+      liveMapRef.current.fitBounds(bounds);
+
+      // Lưu lại view sau khi fitBounds
       liveMapViewRef.current = {
         center: liveMapRef.current.getCenter(),
         zoom: liveMapRef.current.getZoom(),
       };
-    });
 
-    // Tạo overlay lần đầu + fitBounds 1 lần duy nhất
+      return;
+    }
+
+    // ================= CÁC LẦN UPDATE TIẾP THEO =================
+    // Lưu lại view hiện tại / view đã lưu (nếu có)
+    const currentCenter =
+      liveMapViewRef.current.center || liveMapRef.current.getCenter();
+    const currentZoom =
+      typeof liveMapViewRef.current.zoom === "number"
+        ? liveMapViewRef.current.zoom
+        : liveMapRef.current.getZoom();
+
+    // Thay overlay nhưng KHÔNG fitBounds lại
     if (liveMapLayer.current) {
       liveMapRef.current.removeLayer(liveMapLayer.current);
     }
@@ -265,38 +294,9 @@ export default function RobotRunMap() {
       liveMapRef.current
     );
 
-    liveMapRef.current.fitBounds(bounds);
-
-    // Lưu lại view sau khi fitBounds
-    liveMapViewRef.current = {
-      center: liveMapRef.current.getCenter(),
-      zoom: liveMapRef.current.getZoom(),
-    };
-
-    return;
+    // Restore lại đúng center + zoom cũ để không bị reset khi có map mới
+    liveMapRef.current.setView(currentCenter, currentZoom, { animate: false });
   }
-
-  // ================= CÁC LẦN UPDATE TIẾP THEO =================
-  // Lưu lại view hiện tại / view đã lưu (nếu có)
-  const currentCenter =
-    liveMapViewRef.current.center || liveMapRef.current.getCenter();
-  const currentZoom =
-    typeof liveMapViewRef.current.zoom === "number"
-      ? liveMapViewRef.current.zoom
-      : liveMapRef.current.getZoom();
-
-  // Thay overlay nhưng KHÔNG fitBounds lại
-  if (liveMapLayer.current) {
-    liveMapRef.current.removeLayer(liveMapLayer.current);
-  }
-  liveMapLayer.current = L.imageOverlay(imgSrc, bounds, { opacity: 1 }).addTo(
-    liveMapRef.current
-  );
-
-  // Restore lại đúng center + zoom cũ để không bị reset khi có map mới
-  liveMapRef.current.setView(currentCenter, currentZoom, { animate: false });
-}
-
 
   // ============================================================
   // 🧭 ROBOT POSITION
@@ -330,16 +330,36 @@ export default function RobotRunMap() {
     if (!window.L) return;
     const L = window.L;
 
-    const metaRes = await fetch(
-      API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
+    let meta;
+    try {
+      const metaRes = await fetch(
+        API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}`
+      );
+      meta = await metaRes.json();
+    } catch (err) {
+      console.error("Không lấy được metadata bản đồ:", err);
+      return;
+    }
+
+    // ⭐ FIX: đảm bảo resolution/origin là số hợp lệ, tránh NaN -> crash
+    let resolution = Number(
+      meta?.resolution ?? meta?.Resolution ?? meta?.mapResolution ?? 0.05
     );
-    const meta = await metaRes.json();
+    if (!Number.isFinite(resolution) || resolution <= 0) {
+      resolution = 0.05;
+    }
 
-    const resolution = meta.resolution;
-    const originX = meta.originX;
-    const originY = meta.originY;
+    let originX = Number(
+      meta?.originX ?? meta?.OriginX ?? meta?.origin?.x ?? 0
+    );
+    if (!Number.isFinite(originX)) originX = 0;
 
-    setSelectedMapName(meta.mapName);
+    let originY = Number(
+      meta?.originY ?? meta?.OriginY ?? meta?.origin?.y ?? 0
+    );
+    if (!Number.isFinite(originY)) originY = 0;
+
+    setSelectedMapName(meta?.mapName || meta?.name || "");
 
     const imgUrl =
       API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
@@ -350,6 +370,14 @@ export default function RobotRunMap() {
     img.onload = () => {
       const widthMeters = img.width * resolution;
       const heightMeters = img.height * resolution;
+
+      if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) {
+        console.error("Kích thước bản đồ không hợp lệ:", {
+          widthMeters,
+          heightMeters,
+        });
+        return;
+      }
 
       const bounds = L.latLngBounds(
         L.latLng(0, 0),
@@ -365,8 +393,33 @@ export default function RobotRunMap() {
       navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
       navMapRef.current.fitBounds(bounds);
 
-      const localX = destination.x - originX;
-      const localY = destination.y - originY;
+      // ⭐ FIX: lấy toạ độ điểm đến, chống undefined/NaN
+      const destX =
+        destination.x ??
+        destination.X ??
+        destination.posX ??
+        destination.world_x ??
+        0;
+      const destY =
+        destination.y ??
+        destination.Y ??
+        destination.posY ??
+        destination.world_y ??
+        0;
+
+      const localX = Number(destX) - originX;
+      const localY = Number(destY) - originY;
+
+      if (!Number.isFinite(localX) || !Number.isFinite(localY)) {
+        console.error("Toạ độ điểm đến không hợp lệ:", {
+          destX,
+          destY,
+          originX,
+          originY,
+        });
+        return;
+      }
+
       const latlng = [localY, localX];
 
       const icon = L.divIcon({
@@ -376,7 +429,14 @@ export default function RobotRunMap() {
       });
 
       if (destinationMarker.current) destinationMarker.current.setLatLng(latlng);
-      else destinationMarker.current = L.marker(latlng, { icon }).addTo(navMapRef.current);
+      else
+        destinationMarker.current = L.marker(latlng, { icon }).addTo(
+          navMapRef.current
+        );
+    };
+
+    img.onerror = (err) => {
+      console.error("Không tải được ảnh bản đồ:", err);
     };
   }
 
@@ -480,6 +540,27 @@ export default function RobotRunMap() {
       alert("Đã gửi lệnh run_map!");
     } catch {
       // ignore
+    }
+  }
+
+  // ⭐ NEW: Gửi text tiếng Việt tùy ý xuống cho robot đọc
+  async function sendCustomTts() {
+    const text = ttsTextCustom.trim();
+    if (!text) {
+      alert("Vui lòng nhập nội dung tiếng Việt để robot đọc.");
+      return;
+    }
+
+    try {
+      await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      alert("Đã gửi nội dung cho robot đọc.");
+    } catch (err) {
+      console.error("Gửi TTS tuỳ chỉnh lỗi:", err);
+      alert("Không gửi được nội dung cho robot đọc.");
     }
   }
 
@@ -1005,8 +1086,8 @@ export default function RobotRunMap() {
                       </option>
                     ))}
                   </select>
-                  
-                     {/* ⭐ NEW: Thanh hiển thị % hoàn thành */}
+
+                  {/* ⭐ NEW: Thanh hiển thị % hoàn thành */}
                   <div
                     style={{
                       marginTop: "10px",
@@ -1026,9 +1107,7 @@ export default function RobotRunMap() {
                         alignItems: "center",
                       }}
                     >
-                      <span style={{ fontWeight: 600 }}>
-                        Tiến độ nhiệm vụ:
-                      </span>
+                      <span style={{ fontWeight: 600 }}>Tiến độ nhiệm vụ:</span>
                       <span>
                         {navProgress.robotCode || "Robot ?"} •{" "}
                         {navProgress.percent.toFixed(1)}%
@@ -1061,7 +1140,33 @@ export default function RobotRunMap() {
                       {navProgress.pointName || "Chưa nhận được điểm từ robot"}
                     </div>
                   </div>
-                  
+
+                  {/* ⭐ NEW: Text tiếng Việt cho robot đọc */}
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <textarea
+                      className={styles.formControl}
+                      rows={2}
+                      placeholder="Nhập câu tiếng Việt để robot đọc..."
+                      value={ttsTextCustom}
+                      onChange={(e) => setTtsTextCustom(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.btnPrimary}
+                      onClick={sendCustomTts}
+                    >
+                      <i className="bi bi-megaphone-fill me-1"></i>
+                      Gửi cho robot đọc
+                    </button>
+                  </div>
+
                   <button
                     className={`${styles.btnTeal} mt-2`}
                     onClick={startRunMap}
@@ -1081,17 +1186,24 @@ export default function RobotRunMap() {
                   </button>
 
                   {selectedDestination && (
-                    <div className={`${styles.destinationInfo} mt-2`}>
-                      <div>
-                        <strong>{selectedDestination.name}</strong>
-                      </div>
-                      <div>Map: {selectedMapName}</div>
-                      <div>
-                        X: {selectedDestination.x.toFixed(2)} | Y:{" "}
-                        {selectedDestination.y.toFixed(2)}
-                      </div>
+                  <div className={`${styles.destinationInfo} mt-2`}>
+                    <div>
+                      <strong>{selectedDestination.name}</strong>
                     </div>
-                  )}
+                    <div>Map: {selectedMapName}</div>
+                    <div>
+                      X:{" "}
+                      {typeof selectedDestination.x === "number"
+                        ? selectedDestination.x.toFixed(2)
+                        : selectedDestination.x ?? "?"}{" "}
+                      | Y:{" "}
+                      {typeof selectedDestination.y === "number"
+                        ? selectedDestination.y.toFixed(2)
+                        : selectedDestination.y ?? "?"}
+                    </div>
+                  </div>
+                )}
+
                 </div>
 
                 <hr className={styles.divider} />
@@ -1220,7 +1332,7 @@ export default function RobotRunMap() {
                 </div>
               </div>
             </div>
-          </div> 
+          </div>
         </div>
       </div>
     </div>

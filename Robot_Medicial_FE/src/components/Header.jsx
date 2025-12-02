@@ -194,6 +194,31 @@ const Header = () => {
                             <i className="bi bi-cpu me-2"></i>
                             Robot
                         </Nav.Link>
+                                                {/* ⭐ NÚT ĐIỂM ĐẾN MỚI THÊM Ở ĐÂY ⭐ */}
+                        <Nav.Link
+                            onClick={() => handleNavigate("destinationlist")}
+                            className={isActive("/destinationlist") ? "active" : ""}
+                            style={{
+                                color: "white",
+                                fontWeight: isActive("/destinationlist") ? "bold" : "normal",
+                                borderBottom: isActive("/destinationlist") ? "2px solid white" : "none",
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                transition: "all 0.3s"
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isActive("/destinationlist")) {
+                                    e.currentTarget.style.backgroundColor =
+                                        "rgba(255, 255, 255, 0.15)";
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "transparent";
+                            }}
+                        >
+                            <i className="bi bi-geo-alt-fill me-2"></i>
+                            Điểm đến
+                        </Nav.Link>
 
                         <Dropdown 
                             align="end" 
