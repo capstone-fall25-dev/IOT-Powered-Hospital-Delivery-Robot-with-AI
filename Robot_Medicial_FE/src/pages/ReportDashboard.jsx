@@ -12,7 +12,90 @@ import {
 
 import styles from "@/assets/styles/reportDashboard.module.css";
 
-const COLORS = ["#14b8a6", "#f59e0b", "#ef4444", "#8b5cf6", "#10b981", "#3b82f6", "#ec4899"];
+/* ============================
+   BẢN DỊCH TIẾNG VIỆT CHUẨN 
+============================ */
+const STATUS_LABELS = {
+  pending: "Chờ xử lý",
+  in_progress: "Đang thực hiện",
+  awaiting_handover: "Chờ giao/nhận",
+  returning: "Đang quay về trạm",
+  at_station: "Đang ở trạm",
+  completed: "Hoàn thành",
+  delivered: "Đã giao",
+  canceled: "Đã hủy",
+  failed: "Thất bại",
+  skipped: "Bỏ qua",
+
+  // Robot status
+  transporting: "Đang vận chuyển",
+  returning_to_station: "Đang quay về trạm",
+  charging: "Đang sạc pin",
+  needs_attention: "Cần kiểm tra",
+  manual_control: "Điều khiển thủ công",
+  offline: "Ngoại tuyến"
+};
+
+// Helper
+const toVietnamese = (status) => STATUS_LABELS[status] || status;
+
+/* ============================
+   MAPPING MÀU THEO STATUS
+============================ */
+const STATUS_COLORS = {
+  pending: "#f59e0b",            // amber
+  in_progress: "#3b82f6",        // blue
+  awaiting_handover: "#8b5cf6",  // purple
+  returning: "#1e3a8a",          // navy
+  at_station: "#6b7280",         // gray
+  completed: "#10b981",          // green
+  delivered: "#10b981",          // green
+  canceled: "#ef4444",           // red
+  failed: "#ef4444",             // red
+  skipped: "#ec4899"             // pink
+};
+
+// Fallback cho biểu đồ timeline
+const COLORS = Object.values(STATUS_COLORS);
+
+const ExcelIcon = () => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    viewBox="0 0 512 512"
+  >
+    <style type="text/css">
+      {`.st0{fill:#185C37;}
+        .st1{fill:#21A366;}
+        .st2{fill:#107C41;}
+        .st3{opacity:0.1;}
+        .st4{opacity:0.2;}
+        .st5{fill:url(#SVGID_1_);}
+        .st6{fill:#FFFFFF;}
+        .st7{fill:#33C481;}`}
+    </style>
+
+    <path class="st0" d="M321.49,244.09l-202.42-35.72v263.94c0,12.05,9.77,21.83,21.83,21.83l0,0h349.28 c12.05,0,21.83-9.77,21.83-21.83l0,0v-97.24L321.49,244.09z"/>
+    <path class="st1" d="M321.49,17.86H140.9c-12.05,0-21.83,9.77-21.83,21.83l0,0v97.24L321.49,256l107.16,35.72L512,256V136.93 L321.49,17.86z"/>
+    <path class="st2" d="M119.07,136.93h202.42V256H119.07V136.93z"/>
+    <path class="st3" d="M263.94,113.12H119.07v297.67h144.87c12.04-0.04,21.79-9.79,21.83-21.83V134.94 C285.73,122.9,275.98,113.16,263.94,113.12z"/>
+    <path class="st4" d="M252.04,125.02H119.07V422.7h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
+    <path class="st4" d="M252.04,125.02H119.07v273.86h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
+    <path class="st4" d="M240.13,125.02H119.07v273.86h121.06c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C261.91,134.81,252.17,125.06,240.13,125.02z"/>
+
+    <linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="45.5065" y1="-1464.0308" x2="216.4467" y2="-1167.9695" gradientTransform="matrix(1 0 0 1 0 1572)">
+      <stop offset="0" style={{ stopColor: "#18884F" }} />
+      <stop offset="0.5" style={{ stopColor: "#117E43" }} />
+      <stop offset="1" style={{ stopColor: "#0B6631" }} />
+    </linearGradient>
+
+    <path class="st5" d="M21.83,125.02h218.3c12.05,0,21.83,9.77,21.83,21.83v218.3c0,12.05-9.77,21.83-21.83,21.83H21.83 C9.77,386.98,0,377.21,0,365.15v-218.3C0,134.79,9.77,125.02,21.83,125.02z"/>
+    <path class="st6" d="M67.6,326.94l45.91-71.14l-42.07-70.75h33.84l22.96,45.25c2.12,4.3,3.57,7.49,4.36,9.6h0.3 c1.51-3.43,3.1-6.76,4.76-9.99l24.54-44.83h31.07l-43.14,70.33l44.23,71.54H161.3l-26.52-49.66c-1.25-2.11-2.31-4.33-3.17-6.63 h-0.39c-0.78,2.25-1.81,4.41-3.07,6.43l-27.3,49.87L67.6,326.94L67.6,326.94z"/>
+    <path class="st7" d="M490.17,17.86H321.49v119.07H512V39.69C512,27.63,502.23,17.86,490.17,17.86L490.17,17.86z"/>
+    <path class="st2" d="M321.49,256H512v119.07H321.49V256z"/>
+  </svg>
+);
 
 export default function ReportDashboard() {
   const [statusData, setStatusData] = useState([]);
@@ -25,13 +108,19 @@ export default function ReportDashboard() {
   const [timelineFrom, setTimelineFrom] = useState("");
   const [timelineTo, setTimelineTo] = useState("");
 
+  /* ============================
+      LOAD API
+  ============================ */
   const loadStatus = async () => {
     setLoadingStatus(true);
     try {
       const data = await getTaskStatusReport(statusFrom || null, statusTo || null);
       setStatusData(data || []);
-    } catch (err) { console.error(err); }
-    finally { setLoadingStatus(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStatus(false);
+    }
   };
 
   const loadTimeline = async () => {
@@ -39,8 +128,11 @@ export default function ReportDashboard() {
     try {
       const data = await getTaskTimelineReport(timelineFrom || null, timelineTo || null);
       setTimelineData(data || []);
-    } catch (err) { console.error(err); }
-    finally { setLoadingTimeline(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingTimeline(false);
+    }
   };
 
   useEffect(() => {
@@ -48,13 +140,20 @@ export default function ReportDashboard() {
     loadTimeline();
   }, []);
 
-  // Dữ liệu Bar Chart + TỔNG CỘNG
+  /* ============================
+      CHUẨN HOÁ DỮ LIỆU BAR CHART
+  ============================ */
   const prepareStatusData = () => {
     if (!statusData.length) return [];
-    const rows = statusData.filter(r => r.Robot !== "TỔNG CỘNG").map(r => ({
-      robot: r.Robot || "N/A",
-      ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task"))
-    }));
+    const rows = statusData
+      .filter(r => r.Robot !== "TỔNG CỘNG")
+      .map(r => ({
+        robot: r.Robot || "N/A",
+        ...Object.fromEntries(
+          Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task")
+        )
+      }));
+
     const total = statusData.find(r => r.Robot === "TỔNG CỘNG");
     if (total) {
       const { Robot, "Tổng task": _, ...rest } = total;
@@ -63,22 +162,36 @@ export default function ReportDashboard() {
     return rows;
   };
 
-  // Dữ liệu Pie Chart (tỷ lệ %)
+  /* ============================
+      PIE CHART DATA
+  ============================ */
   const preparePieData = () => {
     const totalRow = statusData.find(r => r.Robot === "TỔNG CỘNG");
     if (!totalRow) return [];
+
     return Object.entries(totalRow)
       .filter(([k]) => k !== "Robot" && k !== "Tổng task")
-      .map(([name, value]) => ({ name, value: Number(value) || 0 }));
+      .map(([name, value]) => ({
+        name: toVietnamese(name),
+        color: STATUS_COLORS[name],
+        value: Number(value) || 0
+      }));
   };
 
-  // Dữ liệu Line Chart + TỔNG CỘNG
+  /* ============================
+      TIMELINE DATA
+  ============================ */
   const prepareTimelineData = () => {
     if (!timelineData.length) return [];
-    const rows = timelineData.filter(r => r.Robot !== "TỔNG CỘNG").map(r => ({
-      robot: r.Robot || "N/A",
-      ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task"))
-    }));
+    const rows = timelineData
+      .filter(r => r.Robot !== "TỔNG CỘNG")
+      .map(r => ({
+        robot: r.Robot || "N/A",
+        ...Object.fromEntries(
+          Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task")
+        )
+      }));
+
     const total = timelineData.find(r => r.Robot === "TỔNG CỘNG");
     if (total) {
       const { Robot, "Tổng task": _, ...rest } = total;
@@ -87,103 +200,178 @@ export default function ReportDashboard() {
     return rows;
   };
 
+  /* ============================ */
   const statusChartData = prepareStatusData();
   const pieData = preparePieData();
   const timelineChartData = prepareTimelineData();
 
-  const statusKeys = statusData.length ? Object.keys(statusData[0]).filter(k => k !== "Robot" && k !== "Tổng task") : [];
-  const dateKeys = timelineData.length ? Object.keys(timelineData[0]).filter(k => k !== "Robot" && k !== "Tổng task") : [];
+  const statusKeys = statusData.length
+    ? Object.keys(statusData[0]).filter(k => k !== "Robot" && k !== "Tổng task")
+    : [];
+  const dateKeys = timelineData.length
+    ? Object.keys(timelineData[0]).filter(k => k !== "Robot" && k !== "Tổng task")
+    : [];
 
+  /* ============================
+      CUSTOM X-AXIS
+  ============================ */
   const CustomXAxisTick = ({ x, y, payload }) => {
     const isTotal = payload.value === "TỔNG CỘNG";
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={16} textAnchor="end" fill={isTotal ? "#d97706" : "#475569"}
-          fontWeight={isTotal ? "900" : "600"} fontSize={isTotal ? 18 : 13}
-          transform="rotate(-50)">
+        <text
+          dy={16}
+          textAnchor="end"
+          fill={isTotal ? "#b45309" : "#475569"}
+          fontWeight={isTotal ? "900" : "600"}
+          fontSize={isTotal ? 18 : 13}
+          transform="rotate(-50)"
+        >
           {payload.value}
         </text>
       </g>
     );
   };
 
+  /* ========================================================
+      FULL UI
+  ======================================================== */
   return (
     <div className={styles.page}>
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4">
 
-       
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+        {/* PAGE HEADER */}
+        <div className="mb-8 text-center">
+          <h1 className={styles.pageTitle}>Báo Cáo Task Robot</h1>
+          <p className={styles.pageSubtitle}>
+            Thống kê số lượng task theo trạng thái và theo ngày.
+          </p>
+        </div>
 
-          {/* CARD 1: TRẠNG THÁI (PIE + BAR) */}
+        {/* LAYOUT 2 CỘT */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+
+          {/* ====================================== */}
+          {/* LEFT COLUMN - STATUS */}
+          {/* ====================================== */}
           <div className={styles.glass}>
-            <div className={styles.headerStatus}>
-              <div className="flex justify-between items-center">
-                <h2 className={styles.title}>Task Theo Trạng Thái</h2>
-                <button onClick={() => exportReportExcel("status", statusFrom || undefined, statusTo || undefined)}
-                  className={styles.btnExport}>
-                  Xuất Excel
-                </button>
+            <div className={styles.cardHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>Task Theo Trạng Thái</h2>
+                <p className={styles.cardSubtitle}>
+                  Phân bố trạng thái task theo từng robot.
+                </p>
               </div>
+
+              <button
+                onClick={() =>
+                  exportReportExcel("status", statusFrom || undefined, statusTo || undefined)
+                }
+                className={styles.btnExportIcon}
+                title="Xuất file Excel"
+              >
+                <ExcelIcon />
+              </button>
             </div>
 
-            <div className="p-10 space-y-10">
+            <div className={styles.cardBody}>
 
-              {/* Filter */}
-              <div className="grid grid-cols-3 gap-6">
-                <div><label className="block text-sm font-bold text-gray-700 mb-3">Từ ngày :</label>
-                  <input type="date" value={statusFrom} onChange={e => setStatusFrom(e.target.value)} className={styles.filterInput} /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-3">Đến ngày</label>
-                  <input type="date" value={statusTo} onChange={e => setStatusTo(e.target.value)} className={styles.filterInput} /></div>
-                <div className="flex items-end">
-                  <button onClick={loadStatus} className={styles.btnFilter + " w-full py-4 text-lg"}>Lọc Ngay</button>
+              {/* FILTER */}
+              <div className={styles.filterRow}>
+                <div>
+                  <label className={styles.filterLabel}>Từ ngày</label>
+                  <input
+                    type="date"
+                    value={statusFrom}
+                    onChange={e => setStatusFrom(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                <div>
+                  <label className={styles.filterLabel}>Đến ngày</label>
+                  <input
+                    type="date"
+                    value={statusTo}
+                    onChange={e => setStatusTo(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                <div className={styles.filterButtonWrap}>
+                  <button onClick={loadStatus} className={styles.btnFilter}>
+                    Lọc ngay
+                  </button>
                 </div>
               </div>
 
-              {/* Pie + Bar */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* PIE CHART */}
+              {/* CHARTS */}
+              <div className={styles.chartRow}>
+
+                {/* PIE */}
                 <div className={styles.pieContainer}>
-                  <h3 className={styles.pieTitle}>Tỷ lệ trạng thái</h3>
+                  <h3 className={styles.sectionTitle}>Tỷ lệ theo trạng thái</h3>
+
                   {loadingStatus ? (
-                    <div className="h-80 flex items-center justify-center text-teal-600 text-2xl font-bold animate-pulse">Đang tải...</div>
-                  ) : pieData.length === 0 ? (
-                    <p className="text-center text-gray-500 pt-20">Không có dữ liệu</p>
+                    <div className={styles.loadingBox}>
+                      <span className={styles.loadingText}>Đang tải...</span>
+                    </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={360}>
+                    <ResponsiveContainer width="100%" height={320}>
                       <PieChart>
                         <Pie
                           data={pieData}
-                          cx="50%" cy="50%"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={115}
                           labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                          outerRadius={130}
+                          label={({ name, percent }) =>
+                            `${name}: ${(percent * 100).toFixed(1)}%`
+                          }
                           dataKey="value"
                         >
-                          {pieData.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                          {pieData.map((entry, index) => (
+                            <Cell
+                              key={index}
+                              fill={entry.color}
+                              stroke="#fff"
+                              strokeWidth={1}
+                            />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v) => `${v} task`} />
+
+                        <Tooltip formatter={(v, name) => [`${v}`, name]} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   )}
                 </div>
 
-                {/* BAR CHART */}
-                <div>
+                {/* BAR */}
+                <div className={styles.barContainer}>
+                  <h3 className={styles.sectionTitle}>Số lượng theo robot</h3>
+
                   {loadingStatus ? (
-                    <div className="h-96 flex items-center justify-center"><div className={styles.loadingText}>Đang tải...</div></div>
+                    <div className={styles.loadingBox}>
+                      <span className={styles.loadingText}>Đang tải...</span>
+                    </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={420}>
-                      <BarChart data={statusChartData} margin={{ top: 20, right: 20, left: 20, bottom: 140 }}>
+                    <ResponsiveContainer width="100%" height={360}>
+                      <BarChart data={statusChartData}>
                         <CartesianGrid strokeDasharray="6 6" stroke="#e2e8f0" />
-                        <XAxis dataKey="robot" tick={<CustomXAxisTick />} height={160} />
+                        <XAxis dataKey="robot" tick={<CustomXAxisTick />} height={120} />
                         <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        {statusKeys.map((k, i) => (
-                          <Bar key={k} dataKey={k} fill={COLORS[i % COLORS.length]} radius={[12, 12, 0, 0]} />
+
+                        <Tooltip formatter={(v, name) => [`${v}`, toVietnamese(name)]} />
+                        <Legend formatter={(value) => toVietnamese(value)} />
+
+                        {statusKeys.map((k) => (
+                          <Bar
+                            key={k}
+                            dataKey={k}
+                            fill={STATUS_COLORS[k]}
+                            radius={[10, 10, 0, 0]}
+                          />
                         ))}
                       </BarChart>
                     </ResponsiveContainer>
@@ -193,53 +381,99 @@ export default function ReportDashboard() {
             </div>
           </div>
 
-          {/* CARD 2: TASK THEO NGÀY (LINE CHART) */}
+          {/* ====================================== */}
+          {/* RIGHT COLUMN - TIMELINE */}
+          {/* ====================================== */}
           <div className={styles.glass}>
-            <div className={styles.headerTimeline}>
-              <div className="flex justify-between items-center">
-                <h2 className={styles.title}>Task Theo Ngày</h2>
-                <button onClick={() => exportReportExcel("timeline", timelineFrom || undefined, timelineTo || undefined)}
-                  className={styles.btnExport + " !text-purple-600"}>
-                  Xuất Excel
-                </button>
+            <div className={styles.cardHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>Task Theo Ngày</h2>
+                <p className={styles.cardSubtitle}>
+                  Lịch sử số lượng task hoàn thành theo từng ngày.
+                </p>
               </div>
+
+              <button
+                onClick={() =>
+                  exportReportExcel("timeline", timelineFrom || undefined, timelineTo || undefined)
+                }
+                className={styles.btnExportIcon}
+                title="Xuất file Excel"
+              >
+                <ExcelIcon />
+              </button>
             </div>
 
-            <div className="p-10 space-y-10">
+            <div className={styles.cardBody}>
 
-              <div className="grid grid-cols-3 gap-6">
-                <div><label className="block text-sm font-bold text-gray-700 mb-3">Từ ngày :</label>
-                  <input type="date" value={timelineFrom} onChange={e => setTimelineFrom(e.target.value)} className={styles.filterInput} /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-3">Đến ngày</label>
-                  <input type="date" value={timelineTo} onChange={e => setTimelineTo(e.target.value)} className={styles.filterInput} /></div>
-                <div className="flex items-end">
-                  <button onClick={loadTimeline} className={`${styles.btnFilter} w-full py-4 text-lg bg-gradient-to-r from-purple-600 to-pink-600`}>
-                    Lọc Ngay
+              {/* FILTER */}
+              <div className={styles.filterRow}>
+                <div>
+                  <label className={styles.filterLabel}>Từ ngày</label>
+                  <input
+                    type="date"
+                    value={timelineFrom}
+                    onChange={e => setTimelineFrom(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                <div>
+                  <label className={styles.filterLabel}>Đến ngày</label>
+                  <input
+                    type="date"
+                    value={timelineTo}
+                    onChange={e => setTimelineTo(e.target.value)}
+                    className={styles.filterInput}
+                  />
+                </div>
+
+                <div className={styles.filterButtonWrap}>
+                  <button onClick={loadTimeline} className={styles.btnFilter}>
+                    Lọc ngay
                   </button>
                 </div>
               </div>
 
-              {loadingTimeline ? (
-                <div className="h-96 flex items-center justify-center text-purple-600 text-3xl font-bold animate-pulse">
-                  Đang tải biểu đồ...
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={520}>
-                  <LineChart data={timelineChartData} margin={{ top: 20, right: 40, left: 20, bottom: 160 }}>
-                    <CartesianGrid strokeDasharray="6 6" stroke="#e2e8f0" />
-                    <XAxis dataKey="robot" tick={<CustomXAxisTick />} height={180} />
-                    <YAxis />
-                    <Tooltip contentStyle={{ borderRadius: "16px", boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }} />
-                    <Legend wrapperStyle={{ paddingTop: "30px" }} />
-                    {dateKeys.slice(0, 10).map((d, i) => (
-                      <Line key={d} type="monotone" dataKey={d} stroke={COLORS[i % COLORS.length]} strokeWidth={4} dot={{ r: 6 }} activeDot={{ r: 10 }} />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
+              {/* LINE CHART */}
+              <div className={styles.lineWrapper}>
+                <h3 className={styles.sectionTitle}>Biểu đồ số task theo ngày</h3>
+
+                {loadingTimeline ? (
+                  <div className={styles.loadingBox}>
+                    <span className={styles.loadingText}>Đang tải biểu đồ...</span>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={440}>
+                    <LineChart
+                      data={timelineChartData}
+                      margin={{ top: 20, right: 24, left: 0, bottom: 120 }}
+                    >
+                      <CartesianGrid strokeDasharray="6 6" stroke="#e2e8f0" />
+
+                      <XAxis dataKey="robot" tick={<CustomXAxisTick />} height={120} />
+                      <YAxis />
+
+                      <Tooltip formatter={(v, name) => [`${v}`, toVietnamese(name)]} />
+                      <Legend formatter={(value) => toVietnamese(value)} />
+
+                      {dateKeys.slice(0, 10).map((d, i) => (
+                        <Line
+                          key={d}
+                          type="monotone"
+                          dataKey={d}
+                          stroke={COLORS[i % COLORS.length]}
+                          strokeWidth={3}
+                          dot={{ r: 4 }}
+                          activeDot={{ r: 7 }}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

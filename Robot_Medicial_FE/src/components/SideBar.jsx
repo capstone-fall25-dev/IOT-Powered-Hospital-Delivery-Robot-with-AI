@@ -258,21 +258,6 @@ export default function Sidebar() {
       {/* Content - Có scroll */}
       <div className="sidebar-content">
         <ul>
-                  <li
-            onClick={() => navigate("/report")}
-            className={isActive("/report") ? "active" : ""}
-          >
-            <i className="bi bi-bar-chart-line"></i>
-            <span>Thống kê task</span>
-          </li>
-
-          <li
-            onClick={() => navigate("/dashboard")}
-            className={isActive("/dashboard") ? "active" : ""}
-          >
-            <i className="bi bi-list-task"></i>
-            <span>Nhiệm vụ</span>
-          </li>
           <li
             onClick={() => navigate("/team")}
             className={isActive("/team") ? "active" : ""}
@@ -286,6 +271,20 @@ export default function Sidebar() {
           >
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
+          </li>
+          <li
+            onClick={() => navigate("/dashboard")}
+            className={isActive("/dashboard") ? "active" : ""}
+          >
+            <i className="bi bi-list-task"></i>
+            <span>Nhiệm vụ</span>
+          </li>
+          <li
+            onClick={() => navigate("/report")}
+            className={isActive("/report") ? "active" : ""}
+          >
+            <i className="bi bi-bar-chart-line"></i>
+            <span>Thống kê nhiệm vụ</span>
           </li>
           {/* ⭐ MỤC ĐIỂM ĐẾN MỚI THÊM ⭐ */}
           <li
@@ -319,7 +318,7 @@ export default function Sidebar() {
             className={isActive("/compartment-categories") ? "active" : ""}
           >
             <i className="bi bi-grid-3x3-gap-fill"></i>
-            <span>Loại ngăn chứa</span>
+            <span>Ngăn chứa</span>
           </li>
           <li
             onClick={() => navigate("/rooms")}

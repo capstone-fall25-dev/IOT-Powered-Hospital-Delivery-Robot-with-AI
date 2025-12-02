@@ -1,9 +1,11 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,18 +19,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
+        private readonly RobotManagerContext _context;
+        private readonly IHubContext<UserStatusHub> _hubContext;
 
         public UserService(IUserRepository repository,
             EmailHelper emailHelper,
             IMemoryCache cache,
             IConfiguration configuration,
-            IMapper mapper)
+            IMapper mapper, 
+            RobotManagerContext context,
+            IHubContext<UserStatusHub> hubContext)
         {
             _repository = repository;
             _emailHelper = emailHelper;
             _cache = cache;
             _configuration = configuration;
             _mapper = mapper;
+            _context = context;
+            _hubContext = hubContext;
         }
 
         public async Task<UserResponseDto> CreateAsync(UserDto userDto)
@@ -75,7 +83,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var user = await _repository.GetByIdAsync(id, includeTasks: true, includeSessions: true);
             if (user == null) return null;
-
+            await _context.Entry(user).Collection(u => u.Sessions).LoadAsync();
             var response = _mapper.Map<UserResponseDto>(user);
 
             // Tính IsOnline: Có session active (expires_at > now)
@@ -342,9 +350,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             string token = JwtHelper.GenerateToken(user, _configuration);
             string tokenHash = HashToken(token);
 
-            // ❌ KHÔNG xoá session cũ — CHO PHÉP login nhiều thiết bị
-            // CHỈ tạo session mới
-
+            // TẠO SESSION MỚI (không xóa session cũ → cho phép nhiều thiết bị)
             var newSession = new Session
             {
                 UserId = user.Id,
@@ -354,8 +360,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             };
-
             await _repository.CreateSessionAsync(newSession);
+
+            // === THÊM 2 DÒNG SIÊU QUAN TRỌNG ===
+            // 1. Reload user để có session mới nhất
+            await _context.Entry(user).Collection(u => u.Sessions).LoadAsync();
+            // 2. Báo realtime toàn hệ thống: user này đang online!
+            await _hubContext?.Clients.All.SendAsync("UserOnline", user.Id.ToString());
 
             return ($"Bearer {token}", "Đăng nhập thành công.");
         }
@@ -526,6 +537,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _repository.UpdateUserAsync(user);
 
             return "Đổi mật khẩu thành công!";
+        }
+
+        public async Task<object> ForceLogoutAllSessionsAsync(ulong userId)
+        {
+            var user = await _repository.GetByIdAsync(userId, includeSessions: true);
+            if (user == null) throw new InvalidOperationException("Không tìm thấy người dùng");
+
+            if (user.Sessions != null)
+            {
+                foreach (var s in user.Sessions)
+                {
+                    s.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+                }
+                await UpdateUserAsync(user);
+
+                // Báo realtime: báo user bị đá ra
+                await _hubContext?.Clients.All.SendAsync("UserOffline", userId.ToString());
+            }
+
+            return new { message = $"Đã đá tất cả thiết bị của {user.Email} ra khỏi hệ thống" };
         }
     }
 }

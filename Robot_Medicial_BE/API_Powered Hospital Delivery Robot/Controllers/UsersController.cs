@@ -1,7 +1,10 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Services.ImplServices;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -114,6 +117,47 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        // Controllers/UsersController.cs — SỬA 2 METHOD NÀY
+
+        // GET: api/users/{id}/sessions
+        [HttpGet("{id}/sessions")]
+        //[Authorize(Roles = "admin")]
+        public async Task<ActionResult> GetUserSessions(ulong id)
+        {
+            var user = await _service.GetByIdAsync(id); // ĐÃ CÓ includeSessions trong service rồi!
+            if (user == null) return NotFound();
+
+            var sessions = (user.ActiveSessions ?? Enumerable.Empty<SessionResponseDto>())
+    .Select(s => new
+    {
+        s.Id,
+        s.IpAddress,
+        s.UserAgent,
+        LoginAt = s.CreatedAt.ToString("dd/MM HH:mm"),
+        ExpiresAt = s.ExpiresAt.ToString("dd/MM HH:mm"),
+        IsCurrent = Request.Headers.Authorization.ToString().Contains(s.SessionToken ?? "")
+    })
+    .ToList();
+
+            return Ok(new
+            {
+                userId = user.Id,
+                email = user.Email,
+                fullName = user.FullName,
+                totalSessions = sessions.Count(),
+                sessions
+            });
+        }
+
+        // POST: api/users/{id}/kick-all
+        [HttpPost("{id}/kick-all")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> KickAllSessions(ulong id)
+        {
+            var result = await _service.ForceLogoutAllSessionsAsync(id);
+            return Ok(result);
         }
     }
 }

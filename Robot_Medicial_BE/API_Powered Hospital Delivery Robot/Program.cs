@@ -216,6 +216,7 @@ app.MapHub<RobotHub>("/hubs/robot");
 app.MapHub<TaskHub>("/hubs/task");
 app.MapHub<RobotAudioHub>("/hubs/robotaudio");
 app.MapHub<TTSHub>("/hubs/ttsHub");
+app.MapHub<UserStatusHub>("/hubs/userstatus");
 
 // 14. DATABASE INITIALIZATION & SEED DATA
 using (var scope = app.Services.CreateScope())

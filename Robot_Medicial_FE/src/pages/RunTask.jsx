@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
+import { updateStopStatus } from "@/services/taskService";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
 
 export default function RunTask() {
@@ -38,6 +39,9 @@ export default function RunTask() {
   const [stops, setStops] = useState([]);
   const [selectedStop, setSelectedStop] = useState(null);
   const [selectedMapName, setSelectedMapName] = useState("");
+
+  // Trạng thái điểm dừng đang chọn (để cập nhật status)
+  const [selectedStopStatus, setSelectedStopStatus] = useState("");
 
   // ===================================
   // AUDIO – WebRTC
@@ -80,6 +84,7 @@ export default function RunTask() {
         if (data.stops?.length > 0) {
           const first = data.stops[0];
           setSelectedStop(first);
+          setSelectedStopStatus(first.assignmentStatus || "");
           loadNavigationMap(data.mapId, data.stops, first);
         }
       } catch (err) {
@@ -94,8 +99,9 @@ export default function RunTask() {
   useEffect(() => {
     if (taskInfo && selectedStop) {
       loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop);
+      setSelectedStopStatus(selectedStop.assignmentStatus || "");
     }
-  }, [selectedStop]);
+  }, [selectedStop, taskInfo]);
 
   // ===================================
   // NAVIGATION MAP + MARKERS
@@ -388,6 +394,76 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
       alert("Route đã gửi!");
     } catch {}
   }
+  // ===================================
+  // UPDATE STOP STATUS (CONFIRM)
+  // ===================================
+  async function handleUpdateSelectedStopStatus() {
+    if (!selectedStop) return alert("Chọn điểm dừng trước!");
+    if (selectedStop.assignmentStatus === "delivered") {
+    return alert("Điểm dừng đã giao rồi — không thể cập nhật thêm.");
+  }
+    if (!selectedStop.stopId) {
+      console.error("Không có stopId trong selectedStop:", selectedStop);
+      return alert("Không tìm thấy StopId của điểm dừng!");
+    }
+    if (!selectedStopStatus) {
+      return alert("Chưa chọn trạng thái điểm dừng!");
+    }
+
+    try {
+      await updateStopStatus(taskId, selectedStop.stopId, selectedStopStatus);
+      alert("Cập nhật trạng thái điểm dừng thành công!");
+
+      // Reload lại run-info để sync trạng thái mới
+      const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
+      const data = await res.json();
+      setTaskInfo(data);
+      setStops(data.stops || []);
+
+      // Tìm lại stop vừa cập nhật
+const updated = data.stops?.find(s => s.stopId === selectedStop.stopId);
+
+if (!updated) return;
+
+// === (1) Nếu stop chưa delivered -> giữ nguyên
+if (updated.assignmentStatus !== "delivered") {
+  setSelectedStop(updated);
+  setSelectedStopStatus(updated.assignmentStatus || "");
+  return;
+}
+
+// === (2) Nếu stop đã delivered → AUTO NEXT STOP
+const currentIndex = data.stops.findIndex(s => s.stopId === updated.stopId);
+const isLastStop = currentIndex === data.stops.length - 1;
+
+if (!isLastStop) {
+  const nextStop = data.stops[currentIndex + 1];
+  setSelectedStop(nextStop);
+  setSelectedStopStatus(nextStop.assignmentStatus || "");
+  alert(`Điểm dừng #${updated.order} đã giao — chuyển sang điểm #${nextStop.order}`);
+  return;
+}
+
+// === (3) Nếu là stop cuối và delivered → COMPLETE TASK
+await completeTask();
+alert("Tất cả điểm dừng đã giao — Nhiệm vụ hoàn thành!");
+
+    } catch (err) {
+      console.error("Lỗi cập nhật trạng thái điểm dừng:", err);
+      alert("Lỗi khi cập nhật điểm dừng");
+    }
+  }
+async function completeTask() {
+  try {
+    await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+    alert("Nhiệm vụ đã hoàn thành!");
+  } catch (err) {
+    console.error("Lỗi complete task:", err);
+  }
+}
 
   // ===================================
   // MIC WEB → ROBOT (SendChunk)
@@ -704,11 +780,13 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
                   <h6 className={styles.sectionTitle}>Điểm dừng nhiệm vụ</h6>
                   <select
                     className={`${styles.formSelect} mt-2`}
-                    value={selectedStop?.name || ""}
-                    onChange={(e) => setSelectedStop(stops.find(s => s.name === e.target.value))}
+                    value={selectedStop?.stopId || ""}
+                    onChange={(e) => setSelectedStop(stops.find(s => s.stopId === Number(e.target.value)))}
                   >
                     {stops.map(s => (
-                      <option key={s.order} value={s.name}>{s.order}. {s.name}</option>
+                      <option key={s.stopId} value={s.stopId}>
+                        {s.order}. {s.name}
+                      </option>
                     ))}
                   </select>
 
@@ -725,9 +803,59 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
                       <div><strong>{selectedStop.name}</strong></div>
                       <div>Map: {selectedMapName}</div>
                       <div>X: {selectedStop.x.toFixed(2)} | Y: {selectedStop.y.toFixed(2)}</div>
+                     {selectedStop.assignmentStatus && (
+  <div className="mt-1">
+    <small>
+      Trạng thái hiện tại:{" "}
+      <span
+        style={{
+          padding: "3px 8px",
+          borderRadius: "6px",
+          background:
+            selectedStop.assignmentStatus === "delivered" ? "#2ecc71" : "#bdc3c7",
+          color: "white",
+          fontWeight: "bold"
+        }}
+      >
+        {selectedStop.assignmentStatus}
+      </span>
+    </small>
+  </div>
+)}
+
                     </div>
                   )}
                 </div>
+{/* ====== CẬP NHẬT TRẠNG THÁI ĐIỂM DỪNG ====== */}
+<div className="mt-3">
+  <h6 className={styles.sectionTitle}>Xác nhận trạng thái điểm dừng</h6>
+
+  <div className="d-flex gap-2 mt-1">
+    <select
+      className={styles.formSelect}
+      value={selectedStopStatus}
+      onChange={(e) => setSelectedStopStatus(e.target.value)}
+      style={{ maxWidth: "260px" }}
+      disabled={selectedStop?.assignmentStatus === "delivered"}
+    >
+      <option value="">-- Chọn trạng thái --</option>
+      <option value="pending">Chờ xử lý</option>
+      <option value="in_progress">Đang xử lý</option>
+      <option value="awaiting_handover">Chờ bàn giao</option>
+      <option value="delivered">Đã giao</option>
+      <option value="skipped">Bỏ qua</option>
+      <option value="failed">Thất bại</option>
+    </select>
+
+    <button
+      className={styles.btnSuccess}
+      onClick={handleUpdateSelectedStopStatus}
+      disabled={selectedStop?.assignmentStatus === "delivered"} 
+    >
+      Cập nhật
+    </button>
+  </div>
+</div>
 
                 <hr className={styles.divider} />
 
