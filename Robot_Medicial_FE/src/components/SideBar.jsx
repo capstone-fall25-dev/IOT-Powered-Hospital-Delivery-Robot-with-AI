@@ -317,7 +317,7 @@ export default function Sidebar() {
             <i className="bi bi-grid-3x3-gap-fill"></i>
             <span>Ngăn chứa</span>
           </li>
-          <li hidden 
+          <li  
             onClick={() => navigate("/rooms")}
             className={isActive("/rooms") ? "active" : ""}
           >
