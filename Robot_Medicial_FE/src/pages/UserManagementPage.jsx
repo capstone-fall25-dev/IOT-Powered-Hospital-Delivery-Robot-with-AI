@@ -145,9 +145,9 @@ export default function UserManagementPage() {
                                 onChange={e => setSpecFilter(e.target.value)}
                             >
                                 <option value="all">Tất cả</option>
-                                <option value="doctor">Doctor</option>
-                                <option value="admin">Admin</option>
-                                <option value="nurse">Nurse</option>
+                                <option value="doctor">Bác sĩ</option>
+                                <option value="admin">Quản trị viên</option>
+                               
                             </select>
                         </div>
                         <div className="col-md-2">
@@ -205,7 +205,7 @@ export default function UserManagementPage() {
                                             <td className="fw-semibold">{r.fullName}</td>
                                             <td>{r.email}</td>
                                             <td>
-                                                <span className={styles.badgeTeal}>{r.role}</span>
+                                                <span className={styles.badgeTeal}>{r.role==="admin" ? "Quản trị viên" : r.role==="doctor" ? "Bác sĩ"}</span>
                                             </td>
                                             <td>
                                                 {r.isActive ? (
