@@ -81,6 +81,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var dto = _mapper.Map<MapResponseDto>(map);
 
+            // === Tính TaskCount cho từng điểm đến ===
             dto.Destinations = map.Destinations.Select(d => new DestinationResponseDto
             {
                 Id = d.Id,
@@ -93,6 +94,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 CreatedAt = d.CreatedAt,
                 TaskCount = d.TaskStops.Count()
             }).ToList();
+
+            // === THỐNG KÊ TASK TRÊN MAP ===
+            var taskStops = map.Destinations.SelectMany(d => d.TaskStops);
+
+            dto.TotalTasks = taskStops.Count();
+
+            var today = DateTime.Today;
+            var weekStart = today.AddDays(-(int)today.DayOfWeek); // Chủ nhật tuần này
+
+            dto.TasksToday = taskStops
+                .Count(ts => ts.Task.CreatedAt.Date == today);
+
+            dto.TasksThisWeek = taskStops
+                .Count(ts => ts.Task.CreatedAt.Date >= weekStart && ts.Task.CreatedAt.Date <= today);
 
             return dto;
         }
