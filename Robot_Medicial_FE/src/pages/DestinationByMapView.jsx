@@ -50,6 +50,9 @@ export default function DestinationByMapView() {
   const [formName, setFormName] = useState("");
   const [formPos, setFormPos] = useState({ x: null, y: null });
 
+  // Thêm state chung để track selection mode
+const [selectionMode, setSelectionMode] = useState(null); // "destination" | "room" 
+
   // ===== PHÒNG =====
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -92,32 +95,24 @@ export default function DestinationByMapView() {
   }
 
   function placeMarkerAtWorld(worldX, worldY) {
-    const latlng = worldToLatLng(worldX, worldY);
-    if (!latlng || !mapRef.current) return;
+  const latlng = worldToLatLng(worldX, worldY);
+  if (!latlng || !mapRef.current) return;
 
-    // Tạo icon chấm đỏ cho marker đang chọn/edit
-    const redDotIcon = L.divIcon({
-      html: `<div style="
-        width: 14px;
-        height: 14px;
-        background-color: #e74c3c;
-        border: 2px solid #c0392b;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-      className: "",
-    });
+  const redDotIcon = L.divIcon({ /* ... */ });
 
-    if (!markerRef.current) {
-      markerRef.current = L.marker(latlng, { icon: redDotIcon }).addTo(mapRef.current);
-    } else {
-      markerRef.current.setLatLng(latlng);
-    }
-
-    mapRef.current.panTo(latlng);
+  if (!markerRef.current) {
+    markerRef.current = L.marker(latlng, { icon: redDotIcon }).addTo(mapRef.current);
+  } else {
+    markerRef.current.setLatLng(latlng);
   }
+
+  // ✅ Pan nhẹ nhàng, không thay đổi zoom
+  mapRef.current.panBy([0, 0], { 
+    duration: 0.5, // animate mượt
+    easeLinearity: 0.25 
+  });
+}
+
 
   async function reloadRoomsForSelectedMap() {
     if (!selectedMap) return;
@@ -488,9 +483,9 @@ useEffect(() => {
 
     marker.addTo(layer);
 
-    if (isSelected) {
-      mapRef.current.panTo(latlng);
-    }
+    // if (isSelected) {
+    //   mapRef.current.panTo(latlng);
+    // }
   });
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [destinations, mapInfo, selectedDestination]);
@@ -516,70 +511,79 @@ useEffect(() => {
     setSelectedMap(m);
   }
 
-  function handleSelectDestinationRow(dest) {
-    setSelectedDestination(dest);
-    setMode("view");
-    setFormName(dest.name);
-    setFormPos({ x: dest.x, y: dest.y });
-
-    if (dest.x != null && dest.y != null) {
-      placeMarkerAtWorld(dest.x, dest.y);
-    }
-  }
+  // Sửa các handler select để deselect bên kia
+function handleSelectDestinationRow(dest) {
+  setSelectedDestination(dest);
+  setSelectedRoom(null);
+  setSelectionMode("destination");
+  setMode("view");
+  setFormName(dest.name);
+  setFormPos({ x: dest.x, y: dest.y });
+  // Không gọi placeMarkerAtWorld nữa
+}
 
   function startEditSelected() {
-    if (!selectedDestination) {
-      alert("Chọn một điểm đến trước!");
-      return;
-    }
-    setMode("edit");
-    setFormName(selectedDestination.name);
-    setFormPos({ x: selectedDestination.x, y: selectedDestination.y });
+  if (!selectedDestination) {
+    alert("Chọn một điểm đến trước!");
+    return;
   }
+  setSelectedRoom(null); // Clear room selection
+  setSelectionMode("destination");
+  setMode("edit");
+  setFormName(selectedDestination.name);
+  setFormPos({ x: selectedDestination.x, y: selectedDestination.y });
+}
 
   function startCreateNew() {
-    if (!selectedMap) {
-      alert("Chưa chọn bản đồ!");
-      return;
-    }
-    setMode("create");
-    setSelectedDestination(null);
-    setFormName("");
-    setFormPos({ x: null, y: null });
-
-    if (markerRef.current && mapRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
-      markerRef.current = null;
-    }
+  if (!selectedMap) {
+    alert("Chưa chọn bản đồ!");
+    return;
   }
+  setSelectedRoom(null); // Clear room selection
+  setSelectionMode("destination");
+  setMode("create");
+  setSelectedDestination(null);
+  setFormName("");
+  setFormPos({ x: null, y: null });
+
+  if (markerRef.current && mapRef.current) {
+    mapRef.current.removeLayer(markerRef.current);
+    markerRef.current = null;
+  }
+}
 
   function handlePickOnMap() {
-    if (!mapInfo || !selectedMap) {
-      alert("Chưa có bản đồ để chọn!");
-      return;
-    }
-    // tắt picking phòng nếu có
-    roomPickingRef.current = false;
-    setRoomIsPicking(false);
-
-    isPickingRef.current = true;
-    setIsPicking(true);
-    alert("🖱️ Click lên bản đồ để chọn vị trí cho điểm dừng.");
+  if (!mapInfo || !selectedMap) {
+    alert("Chưa có bản đồ để chọn!");
+    return;
   }
+  // Tắt picking phòng
+  roomPickingRef.current = false;
+  setRoomIsPicking(false);
+  
+  // Clear room selection khi pick destination
+  setSelectedRoom(null);
+
+  isPickingRef.current = true;
+  setIsPicking(true);
+  setSelectionMode("destination");
+  alert("🖱️ Click lên bản đồ để chọn vị trí cho điểm dừng.");
+}
 
   function handleCancelEdit() {
-    setMode("view");
-    setIsPicking(false);
-    isPickingRef.current = false;
-    setFormName("");
-    setFormPos({ x: null, y: null });
+  setMode("view");
+  setIsPicking(false);
+  isPickingRef.current = false;
+  setFormName("");
+  setFormPos({ x: null, y: null });
+  setSelectedDestination(null); // Clear selection
+  setSelectionMode(null);
 
-    // Xóa marker tạm khi hủy
-    if (markerRef.current && mapRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
-      markerRef.current = null;
-    }
+  if (markerRef.current && mapRef.current) {
+    mapRef.current.removeLayer(markerRef.current);
+    markerRef.current = null;
   }
+}
 
   async function handleSaveDestination() {
     if (!selectedMap) {
@@ -660,79 +664,90 @@ useEffect(() => {
 
   // ================== HANDLERS: ROOMS ==================
   function handleSelectRoom(room) {
-    setSelectedRoom(room);
-    setRoomMode("view");
-    setRoomForm({
-      roomName: room.roomName || "",
-      latitude:
-        room.latitude !== null && room.latitude !== undefined
-          ? String(room.latitude)
-          : "",
-      longitude:
-        room.longitude !== null && room.longitude !== undefined
-          ? String(room.longitude)
-          : "",
-    });
-  }
+  setSelectedRoom(room);
+  setSelectedDestination(null); // Deselect destination
+  setSelectionMode("room");
+  setRoomMode("view");
+  setRoomForm({
+    roomName: room.roomName || "",
+    latitude:
+      room.latitude !== null && room.latitude !== undefined
+        ? String(room.latitude)
+        : "",
+    longitude:
+      room.longitude !== null && room.longitude !== undefined
+        ? String(room.longitude)
+        : "",
+  });
+}
 
   function startEditSelectedRoom() {
-    if (!selectedRoom) {
-      alert("Chọn một phòng trước!");
-      return;
-    }
-    setRoomMode("edit");
-    setRoomForm({
-      roomName: selectedRoom.roomName || "",
-      latitude:
-        selectedRoom.latitude !== null && selectedRoom.latitude !== undefined
-          ? String(selectedRoom.latitude)
-          : "",
-      longitude:
-        selectedRoom.longitude !== null && selectedRoom.longitude !== undefined
-          ? String(selectedRoom.longitude)
-          : "",
-    });
+  if (!selectedRoom) {
+    alert("Chọn một phòng trước!");
+    return;
   }
-
-  function startCreateNewRoom() {
-    if (!selectedMap) {
-      alert("Chưa chọn bản đồ!");
-      return;
-    }
-    setRoomMode("create");
-    setSelectedRoom(null);
-    setRoomForm({
-      roomName: "",
-      latitude: "",
-      longitude: "",
-    });
+  setSelectedDestination(null); // Clear destination selection
+  setSelectionMode("room");
+  setRoomMode("edit");
+  setRoomForm({
+    roomName: selectedRoom.roomName || "",
+    latitude:
+      selectedRoom.latitude !== null && selectedRoom.latitude !== undefined
+        ? String(selectedRoom.latitude)
+        : "",
+    longitude:
+      selectedRoom.longitude !== null && selectedRoom.longitude !== undefined
+        ? String(selectedRoom.longitude)
+        : "",
+  });
+}
+ function startCreateNewRoom() {
+  if (!selectedMap) {
+    alert("Chưa chọn bản đồ!");
+    return;
   }
+  setSelectedDestination(null); // Clear destination selection
+  setSelectionMode("room");
+  setRoomMode("create");
+  setSelectedRoom(null);
+  setRoomForm({
+    roomName: "",
+    latitude: "",
+    longitude: "",
+  });
+}
 
-  function handleRoomPickOnMap() {
-    if (!mapInfo || !selectedMap) {
-      alert("Chưa có bản đồ để chọn!");
-      return;
-    }
-
-    // tắt picking điểm đến nếu có
-    isPickingRef.current = false;
-    setIsPicking(false);
-
-    roomPickingRef.current = true;
-    setRoomIsPicking(true);
-    alert("🖱️ Click lên bản đồ để chọn vị trí cho PHÒNG.");
+ function handleRoomPickOnMap() {
+  if (!mapInfo || !selectedMap) {
+    alert("Chưa có bản đồ để chọn!");
+    return;
   }
+  
+  // Tắt picking destination
+  isPickingRef.current = false;
+  setIsPicking(false);
+  
+  // Clear destination selection khi pick room
+  setSelectedDestination(null);
 
-  function handleCancelRoomEdit() {
-    setRoomMode("view");
-    setRoomIsPicking(false);
-    roomPickingRef.current = false;
-    setRoomForm({
-      roomName: "",
-      latitude: "",
-      longitude: "",
-    });
-  }
+  roomPickingRef.current = true;
+  setRoomIsPicking(true);
+  setSelectionMode("room");
+  alert("🖱️ Click lên bản đồ để chọn vị trí cho PHÒNG.");
+}
+
+ function handleCancelRoomEdit() {
+  setRoomMode("view");
+  setRoomIsPicking(false);
+  roomPickingRef.current = false;
+  setRoomForm({
+    roomName: "",
+    latitude: "",
+    longitude: "",
+  });
+  setSelectedRoom(null); // Clear selection
+  setSelectionMode(null);
+}
 
   async function handleSaveRoom() {
     if (!selectedMap) {
@@ -827,6 +842,20 @@ useEffect(() => {
                     ))}
                   </select>
                 </div>
+               {selectionMode && (
+                <div style={{
+                  padding: "0.5rem",
+                  background: selectionMode === "destination" ? "rgba(231,76,60,0.1)" : "rgba(41,128,185,0.1)",
+                  borderRadius: "0.5rem",
+                  marginBottom: "1rem",
+                  border: `2px solid ${selectionMode === "destination" ? "#e74c3c" : "#2980b9"}`
+                }}>
+                  <small style={{ fontWeight: 600, color: selectionMode === "destination" ? "#e74c3c" : "#2980b9" }}>
+                    <i className={`bi bi-${selectionMode === "destination" ? "geo-alt-fill" : "door-open-fill"} me-1`}></i>
+                    Đang chọn: {selectionMode === "destination" ? "Điểm đến" : "Phòng"}
+                  </small>
+                </div>
+              )}
 
                 {/* Danh sách điểm đến */}
                 <div
