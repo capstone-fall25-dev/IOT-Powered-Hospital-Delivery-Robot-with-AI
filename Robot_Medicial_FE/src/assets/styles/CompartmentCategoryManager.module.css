@@ -327,3 +327,201 @@
   .btnGroup { justify-content: stretch; }
   .btnPrimary, .btnCancel { flex: 1; justify-content: center; }
 }
+/* Thêm vào cuối file CompartmentCategoryManager.module.css */
+
+/* Header Actions */
+.headerActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Create Button */
+.btnCreate {
+  background: linear-gradient(135deg, rgba(13,148,136,0.9) 0%, rgba(8,145,178,0.9) 100%);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(13,148,136,0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.btnCreate:hover {
+  background: linear-gradient(135deg, rgba(13,148,136,1) 0%, rgba(8,145,178,1) 100%);
+  box-shadow: 0 6px 16px rgba(13,148,136,0.35);
+  transform: translateY(-1px);
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container */
+.modal {
+  width: 100%;
+  max-width: 550px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(13,148,136,0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal Header */
+.modalHeader {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, rgba(13,148,136,0.9) 0%, rgba(8,145,178,0.9) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid rgba(255,255,255,0.2);
+}
+
+.modalTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.modalClose {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+.modalClose:hover {
+  background: rgba(255,255,255,0.3);
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.modalBody {
+  padding: 2rem;
+}
+
+/* Modal Footer */
+.modalFooter {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+/* Override input styles for modal */
+.modal .input {
+  border: 2px solid rgba(13,148,136,0.25);
+  border-radius: 8px;
+}
+.modal .input:focus {
+  border-color: rgba(13,148,136,0.6);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.15);
+}
+
+.modal .textarea {
+  border: 2px solid rgba(13,148,136,0.25);
+  border-radius: 8px;
+  min-height: 120px;
+}
+.modal .textarea:focus {
+  border-color: rgba(13,148,136,0.6);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.15);
+}
+
+/* Override button styles for modal */
+.modalFooter .btnPrimary {
+  border-radius: 8px;
+  padding: 0.75rem 1.75rem;
+  background: linear-gradient(135deg, rgba(13,148,136,0.9) 0%, rgba(8,145,178,0.9) 100%);
+}
+.modalFooter .btnPrimary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(13,148,136,1) 0%, rgba(8,145,178,1) 100%);
+}
+
+.modalFooter .btnCancel {
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+}
+.modalFooter .btnCancel:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .headerActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .modal {
+    max-width: 100%;
+    margin: 1rem;
+  }
+  
+  .modalHeader {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .modalTitle {
+    font-size: 1.15rem;
+  }
+  
+  .modalBody {
+    padding: 1.5rem;
+  }
+  
+  .modalFooter {
+    flex-direction: column-reverse;
+  }
+  
+  .modalFooter .btnPrimary,
+  .modalFooter .btnCancel {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
