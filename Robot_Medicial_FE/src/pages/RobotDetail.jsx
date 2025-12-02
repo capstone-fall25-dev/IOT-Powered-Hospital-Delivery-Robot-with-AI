@@ -182,7 +182,7 @@ export default function RobotDetail() {
   onClick={() => navigate(`/robot-edit/${robot.id}`)}
 >
   <i className="bi bi-pencil-square me-1"></i>
-  Chỉnh sửa
+  Cấu Hình
 </button>
 
           {/* =================== DETAIL + TASKS =================== */}
