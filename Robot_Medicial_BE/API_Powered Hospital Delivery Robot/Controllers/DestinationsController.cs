@@ -123,7 +123,42 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             return Ok(filtered);
         }
+        // ============================================================
+// 📝 API: Cập nhật điểm đến
+// ============================================================
+            [HttpPut("{id}")]
+            public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, [FromBody] DestinationDto dto)
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                try
+                {
+                    Console.WriteLine($"[PUT /api/Destinations/{id}] Updating destination");
+
+                    var updated = await _service.UpdateAsync(id, dto);
+
+                    if (updated == null)
+                        return NotFound(new { message = "Không tìm thấy địa điểm để cập nhật." });
+
+                    return Ok(updated);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Lỗi logic như: trùng tên, không tìm thấy...
+                    return BadRequest(new { message = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] {ex.Message}");
+                    return StatusCode(500, new { message = "Lỗi khi cập nhật địa điểm.", error = ex.Message });
+                }
+            }
+
     }
+
+
+    
 
     // ============================================================
     // 🧾 DTO: Request model cho API send-route
