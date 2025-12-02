@@ -52,6 +52,7 @@ import ProjectMapListView from "@/pages/ViewListMap";
 import RunMap from "@/pages/RunMap";
 import CreateMap from "@/pages/CreateMap";
 import DestinationByMapView from "@/pages/DestinationByMapView";
+import MapDetailView from "@/pages/MapDetailView";
 
 import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
@@ -341,7 +342,12 @@ const routes = [
       </ProtectedRoute>
     )
   },
-
+  { path: "/maps/:id", element: (
+      <ProtectedRoute>
+        <MainLayout><MapDetailView /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
   { 
     path: "/destinationlist",
     element: (

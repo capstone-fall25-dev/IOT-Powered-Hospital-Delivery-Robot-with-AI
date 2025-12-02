@@ -1,0 +1,265 @@
+/* =========================================================
+   ROOT VARIABLES
+========================================================= */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+/* =========================================================
+   PAGE LAYOUT
+========================================================= */
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76,225,198,.18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76,225,198,.12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 15%, #e9f3f1 35%, #e8f0ee 100%);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+.header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+.subtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btnBack {
+    border: 1.5px solid rgba(13, 148, 136, 0.3);
+    color: var(--teal-dark);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 0.55rem 1.25rem;
+    transition: all 0.15s ease;
+}
+.btnBack:hover {
+    background: rgba(13, 148, 136, 0.08);
+    border-color: rgba(13, 148, 136, 0.5);
+}
+
+/* =========================================================
+   GLASS CARD
+========================================================= */
+.glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(13,148,136,.12);
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(15,23,42,.08);
+    overflow: hidden;
+    padding: 1.5rem;
+    position: relative;
+}
+.glass::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0; 
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(13,148,136,.5), rgba(8,145,178,.5));
+}
+
+/* =========================================================
+   MAP AREA
+========================================================= */
+.mapWrapper {
+    background: rgba(255,255,255,.6);
+    border-radius: 5px;
+    border: 1px solid rgba(13,148,136,.12);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(15,23,42,.08);
+    backdrop-filter: blur(6px);
+    margin-bottom: 1.5rem;
+}
+
+.mapContainer {
+    height: 65vh;
+    min-height: 450px;
+    background: #e0f2f1;
+}
+
+.coordBox {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 6px 12px;
+    background: black;
+    border: 1px solid rgba(13,148,136,.25);
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.statCard {
+    background: rgba(255,255,255,.6);
+    border: 1px solid rgba(13,148,136,.15);
+    border-radius: 5px;
+    padding: 1.25rem;
+    box-shadow: 0 3px 10px rgba(13,148,136,.08);
+    text-align: center;
+}
+
+.statNumber {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--teal-dark);
+    margin-bottom: 0.4rem;
+}
+
+.statLabel {
+    font-size: .9rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* =========================================================
+   INFO CARDS (Robots / Destinations)
+========================================================= */
+.infoCard {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    border-radius: 5px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 3px 10px rgba(13,148,136,.06);
+}
+.infoCard h5 {
+    font-size: 1.1rem;
+    color: var(--teal-dark);
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+}
+
+/* =========================================================
+   LISTS
+========================================================= */
+.robotList,
+.destList {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.robotItem,
+.destItem {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.robotItem:last-child,
+.destItem:last-child {
+    border-bottom: none;
+}
+
+.robotItem strong,
+.destItem strong {
+    font-weight: 700;
+    color: var(--ink);
+    font-size: 0.95rem;
+}
+
+.destItem small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* =========================================================
+   ROBOT STATUS
+========================================================= */
+.robotStatus {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.status {
+    padding: 0.25rem 0.55rem;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.status.busy { background: #dbeafe; color:#1e40af; }
+.status.transporting,
+.status.returning { background:#d1fae5; color:#065f46; }
+.status.at_station { background:#fef3c7; color:#92400e; }
+
+/* =========================================================
+   EMPTY / LOADING / ERROR
+========================================================= */
+.empty {
+    color: #94a3b8;
+    padding: 1rem;
+    text-align: center;
+    font-style: italic;
+}
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.2rem;
+    color: #94a3b8;
+}
+
+.error {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.2rem;
+    color: #dc2626;
+}
+
+/* =========================================================
+   DESTINATION ACTIVE / HOVER STATE
+========================================================= */
+.destItem {
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-right 0.2s ease;
+}
+
+.destItem:hover {
+    background: rgba(13,148,136,0.06);
+}
+
+.destItemActive {
+    background: rgba(13,148,136,0.15);
+    border-right: 3px solid var(--teal-dark);
+}
