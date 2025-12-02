@@ -23,8 +23,8 @@ builder.Services.AddSwaggerGen();
 
 // 2. DATABASE CONFIGURATION
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
 
 // 3. SWAGGER WITH JWT BEARER CONFIGURATION
 builder.Services.AddSwaggerGen(options =>
@@ -216,6 +216,7 @@ app.MapHub<RobotHub>("/hubs/robot");
 app.MapHub<TaskHub>("/hubs/task");
 app.MapHub<RobotAudioHub>("/hubs/robotaudio");
 app.MapHub<TTSHub>("/hubs/ttsHub");
+app.MapHub<UserStatusHub>("/hubs/userstatus");
 
 // 14. DATABASE INITIALIZATION & SEED DATA
 using (var scope = app.Services.CreateScope())

@@ -366,7 +366,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     foreach (var stop in task.TaskStops)
                     {
-                        stop.Status = stopStatus;
+                        // FIX: Không ghi đè delivered
+                        if (!string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
+                        {
+                            stop.Status = stopStatus;
+                        }
+
                         stop.UpdatedAt = DateTime.UtcNow;
 
                         foreach (var assign in stop.CompartmentAssignments)
@@ -402,7 +407,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             if (!ValidStopStatuses.Contains(newStopStatus))
                                 throw new InvalidOperationException($"Stop status '{newStopStatus}' không hợp lệ.");
 
+                            // FIX: Không cho đổi trạng thái delivered
+                            if (stop.Status == "delivered")
+                                continue;
+
                             stop.Status = newStopStatus;
+
                             stop.UpdatedAt = DateTime.UtcNow;
 
                             foreach (var assign in stop.CompartmentAssignments)
@@ -734,11 +744,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s => new RunTaskStopDto
             {
+                StopId = s.Id,
                 Order = s.SeqNo,
                 DestinationId = s.DestinationId ?? 0,
                 Name = s.Destination?.Name ?? "",
                 X = s.Destination?.X ?? 0,
-                Y = s.Destination?.Y ?? 0
+                Y = s.Destination?.Y ?? 0,
+                AssignmentStatus = s.Status
             }).ToList();
 
             return new RunTaskInfoDto
@@ -759,7 +771,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var stop = task.TaskStops.FirstOrDefault(s => s.Id == stopId);
             if (stop == null)
                 throw new Exception("Stop not found");
-
+            // ❗ FIX: KHÓA DELIVERED
+            if (stop.Status == "delivered")
+                throw new Exception("Stop has been delivered — cannot update again.");
             // Update stop status
             stop.Status = newStatus;
             stop.UpdatedAt = DateTime.UtcNow;

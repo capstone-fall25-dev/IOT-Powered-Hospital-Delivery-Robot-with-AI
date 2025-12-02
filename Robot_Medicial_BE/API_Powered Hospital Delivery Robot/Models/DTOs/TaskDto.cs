@@ -275,11 +275,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
     public class RunTaskStopDto
     {
+        public ulong StopId { get; set; }
         public int Order { get; set; }
         public ulong DestinationId { get; set; }
         public string Name { get; set; } = "";
         public double X { get; set; }
         public double Y { get; set; }
+        public string AssignmentStatus { get; set; } = "pending";
     }
     public class StopUpdateResultDto
     {

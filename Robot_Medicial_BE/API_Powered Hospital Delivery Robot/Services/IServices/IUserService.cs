@@ -68,5 +68,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Chỉ cần token
         Task LogoutAsync(string token);
+        Task<object> ForceLogoutAllSessionsAsync(ulong userId);
     }
 }
