@@ -10,3 +10,8 @@ export const deactivateUser = (id) => apiFetch(`/users/${id}/deactivate`, { meth
 export async function toggleActive(id, active) {
     return active ? deactivateUser(id) : activateUser(id); // Đổi logic: nếu đang active thì deactivate (khóa), ngược lại activate (mở)
 }
+export const getUserSessions = (id) => apiFetch(`/users/${id}/sessions`);
+export const kickAllSessions = (id) =>
+  apiFetch(`/users/${id}/kick-all`, {
+    method: "POST",
+  });

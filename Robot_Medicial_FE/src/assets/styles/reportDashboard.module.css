@@ -1,104 +1,286 @@
-.reportDashboard {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-  min-height: 100vh;
-  padding: 2rem 1rem;
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
 }
 
-.card {
-  composes: bg-white from global;
-  border-radius: 28px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.12);
-  overflow: hidden;
-  transition: all 0.4s ease;
+/* ============ PAGE BACKGROUND (ĐỒNG BỘ HỆ THỐNG) ============ */
+.page {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+        radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+        linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+    min-height: 100vh;
+    padding: 32px 0 48px;
 }
 
-.card:hover {
-  transform: translateY(-12px);
-  box-shadow: 0 35px 70px rgba(0,0,0,0.18);
+/* ============ PAGE HEADER TEXT ============ */
+.pageTitle {
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: 0.2px;
+    color: #0b1432;
+    margin-bottom: 4px;
 }
 
-.headerStatus {
-  background: linear-gradient(120deg, #0ea5e9, #06b6d4);
-  padding: 2rem;
-  color: white;
+.pageSubtitle {
+    font-size: 14px;
+    color: #3f556e;
 }
 
-.headerTimeline {
-  background: linear-gradient(120deg, #c084fc, #ec4899);
-  padding: 2rem;
-  color: white;
+/* ============ GLASS CARD ============ */
+.glass {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(13, 148, 136, 0.12);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
 }
 
-.title {
-  font-size: 2.3rem;
-  font-weight: 800;
-  margin: 0;
+/* Thanh top highlight giống changePassword.glass::before */
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        rgba(13, 148, 136, 0.7) 0%,
+        rgba(8, 145, 178, 0.7) 100%);
 }
 
-.btnExport {
-  background: white;
-  color: #0ea5e9;
-  padding: 1rem 2.5rem;
-  border-radius: 50px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 12px 30px rgba(14,165,233,0.35);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+/* ============ CARD HEADER ============ */
+.cardHeader {
+    padding: 20px 24px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
-.btnExport:hover {
-  transform: scale(1.1) translateY(-4px);
-  box-shadow: 0 20px 40px rgba(14,165,233,0.5);
+.cardTitle {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b1432;
+    margin: 0 0 2px;
 }
 
-.filterGroup {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+.cardSubtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* ============ CARD BODY ============ */
+.cardBody {
+    padding: 20px 24px 24px;
+}
+
+/* ============ FILTER AREA (ROW 3 CỘT) ============ */
+.filterRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.filterLabel {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 6px;
 }
 
 .filterInput {
-  padding: 1rem 1.5rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 16px;
-  font-size: 1rem;
-  background: #fafbfc;
-  transition: all 0.3s;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    font-size: 14px;
+    transition: all 0.18s ease;
 }
 
 .filterInput:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 5px rgba(14,165,233,0.18);
-  background: white;
+    outline: none;
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16);
+    background: #ffffff;
 }
 
+.filterButtonWrap {
+    display: flex;
+    align-items: flex-end;
+}
+
+/* ============ BUTTONS (THEO CHỦ ĐỀ TEAL) ============ */
 .btnFilter {
-  background: linear-gradient(135deg, #0ea5e9, #0284c7);
-  color: white;
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 16px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  cursor: pointer;
-  box-shadow: 0 12px 30px rgba(14,165,233,0.4);
-  transition: all 0.3s;
+    width: 100%;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+    color: #ffffff;
+    box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
+    transition: all 0.2s ease;
 }
 
 .btnFilter:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(14,165,233,0.55);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(13, 148, 136, 0.45);
 }
 
-.chartContainer {
-  padding: 2rem;
-  background: #fafafa;
+.btnFilter:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+}
+
+.btnExport {
+    border-radius: 999px;
+    border: 1px solid rgba(13, 148, 136, 0.35);
+    background: #ffffff;
+    color: #0d9488;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+    transition: all 0.2s ease;
+}
+
+.btnExport:hover {
+    background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(13, 148, 136, 0.4);
+}
+
+/* ============ CHART LAYOUT ============ */
+.chartRow {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr;
+    gap: 18px;
+    align-items: stretch;
+}
+
+.pieContainer,
+.barContainer,
+.lineWrapper {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    padding: 14px 16px 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+/* Section title nhỏ trong card */
+.sectionTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0b1432;
+    margin: 0 0 8px;
+}
+
+/* Loading & empty state */
+.loadingBox {
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loadingText {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0d9488;
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+.emptyText {
+    text-align: center;
+    font-size: 13px;
+    color: #9ca3af;
+    padding: 40px 0;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .chartRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .cardBody {
+        padding: 16px 14px 18px;
+    }
+
+    .filterRow {
+        grid-template-columns: 1fr;
+    }
+
+    .cardHeader {
+        padding: 16px 14px 10px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btnExport {
+        width: 100%;
+        justify-content: center;
+    }
+}
+.btnExportIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(13, 148, 136, 0.35);
+    background: #ffffff;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(15,23,42,.08);
+    transition: all 0.2s ease;
+}
+
+.btnExportIcon:hover {
+    background: #e9f8ef;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(13,148,136,0.35);
+}
+
+.btnExportIcon:active {
+    transform: scale(0.95);
+}
+
+.btnExportIcon svg {
+    transition: transform .2s ease;
+}
+
+.btnExportIcon:hover svg {
+    transform: scale(1.2);
 }

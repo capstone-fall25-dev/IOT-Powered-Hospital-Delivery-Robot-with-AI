@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllUsers, toggleActive } from '@/services/userService';
+import { getAllUsers, toggleActive, kickAllSessions } from '@/services/userService';
 import styles from '@/assets/styles/userManagement.module.css';
 
 export default function UserManagementPage() {
@@ -48,6 +48,19 @@ export default function UserManagementPage() {
             handleToggleActive(row);
         }
     }
+
+    const handleKickAll = async (row) => {
+        if (!window.confirm(`Bạn có chắc muốn ĐÁ TẤT CẢ THIẾT BỊ của "${row.fullName}"?`)) return;
+
+        try {
+            await kickAllSessions(row.id);
+            alert(`Đã đá tất cả thiết bị của ${row.fullName}`);
+            await loadUsers();
+        } catch (err) {
+            console.error("Lỗi khi đá thiết bị:", err);
+            alert("Không thể đá tất cả thiết bị!");
+        }
+    };
 
     const handleToggleActive = async (row) => {
         try {
@@ -225,6 +238,14 @@ export default function UserManagementPage() {
                                                         title="Chỉnh sửa"
                                                     >
                                                         <i className="bi bi-pencil"></i>
+                                                    </button>
+
+                                                    <button
+                                                        className={styles.btnDanger}
+                                                        onClick={() => handleKickAll(r)}
+                                                        title="Đá toàn bộ thiết bị"
+                                                    >
+                                                        <i className="bi bi-box-arrow-right"></i>
                                                     </button>
 
                                                     <button
