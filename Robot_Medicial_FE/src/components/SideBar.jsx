@@ -344,12 +344,7 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      {/* Footer - Cố định */}
-      <div className="sidebar-footer">
-        <strong>Robot Y Tế</strong>
-        <br />
-        <small>© 2025 Thông Minh</small>
-      </div>
+     
     </div>
   );
 }
