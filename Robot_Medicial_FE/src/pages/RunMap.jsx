@@ -1042,10 +1042,10 @@ export default function RobotRunMap() {
                     </button>
 
                     {/* Nút thứ 2 giữ layout, hiển thị info */}
-                    <button className={styles.btnOutlinePrimary} disabled>
+                    {/* <button className={styles.btnOutlinePrimary} disabled>
                       <i className="bi bi-broadcast-pin me-1"></i>
                       Audio Robot ↔ Web qua WebRTC + API mic
-                    </button>
+                    </button> */}
 
                     <small style={{ marginTop: "4px", opacity: 0.8 }}>
                       {webRtcStatus}
