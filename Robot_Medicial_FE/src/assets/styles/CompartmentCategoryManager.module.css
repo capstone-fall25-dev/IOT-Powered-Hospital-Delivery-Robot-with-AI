@@ -327,7 +327,6 @@
   .btnGroup { justify-content: stretch; }
   .btnPrimary, .btnCancel { flex: 1; justify-content: center; }
 }
-/* Thêm vào cuối file CompartmentCategoryManager.module.css */
 
 /* Header Actions */
 .headerActions {

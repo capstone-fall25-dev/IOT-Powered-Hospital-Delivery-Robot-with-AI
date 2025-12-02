@@ -258,18 +258,18 @@ export default function Sidebar() {
       {/* Content - Có scroll */}
       <div className="sidebar-content">
         <ul>
-            <li
+          <li
             onClick={() => navigate("/dashboard")}
             className={isActive("/dashboard") ? "active" : ""}
           >
-            <i className="bi bi-list-task"></i>
+          <i className="bi bi-list-task"></i>
             <span>Nhiệm vụ</span>
           </li>
            <li
             onClick={() => navigate("/report")}
             className={isActive("/report") ? "active" : ""}
           >
-            <i className="bi bi-bar-chart-line"></i>
+          <i className="bi bi-bar-chart-line"></i>
             <span>Thống kê nhiệm vụ</span>
           </li>
           <li
@@ -286,9 +286,6 @@ export default function Sidebar() {
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
           </li>
-        
-         
-          {/* ⭐ MỤC ĐIỂM ĐẾN MỚI THÊM ⭐ */}
           <li
             onClick={() => navigate("/destinationlist")}
             className={isActive("/destinationlist") ? "active" : ""}
@@ -296,7 +293,6 @@ export default function Sidebar() {
             <i className="bi bi-geo-alt-fill"></i>
             <span>Điểm đến</span>
           </li>
-
           {/* Người dùng - CHỈ ADMIN */}
           {isAdmin && (
           <li
@@ -307,7 +303,6 @@ export default function Sidebar() {
             <span>Người dùng</span>
           </li>
           )}
-
           <li 
             onClick={() => navigate("/patients")}
             className={isActive("/patients") ? "active" : ""}
@@ -345,8 +340,6 @@ export default function Sidebar() {
           </li>
         </ul>
       </div>
-
-     
     </div>
   );
 }

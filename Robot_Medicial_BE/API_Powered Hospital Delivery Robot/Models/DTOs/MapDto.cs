@@ -48,7 +48,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public double? OccupiedThresh { get; set; }
         public double? FreeThresh { get; set; }
         public DateTime CreatedAt { get; set; }
-        public byte[]? ImageData { get; set; }  
+        public byte[]? ImageData { get; set; }
+        public int TotalTasks { get; set; } = 0;
+        public int TasksToday { get; set; } = 0;
+        public int TasksThisWeek { get; set; } = 0;
+        public int ActiveRobotsCount => Robots?.Count(r => r.Status?.ToLower() is "busy" or "transporting" or "returning") ?? 0;
         public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>();
         public List<DestinationResponseDto> Destinations { get; set; } = new();
     }

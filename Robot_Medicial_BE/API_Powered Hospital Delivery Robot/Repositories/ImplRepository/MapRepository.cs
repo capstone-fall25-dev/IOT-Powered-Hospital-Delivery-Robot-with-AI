@@ -54,7 +54,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (includeRobots)
                 query = query.Include(m => m.Robots);
 
-            query = query.Include(m => m.Destinations);
+            query = query.Include(m => m.Destinations)
+                            .ThenInclude(d => d.TaskStops)
+                            .ThenInclude(ts => ts.Task);
             return await query.FirstOrDefaultAsync(m => m.Id == id);
         }
 
