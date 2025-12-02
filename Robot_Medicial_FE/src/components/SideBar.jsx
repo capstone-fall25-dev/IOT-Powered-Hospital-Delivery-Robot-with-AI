@@ -306,7 +306,7 @@ export default function Sidebar() {
           </li>
           )}
 
-          <li
+          <li 
             onClick={() => navigate("/patients")}
             className={isActive("/patients") ? "active" : ""}
           >
@@ -320,21 +320,21 @@ export default function Sidebar() {
             <i className="bi bi-grid-3x3-gap-fill"></i>
             <span>Ngăn chứa</span>
           </li>
-          <li
+          <li hidden 
             onClick={() => navigate("/rooms")}
             className={isActive("/rooms") ? "active" : ""}
           >
             <i className="bi bi-hospital"></i>
             <span>Phòng bệnh</span>
           </li>
-          <li
+          <li hidden 
             onClick={() => navigate("/prescriptions")}
             className={isActive("/prescriptions") ? "active" : ""}
           >
             <i className="bi bi-file-medical"></i>
             <span>Đơn thuốc</span>
           </li>
-          <li
+          <li hidden 
             onClick={() => navigate("/medicines")}
             className={isActive("/medicines") ? "active" : ""}
           >
