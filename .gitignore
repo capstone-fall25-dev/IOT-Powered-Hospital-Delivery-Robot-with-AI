@@ -12,7 +12,7 @@ obj/
 Robot_Medicial_IOT/robot_ws/build/
 Robot_Medicial_IOT/robot_ws/install/
 Robot_Medicial_IOT/robot_ws/log/
-Robot_Medicial_IOT/robot_ws/src/robt_navigation/maps/
+Robot_Medicial_IOT/robot_ws/src/robt_navigation/map/
 
 # ASP.NET Core app settings
  appsettings.json

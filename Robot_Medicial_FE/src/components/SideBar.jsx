@@ -286,6 +286,15 @@ export default function Sidebar() {
             <i className="bi bi-bar-chart-line"></i>
             <span>Thống kê nhiệm vụ</span>
           </li>
+          {/* ⭐ MỤC ĐIỂM ĐẾN MỚI THÊM ⭐ */}
+          <li
+            onClick={() => navigate("/destinationlist")}
+            className={isActive("/destinationlist") ? "active" : ""}
+          >
+            <i className="bi bi-geo-alt-fill"></i>
+            <span>Điểm đến</span>
+          </li>
+
           {/* Người dùng - CHỈ ADMIN */}
           {isAdmin && (
           <li

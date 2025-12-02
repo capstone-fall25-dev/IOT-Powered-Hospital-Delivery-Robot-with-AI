@@ -51,6 +51,7 @@ import RunTask from "@/pages/RunTask";
 import ProjectMapListView from "@/pages/ViewListMap";
 import RunMap from "@/pages/RunMap";
 import CreateMap from "@/pages/CreateMap";
+import DestinationByMapView from "@/pages/DestinationByMapView";
 
 import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
@@ -337,6 +338,15 @@ const routes = [
   { path: "/viewlistmap", element: (
       <ProtectedRoute>
         <MainLayout><ProjectMapListView /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+
+  { 
+    path: "/destinationlist",
+    element: (
+      <ProtectedRoute>
+        <MainLayout><DestinationByMapView /></MainLayout>
       </ProtectedRoute>
     )
   },
