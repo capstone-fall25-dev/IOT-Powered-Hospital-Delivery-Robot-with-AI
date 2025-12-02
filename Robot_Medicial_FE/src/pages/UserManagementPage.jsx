@@ -205,7 +205,7 @@ export default function UserManagementPage() {
                                             <td className="fw-semibold">{r.fullName}</td>
                                             <td>{r.email}</td>
                                             <td>
-                                                <span className={styles.badgeTeal}>{r.role==="admin" ? "Quản trị viên" : r.role==="doctor" ? "Bác sĩ"}</span>
+                                                <span className={styles.badgeTeal}>{r.role==="admin" ? "Quản trị viên" : r.role==="doctor" ? "Bác sĩ" : r.role}</span>
                                             </td>
                                             <td>
                                                 {r.isActive ? (
