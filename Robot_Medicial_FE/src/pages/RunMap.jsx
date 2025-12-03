@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
-
+import mapError from "@/assets/image/map_error.jpg";
 export default function RobotRunMap() {
   // ===================================
   // 🗺️ MAP REFS
@@ -326,7 +326,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   // ===================================
   // NAVIGATION MAP (map trên)
   // ===================================
-  async function loadNavigationMapForDestination(destination) {
+ async function loadNavigationMapForDestination(destination) {
   if (!destination) return;
   if (!window.L) return;
   const L = window.L;
@@ -374,21 +374,31 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
     console.error("Không lấy được danh sách phòng:", err);
   }
 
-  const imgUrl =
+  // URL chính từ backend
+  const primaryImgUrl =
     API_CONFIG.API_BASE1 + `/api/MapsUpload/${destination.mapId}/image`;
 
   const img = new Image();
-  img.src = imgUrl;
+  let triedFallback = false; // để tránh loop vô hạn
 
   img.onload = () => {
+    // 👉 phần logic bên trong giữ nguyên, chỉ chỉnh dùng img.src thay vì primaryImgUrl
     const widthMeters = img.width * resolution;
     const heightMeters = img.height * resolution;
 
     if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) {
-      console.error("Kích thước bản đồ không hợp lệ:", {
-        widthMeters,
-        heightMeters,
-      });
+      // Nếu ảnh chính bị lỗi size thì thử fallback 1 lần nữa
+      if (!triedFallback) {
+        triedFallback = true;
+        console.warn(
+          "Kích thước bản đồ không hợp lệ, dùng ảnh map_error.jpg",
+          { widthMeters, heightMeters }
+        );
+        img.src = mapError;
+        return;
+      }
+
+      console.error("Kích thước ảnh map_error.jpg cũng không hợp lệ.");
       return;
     }
 
@@ -403,9 +413,9 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
       L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
     }
 
-    // overlay bản đồ
+    // overlay bản đồ (dùng img.src: có thể là ảnh thật hoặc map_error.jpg)
     if (navMapLayer.current) navMapRef.current.removeLayer(navMapLayer.current);
-    navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
+    navMapLayer.current = L.imageOverlay(img.src, bounds).addTo(navMapRef.current);
     navMapRef.current.fitBounds(bounds);
 
     // ================== VẼ ĐIỂM ĐẾN ==================
@@ -456,7 +466,6 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
       navRoomsLayerRef.current.clearLayers();
     }
 
-    // ⭐ Icon phòng: hình tròn xanh + icon bệnh viện Bootstrap
     const roomIcon = L.divIcon({
       className: "",
       html: `
@@ -506,7 +515,6 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
 
       const marker = L.marker(latlng, { icon: roomIcon });
 
-      // 🎯 Giống DestinationByMapView: tooltip cố định phía trên
       marker.bindTooltip(label, {
         permanent: true,
         direction: "top",
@@ -519,9 +527,25 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   };
 
   img.onerror = (err) => {
-    console.error("Không tải được ảnh bản đồ:", err);
+    // 1st error: thử dùng ảnh fallback
+    if (!triedFallback) {
+      triedFallback = true;
+      console.warn(
+        "Không tải được ảnh bản đồ, chuyển sang ảnh map_error.jpg",
+        err
+      );
+      img.src = mapError;
+      return;
+    }
+
+    // 2nd error: fallback cũng lỗi
+    console.error("Không tải được ảnh fallback map_error.jpg:", err);
   };
+
+  // bắt đầu load ảnh chính
+  img.src = primaryImgUrl;
 }
+
 
 
   // ===================================
