@@ -66,7 +66,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.FullName = user.FullName;
             existing.Role = user.Role;
             existing.IsActive = user.IsActive;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return existing;

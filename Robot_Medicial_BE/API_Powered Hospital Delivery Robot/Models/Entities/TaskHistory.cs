@@ -1,5 +1,4 @@
-﻿// Models/Entities/TaskHistory.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -42,6 +41,10 @@ public class TaskHistory
     public int DeliveredStops { get; set; }
     public int SkippedStops { get; set; }
     public int FailedStops { get; set; }
+
+    [Column("note", TypeName = "varchar(500)")]
+    [Comment("Ghi chú: chạy sớm bao nhiêu phút, hủy tay, lý do đặc biệt...")]
+    public string? Note { get; set; }
 
     public DateTime RecordedAt { get; set; }
 

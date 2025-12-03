@@ -140,6 +140,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : BadRequest(result.Message);
         }
 
+        [HttpPost("{taskId}/start")]
+        public async Task<ActionResult<TaskResponseDto>> StartTask(ulong taskId)
+        {
+            try
+            {
+                var result = await _service.StartTaskAsync(taskId);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         private ulong GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst("userId")?.Value;

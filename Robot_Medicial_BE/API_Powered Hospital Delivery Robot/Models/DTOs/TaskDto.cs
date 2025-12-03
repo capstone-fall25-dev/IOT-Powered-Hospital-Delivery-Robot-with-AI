@@ -143,6 +143,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public DateTime CreatedAt { get; set; }
         public DateTime? ScheduledStartAt { get; set; }
+        public DateTime? StartedAt { get; set; }
 
         // Stop summary
         public int TotalStops { get; set; }

@@ -27,7 +27,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // --- Ánh xạ DTO -> Entity ---
             var map = _mapper.Map<Map>(dto);
-            map.CreatedAt = DateTime.UtcNow;
+            map.CreatedAt = DateTime.Now;
 
             // --- Validate threshold ---
             if (dto.OccupiedThresh.HasValue && (dto.OccupiedThresh < 0 || dto.OccupiedThresh > 1))

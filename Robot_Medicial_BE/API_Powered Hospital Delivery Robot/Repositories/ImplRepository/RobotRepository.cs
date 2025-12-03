@@ -22,7 +22,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (map == null) return null;
 
             robot.MapId = mapId;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -101,7 +101,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.EtaReturnAt = robot.EtaReturnAt;
             existing.ErrorCountSession = robot.ErrorCountSession;
             existing.MapId = robot.MapId;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return existing;
@@ -114,8 +114,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             robot.Latitude = lat;
             robot.Longitude = lng;
-            robot.LastHeartbeatAt = DateTime.UtcNow;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.LastHeartbeatAt = DateTime.Now;
+            robot.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -126,7 +126,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return null;
 
             robot.Status = status;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -137,7 +137,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return null;
 
             robot.Status = status;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -151,7 +151,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (map == null) return null;
 
             robot.MapId = mapId;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return robot;

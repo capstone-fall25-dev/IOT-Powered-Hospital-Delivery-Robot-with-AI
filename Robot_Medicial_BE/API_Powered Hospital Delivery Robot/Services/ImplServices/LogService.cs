@@ -20,7 +20,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<LogResponseDto> CreateAsync(LogDto logDto)
         {
             var log = _mapper.Map<Log>(logDto);
-            log.CreatedAt = DateTime.UtcNow;
+            log.CreatedAt = DateTime.Now;
 
             var created = await _repository.CreateAsync(log);
             return _mapper.Map<LogResponseDto>(created);

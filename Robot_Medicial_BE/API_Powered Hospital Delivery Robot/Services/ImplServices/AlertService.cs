@@ -37,7 +37,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<AlertResponseDto> CreateAsync(AlertDto alertDto)
         {
             var alert = _mapper.Map<Alert>(alertDto);
-            alert.CreatedAt = DateTime.UtcNow;
+            alert.CreatedAt = DateTime.Now;
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
 
@@ -86,7 +86,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Category = "manual",
                 Status = "open",
                 Message = $"Medicine '{medicine.Name}' in item {prescriptionItemId} is {reason}: {description}. Stock updated.",
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
                 PrescriptionItemId = prescriptionItemId // Liên kết
             };
 

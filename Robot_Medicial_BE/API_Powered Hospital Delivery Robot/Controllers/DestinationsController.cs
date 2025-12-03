@@ -60,7 +60,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "destination_route",
                     map_id = route.MapId,
-                    timestamp = DateTime.UtcNow,
+                    timestamp = DateTime.Now,
                     destinations = route.Destinations.Select((d, index) => new
                     {
                         order = index + 1,

@@ -10,7 +10,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 return true; // để Required bắt
 
             // Phải lớn hơn hiện tại ít nhất 1 phút (tránh chọn nhầm)
-            return dateTime > DateTime.UtcNow.AddMinutes(1);
+            return dateTime > DateTime.Now.AddMinutes(1);
         }
 
         public override string FormatErrorMessage(string name)

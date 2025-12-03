@@ -51,7 +51,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = robotId,
                 LogType = "info",
                 Message = $"Robot {robot.Code} assigned to map {map.MapName}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             });
 
             return new AssignMapResponseDto
@@ -76,7 +76,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var robot = _mapper.Map<Robot>(robotDto);
 
             robot.Status = "at_station";
-            robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.UtcNow;
+            robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.Now;
 
             // Lưu robot trước
             var createdRobot = await _robotRepository.CreateAsync(robot);
@@ -162,7 +162,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _robotCompartmentRepository.CreateManyAsync(newCompartments);
 
             // 6. Cập nhật thời gian
-            existingRobot.UpdatedAt = DateTime.UtcNow;
+            existingRobot.UpdatedAt = DateTime.Now;
 
             // 7. Lưu robot
             var updatedRobot = await _robotRepository.UpdateAsync(existingRobot);
@@ -177,7 +177,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = robotId,
                 LogType = "info",
                 Message = $"Robot {updatedRobot.Code} ({updatedRobot.Name}) đã được cập nhật: tên, loại ngăn chứa và {mapChange}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             });
 
             // 9. Trả về response đầy đủ
@@ -302,7 +302,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = updated.Id,
                 LogType = "info",
                 Message = $"Robot {updated.Code} updated status to {dto.Status}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             });
 
             return _mapper.Map<RobotResponseDto>(updated);

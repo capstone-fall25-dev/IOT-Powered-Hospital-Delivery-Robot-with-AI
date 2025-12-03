@@ -53,7 +53,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     type = "robot_mode",
                     mode,
                     map_name = req.MapName,
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveRobotCommand", command);
@@ -89,7 +89,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     x = pos.X,
                     y = pos.Y,
                     theta = pos.Theta,
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceivePosition", positionData);
@@ -167,7 +167,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "navigation_progress",
                     text = req.Text,            // ví dụ "RB-01|37.5|Phòng 102"
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 };
 
                 // Broadcast cho tất cả client đang nối với Hub
@@ -211,7 +211,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "motor_control",
                     key,
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveMotorCommand", motorCommand);

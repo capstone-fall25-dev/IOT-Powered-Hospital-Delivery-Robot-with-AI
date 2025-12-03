@@ -54,8 +54,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             user.Role = role;
 
             user.PasswordHash = HashPassword(userDto.Password);
-            user.CreatedAt = DateTime.UtcNow;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.CreatedAt = DateTime.Now;
+            user.UpdatedAt = DateTime.Now;
             user.IsActive = false; // kích hoạt sau khi xác minh OTP
 
             var created = await _repository.CreateAsync(user);
@@ -87,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var response = _mapper.Map<UserResponseDto>(user);
 
             // Tính IsOnline: Có session active (expires_at > now)
-            var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow).ToList();
+            var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.Now).ToList();
             response.ActiveSessions = _mapper.Map<IEnumerable<SessionResponseDto>>(activeSessions);
             response.IsOnline = activeSessions.Any();
 
@@ -106,7 +106,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("Không tìm thấy user");
             }
 
-            var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow).ToList();
+            var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.Now).ToList();
             var isOnline = activeSessions.Any();
 
             return new UserStatusDto
@@ -131,7 +131,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             existing.IsActive = isActive;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
             await _repository.UpdateAsync(id, existing);
             return true;
         }
@@ -155,7 +155,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var user = _mapper.Map<User>(userDto);
             user.Id = id;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
             if (!string.IsNullOrEmpty(userDto.Password))
             {
                 user.PasswordHash = HashPassword(userDto.Password);
@@ -248,7 +248,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return "Không tìm thấy người dùng.";
 
             user.IsActive = true;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
             await UpdateUserAsync(user);
 
             _cache.Remove($"OTP_{request.Email}");
@@ -297,9 +297,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         //    // Xóa tất cả session cũ → chỉ cho phép 1 thiết bị
         //    if (user.Sessions != null)
         //    {
-        //        foreach (var session in user.Sessions.Where(s => s.ExpiresAt > DateTime.UtcNow))
+        //        foreach (var session in user.Sessions.Where(s => s.ExpiresAt > DateTime.Now))
         //        {
-        //            session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        //            session.ExpiresAt = DateTime.Now.AddMinutes(-1);
         //        }
         //    }
 
@@ -310,8 +310,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         //        SessionToken = tokenHash,
         //        IpAddress = context.Connection.RemoteIpAddress?.ToString(),
         //        UserAgent = context.Request.Headers["User-Agent"].ToString(),
-        //        CreatedAt = DateTime.UtcNow,
-        //        ExpiresAt = DateTime.UtcNow.AddHours(24)
+        //        CreatedAt = DateTime.Now,
+        //        ExpiresAt = DateTime.Now.AddHours(24)
         //    };
 
         //    await _repository.CreateSessionAsync(newSession);
@@ -357,8 +357,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 SessionToken = tokenHash,
                 IpAddress = context.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = context.Request.Headers["User-Agent"].ToString(),
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddHours(24)
+                CreatedAt = DateTime.Now,
+                ExpiresAt = DateTime.Now.AddHours(24)
             };
             await _repository.CreateSessionAsync(newSession);
 
@@ -380,7 +380,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var session = await _repository.GetSessionByTokenHashAsync(tokenHash);
             if (session != null)
             {
-                session.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+                session.ExpiresAt = DateTime.Now.AddMinutes(-1);
                 await _repository.UpdateSessionAsync(session);
             }
         }
@@ -434,7 +434,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Cập nhật mật khẩu mới
             user.PasswordHash = HashPassword(request.NewPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
             await UpdateUserAsync(user);
 
             // Xóa OTP khỏi cache
@@ -456,7 +456,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Cập nhật mật khẩu
             user.PasswordHash = HashPassword(newPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             await UpdateUserAsync(user);
 
@@ -500,7 +500,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Chỉ update FullName và các field được phép
             user.FullName = dto.FullName;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             await _repository.UpdateUserAsync(user);
 
@@ -532,7 +532,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Cập nhật mật khẩu mới
             user.PasswordHash = HashPassword(dto.NewPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             await _repository.UpdateUserAsync(user);
 
@@ -548,7 +548,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 foreach (var s in user.Sessions)
                 {
-                    s.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+                    s.ExpiresAt = DateTime.Now.AddMinutes(-1);
                 }
                 await UpdateUserAsync(user);
 
