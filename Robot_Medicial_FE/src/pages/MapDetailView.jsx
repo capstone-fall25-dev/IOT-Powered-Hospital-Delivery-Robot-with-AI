@@ -6,10 +6,11 @@ import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/mapDetailView.module.css";
 import mapErrorImg from "@/assets/image/map_error.jpg";
 
-// Fix Leaflet default icons
+/* ========================= CẤU HÌNH ICON LEAFLET ========================= */
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2xPng,
@@ -17,18 +18,21 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadowPng,
 });
 
+/* ========================= COMPONENT CHÍNH ========================= */
 export default function MapDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const mapRef = useRef(null);
 
+  /* ========================= STATE ========================= */
   const [mapData, setMapData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCoords, setShowCoords] = useState(false);
   const [worldPos, setWorldPos] = useState({ x: 0, y: 0 });
+  const [selectedDestId, setSelectedDestId] = useState(null);
 
-  // ========================= Fetch Map =========================
+  /* ========================= FETCH DỮ LIỆU BẢN ĐỒ ========================= */
   useEffect(() => {
     async function fetchMap() {
       try {
@@ -46,69 +50,94 @@ export default function MapDetailView() {
     fetchMap();
   }, [id]);
 
-  // ========================= Init Leaflet =========================
+  /* ========================= KHỞI TẠO LEAFLET MAP ========================= */
   useEffect(() => {
     if (!mapData) return;
 
     const container = document.getElementById("detailMap");
     if (!container) return;
 
+    // Reset container nếu đã có map cũ
     if (container._leaflet_id) container._leaflet_id = null;
     container.innerHTML = "";
 
+    // Tạo map với hệ tọa độ đơn giản
     const map = L.map(container, {
       crs: L.CRS.Simple,
       minZoom: -6,
-      maxZoom: 5,
-      zoomControl: false
+      maxZoom: 8,
+      maxNativeZoom: 1,
+      zoomControl: false,
+      maxBoundsViscosity: 0, // Không dính cạnh khi kéo
     });
 
-    const imageUrl = `${API_CONFIG.API_BASE1}/api/Maps/${id}/image`;
+    // Lấy thông tin từ API
+    const imageUrl = API_CONFIG.API_BASE1 + `/api/MapsUpload/${id}/image`;
     const resolution = mapData.resolution || 0.05;
     const originX = mapData.originX || 0;
     const originY = mapData.originY || 0;
 
     const markers = {};
 
+    /* ========================= TẢI VÀ HIỂN THỊ ẢNH BẢN ĐỒ ========================= */
     const img = new Image();
     img.onload = () => {
       const w = img.width * resolution;
       const h = img.height * resolution;
-      const bounds = [[0, 0], [h, w]];
+      const realBounds = [[0, 0], [h, w]];
 
-      L.imageOverlay(imageUrl, bounds).addTo(map);
-      map.fitBounds(bounds);
-      map.__initialBounds = bounds;
+      // Tăng vùng để cho phép kéo
+      const scale = 3;
+      const bigBounds = [
+        [-h * scale, -w * scale],
+        [h * scale, w * scale],
+      ];
+      map.setMaxBounds(bigBounds);
+
+      // Hiển thị ảnh bản đồ
+      L.imageOverlay(imageUrl, realBounds).addTo(map);
+
+      // Fit vào khu ảnh thật
+      map.fitBounds(realBounds);
+      map.__initialBounds = realBounds;
+
+      // Bật các tính năng tương tác sau khi ảnh load xong
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.scrollWheelZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+
+      // Thêm nút zoom
       L.control.zoom({ position: "bottomright" }).addTo(map);
-// Custom Auto-Fit control
-const FitControl = L.Control.extend({
-  options: { position: "bottomright" },
 
-  onAdd: function () {
-    const container = L.DomUtil.create("div", "leaflet-bar custom-fit-btn");
+      /* ========================= NÚT RESET ZOOM TỰ TẠO ========================= */
+      const FitControl = L.Control.extend({
+        options: { position: "bottomright" },
 
-    container.innerHTML = `<a title="Reset zoom" role="button"><i class="bi bi-aspect-ratio"></i></a>`;
+        onAdd: function () {
+          const container = L.DomUtil.create("div", "leaflet-bar custom-fit-btn");
+          container.innerHTML = `<a title="Reset zoom" role="button"><i class="bi bi-aspect-ratio"></i></a>`;
 
-    // Prevent map drag when clicking
-    L.DomEvent.disableClickPropagation(container);
+          // Ngăn map bị kéo khi click nút
+          L.DomEvent.disableClickPropagation(container);
 
-    container.onclick = () => {
-      if (map.__initialBounds) {
-        map.fitBounds(map.__initialBounds, {
-          animate: true,
-          duration: 0.5
-        });
-      }
-    };
+          container.onclick = () => {
+            if (map.__initialBounds) {
+              map.fitBounds(map.__initialBounds, {
+                animate: true,
+                duration: 0.5,
+              });
+            }
+          };
 
-    return container;
-  }
-});
+          return container;
+        },
+      });
 
-// Add to map
-map.addControl(new FitControl());
+      map.addControl(new FitControl());
 
-      // Destinations
+      /* ========================= THÊM MARKERS CHO CÁC ĐIỂM ĐẾN ========================= */
       mapData.destinations?.forEach((dest) => {
         const y = (dest.y ?? 0) - originY;
         const x = (dest.x ?? 0) - originX;
@@ -128,10 +157,10 @@ map.addControl(new FitControl());
         markers[dest.id] = marker;
       });
 
-       // Save markers to mapRef
-        map.__markers = markers;
+      // Lưu markers vào map
+      map.__markers = markers;
 
-      // Mouse coordinates
+      /* ========================= HIỂN THỊ TỌA ĐỘ CHUỘT ========================= */
       map.on("mousemove", (e) => {
         setWorldPos({
           x: (originX + e.latlng.lng).toFixed(3),
@@ -144,76 +173,124 @@ map.addControl(new FitControl());
 
       mapRef.current = map;
     };
-img.onerror = () => {
-  // Xóa map và hiển thị ảnh lỗi trực tiếp bằng CSS
-  map.remove();
-  container.innerHTML = `
-    <div style="
-      width: 100%;
-      height: 100%;
-      background-image: url(${mapErrorImg});
-      background-size: contain;
-      background-position: center;
-      background-repeat: no-repeat;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    ">
-    </div>
-  `;
-};
+
+    /* ========================= XỬ LÝ LỖI KHI TẢI ẢNH ========================= */
+    img.onerror = () => {
+      map.remove();
+      container.innerHTML = `
+        <div style="
+          width: 100%;
+          height: 100%;
+          background-image: url(${mapErrorImg});
+          background-size: contain;
+          background-position: center;
+          background-repeat: no-repeat;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+        </div>
+      `;
+    };
+
     img.src = imageUrl;
 
+    // Cleanup khi component unmount
     return () => mapRef.current?.remove();
   }, [mapData, id]);
 
-  const [selectedDestId, setSelectedDestId] = useState(null);
+  /* ========================= XỬ LÝ CHỌN ĐIỂM ĐẾN ========================= */
+  function handleSelectDestination(dest) {
+    if (!mapRef.current || !mapRef.current.__markers) return;
 
-function handleSelectDestination(dest) {
-  if (!mapRef.current || !mapRef.current.__markers) return;
+    const marker = mapRef.current.__markers[dest.id];
+    if (!marker) return;
 
-  const marker = mapRef.current.__markers[dest.id];
-  if (!marker) return;
+    // Reset map như lúc mới vào trang
+    if (mapRef.current.__initialBounds) {
+      mapRef.current.fitBounds(mapRef.current.__initialBounds, {
+        animate: true,
+        duration: 0.5,
+      });
+    }
 
-  // Reset map như lúc mới vào trang
-  if (mapRef.current.__initialBounds) {
-    mapRef.current.fitBounds(mapRef.current.__initialBounds, {
-      animate: true,
-      duration: 0.5
-    });
+    // Chờ reset xong rồi mới pan chính xác vào marker
+    setTimeout(() => {
+      mapRef.current.panTo(marker.getLatLng(), {
+        animate: true,
+        duration: 0.5,
+      });
+      marker.openPopup();
+    }, 100);
+
+    setSelectedDestId(dest.id);
   }
 
-  // Chờ reset xong rồi mới pan chính xác vào marker
-  setTimeout(() => {
-    mapRef.current.panTo(marker.getLatLng(), {
-      animate: true,
-      duration: 0.5
-    });
-    marker.openPopup();
-  }, 100);
+  /* ========================= CHUYỂN ĐỔI TRẠNG THÁI ROBOT ========================= */
+  function mapRobotStatus(status) {
+    if (!status) return "Không rõ";
 
-  setSelectedDestId(dest.id);
-}
+    switch (status.toLowerCase()) {
+      case "transporting":
+        return "Đang vận chuyển";
 
+      case "awaiting_handover":
+        return "Chờ bàn giao";
 
-  // ========================= Loading / Error =========================
+      case "returning_to_station":
+        return "Đang quay về trạm";
+
+      case "at_station":
+        return "Đang ở trạm";
+
+      case "completed":
+        return "Đã hoàn thành";
+
+      case "charging":
+        return "Đang sạc";
+
+      case "needs_attention":
+        return "Cần kiểm tra";
+
+      case "manual_control":
+        return "Điều khiển thủ công";
+
+      case "offline":
+        return "Mất kết nối";
+
+      default:
+        return status;
+    }
+  }
+
+  /* ========================= XỬ LÝ LOADING / ERROR ========================= */
   if (loading) return <div className={styles.loading}>Đang tải bản đồ...</div>;
   if (error) return <div className={styles.error}>Lỗi: {error}</div>;
   if (!mapData) return <div className={styles.error}>Không tìm thấy bản đồ</div>;
 
-  const activeRobots =
-    mapData.robots?.filter(r =>
-      ["busy", "transporting", "returning"].includes(r.status?.toLowerCase())
-    ).length || 0;
+  // Tính số robot đang hoạt động
+  function isRobotActive(status) {
+    if (!status) return false;
 
-  // ========================= Render =========================
+    switch (status.toLowerCase()) {
+      case "transporting":
+      case "awaiting_handover":
+      case "returning_to_station":
+      case "manual_control":
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  const activeRobots = mapData.robots?.filter(r => isRobotActive(r.status)).length || 0;
+
+  /* ========================= RENDER GIAO DIỆN ========================= */
   return (
     <div className={styles.page}>
       <div className="container-xl py-4">
-
-        {/* GLASS WRAPPER */}
+        {/* ========================= WRAPPER GLASS ========================= */}
         <div className={styles.glass}>
-
           {/* ========================= HEADER ========================= */}
           <div className={styles.header}>
             <div>
@@ -226,27 +303,27 @@ function handleSelectDestination(dest) {
               </p>
             </div>
 
-            <button className={styles.btnBack} onClick={() => navigate("/maps")}>
+            <button className={styles.btnBack} onClick={() => navigate("/viewlistmap")}>
               <i className="bi bi-arrow-left me-1"></i> Quay lại
             </button>
           </div>
 
-          {/* ========================= STAT CARDS ========================= */}
+          {/* ========================= THỐNG KÊ CARDS ========================= */}
           <div className={styles.statsGrid}>
             <div className={styles.statCard}>
               <div className={styles.statNumber}>
-                {(mapData.TotalTasks ?? 0).toLocaleString()}
+                {(mapData.totalTasks ?? 0).toLocaleString()}
               </div>
               <div className={styles.statLabel}>Tổng nhiệm vụ</div>
             </div>
 
             <div className={styles.statCard}>
-              <div className={styles.statNumber}>{mapData.TasksToday ?? 0}</div>
+              <div className={styles.statNumber}>{mapData.tasksToday ?? 0}</div>
               <div className={styles.statLabel}>Hôm nay</div>
             </div>
 
             <div className={styles.statCard}>
-              <div className={styles.statNumber}>{mapData.TasksThisWeek ?? 0}</div>
+              <div className={styles.statNumber}>{mapData.tasksThisWeek ?? 0}</div>
               <div className={styles.statLabel}>Tuần này</div>
             </div>
 
@@ -257,24 +334,23 @@ function handleSelectDestination(dest) {
           </div>
 
           <div className="row g-4">
-
-            {/* ========================= MAP SECTION ========================= */}
+            {/* ========================= PHẦN BẢN ĐỒ ========================= */}
             <div className="col-lg-8">
               <div className={styles.mapWrapper}>
                 <div id="detailMap" className={styles.mapContainer}></div>
 
+                {/* Hiển thị tọa độ khi di chuột */}
                 {showCoords && (
                   <div className={styles.coordBox}>
-                    ({worldPos.x}m, {worldPos.y}m)
+                    Tọa độ: ({worldPos.x}m, {worldPos.y}m)
                   </div>
                 )}
               </div>
             </div>
 
-            {/* ========================= RIGHT COLUMN ========================= */}
+            {/* ========================= CỘT BÊN PHẢI ========================= */}
             <div className="col-lg-4">
-
-              {/* ROBOTS */}
+              {/* ========================= DANH SÁCH ROBOT ========================= */}
               <div className={styles.infoCard}>
                 <h5>Robot đang sử dụng ({mapData.robots?.length || 0})</h5>
 
@@ -290,7 +366,7 @@ function handleSelectDestination(dest) {
                               styles[r.status?.toLowerCase()] || styles.at_station
                             }`}
                           >
-                            {r.status}
+                            {mapRobotStatus(r.status)}
                           </span>
                           <span>Pin: {r.batteryPercent}%</span>
                         </div>
@@ -302,7 +378,7 @@ function handleSelectDestination(dest) {
                 )}
               </div>
 
-              {/* DESTINATIONS */}
+              {/* ========================= DANH SÁCH ĐIỂM ĐẾN ========================= */}
               <div className={styles.infoCard}>
                 <h5>Điểm đến ({mapData.destinations?.length || 0})</h5>
 
@@ -312,16 +388,15 @@ function handleSelectDestination(dest) {
                       .sort((a, b) => (b.taskCount || 0) - (a.taskCount || 0))
                       .map((d) => (
                         <div
-  key={d.id}
-  className={`${styles.destItem} ${
-    selectedDestId === d.id ? styles.destItemActive : ""
-  }`}
-  onClick={() => handleSelectDestination(d)}
->
-
+                          key={d.id}
+                          className={`${styles.destItem} ${
+                            selectedDestId === d.id ? styles.destItemActive : ""
+                          }`}
+                          onClick={() => handleSelectDestination(d)}
+                        >
                           <strong>{d.name}</strong>
                           <small>
-                            {d.area} - {" "}
+                            {d.area} -{" "}
                             <span style={{ color: "#0d9488", fontWeight: 600 }}>
                               {d.taskCount || 0} lần
                             </span>
@@ -333,11 +408,10 @@ function handleSelectDestination(dest) {
                   <p className={styles.empty}>Chưa có điểm đến</p>
                 )}
               </div>
-
             </div>
           </div>
-
-        </div>{/* END GLASS */}
+        </div>
+        {/* END GLASS */}
       </div>
     </div>
   );
