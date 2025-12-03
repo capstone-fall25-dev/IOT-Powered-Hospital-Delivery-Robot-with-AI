@@ -4,7 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/projectMapListView.module.css";
-
+import mapErrorImg from "@/assets/image/map_error.jpg";
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
@@ -188,6 +188,37 @@ export default function ProjectMapListView() {
       map.fitBounds(imageBounds);
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
+    };
+    
+    /* ========================= XỬ LÝ LỖI KHI TẢI ẢNH ========================= */
+    img.onerror = () => {
+      console.error("❌ Lỗi tải ảnh bản đồ:", imageUrl);
+
+      if (mapRef.current) {
+        mapRef.current.off();
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+
+      const container = document.getElementById("map");
+      if (container) {
+        container.innerHTML = `
+          <div style="
+            width: 100%;
+            height: 100%;
+            background-image: url('${mapErrorImg}');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #64748b;
+          ">
+          </div>
+        `;
+      }
     };
 
     // ==========================================================
