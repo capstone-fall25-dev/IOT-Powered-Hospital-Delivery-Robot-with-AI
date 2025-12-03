@@ -61,7 +61,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 TaskId = taskId,
                 LogType = "info",
                 Message = $"Bulk loaded {loadedAssignments.Count} compartments for task {taskId}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
             await _logRepository.CreateAsync(bulkLog);
 
@@ -95,8 +95,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             var assignment = _mapper.Map<CompartmentAssignment>(assignmentDto);
-            assignment.CreatedAt = DateTime.UtcNow;
-            assignment.UpdatedAt = DateTime.UtcNow;
+            assignment.CreatedAt = DateTime.Now;
+            assignment.UpdatedAt = DateTime.Now;
 
             var created = await _repository.CreateAsync(assignment);
             return _mapper.Map<CompartmentAssignmentResponseDto>(created);
@@ -130,7 +130,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 StopId = updated.StopId,
                 LogType = "success",
                 Message = $"Compartment {updated.Compartment.CompartmentCode} loaded for task {updated.TaskId}. Item: {loadDto.ItemDesc ?? "General"}",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
             await _logRepository.CreateAsync(log);
 
@@ -191,7 +191,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var assignment = _mapper.Map<CompartmentAssignment>(assignmentDto);
             assignment.Id = id;
-            assignment.UpdatedAt = DateTime.UtcNow;
+            assignment.UpdatedAt = DateTime.Now;
 
             var updated = await _repository.UpdateAsync(id, assignment);
             return updated != null ? _mapper.Map<CompartmentAssignmentResponseDto>(updated) : null;
