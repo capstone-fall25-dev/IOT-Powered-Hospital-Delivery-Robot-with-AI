@@ -42,7 +42,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 PrescriptionCode = dto.PrescriptionCode,
                 PatientId = dto.PatientId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
                 Status = "pending"
             };
 

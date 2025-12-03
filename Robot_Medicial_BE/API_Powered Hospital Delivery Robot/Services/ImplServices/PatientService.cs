@@ -47,7 +47,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("Room does not exist");
 
             var patient = _mapper.Map<Patient>(dto);
-            patient.CreatedAt = DateTime.UtcNow;
+            patient.CreatedAt = DateTime.Now;
 
             var created = await _repo.CreateAsync(patient);
             return _mapper.Map<PatientResponseDto>(created);
