@@ -602,6 +602,7 @@ CREATE TABLE `task_histories` (
   `DeliveredStops` int NOT NULL,
   `SkippedStops` int NOT NULL,
   `FailedStops` int NOT NULL,
+   `note` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Ghi chú: chạy sớm bao nhiêu phút, hủy tay, lý do đặc biệt...',
   `RecordedAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`Id`),
   KEY `IX_task_histories_CompletedAt` (`CompletedAt`),
