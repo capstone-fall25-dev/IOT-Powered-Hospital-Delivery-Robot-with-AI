@@ -28,8 +28,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             var history = _mapper.Map<PerformanceHistory>(historyDto);
-            history.CreatedAt = DateTime.UtcNow;
-            history.CompletionDate = DateTime.UtcNow; // Default
+            history.CreatedAt = DateTime.Now;
+            history.CompletionDate = DateTime.Now; // Default
 
             var created = await _repository.CreateAsync(history);
             return _mapper.Map<PerformanceHistoryResponseDto>(created);

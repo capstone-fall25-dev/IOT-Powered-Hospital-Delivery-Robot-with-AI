@@ -61,7 +61,7 @@ export const updateStopStatus = (taskId, stopId, status) =>
   });
 
 
-  export async function fetchTaskHistory(params) {
+export async function fetchTaskHistory(params) {
     const query = new URLSearchParams(params).toString();
     return await apiFetch(`/taskhistory?${query}`);
 }

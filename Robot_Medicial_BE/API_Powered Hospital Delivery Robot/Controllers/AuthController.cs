@@ -100,7 +100,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             string tokenHash = HashToken(token);
             bool isValidSession = user.Sessions?.Any(s =>
-                s.SessionToken == tokenHash && s.ExpiresAt > DateTime.UtcNow) == true;
+                s.SessionToken == tokenHash && s.ExpiresAt > DateTime.Now) == true;
 
             if (!isValidSession)
                 return Unauthorized(new { message = "Bạn đã bị đăng xuất do đăng nhập ở thiết bị khác." });

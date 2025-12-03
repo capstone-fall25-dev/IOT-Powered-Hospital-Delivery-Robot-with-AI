@@ -7,7 +7,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [Required]
         public ulong RobotId { get; set; }
 
-        public DateTime MaintenanceDate { get; set; } = DateTime.UtcNow;
+        public DateTime MaintenanceDate { get; set; } = DateTime.Now;
 
         [StringLength(500)] // Giới hạn details
         public string? Details { get; set; }

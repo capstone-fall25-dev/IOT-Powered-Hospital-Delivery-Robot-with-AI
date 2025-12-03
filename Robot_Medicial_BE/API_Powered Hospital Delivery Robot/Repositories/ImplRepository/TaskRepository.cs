@@ -87,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.Status = task.Status;
             existing.Priority = task.Priority;
             existing.ScheduledStartAt = task.ScheduledStartAt;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return existing;
         }
@@ -159,7 +159,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return;
 
             robot.Status = status;
-            robot.UpdatedAt = DateTime.UtcNow;
+            robot.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
         }

@@ -147,6 +147,7 @@ builder.Services.AddScoped<ICompartmentAssignmentService, CompartmentAssignmentS
 // Task Management
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<ITaskHistoryService, TaskHistoryService>();
+builder.Services.AddHostedService<TaskSchedulerService>();
 
 // Map & Navigation
 builder.Services.AddScoped<IMapService, MapService>();
@@ -238,8 +239,8 @@ using (var scope = app.Services.CreateScope())
             Role = "admin",
             IsActive = true,
             PasswordHash = adminPass,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
         });
 
         context.SaveChanges();

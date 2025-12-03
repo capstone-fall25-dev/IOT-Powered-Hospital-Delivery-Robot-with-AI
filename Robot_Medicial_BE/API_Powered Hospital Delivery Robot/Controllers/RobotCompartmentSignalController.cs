@@ -69,7 +69,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     type = "compartment_control",
                     compartment_code = compartment.CompartmentCode,
                     state = action == "open" ? 1 : 0, // 1=open, 0=close
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTime.Now
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveCompartmentSignal", signalData);

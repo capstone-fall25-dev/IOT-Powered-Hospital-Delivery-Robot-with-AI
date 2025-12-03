@@ -17,7 +17,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper = mapper;
         }
 
-        public async System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task)
+        public async System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task, string? note = null)
         {
             var history = new TaskHistory
             {
@@ -42,6 +42,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 DeliveredStops = task.TaskStops.Count(s => s.Status == "delivered"),
                 SkippedStops = task.TaskStops.Count(s => s.Status == "skipped"),
                 FailedStops = task.TaskStops.Count(s => s.Status == "failed"),
+                Note = note?.Trim(), 
+                RecordedAt = DateTime.Now,
                 StopHistories = task.TaskStops.Select(s => new TaskStopHistory
                 {
                     SeqNo = s.SeqNo,
@@ -56,7 +58,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     ArrivedAt = s.ArrivedAt,
                     DeliveredAt = s.HandedOverAt ?? s.ArrivedAt,
                     DurationSeconds = s.ArrivedAt.HasValue
-                        ? (int?)(s.HandedOverAt ?? DateTime.UtcNow).Subtract(s.ArrivedAt.Value).TotalSeconds
+                        ? (int?)(s.HandedOverAt ?? DateTime.Now).Subtract(s.ArrivedAt.Value).TotalSeconds
                         : null
                 }).ToList()
             };

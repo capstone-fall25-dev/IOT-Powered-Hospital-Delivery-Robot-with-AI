@@ -40,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 issuer: configuration["Jwt:Issuer"],
                 audience: configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(int.Parse(configuration["Jwt:ExpiryInMinutes"] ?? "60")),
+                expires: DateTime.Now.AddMinutes(int.Parse(configuration["Jwt:ExpiryInMinutes"] ?? "60")),
                 signingCredentials: creds
             );
 

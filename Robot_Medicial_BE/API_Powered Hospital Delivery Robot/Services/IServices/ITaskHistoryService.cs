@@ -5,7 +5,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
     public interface ITaskHistoryService
     {
-        System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task);
+        System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task, string? note = null);
         Task<PagedTaskHistoryDto> GetHistoryAsync(TaskHistoryFilterDto filter);
         Task<TaskHistory?> GetLastHistoryAsync(ulong taskId);
         Task<TaskHistoryResponseDto?> GetDetailAsync(ulong historyId);

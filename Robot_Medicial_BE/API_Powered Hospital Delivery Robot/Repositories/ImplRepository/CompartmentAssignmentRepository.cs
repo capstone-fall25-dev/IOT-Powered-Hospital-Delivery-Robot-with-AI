@@ -62,7 +62,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.TaskId = assignment.TaskId;
             existing.ItemDesc = assignment.ItemDesc;
             existing.Status = assignment.Status;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return existing;
@@ -89,7 +89,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             assignment.Status = "loaded";
             assignment.ItemDesc = itemDesc ?? assignment.ItemDesc; 
-            assignment.UpdatedAt = DateTime.UtcNow;
+            assignment.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return assignment;

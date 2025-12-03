@@ -141,11 +141,13 @@ export default function ProjectMapListView() {
   // =====================================================================
   useEffect(() => {
     if (!mapInfo || !selectedMap) return;
-  // Reset container mỗi lần load map mới (xoá cả ảnh lỗi fallback)
+
+    // Reset container mỗi lần load map mới (xoá cả ảnh lỗi fallback)
     const containerEl = document.getElementById("map");
     if (containerEl) {
       containerEl.innerHTML = ""; // XÓA NỘI DUNG CŨ
     }
+
     // Dọn map cũ
     if (mapRef.current) {
       mapRef.current.off();

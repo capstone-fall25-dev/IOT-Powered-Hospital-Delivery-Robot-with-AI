@@ -22,7 +22,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var existing = await _repository.GetByNameAsync(dto.Name);
             if (existing != null) throw new InvalidOperationException("Destination name exists");
             var dest = _mapper.Map<Destination>(dto);
-            dest.CreatedAt = DateTime.UtcNow;
+            dest.CreatedAt = DateTime.Now;
             var created = await _repository.CreateAsync(dest);
             return _mapper.Map<DestinationResponseDto>(created);
         }

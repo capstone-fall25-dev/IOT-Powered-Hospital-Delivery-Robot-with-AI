@@ -23,7 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<RoomResponseDto> CreateAsync(RoomDto roomDto)
         {
             var room = _mapper.Map<Room>(roomDto);
-            room.CreatedAt = DateTime.UtcNow;
+            room.CreatedAt = DateTime.Now;
 
             var created = await _repository.CreateAsync(room);
             return _mapper.Map<RoomResponseDto>(created);

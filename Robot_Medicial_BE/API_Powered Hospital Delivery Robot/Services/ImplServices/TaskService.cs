@@ -48,7 +48,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Priority = Enum.TryParse<TaskPriority>(t.Priority, out var p) ? p : TaskPriority.Normal,
                 CreatedAt = t.CreatedAt,
                 ScheduledStartAt = t.ScheduledStartAt,
-
+                StartedAt = t.StartedAt,
                 TotalStops = t.TaskStops.Count,
                 FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
 
@@ -118,8 +118,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     AssignedBy = currentUserId,
                     Status = "pending",
                     Priority = dto.Priority.ToString(),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
                     ScheduledStartAt = dto.ScheduledStartAt
                 };
 
@@ -184,8 +184,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         PatientId = s.PatientId,
                         CustomName = finalName,
                         Status = "pending",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
                     };
 
                     stop = await _repo.CreateStopAsync(stop);
@@ -202,27 +202,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         CompartmentId = s.CompartmentId,
                         ItemDesc = itemDesc,
                         Status = "pending",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
                     });
                 }
 
-                // Auto start or schedule
-                if (!task.ScheduledStartAt.HasValue || task.ScheduledStartAt <= DateTime.UtcNow)
-                {
-                    task.Status = "in_progress";
-                    task.UpdatedAt = DateTime.UtcNow;
+                task.Status = "pending";
+                await _repo.UpdateAsync(task.Id, task);
 
-                    await _repo.UpdateAsync(task.Id, task);
-
-                    robot.Status = "transporting";
-                    await _repo.UpdateRobotStatusAsync(robot.Id, robot.Status);
-                }
-                else
-                {
-                    await _repo.UpdateAsync(task.Id, task);
-                }
-                
                 await transaction.CommitAsync();
                 await RecordTaskHistory(task);
 
@@ -359,7 +346,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         throw new InvalidOperationException($"Status '{newStatus}' không hợp lệ.");
 
                     task.Status = newStatus;
-                    task.UpdatedAt = DateTime.UtcNow;
+                    task.UpdatedAt = DateTime.Now;
                     taskStatusManuallyChanged = true;
 
                     string stopStatus = MapTaskStatusToTaskStopStatus(newStatus);
@@ -372,12 +359,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             stop.Status = stopStatus;
                         }
 
-                        stop.UpdatedAt = DateTime.UtcNow;
+                        stop.UpdatedAt = DateTime.Now;
 
                         foreach (var assign in stop.CompartmentAssignments)
                         {
                             assign.Status = stopStatus;
-                            assign.UpdatedAt = DateTime.UtcNow;
+                            assign.UpdatedAt = DateTime.Now;
                         }
 
                     }
@@ -413,12 +400,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                             stop.Status = newStopStatus;
 
-                            stop.UpdatedAt = DateTime.UtcNow;
+                            stop.UpdatedAt = DateTime.Now;
 
                             foreach (var assign in stop.CompartmentAssignments)
                             {
                                 assign.Status = newStopStatus;
-                                assign.UpdatedAt = DateTime.UtcNow;
+                                assign.UpdatedAt = DateTime.Now;
                             }
                         }
 
@@ -426,7 +413,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         stop.SeqNo = sDto.SeqNo;
                         stop.DestinationId = sDto.DestinationId;
                         stop.PatientId = sDto.PatientId;
-                        stop.UpdatedAt = DateTime.UtcNow;
+                        stop.UpdatedAt = DateTime.Now;
 
                         var assignment = stop.CompartmentAssignments.FirstOrDefault();
 
@@ -468,8 +455,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     StopId = stop.Id,
                                     CompartmentId = sDto.CompartmentId,
                                     Status = stop.Status,
-                                    CreatedAt = DateTime.UtcNow,
-                                    UpdatedAt = DateTime.UtcNow
+                                    CreatedAt = DateTime.Now,
+                                    UpdatedAt = DateTime.Now
                                 };
 
                                 await _repo.CreateAssignmentAsync(assignment);
@@ -478,7 +465,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             else
                             {
                                 assignment.CompartmentId = sDto.CompartmentId;
-                                assignment.UpdatedAt = DateTime.UtcNow;
+                                assignment.UpdatedAt = DateTime.Now;
                             }
                         }
 
@@ -494,7 +481,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 assignment.ItemDesc = sDto.ItemDesc.Trim();
                             }
 
-                            assignment.UpdatedAt = DateTime.UtcNow;
+                            assignment.UpdatedAt = DateTime.Now;
                         }
                     }
                 }
@@ -509,7 +496,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (!taskStatusManuallyChanged && allDelivered)
                 {
                     task.Status = "completed";
-                    task.UpdatedAt = DateTime.UtcNow;
+                    task.UpdatedAt = DateTime.Now;
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
                 }
@@ -529,10 +516,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         }
                     }
                 }
-          
+
                 // Save, commit
                 await _repo.SaveChangesAsync();
-                
+
                 await transaction.CommitAsync();
                 await RecordTaskHistory(task);
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
@@ -776,7 +763,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new Exception("Stop has been delivered — cannot update again.");
             // Update stop status
             stop.Status = newStatus;
-            stop.UpdatedAt = DateTime.UtcNow;
+            stop.UpdatedAt = DateTime.Now;
 
             // ============================================================
             // AUTO COMPLETE TASK NẾU TẤT CẢ STOP = delivered
@@ -787,7 +774,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (allDelivered)
             {
                 task.Status = "completed";
-                task.UpdatedAt = DateTime.UtcNow;
+                task.UpdatedAt = DateTime.Now;
 
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -821,18 +808,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             foreach (var stop in task.TaskStops)
             {
                 stop.Status = "delivered";
-                stop.UpdatedAt = DateTime.UtcNow;
+                stop.UpdatedAt = DateTime.Now;
 
                 foreach (var assign in stop.CompartmentAssignments)
                 {
                     assign.Status = "delivered";
-                    assign.UpdatedAt = DateTime.UtcNow;
+                    assign.UpdatedAt = DateTime.Now;
                 }
             }
 
             // Task
             task.Status = "completed";
-            task.UpdatedAt = DateTime.UtcNow;
+            task.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -852,22 +839,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
         }
 
-        private async System.Threading.Tasks.Task RecordTaskHistory(Models.Entities.Task task)
+        private async System.Threading.Tasks.Task RecordTaskHistory(Models.Entities.Task task, double? startedEarlyMinutes = null, string? cancelNote = null)
         {
-            var fullTask = await _repo.GetByIdAsync(task.Id); // load full includes
+            var fullTask = await _repo.GetByIdAsync(task.Id);
 
             // Lấy history gần nhất
             var lastHistory = await _taskHistoryService.GetLastHistoryAsync(task.Id);
 
+            string? note = null;
+
+            // Ưu tiên ghi chú hủy nếu có
+            if (!string.IsNullOrEmpty(cancelNote))
+            {
+                note = cancelNote;
+            }
+            // Nếu không thì ghi chú chạy sớm
+            else if (startedEarlyMinutes.HasValue && startedEarlyMinutes > 0)
+            {
+                note = BuildEarlyStartNote(startedEarlyMinutes);
+            }
+
             // Nếu chưa có history → luôn lưu
             if (lastHistory == null)
             {
-                await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!);
+                await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!, note);
                 return;
             }
 
-            // SO SÁNH CÁC TRƯỜNG QUAN TRỌNG
-            bool changed =
+            // Kiểm tra thay đổi quan trọng như cũ
+            bool hasImportantChange =
                 lastHistory.FinalStatus != fullTask!.Status ||
                 lastHistory.Priority != fullTask.Priority ||
                 lastHistory.MapId != fullTask.MapId ||
@@ -876,12 +876,161 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 lastHistory.FailedStops != fullTask.TaskStops.Count(s => s.Status == "failed") ||
                 lastHistory.SkippedStops != fullTask.TaskStops.Count(s => s.Status == "skipped");
 
-            // Nếu không có thay đổi → KHÔNG LƯU
-            if (!changed)
-                return;
+            if (hasImportantChange || note != null)
+            {
+                await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!, note);
+            }
+        }
 
-            // Nếu có thay đổi → lưu bản ghi mới
-            await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!);
+        // Helper: tạo ghi chú tiếng Việt 
+        private string? BuildEarlyStartNote(double? startedEarlyMinutes)
+        {
+            if (!startedEarlyMinutes.HasValue || startedEarlyMinutes <= 0) return null;
+
+            var minutes = Math.Floor(startedEarlyMinutes.Value);
+            var seconds = Math.Round((startedEarlyMinutes.Value - minutes) * 60);
+
+            if (minutes >= 1)
+                return $"Khởi động sớm {minutes:F0} phút {seconds:F0} giây trước giờ dự kiến";
+
+            return $"Khởi động sớm {seconds:F0} giây trước giờ dự kiến";
+        }
+        public async Task<TaskResponseDto?> StartTaskAsync(ulong taskId)
+        {
+            using var transaction = await _repo.BeginTransactionAsync();
+            try
+            {
+                var task = await _repo.GetByIdAsync(taskId)
+                    ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
+
+                if (task.Status != "pending")
+                    throw new InvalidOperationException($"Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: {task.Status}");
+
+                var robot = await _repo.GetRobotAsync(task.RobotId)
+                    ?? throw new InvalidOperationException("Robot không tồn tại.");
+
+                if (robot.Status != "at_station")
+                    throw new InvalidOperationException($"Robot đang bận ({robot.Status}), không thể bắt đầu task.");
+
+                // TÍNH TOÁN: Có chạy sớm không?
+                double? startedEarlyMinutes = null;
+                if (task.ScheduledStartAt.HasValue && task.ScheduledStartAt.Value > DateTime.Now)
+                {
+                    startedEarlyMinutes = Math.Round((task.ScheduledStartAt.Value - DateTime.Now).TotalMinutes, 1);
+                }
+
+                // === CHUYỂN TRẠNG THÁI ===
+                task.Status = "in_progress";
+                task.StartedAt = DateTime.Now;
+                task.UpdatedAt = DateTime.Now;
+
+                robot.Status = "transporting";
+                await _repo.UpdateRobotStatusAsync(robot.Id, "transporting");
+
+                await _repo.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // GHI LỊCH SỬ CÓ GHI CHÚ CHẠY SỚM
+                var fullTask = await _repo.GetByIdAsync(task.Id);
+                await RecordTaskHistory(fullTask!, startedEarlyMinutes);
+
+                var updatedTask = await _repo.GetByIdAsync(task.Id);
+                var response = MapToResponse(updatedTask!);
+
+                await _taskHub.Clients.All.SendAsync("TaskStarted", response);
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException($"Không thể bắt đầu nhiệm vụ: {ex.Message}");
+            }
+        }
+
+        public async System.Threading.Tasks.Task CancelOverduePendingTasksAsync()
+        {
+            // Thời gian cho phép trễ (phút) - có thể config sau
+            const int GracePeriodMinutes = 10;
+
+            using var transaction = await _repo.BeginTransactionAsync();
+            try
+            {
+                var now = DateTime.Now;
+                var overdueTime = now.AddMinutes(-GracePeriodMinutes);
+
+                var overdueTasks = await _repo.GetListAsync(new TaskFilterDto
+                {
+                    Status = "pending"
+                });
+
+                var tasksToCancel = overdueTasks
+                    .Where(t => t.ScheduledStartAt.HasValue && t.ScheduledStartAt.Value <= overdueTime)
+                    .ToList();
+
+                if (!tasksToCancel.Any()) return;
+
+                foreach (var task in tasksToCancel)
+                {
+                    // 1. Chuyển task thành canceled
+                    task.Status = "canceled";
+                    task.UpdatedAt = DateTime.Now;
+
+                    // 2. Robot về trạm
+                    await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                    // 3. Giải phóng tất cả khoang chứa
+                    foreach (var stop in task.TaskStops)
+                    {
+                        foreach (var assignment in stop.CompartmentAssignments)
+                        {
+                            await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
+                        }
+                    }
+
+                    await _repo.SaveChangesAsync();
+
+                    // TÍNH SỐ PHÚT QUÁ GIỜ
+                    var overdueMinutes = task.ScheduledStartAt.HasValue
+                        ? Math.Round((DateTime.Now - task.ScheduledStartAt.Value).TotalMinutes, 1)
+                        : GracePeriodMinutes;
+
+                    // TẠO GHI CHÚ ĐẸP
+                    var cancelNote = $"Nhiệm vụ bị hủy tự động do quá giờ khởi hành {overdueMinutes:F1} phút";
+
+                    await RecordTaskHistory(task, cancelNote: cancelNote);
+
+                    // 4. Gửi SignalR thông báo
+                    var canceledTaskResponse = MapToResponse(task);
+
+                    await _taskHub.Clients.Group("AllTasks").SendAsync("TaskCanceled", new
+                    {
+                        taskId = task.Id,
+                        reason = $"Quá giờ khởi hành hơn {GracePeriodMinutes} phút",
+                        canceledAt = DateTime.Now,
+                        task = canceledTaskResponse
+                    });
+
+                    // Gửi riêng cho robot liên quan (nếu cần)
+                    var robot = await _repo.GetRobotAsync(task.RobotId);
+                    if (robot?.Code != null)
+                    {
+                        await _taskHub.Clients.Group($"Robot_{robot.Code}").SendAsync("TaskCanceled", new
+                        {
+                            taskId = task.Id,
+                            reason = "Quá giờ – nhiệm vụ bị hủy tự động"
+                        });
+                    }
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                // Log lỗi (nếu có ILogger)
+                Console.WriteLine($"[TaskScheduler] Lỗi hủy task quá hạn: {ex.Message}");
+            }
         }
     }
 }

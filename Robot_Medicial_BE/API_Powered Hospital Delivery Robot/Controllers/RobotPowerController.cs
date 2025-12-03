@@ -33,7 +33,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 type = "robot_power",
                 state,
-                timestamp = DateTime.UtcNow
+                timestamp = DateTime.Now
             };
 
             // Gửi tới tất cả client kết nối SignalR (Node.js, FE, v.v.)
@@ -66,7 +66,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 power = _isRobotOn,
                 reportedBy = report.Source,
-                time = DateTime.UtcNow
+                time = DateTime.Now
             };
 
             _logger.LogInformation("📡 [SignalR] Broadcasting RobotPowerStatus → {State}", state);
