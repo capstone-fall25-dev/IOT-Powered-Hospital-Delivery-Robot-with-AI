@@ -41,7 +41,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await _context.Maps
                 .AsNoTracking()
                 .Include(m => m.Robots)
-                .Include(m => m.Destinations) 
+                .Include(m => m.Destinations)
                 .ToListAsync();
         }
 
@@ -54,9 +54,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (includeRobots)
                 query = query.Include(m => m.Robots);
 
-            query = query.Include(m => m.Destinations)
-                            .ThenInclude(d => d.TaskStops)
-                            .ThenInclude(ts => ts.Task);
+            query = query.Include(m => m.Tasks)
+                         .Include(m => m.Destinations)
+                         .ThenInclude(d => d.TaskStops)
+                         .ThenInclude(ts => ts.Task);
+
             return await query.FirstOrDefaultAsync(m => m.Id == id);
         }
 
