@@ -4,7 +4,7 @@ import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import { updateStopStatus } from "@/services/taskService";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
-
+import mapErrorImage from "@/assets/image/map_error.jpg"; 
 export default function RunTask() {
   const { taskId } = useParams();
 
@@ -42,6 +42,15 @@ export default function RunTask() {
 
   // Trạng thái điểm dừng đang chọn (để cập nhật status)
   const [selectedStopStatus, setSelectedStopStatus] = useState("");
+    // Tiến độ nhiệm vụ robot
+  const [navProgress, setNavProgress] = useState({
+    percent: 0,
+    robotCode: "",
+    pointName: "",
+  });
+
+  // Text tiếng Việt để robot đọc
+  const [ttsTextCustom, setTtsTextCustom] = useState("");
 
   // ===================================
   // AUDIO – WebRTC
@@ -103,29 +112,83 @@ export default function RunTask() {
     }
   }, [selectedStop, taskInfo]);
 
-  // ===================================
-  // NAVIGATION MAP + MARKERS
-  // ===================================
-// === THAY TOÀN BỘ HÀM loadNavigationMap BẰNG HÀM NÀY ===
+// ===================================
+// NAVIGATION MAP + MARKERS
+// ===================================
 async function loadNavigationMap(mapId, stops, highlightStop) {
   if (!window.L || !mapId) return;
   const L = window.L;
+
+  // 🔁 helper dùng chung để vẽ map_error.jpg
+  function showFallbackMap(resolution = 0.05) {
+    const mapErrorUrl =
+      typeof mapErrorImage === "string"
+        ? mapErrorImage
+        : mapErrorImage?.src || mapErrorImage?.default || "";
+
+    if (!mapErrorUrl) {
+      console.error("Không tìm được đường dẫn ảnh map_error.jpg");
+      return;
+    }
+
+    const fallbackImg = new Image();
+    fallbackImg.onload = () => {
+      const widthMeters = fallbackImg.width * resolution;
+      const heightMeters = fallbackImg.height * resolution;
+      const bounds = [[0, 0], [heightMeters, widthMeters]];
+
+      if (!navMapRef.current) {
+        navMapRef.current = L.map("nav-map", {
+          crs: L.CRS.Simple,
+          zoomControl: true,
+        });
+        L.control.zoom({ position: "bottomright" }).addTo(navMapRef.current);
+      }
+
+      // Thay overlay thành ảnh lỗi
+      if (navMapLayer.current)
+        navMapRef.current.removeLayer(navMapLayer.current);
+      navMapLayer.current = L.imageOverlay(mapErrorUrl, bounds).addTo(
+        navMapRef.current
+      );
+      navMapRef.current.fitBounds(bounds);
+
+      // Xoá marker, vì map lỗi không có toạ độ thật
+      if (window.navMapMarkers) window.navMapMarkers.clearLayers();
+      if (destinationMarker.current) {
+        navMapRef.current.removeLayer(destinationMarker.current);
+        destinationMarker.current = null;
+      }
+    };
+
+    fallbackImg.onerror = (fallbackErr) => {
+      console.error("Không tải được ảnh map_error.jpg:", fallbackErr);
+    };
+
+    fallbackImg.src = mapErrorUrl;
+  }
 
   try {
     const metaRes = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/${mapId}`);
     const meta = await metaRes.json();
 
-    const resolution = meta.resolution;
+    const resolution = meta.resolution || 0.05;
     const originX = meta.originX || 0;
     const originY = meta.originY || 0;
     const imgUrl = `${API_CONFIG.API_BASE}/MapsUpload/${mapId}/image`;
 
     const img = new Image();
-    img.src = imgUrl;
 
     img.onload = () => {
       const widthMeters = img.width * resolution;
       const heightMeters = img.height * resolution;
+
+      if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) {
+        console.error("Kích thước bản đồ không hợp lệ, dùng map_error.jpg");
+        showFallbackMap(resolution);
+        return;
+      }
+
       const bounds = [[0, 0], [heightMeters, widthMeters]];
 
       if (!navMapRef.current) {
@@ -137,7 +200,9 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
       }
 
       if (navMapLayer.current) navMapRef.current.removeLayer(navMapLayer.current);
-      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(navMapRef.current);
+      navMapLayer.current = L.imageOverlay(imgUrl, bounds).addTo(
+        navMapRef.current
+      );
       navMapRef.current.fitBounds(bounds);
 
       // Xóa hết marker cũ
@@ -150,7 +215,8 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
         const localY = stop.y - originY;
         const latlng = [localY, localX];
 
-        const isSelected = highlightStop && stop.order === highlightStop.order;
+        const isSelected =
+          highlightStop && stop.order === highlightStop.order;
 
         const icon = L.divIcon({
           className: "custom-stop-marker",
@@ -176,8 +242,9 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
           iconAnchor: [isSelected ? 22 : 18, isSelected ? 22 : 18],
         });
 
-        L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 })
-          .addTo(window.navMapMarkers);
+        L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 }).addTo(
+          window.navMapMarkers
+        );
       });
 
       // === ĐIỂM ĐANG CHỌN: Dấu pin lớn + tên đơn giản ===
@@ -221,10 +288,19 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
         }
       }
     };
+
+    img.onerror = (err) => {
+      console.error("Không tải được ảnh bản đồ, dùng map_error.jpg:", err);
+      showFallbackMap(resolution);
+    };
+
+    img.src = imgUrl;
   } catch (err) {
     console.error("Lỗi load nav map:", err);
+    showFallbackMap(0.05);
   }
 }
+
 
   // ===================================
   // SIGNALR: POSITION + CAMERA
@@ -242,6 +318,32 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
 
     posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
     posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+    
+        // Tiến độ nhiệm vụ từ backend
+    posConn.on("ReceiveNavigationProgress", (msg) => {
+      try {
+        const raw = msg?.text || msg?.Text || "";
+        if (!raw || typeof raw !== "string") return;
+
+        const parts = raw.split("|");
+        const robotCode = parts[0] || "";
+        const percentStr = parts[1] || "0";
+        const pointName = parts[2] || "";
+
+        let percent = parseFloat(percentStr);
+        if (Number.isNaN(percent) || !Number.isFinite(percent)) percent = 0;
+        percent = Math.min(100, Math.max(0, percent));
+
+        setNavProgress({
+          percent,
+          robotCode,
+          pointName,
+        });
+      } catch (err) {
+        console.error("Parse ReceiveNavigationProgress error:", err);
+      }
+    });
+
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64)
@@ -359,17 +461,59 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
     } catch {}
   }
 
-  async function startRunMap() {
+   async function startRunMap() {
+    if (!selectedStop) return alert("Chọn điểm dừng trước!");
     if (!selectedMapName) return alert("Không có tên bản đồ!");
+
     try {
+      // 1️⃣ Gửi mode run_map cho robot
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "run_map", mapName: selectedMapName }),
       });
+
+      // 2️⃣ Gửi câu thông báo cho robot đọc
+      const ttsText = `Robot bắt đầu chạy trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop.order}: ${selectedStop.name}`;
+
+      try {
+        await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: ttsText }),
+        });
+      } catch (ttsErr) {
+        console.error("Gửi TTS lỗi:", ttsErr);
+      }
+
       alert("Đã gửi lệnh run_map!");
-    } catch {}
+    } catch {
+      alert("Không gửi được lệnh run_map!");
+    }
   }
+
+
+    // Gửi text tiếng Việt tuỳ ý cho robot đọc
+  async function sendCustomTts() {
+    const text = ttsTextCustom.trim();
+    if (!text) {
+      alert("Vui lòng nhập nội dung tiếng Việt để robot đọc.");
+      return;
+    }
+
+    try {
+      await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      alert("Đã gửi nội dung cho robot đọc.");
+    } catch (err) {
+      console.error("Gửi TTS tuỳ chỉnh lỗi:", err);
+      alert("Không gửi được nội dung cho robot đọc.");
+    }
+  }
+
 
   async function sendRoute() {
     if (!selectedStop) return alert("Chọn điểm dừng trước!");
@@ -761,9 +905,7 @@ async function completeTask() {
                       <i className="bi bi-telephone-fill me-1"></i>
                       {isCallActive ? "Tắt cuộc gọi WebRTC" : "Bật cuộc gọi WebRTC"}
                     </button>
-                    <button className={styles.btnOutlinePrimary} disabled>
-                      <i className="bi bi-broadcast-pin me-1"></i> Audio Robot ↔ Web qua WebRTC + API mic
-                    </button>
+                  
                     <small style={{ opacity: 0.8 }}>
                       {webRtcStatus}<br />
                       {webMicStatus}<br />
@@ -790,7 +932,91 @@ async function completeTask() {
                     ))}
                   </select>
 
-                  <button className={`${styles.btnTeal} mt-2 w-100`} onClick={startRunMap}>
+                   {/* ⭐ Tiến độ nhiệm vụ */}
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      marginBottom: "6px",
+                      padding: "6px 8px",
+                      borderRadius: "8px",
+                      background:
+                        "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        marginBottom: "4px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>Tiến độ nhiệm vụ:</span>
+                      <span>
+                        {navProgress.robotCode || "Robot ?"} •{" "}
+                        {navProgress.percent.toFixed(1)}%
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "8px",
+                        borderRadius: "999px",
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${navProgress.percent}%`,
+                          height: "100%",
+                          borderRadius: "999px",
+                          background:
+                            "linear-gradient(90deg, #0d6efd, #20c997)",
+                          transition: "width 0.2s ease-out",
+                        }}
+                      ></div>
+                    </div>
+
+                    <div style={{ marginTop: "4px", opacity: 0.8 }}>
+                      Đi đến:{" "}
+                      {navProgress.pointName ||
+                        "Chưa nhận được điểm từ robot"}
+                    </div>
+                  </div>
+
+                  {/* ⭐ Text tiếng Việt cho robot đọc */}
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}
+                  >
+                    <textarea
+                      className={styles.formControl}
+                      rows={2}
+                      placeholder="Nhập câu tiếng Việt để robot đọc..."
+                      value={ttsTextCustom}
+                      onChange={(e) => setTtsTextCustom(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.btnPrimary}
+                      onClick={sendCustomTts}
+                    >
+                      <i className="bi bi-megaphone-fill me-1"></i>
+                      Gửi cho robot đọc
+                    </button>
+                  </div>
+
+                  <button
+                    className={`${styles.btnTeal} mt-2 w-100`}
+                    onClick={startRunMap}
+                  >
                     Bắt đầu chạy
                   </button>
 
