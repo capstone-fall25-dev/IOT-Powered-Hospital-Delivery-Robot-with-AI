@@ -96,18 +96,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }).ToList();
 
             // === THỐNG KÊ TASK TRÊN MAP ===
-            var taskStops = map.Destinations.SelectMany(d => d.TaskStops);
+            var tasks = map.Tasks;
 
-            dto.TotalTasks = taskStops.Count();
+            // Tổng số nhiệm vụ
+            dto.TotalTasks = tasks.Count();
 
-            var today = DateTime.Today;
-            var weekStart = today.AddDays(-(int)today.DayOfWeek); // Chủ nhật tuần này
+            // Hôm nay
+            dto.TasksToday = tasks.Count(t => t.CreatedAt.Date == DateTime.Today);
 
-            dto.TasksToday = taskStops
-                .Count(ts => ts.Task.CreatedAt.Date == today);
-
-            dto.TasksThisWeek = taskStops
-                .Count(ts => ts.Task.CreatedAt.Date >= weekStart && ts.Task.CreatedAt.Date <= today);
+            // Tuần này
+            var weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+            dto.TasksThisWeek = tasks.Count(t => t.CreatedAt.Date >= weekStart);
 
             return dto;
         }

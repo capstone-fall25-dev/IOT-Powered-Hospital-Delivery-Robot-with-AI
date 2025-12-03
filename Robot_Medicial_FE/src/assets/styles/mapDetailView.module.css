@@ -115,6 +115,8 @@
     font-size: 0.8rem;
     font-weight: 600;
     color: white;
+    z-index: 9999;       
+    pointer-events: none; 
 }
 
 /* =========================================================
@@ -218,10 +220,60 @@
     font-size: 0.75rem;
     font-weight: 600;
 }
-.status.busy { background: #dbeafe; color:#1e40af; }
-.status.transporting,
-.status.returning { background:#d1fae5; color:#065f46; }
-.status.at_station { background:#fef3c7; color:#92400e; }
+
+/* Đang vận chuyển / đang đi theo route */
+.status.transporting {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Chờ bàn giao thuốc */
+.status.awaiting_handover {
+    background: #fef9c3;
+    color: #92400e;
+}
+
+/* Đang quay về trạm */
+.status.returning_to_station {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+/* Điều khiển thủ công */
+.status.manual_control {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+/* Đang ở trạm */
+.status.at_station {
+    background: #f8fafc;
+    color: #334155;
+}
+
+/* Đã hoàn thành mission */
+.status.completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+/* Đang sạc */
+.status.charging {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Cần kiểm tra */
+.status.needs_attention {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Mất kết nối */
+.status.offline {
+    background: #e5e7eb;
+    color: #6b7280;
+}
 
 /* =========================================================
    EMPTY / LOADING / ERROR

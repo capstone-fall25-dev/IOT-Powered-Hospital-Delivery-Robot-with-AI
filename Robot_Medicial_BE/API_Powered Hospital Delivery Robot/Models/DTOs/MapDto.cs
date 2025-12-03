@@ -35,7 +35,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     {
         public ulong Id { get; set; }
         public string MapName { get; set; } = null!;
-        public string? NameMapFE { get; set; } 
+        public string? NameMapFE { get; set; }
         public string? ImageName { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
@@ -52,7 +52,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public int TotalTasks { get; set; } = 0;
         public int TasksToday { get; set; } = 0;
         public int TasksThisWeek { get; set; } = 0;
-        public int ActiveRobotsCount => Robots?.Count(r => r.Status?.ToLower() is "busy" or "transporting" or "returning") ?? 0;
+        public int ActiveRobotsCount => Robots?.Count(r => r.Status?.ToLower() is "transporting" or "awaiting_handover" or "returning_to_station" or "manual_control") ?? 0;
         public IEnumerable<RobotResponseDto> Robots { get; set; } = new List<RobotResponseDto>();
         public List<DestinationResponseDto> Destinations { get; set; } = new();
     }
@@ -92,7 +92,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? MapId { get; set; }
         public string ErrorType { get; set; } = string.Empty; // e.g., obstacle, missing-room, wrong-path
         public string Description { get; set; } = string.Empty;
-        
+
         // controller sẽ điền từ token
         public string? ReporterEmail { get; set; } = null;
     }
