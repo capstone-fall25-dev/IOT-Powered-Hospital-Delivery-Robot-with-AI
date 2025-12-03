@@ -466,6 +466,14 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
     if (!selectedMapName) return alert("Không có tên bản đồ!");
 
     try {
+      // Bước 1: Kích hoạt task trên server → chuyển status + robot
+    const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!startRes.ok) throw new Error("Không thể bắt đầu task");
+    
       // 1️⃣ Gửi mode run_map cho robot
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
