@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllRobots } from "@/services/robotService";
-import { getAllTasks } from "@/services/taskService";
+import { getAllTasks, cancelTask } from "@/services/taskService";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotDashboard.module.css";
@@ -18,6 +18,14 @@ export default function RobotTaskDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState(5);
   const [tick, setTick] = useState(0);
+  
+  // Modal hủy task
+  const [cancelModal, setCancelModal] = useState({
+    show: false,
+    taskId: null,
+    reason: "",
+    loading: false,
+  });
 
   /* ========================= MAPPING TRẠNG THÁI ========================= */
   const statusMap = {
@@ -107,6 +115,7 @@ export default function RobotTaskDashboard() {
             robotName: t.robotName,
             assignedBy: t.assignedBy,
             status: statusMap[t.status] || t.status,
+            statusRaw: t.status, // Giữ status gốc để kiểm tra
             createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
             scheduledStartAt: t.scheduledStartAt
               ? new Date(t.scheduledStartAt).toLocaleString("vi-VN")
@@ -482,6 +491,18 @@ export default function RobotTaskDashboard() {
                       {/* Cột thao tác */}
                       <td>
                         <div className="d-flex gap-1 justify-content-end">
+                          {/* Nút hủy - chỉ hiển thị khi task chưa bắt đầu (pending) */}
+                          {t.statusRaw === "pending" && (
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => setCancelModal({ show: true, taskId: t.id, reason: "", loading: false })}
+                              title="Hủy nhiệm vụ"
+                              style={{ borderRadius: "5px" }}
+                            >
+                              <i className="bi bi-x-circle"></i>
+                            </button>
+                          )}
+                          
                           {t.status !== "Đã hủy" && t.status !== "Hoàn thành" && (
                             <button
                               className={styles.btnSecondary}
@@ -562,6 +583,139 @@ export default function RobotTaskDashboard() {
           </div>
         </div>
       </div>
+
+      {/* MODAL XÁC NHẬN HỦY TASK */}
+      {cancelModal.show && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header bg-danger text-white">
+                <h5 className="modal-title">
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  Xác nhận hủy nhiệm vụ #{cancelModal.taskId}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setCancelModal({ show: false, taskId: null, reason: "", loading: false })}
+                  disabled={cancelModal.loading}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  <i className="bi bi-info-circle me-2"></i>
+                  <strong>Lưu ý:</strong> Khi hủy nhiệm vụ, tất cả các ngăn chứa sẽ được giải phóng và robot sẽ về trạm. 
+                  Nhiệm vụ sẽ được lưu với trạng thái "canceled".
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">
+                    <strong>Lý do hủy <span className="text-danger">*</span></strong>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    placeholder="Nhập lý do hủy nhiệm vụ..."
+                    value={cancelModal.reason}
+                    onChange={(e) =>
+                      setCancelModal((prev) => ({ ...prev, reason: e.target.value }))
+                    }
+                    disabled={cancelModal.loading}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setCancelModal({ show: false, taskId: null, reason: "", loading: false })}
+                  disabled={cancelModal.loading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={async () => {
+                    if (!cancelModal.reason.trim()) {
+                      alert("Vui lòng nhập lý do hủy nhiệm vụ.");
+                      return;
+                    }
+
+                    setCancelModal((prev) => ({ ...prev, loading: true }));
+
+                    try {
+                      await cancelTask(cancelModal.taskId, cancelModal.reason.trim());
+                      
+                      // Refresh danh sách task
+                      const data = await getAllTasks();
+                      const formatted = data.map((t) => {
+                        const patientCount = t.patients?.length || 0;
+                        const firstPatient = t.patients?.[0]?.patientName || "—";
+                        const medicineSummary =
+                          t.patients?.map((p) => p.medicineSummary).join("; ") || "—";
+
+                        return {
+                          id: t.id,
+                          robotName: t.robotName,
+                          assignedBy: t.assignedBy,
+                          status: statusMap[t.status] || t.status,
+                          statusRaw: t.status,
+                          createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
+                          scheduledStartAt: t.scheduledStartAt
+                            ? new Date(t.scheduledStartAt).toLocaleString("vi-VN")
+                            : "—",
+                          startedAt: t.startedAt,  
+                          scheduledStartAtRaw: t.scheduledStartAt,
+                          totalStops: t.totalStops,
+                          firstDestination: t.firstDestination || "—",
+                          patientCount,
+                          firstPatient,
+                          medicineSummary,
+                          priority:
+                            t.priority === 2
+                              ? "Khẩn cấp"
+                              : t.priority === 1
+                              ? "Cao"
+                              : "Thường",
+                        };
+                      });
+                      setTasks(formatted);
+
+                      // Đóng modal
+                      setCancelModal({ show: false, taskId: null, reason: "", loading: false });
+                      showToast("success", "✅ Đã hủy nhiệm vụ thành công!");
+                    } catch (err) {
+                      console.error("Error cancel task:", err);
+                      showToast("error", `❌ Lỗi: ${err.message || "Không thể hủy nhiệm vụ"}`);
+                      setCancelModal((prev) => ({ ...prev, loading: false }));
+                    }
+                  }}
+                  disabled={cancelModal.loading || !cancelModal.reason.trim()}
+                >
+                  {cancelModal.loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                      ></span>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-x-circle me-2"></i>
+                      Xác nhận hủy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

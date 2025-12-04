@@ -11,7 +11,7 @@ import {
   getCompartmentsByRobotAndCategory,
   getAllCategories as getAllCompartmentCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions } from "@/services/prescriptionServices";
+import { getAllPrescriptions, approvePrescriptionByCode } from "@/services/prescriptionServices";
 import { getRobotsByMap } from "@/services/robotService";
 
 import * as signalR from "@microsoft/signalr";
@@ -27,7 +27,9 @@ export default function AddTask() {
   // ============================================================
   function getMinDateTime() {
     const now = new Date();
-    now.setMinutes(now.getMinutes() + 1); // +1 phút
+    // +3 phút để đảm bảo lớn hơn DateTime.Now.AddMinutes(1) ở backend (giờ Việt Nam)
+    // (tránh lỗi do timezone hoặc độ trễ network)
+    now.setMinutes(now.getMinutes() + 3);
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
@@ -256,6 +258,8 @@ export default function AddTask() {
           compartmentId: "",
           filteredCompartments: [],
           prescriptionPreview: null,
+          prescriptionList: [], // Danh sách đơn thuốc để chọn
+          prescriptionCode: "", // Mã đơn thuốc đã chọn và xác nhận
           customName: "",
           itemDesc: "",
         },
@@ -281,8 +285,23 @@ export default function AddTask() {
   }
 
   // ============================================================
+  // HELPER: Kiểm tra category có liên quan đến thuốc không
+  // ============================================================
+  function isMedicineCategory(categoryId) {
+    if (!categoryId) return false;
+    const category = categories.find((c) => c.id === Number(categoryId));
+    if (!category || !category.name) return false;
+    
+    const categoryName = category.name.toLowerCase().trim();
+    const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
+    
+    return medicineKeywords.some((keyword) => categoryName.includes(keyword));
+  }
+
+  // ============================================================
   // UPDATE STOP
   //  - Đặc biệt xử lý khi đổi Category → lọc compartment theo robot+category
+  //  - Nếu category là thuốc và đã chọn patient → load prescriptions
   // ============================================================
   async function updateStop(idx, key, value) {
     const clone = [...form.taskStops];
@@ -290,6 +309,9 @@ export default function AddTask() {
 
     if (key === "categoryId") {
       clone[idx].compartmentId = "";
+      clone[idx].prescriptionList = [];
+      clone[idx].prescriptionCode = "";
+      clone[idx].prescriptionPreview = null;
 
       if (value) {
         try {
@@ -304,6 +326,11 @@ export default function AddTask() {
           );
 
           clone[idx].filteredCompartments = comps;
+
+          // Nếu category là thuốc và đã chọn patient → load prescriptions
+          if (isMedicineCategory(value) && clone[idx].patientId) {
+            await loadPrescriptionsForPatient(clone[idx].patientId, idx, clone);
+          }
         } catch (err) {
           console.error("Error load compartments by category:", err);
           clone[idx].filteredCompartments = [];
@@ -317,36 +344,88 @@ export default function AddTask() {
   }
 
   // ============================================================
-  // PATIENT → LOAD LAST APPROVED PRESCRIPTION (preview)
-  // back-end vẫn kiểm tra lại nên FE chỉ hỗ trợ hiển thị
+  // LOAD PRESCRIPTIONS FOR PATIENT
+  //  - Load tất cả (pending, dispensed, approved) trừ canceled
+  // ============================================================
+  async function loadPrescriptionsForPatient(patientId, idx, stopsClone) {
+    if (!patientId) return;
+
+    try {
+      // Load tất cả prescriptions (không filter status) rồi filter ở frontend
+      const allPrescriptions = await getAllPrescriptions({ patientId });
+      
+      // Lọc ra các đơn không bị canceled
+      const validPrescriptions = (allPrescriptions || []).filter(
+        (p) => p.status?.toLowerCase() !== "canceled"
+      );
+
+      stopsClone[idx].prescriptionList = validPrescriptions;
+    } catch (err) {
+      console.error("Error load prescriptions:", err);
+      stopsClone[idx].prescriptionList = [];
+    }
+  }
+
+  // ============================================================
+  // PATIENT → LOAD PRESCRIPTIONS
+  //  - Nếu category là thuốc → load tất cả (pending, dispensed, approved) trừ canceled
+  //  - Nếu không phải thuốc → không load đơn thuốc
   // ============================================================
   async function handleSelectPatient(patientId, idx) {
+    const stop = form.taskStops[idx];
     updateStop(idx, "patientId", patientId);
 
     if (!patientId) {
+      updateStop(idx, "prescriptionPreview", null);
+      updateStop(idx, "prescriptionList", []);
+      updateStop(idx, "prescriptionCode", "");
+      return;
+    }
+
+    // Chỉ load prescriptions nếu category là thuốc
+    if (isMedicineCategory(stop.categoryId)) {
+      const clone = [...form.taskStops];
+      await loadPrescriptionsForPatient(patientId, idx, clone);
+      setForm((f) => ({ ...f, taskStops: clone }));
+    } else {
+      // Không phải thuốc → không load đơn thuốc
+      updateStop(idx, "prescriptionPreview", null);
+      updateStop(idx, "prescriptionList", []);
+      updateStop(idx, "prescriptionCode", "");
+    }
+  }
+
+  // ============================================================
+  // CLICK VÀO MÃ ĐƠN THUỐC → TỰ ĐỘNG APPROVE
+  //  - pending/dispensed/approved → approved
+  //  - canceled → không cho phép
+  // ============================================================
+  async function handleSelectPrescription(prescriptionCode, idx) {
+    if (!prescriptionCode) {
+      updateStop(idx, "prescriptionCode", "");
       updateStop(idx, "prescriptionPreview", null);
       return;
     }
 
     try {
-      const list = await getAllPrescriptions({
-        patientId,
-        status: "approved",
-      });
+      // Gọi API approve prescription
+      const approved = await approvePrescriptionByCode(prescriptionCode);
+      
+      // Cập nhật state
+      updateStop(idx, "prescriptionCode", prescriptionCode);
+      updateStop(idx, "prescriptionPreview", approved);
 
-      if (!list || list.length === 0) {
-        updateStop(idx, "prescriptionPreview", null);
-        return;
+      // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
+      const stop = form.taskStops[idx];
+      if (stop.patientId) {
+        const clone = [...form.taskStops];
+        await loadPrescriptionsForPatient(stop.patientId, idx, clone);
+        setForm((f) => ({ ...f, taskStops: clone }));
       }
-
-      const latest = list.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      )[0];
-
-      updateStop(idx, "prescriptionPreview", latest);
     } catch (err) {
-      console.error("Error load prescriptions:", err);
-      updateStop(idx, "prescriptionPreview", null);
+      console.error("Error approve prescription:", err);
+      setMessage(`❌ Lỗi: ${err.message || "Không thể xác nhận đơn thuốc"}`);
+      setMessageType("error");
     }
   }
 
@@ -378,6 +457,7 @@ export default function AddTask() {
           patientId: Number(s.patientId),
           compartmentId: Number(s.compartmentId),
           categoryId: Number(s.categoryId),
+          prescriptionCode: s.prescriptionCode || null, // Gửi prescriptionCode nếu có
           customName: s.customName ?? "",
           itemDesc: s.itemDesc ?? "",
         })),
@@ -677,44 +757,116 @@ export default function AddTask() {
                     </div>
                   </div>
 
-                  {s.prescriptionPreview && (
-                    <div className={styles.rxBox}>
-                      <h6 className={styles.rxTitle}>
-                        <i className="bi bi-file-medical"></i>
-                        Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
-                      </h6>
-
-                      {s.prescriptionPreview.items.map((item) => (
-                        <div key={item.id} className={styles.rxItem}>
-                          <div className={styles.rxMedicineName}>
-                            {item.medicineName}
+                  {/* Hiển thị danh sách đơn thuốc nếu category là thuốc */}
+                  {isMedicineCategory(s.categoryId) && s.patientId && (
+                    <div className="col-12 mt-3">
+                      <label className={`form-label ${styles.formLabel}`}>
+                        Chọn đơn thuốc <span className="text-danger">*</span>
+                      </label>
+                      {s.prescriptionList && s.prescriptionList.length > 0 ? (
+                        <>
+                          <div className="d-flex flex-wrap gap-2 mb-2">
+                            {s.prescriptionList.map((pres) => (
+                              <button
+                                key={pres.id}
+                                type="button"
+                                className={`btn ${
+                                  s.prescriptionCode === pres.prescriptionCode
+                                    ? "btn-success"
+                                    : "btn-outline-primary"
+                                }`}
+                                onClick={() => handleSelectPrescription(pres.prescriptionCode, idx)}
+                                style={{ borderRadius: "5px" }}
+                              >
+                                <i className="bi bi-file-medical me-1"></i>
+                                {pres.prescriptionCode}
+                                {pres.status && (
+                                  <span className={`badge ms-2 ${
+                                    pres.status === "approved" ? "bg-success" :
+                                    pres.status === "pending" ? "bg-warning" :
+                                    pres.status === "dispensed" ? "bg-info" : "bg-secondary"
+                                  }`}>
+                                    {pres.status}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
                           </div>
-                          <div className={styles.rxInfo}>
-                            <strong>Số lượng:</strong> {item.quantity}
-                          </div>
-                          <div className={styles.rxInfo}>
-                            <strong>Liều dùng:</strong> {item.dosage}
-                          </div>
-                          <div className={styles.rxInfo}>
-                            <strong>Hướng dẫn:</strong> {item.instructions}
-                          </div>
+                          {s.prescriptionCode && s.prescriptionPreview && (
+                            <div className="alert alert-success mb-0">
+                              <i className="bi bi-check-circle me-2"></i>
+                              Đã chọn và xác nhận đơn thuốc: <strong>{s.prescriptionCode}</strong>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="alert alert-warning mb-0">
+                          <i className="bi bi-exclamation-triangle me-2"></i>
+                          Bệnh nhân này chưa có đơn thuốc nào (hoặc tất cả đơn đã bị hủy).
                         </div>
-                      ))}
+                      )}
+                    </div>
+                  )}
 
-                      <div className="mt-3">
-                        <label className={`form-label ${styles.formLabel}`}>
-                          Mô tả vật phẩm (tùy chọn)
-                        </label>
-                        <input
-                          type="text"
-                          className={`form-control ${styles.formControl}`}
-                          placeholder="VD: 2 túi dịch truyền..."
-                          value={s.itemDesc}
-                          onChange={(e) =>
-                            updateStop(idx, "itemDesc", e.target.value)
-                          }
-                        />
+                  {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) */}
+                  {s.prescriptionPreview && s.prescriptionCode && (
+                    <div className="col-12 mt-3">
+                      <div className={styles.rxBox}>
+                        <h6 className={styles.rxTitle}>
+                          <i className="bi bi-file-medical"></i>
+                          Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
+                        </h6>
+
+                        {s.prescriptionPreview.items && s.prescriptionPreview.items.map((item) => (
+                          <div key={item.id} className={styles.rxItem}>
+                            <div className={styles.rxMedicineName}>
+                              {item.medicineName}
+                            </div>
+                            <div className={styles.rxInfo}>
+                              <strong>Số lượng:</strong> {item.quantity}
+                            </div>
+                            <div className={styles.rxInfo}>
+                              <strong>Liều dùng:</strong> {item.dosage}
+                            </div>
+                            <div className={styles.rxInfo}>
+                              <strong>Hướng dẫn:</strong> {item.instructions}
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="mt-3">
+                          <label className={`form-label ${styles.formLabel}`}>
+                            Mô tả vật phẩm (tùy chọn)
+                          </label>
+                          <input
+                            type="text"
+                            className={`form-control ${styles.formControl}`}
+                            placeholder="VD: 2 túi dịch truyền..."
+                            value={s.itemDesc}
+                            onChange={(e) =>
+                              updateStop(idx, "itemDesc", e.target.value)
+                            }
+                          />
+                        </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Mô tả vật phẩm cho trường hợp không phải thuốc */}
+                  {!isMedicineCategory(s.categoryId) && (
+                    <div className="col-12 mt-3">
+                      <label className={`form-label ${styles.formLabel}`}>
+                        Mô tả vật phẩm (tùy chọn)
+                      </label>
+                      <input
+                        type="text"
+                        className={`form-control ${styles.formControl}`}
+                        placeholder="VD: 2 túi dịch truyền..."
+                        value={s.itemDesc}
+                        onChange={(e) =>
+                          updateStop(idx, "itemDesc", e.target.value)
+                        }
+                      />
                     </div>
                   )}
                 </div>

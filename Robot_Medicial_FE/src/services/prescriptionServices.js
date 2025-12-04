@@ -40,3 +40,10 @@ export const updatePrescriptionItem = (itemId, dto) =>
 
 export const deletePrescriptionItem = (itemId) =>
   apiFetch(`/prescriptions/items/${itemId}`, { method: "DELETE" });
+
+// Xác nhận đơn thuốc theo mã code (dùng khi tạo task)
+export const approvePrescriptionByCode = (prescriptionCode) =>
+  apiFetch(`/prescriptions/approve-by-code`, {
+    method: "POST",
+    body: JSON.stringify({ prescriptionCode }),
+  });

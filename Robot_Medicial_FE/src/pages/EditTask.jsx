@@ -10,7 +10,7 @@ import {
     getCompartmentsByRobotAndCategory,
     getAllCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions } from "@/services/prescriptionServices";
+import { getAllPrescriptions, approvePrescriptionByCode } from "@/services/prescriptionServices";
 import { getAvailableRobots } from "@/services/robotService";
 
 import styles from "@/assets/styles/taskForm.module.css";
@@ -157,19 +157,49 @@ export default function EditTask() {
                             ];
                         }
 
-                        // Load prescription preview nếu có bệnh nhân
+                        // Load prescription preview và list nếu có bệnh nhân và category là thuốc
                         let prescriptionPreview = null;
-                        if (s.patientId) {
-                            const prescriptions = await getAllPrescriptions(
-                                s.patientId,
-                                "approved"
+                        let prescriptionList = [];
+                        let prescriptionCode = "";
+
+                        // Kiểm tra category có phải thuốc không (cần load categories trước)
+                        const category = categories.find((c) => c.id === s.categoryId);
+                        const isMedicine = category && category.name && 
+                            ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"]
+                                .some((keyword) => category.name.toLowerCase().includes(keyword));
+
+                        if (s.patientId && isMedicine) {
+                            // Load tất cả prescriptions (pending, dispensed, approved) trừ canceled
+                            const allPrescriptions = await getAllPrescriptions({ patientId: s.patientId });
+                            const validPrescriptions = (allPrescriptions || []).filter(
+                                (p) => p.status?.toLowerCase() !== "canceled"
                             );
-                            if (prescriptions.length > 0) {
-                                prescriptionPreview = prescriptions.sort(
-                                    (a, b) =>
-                                        new Date(b.createdAt) -
-                                        new Date(a.createdAt)
-                                )[0];
+                            prescriptionList = validPrescriptions;
+
+                            // Tìm prescription đã được chọn (nếu có trong itemDesc hoặc prescriptionCode)
+                            // Hoặc lấy approved đầu tiên
+                            if (validPrescriptions.length > 0) {
+                                // Tìm prescription code từ itemDesc nếu có
+                                const itemDescMatch = s.itemDesc?.match(/RX#([A-Z0-9-]+)/);
+                                const codeFromItemDesc = itemDescMatch ? itemDescMatch[1] : null;
+                                
+                                if (codeFromItemDesc) {
+                                    prescriptionPreview = validPrescriptions.find(
+                                        (p) => p.prescriptionCode === codeFromItemDesc
+                                    );
+                                    if (prescriptionPreview) {
+                                        prescriptionCode = prescriptionPreview.prescriptionCode;
+                                    }
+                                } else {
+                                    // Lấy approved đầu tiên hoặc latest
+                                    prescriptionPreview = validPrescriptions
+                                        .filter((p) => p.status?.toLowerCase() === "approved")
+                                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] 
+                                        || validPrescriptions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+                                    if (prescriptionPreview) {
+                                        prescriptionCode = prescriptionPreview.prescriptionCode;
+                                    }
+                                }
                             }
                         }
 
@@ -185,6 +215,8 @@ export default function EditTask() {
                             status: s.status, // giữ status hiện tại của stop
                             filteredCompartments: filtered,
                             prescriptionPreview,
+                            prescriptionList,
+                            prescriptionCode,
                         };
                     })
                 );
@@ -194,9 +226,7 @@ export default function EditTask() {
                     robotId: data.robotId,
                     priority: data.priority, // BE đang trả 0/1/2
                     scheduledStartAt: data.scheduledStartAt
-                        ? new Date(data.scheduledStartAt)
-                              .toISOString()
-                              .slice(0, 16)
+                        ? formatDateTimeLocal(data.scheduledStartAt)
                         : "",
                     stops: editedStops,
                 });
@@ -225,6 +255,98 @@ export default function EditTask() {
         loadTask();
     }, [id, initLoaded, robots]);
 
+    // ===================== HELPER: Format datetime cho input datetime-local =====================
+    // Input datetime-local cần format: YYYY-MM-DDTHH:mm (local time, không có timezone)
+    // Vấn đề: Database lưu local time (UTC+7), nhưng backend có thể serialize thành UTC (có Z)
+    // → Khi frontend parse UTC, JavaScript tự động convert về local time của browser
+    // → Nếu browser không ở UTC+7 → lệch giờ
+    // Giải pháp: Nếu backend trả về UTC (có Z), cần điều chỉnh về UTC+7 (giờ Việt Nam)
+    function formatDateTimeLocal(dateTimeString) {
+        if (!dateTimeString) return "";
+        
+        try {
+            let date;
+            
+            // Kiểm tra xem string có Z (UTC) hay không
+            if (typeof dateTimeString === 'string' && dateTimeString.endsWith('Z')) {
+                // Backend trả về UTC (có Z)
+                // Database lưu local time (UTC+7), nhưng backend serialize thành UTC
+                // → Cần parse UTC và điều chỉnh về UTC+7
+                date = new Date(dateTimeString);
+                
+                // Lấy UTC components và tạo date mới với UTC+7
+                // Vì database lưu local time (UTC+7), cần hiển thị đúng giờ đó
+                const utcYear = date.getUTCFullYear();
+                const utcMonth = date.getUTCMonth();
+                const utcDay = date.getUTCDate();
+                const utcHours = date.getUTCHours();
+                const utcMinutes = date.getUTCMinutes();
+                const utcSeconds = date.getUTCSeconds();
+                
+                // Tạo date mới với UTC+7 (giờ Việt Nam)
+                // Sử dụng Date.UTC và thêm 7 giờ
+                date = new Date(Date.UTC(utcYear, utcMonth, utcDay, utcHours + 7, utcMinutes, utcSeconds));
+            } else if (typeof dateTimeString === 'string' && dateTimeString.includes('+')) {
+                // Có timezone offset → parse bình thường, JavaScript sẽ tự động convert
+                date = new Date(dateTimeString);
+            } else {
+                // Không có timezone info → giả định là local time (giờ Việt Nam UTC+7)
+                // JavaScript sẽ hiểu là local time của browser
+                date = new Date(dateTimeString);
+            }
+            
+            // Kiểm tra nếu date không hợp lệ
+            if (isNaN(date.getTime())) {
+                console.error("Invalid date:", dateTimeString);
+                return "";
+            }
+            
+            // Lấy local time components (sau khi đã điều chỉnh timezone nếu cần)
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (err) {
+            console.error("Error formatting datetime:", err, dateTimeString);
+            return "";
+        }
+    }
+
+    // ===================== HELPER: Kiểm tra category có liên quan đến thuốc không =====================
+    function isMedicineCategory(categoryId) {
+        if (!categoryId) return false;
+        const category = categories.find((c) => c.id === Number(categoryId));
+        if (!category || !category.name) return false;
+        
+        const categoryName = category.name.toLowerCase().trim();
+        const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
+        
+        return medicineKeywords.some((keyword) => categoryName.includes(keyword));
+    }
+
+    // ===================== LOAD PRESCRIPTIONS FOR PATIENT =====================
+    async function loadPrescriptionsForPatient(patientId, idx, stopsClone) {
+        if (!patientId) return;
+
+        try {
+            // Load tất cả prescriptions (không filter status) rồi filter ở frontend
+            const allPrescriptions = await getAllPrescriptions({ patientId });
+            
+            // Lọc ra các đơn không bị canceled
+            const validPrescriptions = (allPrescriptions || []).filter(
+                (p) => p.status?.toLowerCase() !== "canceled"
+            );
+
+            stopsClone[idx].prescriptionList = validPrescriptions;
+        } catch (err) {
+            console.error("Error load prescriptions:", err);
+            stopsClone[idx].prescriptionList = [];
+        }
+    }
+
     // ===================== UPDATE STOP FIELD =====================
     async function updateStop(idx, key, value) {
         const clone = [...form.stops];
@@ -239,6 +361,9 @@ export default function EditTask() {
         if (key === "categoryId") {
             const oldCompartment = clone[idx].compartmentId;
             clone[idx].compartmentId = "";
+            clone[idx].prescriptionList = [];
+            clone[idx].prescriptionCode = "";
+            clone[idx].prescriptionPreview = null;
 
             let list = await getCompartmentsByRobotAndCategory(
                 form.robotId,
@@ -257,6 +382,11 @@ export default function EditTask() {
             }
 
             clone[idx].filteredCompartments = list;
+
+            // Nếu category là thuốc và đã chọn patient → load prescriptions
+            if (isMedicineCategory(value) && clone[idx].patientId) {
+                await loadPrescriptionsForPatient(clone[idx].patientId, idx, clone);
+            }
         }
 
         setForm((f) => ({ ...f, stops: clone }));
@@ -288,21 +418,57 @@ export default function EditTask() {
 
     // ===================== SELECT PATIENT =====================
     async function handleSelectPatient(patientId, idx) {
+        const stop = form.stops[idx];
         updateStop(idx, "patientId", patientId);
 
         if (!patientId) {
-            return updateStop(idx, "prescriptionPreview", null);
+            updateStop(idx, "prescriptionPreview", null);
+            updateStop(idx, "prescriptionList", []);
+            updateStop(idx, "prescriptionCode", "");
+            return;
         }
 
-        const list = await getAllPrescriptions(patientId, "approved");
-        if (list.length === 0) {
-            return updateStop(idx, "prescriptionPreview", null);
+        // Chỉ load prescriptions nếu category là thuốc
+        if (isMedicineCategory(stop.categoryId)) {
+            const clone = [...form.stops];
+            await loadPrescriptionsForPatient(patientId, idx, clone);
+            setForm((f) => ({ ...f, stops: clone }));
+        } else {
+            // Không phải thuốc → không load đơn thuốc
+            updateStop(idx, "prescriptionPreview", null);
+            updateStop(idx, "prescriptionList", []);
+            updateStop(idx, "prescriptionCode", "");
+        }
+    }
+
+    // ===================== CLICK VÀO MÃ ĐƠN THUỐC → TỰ ĐỘNG APPROVE =====================
+    async function handleSelectPrescription(prescriptionCode, idx) {
+        if (!prescriptionCode) {
+            updateStop(idx, "prescriptionCode", "");
+            updateStop(idx, "prescriptionPreview", null);
+            return;
         }
 
-        const latest = list.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        )[0];
-        updateStop(idx, "prescriptionPreview", latest);
+        try {
+            // Gọi API approve prescription
+            const approved = await approvePrescriptionByCode(prescriptionCode);
+            
+            // Cập nhật state
+            updateStop(idx, "prescriptionCode", prescriptionCode);
+            updateStop(idx, "prescriptionPreview", approved);
+
+            // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
+            const stop = form.stops[idx];
+            if (stop.patientId) {
+                const clone = [...form.stops];
+                await loadPrescriptionsForPatient(stop.patientId, idx, clone);
+                setForm((f) => ({ ...f, stops: clone }));
+            }
+        } catch (err) {
+            console.error("Error approve prescription:", err);
+            setMessage(`❌ Lỗi: ${err.message || "Không thể xác nhận đơn thuốc"}`);
+            setMessageType("error");
+        }
     }
 
     // ===================== TASK STATUS HELPERS =====================
@@ -341,6 +507,7 @@ export default function EditTask() {
                     categoryId: s.categoryId
                         ? Number(s.categoryId)
                         : 0,
+                    prescriptionCode: s.prescriptionCode || null, // Gửi prescriptionCode nếu có
                     customName: s.customName,
                     itemDesc: s.itemDesc,
                     // Chỉ gửi status stop nếu user chọn 1 giá trị rõ ràng
@@ -840,19 +1007,68 @@ console.log("payload gửi lên BE:", payload);
                                     </div>
 
                                     {/* PRESCRIPTION BOX */}
-                                    {s.prescriptionPreview && (
-                                        <div className={styles.rxBox}>
-                                            <h6 className={styles.rxTitle}>
-                                                <i className="bi bi-file-medical"></i>
-                                                Đơn thuốc:{" "}
-                                                {
-                                                    s.prescriptionPreview
-                                                        .prescriptionCode
-                                                }
-                                            </h6>
+                                    {/* Hiển thị danh sách đơn thuốc nếu category là thuốc */}
+                                    {isMedicineCategory(s.categoryId) && s.patientId && (
+                                        <div className="col-12 mt-3">
+                                            <label className={`form-label ${styles.formLabel}`}>
+                                                Chọn đơn thuốc <span className="text-danger">*</span>
+                                            </label>
+                                            {s.prescriptionList && s.prescriptionList.length > 0 ? (
+                                                <>
+                                                    <div className="d-flex flex-wrap gap-2 mb-2">
+                                                        {s.prescriptionList.map((pres) => (
+                                                            <button
+                                                                key={pres.id}
+                                                                type="button"
+                                                                className={`btn ${
+                                                                    s.prescriptionCode === pres.prescriptionCode
+                                                                        ? "btn-success"
+                                                                        : "btn-outline-primary"
+                                                                }`}
+                                                                onClick={() => handleSelectPrescription(pres.prescriptionCode, idx)}
+                                                                style={{ borderRadius: "5px" }}
+                                                            >
+                                                                <i className="bi bi-file-medical me-1"></i>
+                                                                {pres.prescriptionCode}
+                                                                {pres.status && (
+                                                                    <span className={`badge ms-2 ${
+                                                                        pres.status === "approved" ? "bg-success" :
+                                                                        pres.status === "pending" ? "bg-warning" :
+                                                                        pres.status === "dispensed" ? "bg-info" : "bg-secondary"
+                                                                    }`}>
+                                                                        {pres.status}
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {s.prescriptionCode && s.prescriptionPreview && (
+                                                        <div className="alert alert-success mb-0">
+                                                            <i className="bi bi-check-circle me-2"></i>
+                                                            Đã chọn và xác nhận đơn thuốc: <strong>{s.prescriptionCode}</strong>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="alert alert-warning mb-0">
+                                                    <i className="bi bi-exclamation-triangle me-2"></i>
+                                                    Bệnh nhân này chưa có đơn thuốc nào (hoặc tất cả đơn đã bị hủy).
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                                            {s.prescriptionPreview.items.map(
-                                                (item) => (
+                                    {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) */}
+                                    {s.prescriptionPreview && s.prescriptionCode && (
+                                        <div className="col-12 mt-3">
+                                            <div className={styles.rxBox}>
+                                                <h6 className={styles.rxTitle}>
+                                                    <i className="bi bi-file-medical"></i>
+                                                    Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
+                                                </h6>
+
+                                                {s.prescriptionPreview.items && s.prescriptionPreview.items.map(
+                                                    (item) => (
                                                     <div
                                                         key={item.id}
                                                         className={
@@ -900,28 +1116,51 @@ console.log("payload gửi lên BE:", payload);
                                                 )
                                             )}
 
-                                            {/* ITEM DESC */}
-                                            <div className="mt-3">
-                                                <label
-                                                    className={`form-label ${styles.formLabel}`}
-                                                >
-                                                    Mô tả vật phẩm
-                                                    (tùy chọn)
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className={`form-control ${styles.formControl}`}
-                                                    placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
-                                                    value={s.itemDesc}
-                                                    onChange={(e) =>
-                                                        updateStop(
-                                                            idx,
-                                                            "itemDesc",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
+                                                {/* ITEM DESC */}
+                                                <div className="mt-3">
+                                                    <label
+                                                        className={`form-label ${styles.formLabel}`}
+                                                    >
+                                                        Mô tả vật phẩm
+                                                        (tùy chọn)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className={`form-control ${styles.formControl}`}
+                                                        placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
+                                                        value={s.itemDesc}
+                                                        onChange={(e) =>
+                                                            updateStop(
+                                                                idx,
+                                                                "itemDesc",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Mô tả vật phẩm cho trường hợp không phải thuốc */}
+                                    {!isMedicineCategory(s.categoryId) && (
+                                        <div className="col-12 mt-3">
+                                            <label className={`form-label ${styles.formLabel}`}>
+                                                Mô tả vật phẩm (tùy chọn)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className={`form-control ${styles.formControl}`}
+                                                placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
+                                                value={s.itemDesc}
+                                                onChange={(e) =>
+                                                    updateStop(
+                                                        idx,
+                                                        "itemDesc",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
                                         </div>
                                     )}
                                 </div>

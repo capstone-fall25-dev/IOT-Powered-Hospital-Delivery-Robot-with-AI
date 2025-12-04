@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 
-import { getTaskById, updateStopStatus } from "@/services/taskService";
+import { getTaskById, updateStopStatus, cancelTask } from "@/services/taskService";
 import styles from "@/assets/styles/taskDetail.module.css";
 
 
@@ -13,9 +13,14 @@ export default function TaskDetail() {
 
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
-
-
     const [stopStatusEdit, setStopStatusEdit] = useState({});
+    
+    // Modal hủy task
+    const [cancelModal, setCancelModal] = useState({
+        show: false,
+        reason: "",
+        loading: false,
+    });
 
 
     // ============================================
@@ -132,6 +137,35 @@ export default function TaskDetail() {
         }
     };
 
+    // ============================================
+    // HỦY TASK
+    // ============================================
+    const handleCancelTask = async () => {
+        if (!cancelModal.reason.trim()) {
+            alert("Vui lòng nhập lý do hủy nhiệm vụ.");
+            return;
+        }
+
+        setCancelModal((prev) => ({ ...prev, loading: true }));
+
+        try {
+            await cancelTask(id, cancelModal.reason.trim());
+
+            // Load lại task để cập nhật status
+            const fresh = await getTaskById(id);
+            setTask(fresh);
+
+            // Đóng modal
+            setCancelModal({ show: false, reason: "", loading: false });
+
+            alert("✅ Đã hủy nhiệm vụ thành công!");
+        } catch (err) {
+            console.error("Error cancel task:", err);
+            alert(`❌ Lỗi: ${err.message || "Không thể hủy nhiệm vụ"}`);
+            setCancelModal((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
 
     // ============================================
     // RENDER UI
@@ -215,6 +249,16 @@ export default function TaskDetail() {
                                 <i className="bi bi-pencil me-1"></i>Sửa
                             </button>
 
+                            {/* Nút hủy task - chỉ hiển thị khi task chưa bắt đầu (pending) */}
+                            {task.status === "pending" && (
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={() => setCancelModal({ show: true, reason: "", loading: false })}
+                                    style={{ borderRadius: "5px" }}
+                                >
+                                    <i className="bi bi-x-circle me-1"></i>Hủy nhiệm vụ
+                                </button>
+                            )}
 
                             <button
                                 className={styles.btnBack}
@@ -222,7 +266,6 @@ export default function TaskDetail() {
                             >
                                 <i className="bi bi-arrow-left me-1"></i>Quay lại
                             </button>
-
 
                             {/* Hidden theo yêu cầu */}
                             <button hidden className={styles.btnComplete}>
@@ -324,8 +367,8 @@ export default function TaskDetail() {
                                         </div>
 
 
-                                        {/* ===================== UPDATE STOP STATUS ===================== */}
-                                        <div className="col-md-12 mt-3">
+                                        {/* ===================== UPDATE STOP STATUS hidden ===================== */}
+                                        <div className="col-md-12 mt-3" hidden>
                                             <label className={styles.infoLabel}>Cập nhật trạng thái</label>
 
 
@@ -412,6 +455,85 @@ export default function TaskDetail() {
                         })
                     )}
                 </div>
+
+                {/* MODAL XÁC NHẬN HỦY TASK */}
+                {cancelModal.show && (
+                    <div
+                        className="modal fade show"
+                        style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
+                        tabIndex="-1"
+                    >
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header bg-danger text-white">
+                                    <h5 className="modal-title">
+                                        <i className="bi bi-exclamation-triangle me-2"></i>
+                                        Xác nhận hủy nhiệm vụ
+                                    </h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close btn-close-white"
+                                        onClick={() => setCancelModal({ show: false, reason: "", loading: false })}
+                                        disabled={cancelModal.loading}
+                                    ></button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="alert alert-warning">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        <strong>Lưu ý:</strong> Khi hủy nhiệm vụ, tất cả các ngăn chứa sẽ được giải phóng và robot sẽ về trạm. 
+                                        Nhiệm vụ sẽ được lưu với trạng thái "canceled".
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label">
+                                            <strong>Lý do hủy <span className="text-danger">*</span></strong>
+                                        </label>
+                                        <textarea
+                                            className="form-control"
+                                            rows="3"
+                                            placeholder="Nhập lý do hủy nhiệm vụ..."
+                                            value={cancelModal.reason}
+                                            onChange={(e) =>
+                                                setCancelModal((prev) => ({ ...prev, reason: e.target.value }))
+                                            }
+                                            disabled={cancelModal.loading}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setCancelModal({ show: false, reason: "", loading: false })}
+                                        disabled={cancelModal.loading}
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={handleCancelTask}
+                                        disabled={cancelModal.loading || !cancelModal.reason.trim()}
+                                    >
+                                        {cancelModal.loading ? (
+                                            <>
+                                                <span
+                                                    className="spinner-border spinner-border-sm me-2"
+                                                    role="status"
+                                                ></span>
+                                                Đang xử lý...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-x-circle me-2"></i>
+                                                Xác nhận hủy
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
