@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Xử lý nhận audio từ robot (microphone) và broadcast tới web
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RobotMicController : ControllerBase
@@ -21,8 +24,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// 🎤 ROS2 → Web bằng HTTP:
-        /// Python RobotMicStreamer gọi POST /api/RobotMic/SendChunk
+        /// ROS2 gửi audio chunk từ robot microphone qua HTTP, broadcast tới FE
         /// </summary>
         [HttpPost("SendChunk")]
         public async Task<IActionResult> SendChunk([FromBody] AudioChunkDto req)

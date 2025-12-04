@@ -3,6 +3,9 @@ using System.Net.Mail;
 
 namespace API_Powered_Hospital_Delivery_Robot.Helpers
 {
+    /// <summary>
+    /// Xử lý gửi email thông báo cho nhân viên bệnh viện
+    /// </summary>
     public class EmailHelper
     {
         private readonly IConfiguration _config;
@@ -12,8 +15,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
             _config = config;
         }
 
+        /// <summary>
+        /// Gửi email thông báo
+        /// </summary>
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
+            // Lấy cấu hình email từ appsettings.json
             var smtpHost = _config["EmailSettings:SmtpHost"];
             var smtpPort = int.Parse(_config["EmailSettings:SmtpPort"]);
             var smtpUser = _config["EmailSettings:SmtpUser"];
@@ -23,9 +30,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
 
             using (var client = new SmtpClient(smtpHost, smtpPort))
             {
+                // Xác thực với server email
                 client.Credentials = new NetworkCredential(smtpUser, smtpPass);
                 client.EnableSsl = enableSsl;
 
+                // Tạo nội dung email
                 var mailMessage = new MailMessage
                 {
                     From = new MailAddress(smtpUser, senderName),
@@ -34,6 +43,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                     IsBodyHtml = true
                 };
 
+                // Thêm người nhận và gửi
                 mailMessage.To.Add(toEmail);
                 await client.SendMailAsync(mailMessage);
             }

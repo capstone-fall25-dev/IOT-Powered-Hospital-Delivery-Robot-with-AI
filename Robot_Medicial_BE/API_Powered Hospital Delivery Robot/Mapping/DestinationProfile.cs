@@ -4,11 +4,13 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho điểm đến
+    /// </summary>
     public class DestinationProfile : Profile
     {
         public DestinationProfile()
         {
-            // ✅ Map đầy đủ các thuộc tính (bao gồm X, Y, MapId)
             CreateMap<DestinationDto, Destination>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())

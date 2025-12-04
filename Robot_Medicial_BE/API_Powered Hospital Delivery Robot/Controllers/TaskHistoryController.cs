@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý lịch sử nhiệm vụ
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class TaskHistoryController : ControllerBase
@@ -14,6 +17,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public TaskHistoryController(ITaskHistoryService service)
             => _service = service;
 
+        /// <summary>
+        /// Lấy danh sách lịch sử nhiệm vụ (có phân trang và lọc)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<PagedTaskHistoryDto>> GetHistory([FromQuery] TaskHistoryFilterDto filter)
         {
@@ -21,6 +27,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy chi tiết lịch sử nhiệm vụ theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskHistoryResponseDto>> GetDetail(ulong id)
         {

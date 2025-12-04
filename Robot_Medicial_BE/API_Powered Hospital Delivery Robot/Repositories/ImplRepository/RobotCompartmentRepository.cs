@@ -59,15 +59,30 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         // API mới dùng cho tạo Task
         public async Task<IEnumerable<RobotCompartment>> GetFilteredByRobotAsync(ulong robotId, ulong? categoryId)
         {
+            // Lấy danh sách compartment ID đang được sử dụng bởi task active (pending, in_progress, etc.)
+            var busyCompartmentIds = await _context.CompartmentAssignments
+                .Include(a => a.Stop)
+                    .ThenInclude(s => s!.Task)
+                .Where(a => a.Stop != null &&
+                           a.Stop.Task != null &&
+                           a.Status != "delivered" &&
+                           a.Status != "canceled" &&
+                           a.Stop.Task.Status != "completed" &&
+                           a.Stop.Task.Status != "canceled" &&
+                           a.Stop.Task.Status != "failed")
+                .Select(a => a.CompartmentId)
+                .Distinct()
+                .ToListAsync();
+
             var query = _context.RobotCompartments
                 .Include(rc => rc.Category)
                 .Include(rc => rc.Patient)
-                .Where(rc => rc.RobotId == robotId && rc.IsActive == true);
+                .Where(rc => rc.RobotId == robotId && 
+                            rc.IsActive == true &&
+                            rc.Status == "unlocked" &&  // Chỉ lấy unlocked
+                            !busyCompartmentIds.Contains(rc.Id)); // Loại bỏ compartment đang được sử dụng
 
-            // Loại bỏ các compartment locked
-            query = query.Where(rc => rc.Status == "unlocked");
-
-            // Nếu không chọn Category → trả tất cả unlocked
+            // Nếu không chọn Category → trả tất cả unlocked và không busy
             if (categoryId == null)
                 return await query.ToListAsync();
 

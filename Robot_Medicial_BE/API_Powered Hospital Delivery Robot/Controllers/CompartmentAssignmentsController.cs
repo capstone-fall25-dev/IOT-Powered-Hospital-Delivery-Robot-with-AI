@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý phân công ngăn chứa robot (gán thuốc vào khoang)
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize] 
@@ -16,7 +19,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách phân khoang (có thể lọc theo nhiệm vụ và trạng thái)
+        /// <summary>
+        /// Lấy danh sách phân khoang (có thể lọc theo nhiệm vụ và trạng thái)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> GetAll(
             [FromQuery] ulong? taskId = null,
@@ -26,7 +31,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(assignments);
         }
 
-        // Lấy thông tin chi tiết một phân khoang theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết một phân khoang theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> GetById(ulong id)
         {
@@ -36,7 +43,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(assignment);
         }
 
-        // Tạo mới phân khoang (gán thuốc vào khoang robot)
+        /// <summary>
+        /// Tạo mới phân khoang (gán thuốc vào khoang robot)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Create([FromBody] CompartmentAssignmentDto assignmentDto)
         {
@@ -55,7 +64,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin phân khoang
+        /// <summary>
+        /// Cập nhật thông tin phân khoang
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Update(
             ulong id,
@@ -78,7 +89,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xác nhận đã nạp thuốc vào khoang (khi nhân viên dược nạp thuốc cho robot)
+        /// <summary>
+        /// Xác nhận đã nạp thuốc vào khoang (khi nhân viên dược nạp thuốc cho robot)
+        /// </summary>
         [HttpPatch("{id}/load")]
         public async Task<ActionResult<CompartmentAssignmentResponseDto>> Load(
             ulong id,
@@ -97,7 +110,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Nạp thuốc hàng loạt cho toàn bộ khoang của một nhiệm vụ (rất tiện khi chuẩn bị robot)
+        /// <summary>
+        /// Nạp thuốc hàng loạt cho toàn bộ khoang của một nhiệm vụ
+        /// </summary>
         [HttpPost("tasks/{taskId}/load-compartments")]
         public async Task<ActionResult<IEnumerable<CompartmentAssignmentResponseDto>>> BulkLoad(
             ulong taskId,

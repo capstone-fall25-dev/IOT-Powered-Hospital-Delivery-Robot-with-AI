@@ -6,6 +6,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý phòng bệnh
+    /// </summary>
     public class RoomService : IRoomService
     {
         private readonly IRoomRepository _repository;
@@ -19,7 +22,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper = mapper;
         }
 
-        // CREATE
+        /// <summary>
+        /// Tạo phòng mới
+        /// </summary>
         public async Task<RoomResponseDto> CreateAsync(RoomDto roomDto)
         {
             var room = _mapper.Map<Room>(roomDto);
@@ -29,14 +34,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<RoomResponseDto>(created);
         }
 
-        // GET ALL
+        /// <summary>
+        /// Lấy danh sách tất cả phòng
+        /// </summary>
         public async Task<IEnumerable<RoomResponseDto>> GetAllAsync()
         {
             var rooms = await _repository.GetAllAsync();
             return _mapper.Map<IEnumerable<RoomResponseDto>>(rooms);
         }
 
-        // GET BY ID
+        /// <summary>
+        /// Lấy chi tiết phòng theo ID
+        /// </summary>
         public async Task<RoomResponseDto?> GetByIdAsync(ulong id)
         {
             var room = await _repository.GetByIdAsync(id);
@@ -47,7 +56,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<RoomResponseDto>(room);
         }
 
-        // UPDATE
+        /// <summary>
+        /// Cập nhật thông tin phòng
+        /// </summary>
         public async Task<RoomResponseDto?> UpdateAsync(ulong id, RoomDto roomDto)
         {
             var existing = await _repository.GetByIdAsync(id);
@@ -63,12 +74,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<RoomResponseDto>(updated);
         }
 
-        // DELETE
+        /// <summary>
+        /// Xóa phòng
+        /// </summary>
         public async Task<bool> DeleteAsync(ulong id)
         {
             return await _repository.DeleteAsync(id);
         }
 
+        /// <summary>
+        /// Chuyển bệnh nhân sang phòng khác
+        /// </summary>
         public async Task<PatientResponseDto> MoveRoomAsync(ulong patientId, ulong newRoomId)
         {
             var patient = await _repoPatient.GetByIdAsync(patientId);

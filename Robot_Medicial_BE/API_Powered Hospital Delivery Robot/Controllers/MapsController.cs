@@ -8,6 +8,9 @@ using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý bản đồ bệnh viện (map) và điểm đến
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class MapsController : ControllerBase
@@ -19,7 +22,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách map
+        /// <summary>
+        /// Lấy danh sách bản đồ
+        /// </summary>
         [HttpGet]
         //   [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<IEnumerable<MapResponseDto>>> GetAll()
@@ -28,17 +33,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(maps);
         }
 
-        // Lấy chi tiết map (include Robots) 
+        /// <summary>
+        /// Lấy chi tiết bản đồ (bao gồm danh sách robot)
+        /// </summary>
         [HttpGet("{id}")]
       //  [Authorize(Roles = "admin, doctor")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
             var map = await _service.GetByIdAsync(id);
             if (map == null) return NotFound();
-            return Ok(map); // Include Robots
+            return Ok(map);
         }
 
-        // Lấy image map (serve file) - UC26
+        /// <summary>
+        /// Lấy hình ảnh bản đồ
+        /// </summary>
         [HttpGet("{id}/image")]
         //[Authorize(Roles = "admin, doctor")]
         public async Task<IActionResult> GetImage(ulong id)
@@ -50,12 +59,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return File(map.ImageData, "image/png", imageName);
         }
 
-        // Tạo map mới (upload image, validate thresh)
+        /// <summary>
+        /// Tạo bản đồ mới (upload hình ảnh, validate threshold)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<MapResponseDto>> Create([FromForm] MapDto mapDto, IFormFile? imageFile)
         {
-            // 🔍 DEBUG LOG: Kiểm tra binding
-            Console.WriteLine($"Bound MapName: '{mapDto?.MapName}'");
+            if (mapDto == null)
+                return BadRequest("Dữ liệu bản đồ không hợp lệ.");
 
             if (!ModelState.IsValid)
             {
@@ -80,10 +91,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật map (UC3: Edit Map Information - chỉ sửa các trường cho phép, không image)
+        /// <summary>
+        /// Cập nhật thông tin bản đồ (chỉ sửa các trường cho phép, không thay đổi hình ảnh)
+        /// </summary>
         [HttpPut("{id}")]
         // [Authorize(Roles = "admin, doctor")]
-        public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromBody] MapDto mapDto)  // Sử dụng [FromBody] vì không có file
+        public async Task<ActionResult<MapResponseDto>> Update(ulong id, [FromBody] MapDto mapDto)
         {
             try
             {
@@ -101,6 +114,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Báo lỗi bản đồ
+        /// </summary>
         //[Authorize]
         [HttpPost("{mapId}/report-error")]
         public async Task<IActionResult> ReportMapError(ulong mapId, [FromBody] MapErrorDto dto)
@@ -109,10 +125,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             // Lấy thông tin người báo lỗi từ token
             var email = User.FindFirst(ClaimTypes.Email)?.Value
-                        ?? User.FindFirst("email")?.Value;                 // phòng khi issuer dùng key "email"
+                        ?? User.FindFirst("email")?.Value;
             var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name;
 
-            // Nếu có đủ cả hai -> format gộp
+            // Format thông tin người báo lỗi
             dto.ReporterEmail = (string.IsNullOrWhiteSpace(fullName) && string.IsNullOrWhiteSpace(email)) ? "unknown" : $"{fullName} ({email})";
 
             var result = await _service.ReportMapErrorAsync(dto);

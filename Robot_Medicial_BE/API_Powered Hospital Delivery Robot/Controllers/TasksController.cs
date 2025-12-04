@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý nhiệm vụ giao hàng của robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class TasksController : ControllerBase
@@ -15,7 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách nhiệm vụ (có thể lọc theo robot, trạng thái, độ ưu tiên)
+        /// <summary>
+        /// Lấy danh sách nhiệm vụ (có thể lọc theo robot, trạng thái, độ ưu tiên)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TaskListItemDto>>> GetAll(
             [FromQuery] ulong? robotId,
@@ -33,7 +38,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(data);
         }
 
-        // Lấy chi tiết một nhiệm vụ theo id
+        /// <summary>
+        /// Lấy chi tiết một nhiệm vụ theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskDetailDto>> GetById(ulong id)
         {
@@ -43,7 +50,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(result);
         }
 
-        // Tạo nhiệm vụ mới
+        /// <summary>
+        /// Tạo nhiệm vụ mới
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<TaskResponseDto>> Create([FromBody] CreateTaskDto dto)
         {
@@ -58,7 +67,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Lấy dữ liệu để chỉnh sửa nhiệm vụ
+        /// <summary>
+        /// Lấy dữ liệu để chỉnh sửa nhiệm vụ
+        /// </summary>
         [HttpGet("{id}/edit")]
         public async Task<ActionResult<TaskEditDto>> GetEditData(ulong id)
         {
@@ -68,7 +79,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(task);
         }
 
-        // Cập nhật thông tin nhiệm vụ
+        /// <summary>
+        /// Cập nhật thông tin nhiệm vụ
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<TaskResponseDto>> Update(ulong id, [FromBody] UpdateTaskDto dto)
         {
@@ -83,7 +96,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xóa nhiệm vụ
+        /// <summary>
+        /// Xóa nhiệm vụ
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(ulong id)
         {
@@ -93,7 +108,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : NotFound("Không tìm thấy nhiệm vụ để xóa.");
         }
 
-        // Thay đổi trạng thái nhiệm vụ (dành cho robot hoặc nhân viên)
+        /// <summary>
+        /// Thay đổi trạng thái nhiệm vụ (dành cho robot hoặc nhân viên)
+        /// </summary>
         [HttpPut("{id}/status")]
         public async Task<ActionResult<TaskResponseDto>> ChangeStatus(ulong id, [FromBody] TaskStatusChangeDto dto)
         {
@@ -109,7 +126,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Lấy thông tin chạy nhiệm vụ (vị trí hiện tại, tiến độ,...)
+        /// <summary>
+        /// Lấy thông tin chạy nhiệm vụ (vị trí hiện tại, tiến độ)
+        /// </summary>
         [HttpGet("{taskId}/run-info")]
         public async Task<ActionResult<RunTaskInfoDto>> GetRunInfo(ulong taskId)
         {
@@ -119,7 +138,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(info);
         }
 
-        // Cập nhật trạng thái của một điểm dừng trong nhiệm vụ
+        /// <summary>
+        /// Cập nhật trạng thái của một điểm dừng trong nhiệm vụ
+        /// </summary>
         [HttpPut("{taskId}/stops/{stopId}/status")]
         public async Task<IActionResult> UpdateStopStatus(
             ulong taskId,
@@ -130,7 +151,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = "Cập nhật trạng thái điểm dừng thành công." });
         }
 
-        // Hoàn thành nhiệm vụ (khi robot đã giao xong tất cả điểm dừng)
+        /// <summary>
+        /// Hoàn thành nhiệm vụ (khi robot đã giao xong tất cả điểm dừng)
+        /// </summary>
         [HttpPut("{taskId}/complete")]
         public async Task<IActionResult> CompleteTask(ulong taskId)
         {
@@ -140,13 +163,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : BadRequest(result.Message);
         }
 
+        /// <summary>
+        /// Bắt đầu nhiệm vụ
+        /// </summary>
         [HttpPost("{taskId}/start")]
         public async Task<ActionResult<TaskResponseDto>> StartTask(ulong taskId)
         {
             try
             {
                 var result = await _service.StartTaskAsync(taskId);
-                return result == null ? NotFound() : Ok(result);
+                return result == null ? NotFound("Không tìm thấy nhiệm vụ.") : Ok(result);
             }
             catch (Exception ex)
             {
@@ -154,6 +180,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Hủy nhiệm vụ (giải phóng compartments, đưa robot về trạm, lưu vào database)
+        /// </summary>
+        [HttpPost("{taskId}/cancel")]
+        public async Task<ActionResult<TaskResponseDto>> CancelTask(ulong taskId, [FromBody] CancelTaskDto? dto = null)
+        {
+            try
+            {
+                var result = await _service.CancelTaskAsync(taskId, dto?.Reason);
+                return result == null 
+                    ? NotFound("Không tìm thấy nhiệm vụ.") 
+                    : Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Lấy ID của nhân viên hiện tại từ token
+        /// </summary>
         private ulong GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst("userId")?.Value;

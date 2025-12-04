@@ -28,6 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         // Lấy báo cáo tổng hợp về bệnh nhân (thuốc đã giao, task, trạng thái...)
         Task<PatientReportDto> GetReportAsync(ulong id);
 
+        // Lấy danh sách bệnh nhân có đơn thuốc đã được duyệt
         Task<IEnumerable<PatientResponseDto>> GetPatientsWithApprovedPrescriptionAsync();
     }
 }

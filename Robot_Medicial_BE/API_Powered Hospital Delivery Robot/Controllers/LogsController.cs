@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý nhật ký hệ thống (log từ robot, hệ thống hoặc dịch vụ)
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize]
@@ -16,7 +19,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách log (có thể lọc theo robot, nhiệm vụ, loại log)
+        /// <summary>
+        /// Lấy danh sách log (có thể lọc theo robot, nhiệm vụ, loại log)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LogResponseDto>>> GetAll(
             [FromQuery] ulong? robotId = null,
@@ -27,7 +32,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(logs);
         }
 
-        // Lấy chi tiết một bản ghi log theo id
+        /// <summary>
+        /// Lấy chi tiết một bản ghi log theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<LogResponseDto>> GetById(ulong id)
         {
@@ -37,7 +44,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(log);
         }
 
-        // Tạo log mới (thường do robot, hệ thống hoặc dịch vụ tự động ghi)
+        /// <summary>
+        /// Tạo log mới (thường do robot, hệ thống hoặc dịch vụ tự động ghi)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<LogResponseDto>> Create([FromBody] LogDto logDto)
         {

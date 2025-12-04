@@ -9,6 +9,9 @@ using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Xử lý upload bản đồ từ robot (ROS2) và convert PGM sang PNG
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize]
@@ -25,7 +28,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _mapService = mapService;
         }
 
-        // ROS2 gửi map (yaml + pgm base64)
+        /// <summary>
+        /// ROS2 gửi bản đồ (yaml + pgm base64)
+        /// </summary>
         [HttpPost("json")]
         public async Task<ActionResult<MapResponseDto>> UploadJson([FromBody] MapUploadJsonDto mapJsonDto)
         {
@@ -59,6 +64,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy thông tin bản đồ theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<MapResponseDto>> GetById(ulong id)
         {
@@ -68,7 +76,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(map);
         }
 
-        // Convert PGM → PNG
+        /// <summary>
+        /// Lấy hình ảnh bản đồ (convert PGM sang PNG nếu cần)
+        /// </summary>
         [HttpGet("{id}/image")]
         public async Task<IActionResult> GetImage(ulong id)
         {
@@ -84,7 +94,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 if (!name.EndsWith(".pgm", StringComparison.OrdinalIgnoreCase))
                     return File(map.ImageData, "image/png", name);
 
-                // === Xử lý file PGM ===
+                // Xử lý file PGM và convert sang PNG
                 using var ms = new MemoryStream(map.ImageData);
                 using var br = new BinaryReader(ms, Encoding.ASCII);
 
@@ -100,13 +110,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 int width = int.Parse(parts[0]);
                 int height = int.Parse(parts[1]);
 
-                int maxVal = int.Parse(ReadLine(br)); // không dùng nhưng phải đọc
+                int maxVal = int.Parse(ReadLine(br)); // Không dùng nhưng phải đọc
 
                 var raw = br.ReadBytes(width * height);
 
                 using var img = new Image<L8>(width, height);
 
-                // ❗ KHÔNG flip Y nữa – giữ nguyên như PGM gốc
+                // Giữ nguyên như PGM gốc
                 for (int y = 0; y < height; y++)
                 {
                     for (int x = 0; x < width; x++)
@@ -126,6 +136,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Đọc một dòng từ BinaryReader
+        /// </summary>
         private static string ReadLine(BinaryReader br)
         {
             List<byte> bytes = new();

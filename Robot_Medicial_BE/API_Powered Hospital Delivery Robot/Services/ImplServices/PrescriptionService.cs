@@ -7,6 +7,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý đơn thuốc
+    /// </summary>
     public class PrescriptionService : IPrescriptionService
     {
         private readonly IPrescriptionRepository _repo;
@@ -29,7 +32,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper = mapper;
         }
 
-        // ---------------- CREATE PRESCRIPTION ------------------
+        /// <summary>
+        /// Tạo đơn thuốc mới
+        /// </summary>
         public async Task<PrescriptionResponseDto> CreateAsync(PrescriptionCreateDto dto)
         {
             if (await _repo.GetByCodeAsync(dto.PrescriptionCode) != null)
@@ -70,21 +75,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<PrescriptionResponseDto>(full);
         }
 
-        // ---------------- GET BY ID ------------------
+        /// <summary>
+        /// Lấy chi tiết đơn thuốc theo ID
+        /// </summary>
         public async Task<PrescriptionResponseDto?> GetByIdAsync(ulong id)
         {
             var pres = await _repo.GetByIdAsync(id, includeItems: true);
             return pres == null ? null : _mapper.Map<PrescriptionResponseDto>(pres);
         }
 
-        // ---------------- GET ALL ------------------
+        /// <summary>
+        /// Lấy danh sách đơn thuốc (có thể lọc theo bệnh nhân, trạng thái)
+        /// </summary>
         public async Task<IEnumerable<PrescriptionResponseDto>> GetAllAsync(ulong? patientId, string? status)
         {
             var list = await _repo.GetAllAsync(patientId, status);
             return _mapper.Map<IEnumerable<PrescriptionResponseDto>>(list);
         }
 
-        // ---------------- UPDATE ------------------
+        /// <summary>
+        /// Cập nhật thông tin đơn thuốc
+        /// </summary>
         public async Task<PrescriptionResponseDto> UpdateAsync(ulong id, PrescriptionUpdateDto dto)
         {
             var pres = await _repo.GetByIdAsync(id, includeItems: true)
@@ -114,16 +125,40 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<PrescriptionResponseDto>(updated);
         }
 
-        // ---------------- SOFT DELETE ------------------
+        /// <summary>
+        /// Xóa mềm đơn thuốc
+        /// </summary>
         public async Task<bool> SoftDeleteAsync(ulong id)
         {
             return await _repo.SoftDeleteAsync(id);
         }
 
-        // ---------------- RESTORE ------------------
+        /// <summary>
+        /// Khôi phục đơn thuốc đã xóa
+        /// </summary>
         public async Task<bool> RestoreAsync(ulong id)
         {
             return await _repo.RestoreAsync(id);
+        }
+
+        /// <summary>
+        /// Xác nhận đơn thuốc theo mã (chuyển status thành "approved")
+        /// </summary>
+        public async Task<PrescriptionResponseDto> ApproveByCodeAsync(string prescriptionCode)
+        {
+            var pres = await _repo.GetByCodeAsync(prescriptionCode)
+                ?? throw new InvalidOperationException($"Không tìm thấy đơn thuốc với mã '{prescriptionCode}'.");
+
+            // Không cho phép approve đơn đã bị hủy
+            if (pres.Status != null && pres.Status.ToLower() == "canceled")
+                throw new InvalidOperationException($"Đơn thuốc '{prescriptionCode}' đã bị hủy, không thể xác nhận.");
+
+            // Chuyển status thành "approved" (dù đang là pending, dispensed, hay approved)
+            pres.Status = "approved";
+
+            var updated = await _repo.UpdateAsync(pres);
+            var full = await _repo.GetByIdAsync(updated.Id, includeItems: true);
+            return _mapper.Map<PrescriptionResponseDto>(full);
         }
     }
 }

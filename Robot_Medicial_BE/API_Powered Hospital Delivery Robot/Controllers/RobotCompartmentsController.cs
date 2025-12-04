@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý ngăn chứa của robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize]
@@ -15,6 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Lấy ngăn chứa theo danh mục và robot
+        /// </summary>
         [HttpGet("category/{categoryId}/robot/{robotId}")]
         public async Task<IActionResult> GetByCategoryAndRobot(
             [FromRoute] ulong categoryId, 
@@ -27,7 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(result);
         }
 
-        // Lấy toàn bộ ngăn chứa theo robot
+        /// <summary>
+        /// Lấy toàn bộ ngăn chứa theo robot
+        /// </summary>
         [HttpGet("robot/{robotId}")]
         public async Task<IActionResult> GetByRobot([FromRoute] ulong robotId)
         {
@@ -39,7 +47,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(result);
         }
 
-        // Lấy tất cả compartment unlocked của robot
+        /// <summary>
+        /// Lấy tất cả ngăn chứa đã mở khóa (unlocked) của robot
+        /// </summary>
         [HttpGet("robot/{robotId}/all")]
         public async Task<IActionResult> GetUnlockedCompartments(ulong robotId)
         {
@@ -47,7 +57,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(result);
         }
 
-        // Lấy compartment unlocked + filter category
+        /// <summary>
+        /// Lấy ngăn chứa đã mở khóa và lọc theo danh mục
+        /// </summary>
         [HttpGet("robot/{robotId}/category/{categoryId}")]
         public async Task<IActionResult> GetFilteredByCategory(
             ulong robotId, 

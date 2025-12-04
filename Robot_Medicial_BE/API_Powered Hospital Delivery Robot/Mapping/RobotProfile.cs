@@ -3,11 +3,14 @@ using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using AutoMapper;
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho robot và ngăn chứa
+    /// </summary>
     public class RobotProfile : Profile
     {
         public RobotProfile()
         {
-            // ✅ Mapping cho Robot
+            // Mapping robot
             CreateMap<RobotDto, Robot>()
                 .ForMember(dest => dest.Status, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -16,11 +19,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
             CreateMap<Robot, RobotResponseDto>()
                 .ForMember(dest => dest.Compartments, opt => opt.MapFrom(src => src.RobotCompartments))
                 .ForMember(dest => dest.Tasks, opt => opt.MapFrom(src => src.Tasks));
-            // ✅ Mapping cho Robot Maintenance Log
+
+            // Mapping nhật ký bảo trì robot
             CreateMap<RobotMaintenanceLogDto, RobotMaintenanceLog>();
             CreateMap<RobotMaintenanceLog, RobotMaintenanceLogResponseDto>()
                 .ForMember(dest => dest.RobotCode, opt => opt.MapFrom(src => src.Robot.Code));
-            // ✅ Fix mapping for Compartment
+
+            // Mapping ngăn chứa
             CreateMap<RobotCompartment, CompartmentDto>()
                 .ForMember(dest => dest.Code, opt => opt.MapFrom(src => src.CompartmentCode))
                 .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId));

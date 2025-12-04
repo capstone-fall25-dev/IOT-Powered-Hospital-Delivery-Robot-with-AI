@@ -4,6 +4,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho nhân viên và session
+    /// </summary>
     public class UserProfile : Profile
     {
         public UserProfile()

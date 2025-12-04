@@ -6,6 +6,9 @@ using API_Powered_Hospital_Delivery_Robot.Hubs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý điểm đến trên bản đồ và gửi route cho robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class DestinationsController : ControllerBase
@@ -19,9 +22,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _hubContext = hubContext;
         }
 
-        // ============================================================
-        // 🧩 API: Tạo điểm đến (lưu DB)
-        // ============================================================
+        /// <summary>
+        /// Tạo điểm đến mới (lưu vào database)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<DestinationResponseDto>> Create([FromBody] DestinationDto dto)
         {
@@ -45,9 +48,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // ============================================================
-        // 🛰️ API: Gửi list điểm đến xuống ROS2/NodeJS (SignalR)
-        // ============================================================
+        /// <summary>
+        /// Gửi danh sách điểm đến xuống robot qua SignalR
+        /// </summary>
         [HttpPost("send-route")]
         public async Task<IActionResult> SendRoute([FromBody] DestinationRouteRequest route)
         {
@@ -83,9 +86,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // ============================================================
-        // 🧭 Các API có sẵn
-        // ============================================================
+        /// <summary>
+        /// Lấy danh sách tất cả điểm đến (có thể lọc theo khu vực và tầng)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DestinationResponseDto>>> GetAll([FromQuery] string? area = null, [FromQuery] string? floor = null)
         {
@@ -93,6 +96,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(dests);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết một điểm đến theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<DestinationResponseDto>> GetById(ulong id)
         {
@@ -101,6 +107,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(dest);
         }
 
+        /// <summary>
+        /// Lấy vị trí của điểm đến theo ID
+        /// </summary>
         [HttpGet("{id}/position")]
         public async Task<ActionResult<DestinationPositionDto>> GetPosition(ulong id)
         {
@@ -115,6 +124,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy danh sách điểm đến theo bản đồ
+        /// </summary>
         [HttpGet("by-map/{mapId}")]
         public async Task<ActionResult<IEnumerable<DestinationResponseDto>>> GetByMap(ulong mapId)
         {
@@ -123,42 +135,38 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             return Ok(filtered);
         }
-        // ============================================================
-// 📝 API: Cập nhật điểm đến
-// ============================================================
-            [HttpPut("{id}")]
-            public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, [FromBody] DestinationDto dto)
+
+        /// <summary>
+        /// Cập nhật điểm đến
+        /// </summary>
+        [HttpPut("{id}")]
+        public async Task<ActionResult<DestinationResponseDto>> Update(ulong id, [FromBody] DestinationDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+                Console.WriteLine($"[PUT /api/Destinations/{id}] Updating destination");
 
-                try
-                {
-                    Console.WriteLine($"[PUT /api/Destinations/{id}] Updating destination");
+                var updated = await _service.UpdateAsync(id, dto);
 
-                    var updated = await _service.UpdateAsync(id, dto);
+                if (updated == null)
+                    return NotFound(new { message = "Không tìm thấy địa điểm để cập nhật." });
 
-                    if (updated == null)
-                        return NotFound(new { message = "Không tìm thấy địa điểm để cập nhật." });
-
-                    return Ok(updated);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    // Lỗi logic như: trùng tên, không tìm thấy...
-                    return BadRequest(new { message = ex.Message });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[ERROR] {ex.Message}");
-                    return StatusCode(500, new { message = "Lỗi khi cập nhật địa điểm.", error = ex.Message });
-                }
+                return Ok(updated);
             }
-
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi khi cập nhật địa điểm.", error = ex.Message });
+            }
+        }
     }
-
-
-    
 
     // ============================================================
     // 🧾 DTO: Request model cho API send-route

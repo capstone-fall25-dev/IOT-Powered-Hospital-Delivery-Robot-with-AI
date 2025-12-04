@@ -7,6 +7,9 @@ using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý thông tin cá nhân của nhân viên
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -20,7 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin profile của user hiện tại
+        /// Lấy thông tin cá nhân của nhân viên hiện tại
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<ProfileResponseDto>> GetMyProfile()
@@ -37,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin profile của user hiện tại
+        /// Cập nhật thông tin cá nhân
         /// </summary>
         [HttpPut]
         public async Task<ActionResult<ProfileResponseDto>> UpdateMyProfile([FromBody] UpdateProfileDto dto)
@@ -58,7 +61,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// Đổi mật khẩu của user hiện tại
+        /// Đổi mật khẩu
         /// </summary>
         [HttpPut("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
@@ -71,6 +74,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 var result = await _userService.ChangePasswordAsync(email, dto);
 
+                // Kiểm tra lỗi mật khẩu
                 if (result.Contains("không đúng") || result.Contains("phải khác"))
                     return BadRequest(new { message = result });
 
@@ -83,7 +87,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// Helper method để lấy email của user hiện tại từ JWT
+        /// Lấy email của nhân viên hiện tại từ JWT token
         /// </summary>
         private string? GetCurrentUserEmail()
         {

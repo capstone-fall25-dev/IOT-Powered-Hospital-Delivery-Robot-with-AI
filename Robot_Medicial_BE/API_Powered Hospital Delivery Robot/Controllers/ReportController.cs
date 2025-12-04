@@ -4,13 +4,18 @@ using MySql.Data.MySqlClient;
 
 namespace RobotManagerApi.Controllers
 {
+    /// <summary>
+    /// Quản lý báo cáo nhiệm vụ và xuất Excel
+    /// </summary>
     [ApiController]
     [Route("api/report")]
     public class ReportController : ControllerBase
     {
         private readonly string _connectionString = "Server=160.187.229.40;Port=3306;Database=robotmanager;Uid=root;Pwd=1239;";
 
-        // 1. BÁO CÁO TASK THEO STATUS + FILTER NGÀY
+        /// <summary>
+        /// Báo cáo nhiệm vụ theo trạng thái và lọc theo ngày (có thể xuất Excel)
+        /// </summary>
         [HttpGet("task-status-dynamic")]
         public async Task<IActionResult> GetTaskStatusReport(
             [FromQuery] DateTime? fromDate = null,
@@ -104,7 +109,7 @@ namespace RobotManagerApi.Controllers
             if (!exportExcel)
                 return Ok(pivotData);
 
-            // XUẤT EXCEL – ĐÃ SỬA TÊN SHEET DƯỚI 31 KÝ TỰ + SAVE AS
+            // Xuất Excel - tên sheet dưới 31 ký tự
             using var workbook = new XLWorkbook();
 
             var fromStr = fromDate?.ToString("dd-MM-yyyy") ?? "all";
@@ -159,7 +164,7 @@ namespace RobotManagerApi.Controllers
 
             var fileName = $"Task_Status_{fromStr}_to_{toStr}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
-            // BẮT BUỘC CÓ DÒNG NÀY ĐỂ HIỆN SAVE AS
+            // Bắt buộc có dòng này để hiện Save As
             Response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
 
             return File(stream.ToArray(),
@@ -167,7 +172,9 @@ namespace RobotManagerApi.Controllers
                 fileName);
         }
 
-        // 2. BÁO CÁO TASK THEO NGÀY + FILTER
+        /// <summary>
+        /// Báo cáo nhiệm vụ theo ngày và lọc theo khoảng thời gian (có thể xuất Excel)
+        /// </summary>
         [HttpGet("task-timeline-dynamic")]
         public async Task<IActionResult> GetTaskTimelineReport(
             [FromQuery] DateTime? fromDate = null,
@@ -236,7 +243,7 @@ namespace RobotManagerApi.Controllers
 
             var allDates = rawData
                 .Where(x => x.TaskDate.HasValue)
-                .Select(x => x.TaskDate.Value.ToString("yyyy-MM-dd"))
+                .Select(x => x.TaskDate!.Value.ToString("yyyy-MM-dd"))
                 .Distinct()
                 .OrderBy(x => x)
                 .ToList();
@@ -318,7 +325,7 @@ namespace RobotManagerApi.Controllers
 
             var fileName = $"Task_Timeline_{fromStr}_to_{toStr}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
 
-            // BẮT BUỘC CÓ ĐỂ HIỆN SAVE AS
+            // Bắt buộc có dòng này để hiện Save As
             Response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
 
             return File(stream.ToArray(),
@@ -326,7 +333,9 @@ namespace RobotManagerApi.Controllers
                 fileName);
         }
 
-        // Class hỗ trợ
+        /// <summary>
+        /// Class hỗ trợ cho báo cáo trạng thái nhiệm vụ
+        /// </summary>
         private class TaskStatusItem
         {
             public string Robot { get; set; } = "";
@@ -334,6 +343,9 @@ namespace RobotManagerApi.Controllers
             public int TaskCount { get; set; }
         }
 
+        /// <summary>
+        /// Class hỗ trợ cho báo cáo timeline nhiệm vụ
+        /// </summary>
         private class TaskReportItem
         {
             public string Robot { get; set; } = "";

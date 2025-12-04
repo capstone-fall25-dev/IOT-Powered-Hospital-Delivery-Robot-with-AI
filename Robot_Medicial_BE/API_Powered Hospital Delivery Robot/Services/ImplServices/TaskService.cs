@@ -131,12 +131,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var comp = await _repo.GetCompartmentAsync(s.CompartmentId)
                         ?? throw new InvalidOperationException($"Khoang {s.CompartmentId} không tồn tại.");
 
-                    // Check compartment is free
-                    if (await _repo.IsCompartmentBusyAsync(s.CompartmentId))
-                        throw new InvalidOperationException($"Khoang {s.CompartmentId} đang được sử dụng.");
-
+                    // Kiểm tra compartment status trước
                     if (comp.Status == "locked")
                         throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
+
+                    // Check compartment is free (đang được sử dụng bởi task active)
+                    if (await _repo.IsCompartmentBusyAsync(s.CompartmentId))
+                        throw new InvalidOperationException(
+                            $"Khoang {comp.CompartmentCode ?? s.CompartmentId.ToString()} đang được sử dụng bởi một nhiệm vụ khác. " +
+                            "Vui lòng chọn ngăn chứa khác hoặc đợi nhiệm vụ hiện tại hoàn thành."
+                        );
 
                     // Validate category
                     if (comp.CategoryId != null && comp.CategoryId != s.CategoryId)
@@ -156,25 +160,66 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     if (comp.PatientId == null)
                         await _repoRobotCom.AssignPatientToCompartment(comp.Id, s.PatientId);
 
-                    var rx = await _repo.GetLatestApprovedPrescriptionForPatientAsync(s.PatientId)
-    ?? throw new InvalidOperationException(
-           $"Bệnh nhân {s.PatientId} chưa có đơn thuốc được duyệt."
-       );
-
-                    if (rx.Status?.ToLower() != "approved")
-                        throw new InvalidOperationException(
-                            $"Đơn thuốc mới nhất của bệnh nhân {s.PatientId} chưa được duyệt."
-                        );
-
                     var patient = await _repoPatient.GetByIdAsync(s.PatientId)
                         ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
 
-                    string autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
-                    autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                    // Kiểm tra loại ngăn chứa có liên quan đến thuốc không
+                    bool isMedicineCategory = IsMedicineRelatedCategory(comp.Category);
+
+                    Prescription? rx = null;
+                    string autoName = "";
+                    string itemDesc = "";
+
+                    if (isMedicineCategory)
+                    {
+                        // Nếu là loại ngăn chứa thuốc, yêu cầu đơn thuốc được xác nhận
+                        if (string.IsNullOrWhiteSpace(s.PrescriptionCode))
+                            throw new InvalidOperationException(
+                                $"Loại ngăn chứa '{comp.Category?.Name ?? "N/A"}' liên quan đến thuốc. " +
+                                "Vui lòng chọn và xác nhận đơn thuốc cho bệnh nhân này."
+                            );
+
+                        // Lấy đơn thuốc theo mã code
+                        rx = await _repo.GetPrescriptionByCodeAsync(s.PrescriptionCode)
+                            ?? throw new InvalidOperationException(
+                                $"Không tìm thấy đơn thuốc với mã '{s.PrescriptionCode}'."
+                            );
+
+                        // Kiểm tra đơn thuốc thuộc về bệnh nhân này
+                        if (rx.PatientId != s.PatientId)
+                            throw new InvalidOperationException(
+                                $"Đơn thuốc '{s.PrescriptionCode}' không thuộc về bệnh nhân này."
+                            );
+
+                        // Kiểm tra đơn thuốc đã được xác nhận (phải là approved)
+                        // Frontend đã gọi API approve trước khi tạo task, nên status phải là approved
+                        if (rx.Status?.ToLower() != "approved")
+                            throw new InvalidOperationException(
+                                $"Đơn thuốc '{s.PrescriptionCode}' chưa được xác nhận. " +
+                                $"Trạng thái hiện tại: {rx.Status}. Vui lòng xác nhận đơn thuốc trước khi tạo task."
+                            );
+
+                        // Tạo autoName và itemDesc từ đơn thuốc (giữ lại để lưu lịch sử)
+                        autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
+                        autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+
+                        itemDesc = $"RX#{rx.PrescriptionCode}: " +
+                            string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                    }
+                    else
+                    {
+                        // Nếu không phải thuốc, không cần đơn thuốc
+                        autoName = $"{patient.FullName} - {patient.PatientCode}";
+                        itemDesc = "Vật phẩm khác";
+                    }
 
                     var finalName = string.IsNullOrWhiteSpace(s.CustomName)
                         ? autoName
                         : s.CustomName.Trim();
+
+                    var finalItemDesc = string.IsNullOrWhiteSpace(s.ItemDesc)
+                        ? itemDesc
+                        : s.ItemDesc.Trim();
 
                     var stop = new TaskStop
                     {
@@ -189,11 +234,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     };
 
                     stop = await _repo.CreateStopAsync(stop);
-
-                    string itemDesc = string.IsNullOrWhiteSpace(s.ItemDesc)
-                        ? $"RX#{rx.PrescriptionCode}: " +
-                          string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"))
-                        : s.ItemDesc.Trim();
 
                     await _repo.CreateAssignmentAsync(new CompartmentAssignment
                     {
@@ -319,7 +359,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // 3. HEADER UPDATE
                 // ------------------------------
                 if (dto.Priority.HasValue)
-                    task.Priority = dto.Priority.ToString();
+                    task.Priority = dto.Priority.Value.ToString();
 
                 if (dto.ScheduledStartAt.HasValue)
                     task.ScheduledStartAt = dto.ScheduledStartAt.Value;
@@ -417,6 +457,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                         var assignment = stop.CompartmentAssignments.FirstOrDefault();
 
+                        // Lấy compartment để kiểm tra category
+                        var comp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
+                            ?? throw new InvalidOperationException("Khoang không tồn tại.");
+
                         bool changingCompartment =
                             assignment == null || assignment.CompartmentId != sDto.CompartmentId;
 
@@ -425,27 +469,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             if (assignment != null)
                                 await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
 
-                            var newComp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
-                                ?? throw new InvalidOperationException("Khoang không tồn tại.");
+                            // Kiểm tra compartment status trước
+                            if (comp.Status == "locked")
+                                throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
 
-                            if (newComp.Status == "locked")
-                                throw new InvalidOperationException($"Khoang {newComp.CompartmentCode} đang bị khóa.");
-
-                            if (newComp.CategoryId != null && newComp.CategoryId != sDto.CategoryId)
+                            // Kiểm tra compartment có đang được sử dụng bởi task khác không
+                            if (await _repo.IsCompartmentBusyAsync(sDto.CompartmentId))
                                 throw new InvalidOperationException(
-                                    $"Khoang {newComp.CompartmentCode} chỉ hỗ trợ Category {newComp.CategoryId}."
+                                    $"Khoang {comp.CompartmentCode ?? sDto.CompartmentId.ToString()} đang được sử dụng bởi một nhiệm vụ khác. " +
+                                    "Vui lòng chọn ngăn chứa khác hoặc đợi nhiệm vụ hiện tại hoàn thành."
                                 );
 
-                            if (newComp.CategoryId == null)
-                                await _repoRobotCom.AssignCategoryToCompartment(newComp.Id, sDto.CategoryId);
-
-                            if (newComp.PatientId != null && newComp.PatientId != sDto.PatientId)
+                            if (comp.CategoryId != null && comp.CategoryId != sDto.CategoryId)
                                 throw new InvalidOperationException(
-                                    $"Khoang {newComp.CompartmentCode} đang gắn bệnh nhân khác."
+                                    $"Khoang {comp.CompartmentCode} chỉ hỗ trợ Category {comp.CategoryId}."
                                 );
 
-                            if (newComp.PatientId == null)
-                                await _repoRobotCom.AssignPatientToCompartment(newComp.Id, sDto.PatientId);
+                            if (comp.CategoryId == null)
+                                await _repoRobotCom.AssignCategoryToCompartment(comp.Id, sDto.CategoryId);
+
+                            if (comp.PatientId != null && comp.PatientId != sDto.PatientId)
+                                throw new InvalidOperationException(
+                                    $"Khoang {comp.CompartmentCode} đang gắn bệnh nhân khác."
+                                );
+
+                            if (comp.PatientId == null)
+                                await _repoRobotCom.AssignPatientToCompartment(comp.Id, sDto.PatientId);
 
                             if (assignment == null)
                             {
@@ -469,9 +518,62 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             }
                         }
 
+                        // Xử lý prescription code nếu category là thuốc
+                        var patient = await _repoPatient.GetByIdAsync(sDto.PatientId)
+                            ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
+
+                        bool isMedicineCategory = IsMedicineRelatedCategory(comp.Category);
+                        Prescription? rx = null;
+                        string autoName = "";
+                        string itemDesc = "";
+
+                        if (isMedicineCategory)
+                        {
+                            // Nếu là loại ngăn chứa thuốc, yêu cầu đơn thuốc được xác nhận
+                            if (string.IsNullOrWhiteSpace(sDto.PrescriptionCode))
+                                throw new InvalidOperationException(
+                                    $"Loại ngăn chứa '{comp.Category?.Name ?? "N/A"}' liên quan đến thuốc. " +
+                                    "Vui lòng chọn và xác nhận đơn thuốc cho bệnh nhân này."
+                                );
+
+                            // Lấy đơn thuốc theo mã code
+                            rx = await _repo.GetPrescriptionByCodeAsync(sDto.PrescriptionCode)
+                                ?? throw new InvalidOperationException(
+                                    $"Không tìm thấy đơn thuốc với mã '{sDto.PrescriptionCode}'."
+                                );
+
+                            // Kiểm tra đơn thuốc thuộc về bệnh nhân này
+                            if (rx.PatientId != sDto.PatientId)
+                                throw new InvalidOperationException(
+                                    $"Đơn thuốc '{sDto.PrescriptionCode}' không thuộc về bệnh nhân này."
+                                );
+
+                            // Kiểm tra đơn thuốc đã được xác nhận (phải là approved)
+                            if (rx.Status?.ToLower() != "approved")
+                                throw new InvalidOperationException(
+                                    $"Đơn thuốc '{sDto.PrescriptionCode}' chưa được xác nhận. " +
+                                    $"Trạng thái hiện tại: {rx.Status}. Vui lòng xác nhận đơn thuốc trước khi cập nhật task."
+                                );
+
+                            // Tạo autoName và itemDesc từ đơn thuốc (giữ lại để lưu lịch sử)
+                            autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
+                            autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+
+                            itemDesc = $"RX#{rx.PrescriptionCode}: " +
+                                string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
+                        }
+                        else
+                        {
+                            // Nếu không phải thuốc, không cần đơn thuốc
+                            autoName = $"{patient.FullName} - {patient.PatientCode}";
+                            itemDesc = "Vật phẩm khác";
+                        }
+
                         // CustomName
                         if (!string.IsNullOrWhiteSpace(sDto.CustomName))
                             stop.CustomName = sDto.CustomName.Trim();
+                        else
+                            stop.CustomName = autoName; // Dùng autoName nếu không có CustomName
 
                         // ItemDesc
                         if (assignment != null)
@@ -479,6 +581,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             if (!string.IsNullOrWhiteSpace(sDto.ItemDesc))
                             {
                                 assignment.ItemDesc = sDto.ItemDesc.Trim();
+                            }
+                            else
+                            {
+                                assignment.ItemDesc = itemDesc; // Dùng itemDesc từ prescription nếu không có ItemDesc
                             }
 
                             assignment.UpdatedAt = DateTime.Now;
@@ -632,7 +738,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         {
                             PrescriptionCode = rx.PrescriptionCode,
                             CreatedAt = rx.CreatedAt ?? DateTime.MinValue,
-                            Status = rx.Status,
+                            Status = rx.Status ?? "",
 
                             Items = rx.PrescriptionItems.Select(i => new PrescriptionItemResponseDto
                             {
@@ -722,6 +828,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 "canceled" => "skipped",
                 _ => "pending"
             };
+        }
+
+        // Helper method: Kiểm tra Category có liên quan đến thuốc không
+        // Dựa vào tên category (kiểm tra các từ khóa liên quan đến thuốc)
+        private bool IsMedicineRelatedCategory(CompartmentCategory? category)
+        {
+            if (category == null || string.IsNullOrWhiteSpace(category.Name))
+                return false;
+
+            var categoryName = category.Name.ToLower().Trim();
+            
+            // Kiểm tra các từ khóa liên quan đến thuốc
+            var medicineKeywords = new[] { "thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical" };
+            
+            return medicineKeywords.Any(keyword => categoryName.Contains(keyword));
         }
 
         public async Task<RunTaskInfoDto?> GetRunInfoAsync(ulong taskId)
@@ -1030,6 +1151,104 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 await transaction.RollbackAsync();
                 // Log lỗi (nếu có ILogger)
                 Console.WriteLine($"[TaskScheduler] Lỗi hủy task quá hạn: {ex.Message}");
+            }
+        }
+
+        // ======================================================================
+        // CANCEL TASK (Hủy nhiệm vụ thủ công)
+        // ======================================================================
+        public async Task<TaskResponseDto?> CancelTaskAsync(ulong taskId, string? reason = null)
+        {
+            using var transaction = await _repo.BeginTransactionAsync();
+            try
+            {
+                var task = await _repo.GetByIdAsync(taskId)
+                    ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
+
+                // Kiểm tra task đã bị hủy hoặc hoàn thành chưa
+                if (task.Status == "canceled")
+                    throw new InvalidOperationException("Nhiệm vụ đã bị hủy trước đó.");
+
+                if (task.Status == "completed")
+                    throw new InvalidOperationException("Không thể hủy nhiệm vụ đã hoàn thành.");
+
+                if (task.Status == "failed")
+                    throw new InvalidOperationException("Nhiệm vụ đã thất bại, không cần hủy.");
+
+                // Hủy thủ công chỉ cho phép khi task chưa bắt đầu (pending)
+                // Hủy tự động đã được xử lý bởi CancelOverduePendingTasksAsync
+                if (task.Status != "pending")
+                    throw new InvalidOperationException(
+                        $"Không thể hủy thủ công nhiệm vụ đang ở trạng thái '{task.Status}'. " +
+                        "Chỉ có thể hủy nhiệm vụ chưa bắt đầu (pending)."
+                    );
+
+                // 1. Đổi status task thành "canceled"
+                task.Status = "canceled";
+                task.UpdatedAt = DateTime.Now;
+
+                // 2. Đổi status của tất cả stops thành "canceled" hoặc "skipped"
+                foreach (var stop in task.TaskStops)
+                {
+                    // Chỉ đổi status nếu chưa delivered
+                    if (stop.Status != "delivered")
+                    {
+                        stop.Status = "skipped";
+                        stop.UpdatedAt = DateTime.Now;
+                    }
+
+                    // Đổi status của tất cả assignments
+                    foreach (var assignment in stop.CompartmentAssignments)
+                    {
+                        if (assignment.Status != "delivered")
+                        {
+                            assignment.Status = "canceled";
+                            assignment.UpdatedAt = DateTime.Now;
+                        }
+                    }
+                }
+
+                // 3. Đưa robot về trạm (at_station)
+                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                // 4. Giải phóng tất cả khoang chứa (release compartments)
+                foreach (var stop in task.TaskStops)
+                {
+                    foreach (var assignment in stop.CompartmentAssignments)
+                    {
+                        await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
+                    }
+                }
+
+                // 5. Lưu vào database (không xóa, chỉ đổi status)
+                await _repo.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // 6. Ghi lịch sử với ghi chú hủy
+                var cancelNote = string.IsNullOrWhiteSpace(reason)
+                    ? "Nhiệm vụ đã bị hủy"
+                    : $"Nhiệm vụ đã bị hủy: {reason}";
+                await RecordTaskHistory(task, cancelNote: cancelNote);
+
+                // 7. Lấy task đã cập nhật và trả về
+                var updatedTask = await _repo.GetByIdAsync(task.Id);
+                var response = MapToResponse(updatedTask!);
+
+                // 8. Gửi SignalR thông báo
+                await _taskHub.Clients.All.SendAsync("TaskCanceled", new
+                {
+                    taskId = task.Id,
+                    reason = reason ?? "Hủy thủ công",
+                    canceledAt = DateTime.Now,
+                    task = response
+                });
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException($"Không thể hủy nhiệm vụ: {ex.Message}");
             }
         }
     }

@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý cảnh báo hệ thống (từ robot hoặc hệ thống tự động)
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class AlertsController : ControllerBase
@@ -15,7 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách cảnh báo (có thể lọc theo robot, trạng thái, mức độ nghiêm trọng, mục thuốc...)
+        /// <summary>
+        /// Lấy danh sách cảnh báo (có thể lọc theo robot, trạng thái, mức độ nghiêm trọng, mục thuốc)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AlertResponseDto>>> GetAll(
             [FromQuery] ulong? robotId = null,
@@ -27,7 +32,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(alerts);
         }
 
-        // Lấy chi tiết một cảnh báo theo id
+        /// <summary>
+        /// Lấy chi tiết một cảnh báo theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<AlertResponseDto>> GetById(ulong id)
         {
@@ -37,7 +44,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(alert);
         }
 
-        // Tạo cảnh báo mới (thường do robot hoặc hệ thống tự động sinh)
+        /// <summary>
+        /// Tạo cảnh báo mới (thường do robot hoặc hệ thống tự động sinh)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<AlertResponseDto>> Create([FromBody] AlertDto alertDto)
         {
@@ -52,7 +61,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật cảnh báo (ví dụ: xác nhận đã xử lý, thay đổi trạng thái)
+        /// <summary>
+        /// Cập nhật cảnh báo (xác nhận đã xử lý, thay đổi trạng thái)
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<AlertResponseDto>> Update(ulong id, [FromBody] AlertDto alertDto)
         {

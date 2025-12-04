@@ -4,6 +4,9 @@ using API_Powered_Hospital_Delivery_Robot.Hubs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Điều khiển chế độ hoạt động robot và nhận dữ liệu từ ROS2
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RobotModeController : ControllerBase
@@ -21,28 +24,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _logger = logger;
         }
 
-        // =======================================================
-        // 🧩 GỬI CHẾ ĐỘ HOẠT ĐỘNG (mapping, save_map, run_map)
-        // =======================================================
+        /// <summary>
+        /// Request gửi chế độ hoạt động robot
+        /// </summary>
         public class RobotModeRequest
         {
             public string Mode { get; set; } = string.Empty;
             public string? MapName { get; set; }
         }
 
+        /// <summary>
+        /// Gửi chế độ hoạt động robot (mapping, save_map, run_map)
+        /// </summary>
         [HttpPost("SendMode")]
         public async Task<IActionResult> SendMode([FromBody] RobotModeRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Mode))
-                return BadRequest("Mode is required");
+                return BadRequest("Mode là bắt buộc");
 
             string mode = req.Mode.Trim().ToLower();
 
             if (mode is not ("mapping" or "save_map" or "run_map"))
-                return BadRequest("Mode must be one of: mapping, save_map, run_map");
+                return BadRequest("Mode phải là một trong: mapping, save_map, run_map");
 
             if ((mode == "save_map" || mode == "run_map") && string.IsNullOrWhiteSpace(req.MapName))
-                return BadRequest("MapName is required for save_map and run_map");
+                return BadRequest("Tên bản đồ là bắt buộc cho save map và run map");
 
             try
             {
@@ -68,9 +74,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // =======================================================
-        // 📍 GỬI VỊ TRÍ ROBOT (x, y, theta)
-        // =======================================================
+        /// <summary>
+        /// Request gửi vị trí robot
+        /// </summary>
         public class RobotPositionRequest
         {
             public double X { get; set; }
@@ -78,6 +84,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             public double Theta { get; set; }
         }
 
+        /// <summary>
+        /// Cập nhật vị trí robot (x, y, theta)
+        /// </summary>
         [HttpPost("update-position")]
         public async Task<IActionResult> UpdateRobotPosition([FromBody] RobotPositionRequest pos)
         {
@@ -93,7 +102,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceivePosition", positionData);
-                // _logger.LogInformation("📡 [From Robot] Position => X={X}, Y={Y}, θ={Theta}", pos.X, pos.Y, pos.Theta);
 
                 return Ok(new { status = "broadcasted", position = positionData });
             }
@@ -104,9 +112,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // =======================================================
-        // 🗺️ NHẬN DỮ LIỆU MAP TỪ ROS2 (mapping)
-        // =======================================================
+        /// <summary>
+        /// Request nhận dữ liệu map từ ROS2
+        /// </summary>
         public class MapUpdateRequest
         {
             public string Type { get; set; } = "map_update";
@@ -125,14 +133,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Nhận dữ liệu map từ ROS2 (mapping)
+        /// </summary>
         [HttpPost("map-update")]
         public async Task<IActionResult> ReceiveMapUpdate([FromBody] MapUpdateRequest map)
         {
             try
             {
-
                 await _hubContext.Clients.All.SendAsync("ReceiveMapUpdate", map);
-              //  _logger.LogInformation("🗺️ [Mapping] Map frame received (w={Width}, h={Height})", map.Width, map.Height);
 
                 return Ok(new { status = "received", width = map.Width, height = map.Height });
             }
@@ -143,34 +152,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-
-
-
-        // =======================================================
-        // 🆕 NHẬN % HOÀN THÀNH TASK DẠNG TEXT
-        // Format text: "RB-01|37.5|Phòng 102"
-        // =======================================================
+        /// <summary>
+        /// Request nhận phần trăm hoàn thành task dạng text
+        /// </summary>
         public class ProgressTextRequest
         {
             public string Text { get; set; } = string.Empty;
         }
 
+        /// <summary>
+        /// Nhận phần trăm hoàn thành task dạng text (ví dụ: "RB-01|37.5|Phòng 102")
+        /// </summary>
         [HttpPost("navigation-progress")]
         public async Task<IActionResult> NavigationProgress([FromBody] ProgressTextRequest req)
         {
             if (req == null || string.IsNullOrWhiteSpace(req.Text))
-                return BadRequest("Text is required");
+                return BadRequest("Văn bản là bắt buộc");
 
             try
             {
                 var payload = new
                 {
                     type = "navigation_progress",
-                    text = req.Text,            // ví dụ "RB-01|37.5|Phòng 102"
+                    text = req.Text,
                     timestamp = DateTime.Now
                 };
 
-                // Broadcast cho tất cả client đang nối với Hub
                 await _hubContext.Clients.All.SendAsync("ReceiveNavigationProgress", payload);
 
                 _logger.LogInformation("📊 [Progress] {Text}", req.Text);
@@ -184,16 +191,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // =======================================================
-        // ⚙️ GỬI LỆNH ĐIỀU KHIỂN ĐỘNG CƠ (A, W, D, S, X)
-        // =======================================================
+        /// <summary>
+        /// Request gửi lệnh điều khiển động cơ
+        /// </summary>
         public class MotorCommandRequest
         {
             public string Key { get; set; } = string.Empty; // "w", "a", "s", "d", "x"
         }
 
         /// <summary>
-        /// 🕹️ FE gửi phím điều khiển (A/W/S/D/X) => Broadcast cho ROS2 xử lý
+        /// Gửi lệnh điều khiển động cơ (A/W/S/D/X) từ FE xuống ROS2
         /// </summary>
         [HttpPost("control")]
         public async Task<IActionResult> SendMotorCommand([FromBody] MotorCommandRequest req)
@@ -201,11 +208,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(req.Key))
-                    return BadRequest("Key is required (a, w, s, d, x)");
+                    return BadRequest("Key là bắt buộc (a, w, s, d, x)");
 
                 string key = req.Key.Trim().ToLower();
                 if (key is not ("a" or "w" or "s" or "d" or "x"))
-                    return BadRequest("Invalid key. Allowed: a, w, s, d, x");
+                    return BadRequest("Key không hợp lệ. Cho phép: a, w, s, d, x");
 
                 var motorCommand = new
                 {

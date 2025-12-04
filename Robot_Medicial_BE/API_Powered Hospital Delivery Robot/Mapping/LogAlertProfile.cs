@@ -4,17 +4,20 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho nhật ký và cảnh báo
+    /// </summary>
     public class LogAlertProfile : Profile
     {
         public LogAlertProfile()
         {
-            // --- Log Mapping ---
+            // Mapping nhật ký
             CreateMap<LogDto, Log>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
             CreateMap<Log, LogResponseDto>();
-            // --- Alert Mapping ---
+
+            // Mapping cảnh báo (gán giá trị mặc định nếu không có)
             CreateMap<AlertDto, Alert>()
-                // Nếu không có giá trị truyền lên → gán mặc định
                 .ForMember(dest => dest.Severity,
                     opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Severity) ? "low" : src.Severity))
                 .ForMember(dest => dest.Category,
@@ -24,13 +27,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
             CreateMap<Alert, AlertResponseDto>();
 
-            // ReportDamagedMedicineResponse - Map from AlertResponseDto (since alertResponse is DTO)
+            // Mapping báo cáo thuốc hư hỏng
             CreateMap<AlertResponseDto, ReportDamagedMedicineResponseDto>()
                 .ForMember(dest => dest.AlertId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.PrescriptionItemId, opt => opt.MapFrom(src => src.PrescriptionItemId ?? 0))
-                .ForMember(dest => dest.Reason, opt => opt.Ignore()) // Set manually in service
-                .ForMember(dest => dest.Description, opt => opt.Ignore()) // Set manually in service
-                .ForMember(dest => dest.TaskId, opt => opt.Ignore()) // Set manually in service
+                .ForMember(dest => dest.Reason, opt => opt.Ignore())
+                .ForMember(dest => dest.Description, opt => opt.Ignore())
+                .ForMember(dest => dest.TaskId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
                 .ForMember(dest => dest.Message, opt => opt.MapFrom(src => src.Message));
         }

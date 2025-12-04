@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý robot giao hàng trong bệnh viện
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -18,7 +21,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả robot (có thể lọc theo trạng thái: at_station, moving, charging...)
+        /// <summary>
+        /// Lấy danh sách tất cả robot (có thể lọc theo trạng thái: at_station,...)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RobotResponseDto>>> GetAll([FromQuery] string? status = null)
         {
@@ -26,7 +31,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(robots);
         }
 
-        // Lấy chi tiết một robot theo id
+        /// <summary>
+        /// Lấy chi tiết một robot theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<RobotResponseDto>> GetById(ulong id)
         {
@@ -35,7 +42,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(robot);
         }
 
-        // Tạo robot mới (dùng khi thêm robot vào hệ thống)
+        /// <summary>
+        /// Tạo robot mới (dùng khi thêm robot vào hệ thống)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<RobotResponseDto>> Create(RobotDto robotDto)
         {
@@ -50,17 +59,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                // lỗi như: Robot code already exists
                 return Conflict(new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                // lỗi như: Battery percent must be between 0 and 100
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                // lỗi không xác định
                 return StatusCode(500, new
                 {
                     message = "Lỗi hệ thống khi tạo robot.",
@@ -69,7 +75,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // ROS2 gửi trạng thái robot (vị trí, trạng thái nhiệm vụ...) – không cần token
+        /// <summary>
+        /// ROS2 gửi trạng thái robot (vị trí, trạng thái nhiệm vụ) - không cần token
+        /// </summary>
         [HttpPost("update-status")]
         public async Task<ActionResult> UpdateStatus([FromBody] RobotStatusUpdateDto dto)
         {
@@ -88,7 +96,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật trạng thái robot từ web
+        /// <summary>
+        /// Cập nhật trạng thái robot từ web
+        /// </summary>
         [HttpPatch("{id}/status")]
         public async Task<ActionResult<RobotResponseDto>> UpdateStatus(ulong id, [FromBody] UpdateStatusDto dto)
         {
@@ -98,7 +108,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(new { message = "Cập nhật trạng thái thành công.", data = updated });
         }
 
-        // Gán bản đồ cho robot (khi triển khai ở tầng mới)
+        /// <summary>
+        /// Gán bản đồ cho robot (khi triển khai ở tầng mới)
+        /// </summary>
         [HttpPut("{robotId}/assign-map/{mapId}")]
         public async Task<ActionResult<AssignMapResponseDto>> AssignMap(ulong robotId, ulong mapId)
         {
@@ -117,7 +129,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật vị trí robot (từ ROS2 hoặc điều khiển tay)
+        /// <summary>
+        /// Cập nhật vị trí robot (từ ROS2 hoặc điều khiển tay)
+        /// </summary>
         [HttpPatch("{id}/position")]
         public async Task<ActionResult<RobotResponseDto>> UpdatePosition(ulong id, [FromBody] UpdatePositionDto dto)
         {
@@ -127,7 +141,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(new { message = "Cập nhật vị trí thành công.", data = updated });
         }
 
-        // Chuyển robot sang chế độ điều khiển tay
+        /// <summary>
+        /// Chuyển robot sang chế độ điều khiển tay
+        /// </summary>
         [HttpPatch("{id}/manual-control")]
         public async Task<ActionResult<RobotResponseDto>> ManualControl(ulong id)
         {
@@ -138,7 +154,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(new { message = "Đã chuyển robot sang chế độ điều khiển tay.", data = updated });
         }
 
-        // Lấy danh sách robot đang ở trạm (sẵn sàng nhận nhiệm vụ)
+        /// <summary>
+        /// Lấy danh sách robot đang ở trạm (sẵn sàng nhận nhiệm vụ)
+        /// </summary>
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailableRobots()
         {
@@ -151,7 +169,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             });
         }
 
-        // Chỉ sửa Tên + Danh sách loại ngăn chứa (CategoryId)
+        /// <summary>
+        /// Cập nhật thông tin robot (tên và danh sách loại ngăn chứa)
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRobot(ulong id, [FromBody] UpdateRobotDto dto)
         {
@@ -161,7 +181,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (dto.Compartments == null || !dto.Compartments.Any())
                 return BadRequest(new { message = "Danh sách ngăn chứa không được để trống" });
 
-            if (dto.Compartments.Count > 20) // tùy giới hạn robot của bạn
+            if (dto.Compartments.Count > 20)
                 return BadRequest(new { message = "Số lượng ngăn chứa không được vượt quá 20" });
 
             if (dto.Compartments.Any(c => c.CategoryId == 0))
@@ -195,6 +215,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy danh sách robot theo bản đồ
+        /// </summary>
         [HttpGet("by-map/{mapId}")]
         public async Task<ActionResult> GetByMap(ulong mapId)
         {

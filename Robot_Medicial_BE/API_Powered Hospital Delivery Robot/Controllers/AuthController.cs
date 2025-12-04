@@ -8,6 +8,9 @@ using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Xử lý xác thực và đăng nhập cho nhân viên bệnh viện
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -19,7 +22,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _userService = userService;
         }
 
-        // Tạo tài khoản mới (gửi OTP qua email/sms)
+        /// <summary>
+        /// Tạo tài khoản mới và gửi OTP qua email
+        /// </summary>
         [HttpPost("provide-account")]
         [AllowAnonymous]
         public async Task<IActionResult> ProvideAccount([FromBody] RegisterRequest request)
@@ -28,7 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
-        // Xác thực OTP để kích hoạt tài khoản
+        /// <summary>
+        /// Xác thực OTP để kích hoạt tài khoản
+        /// </summary>
         [HttpPatch("verify-otp")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
@@ -37,7 +44,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
-        // Đăng nhập hệ thống
+        /// <summary>
+        /// Đăng nhập hệ thống
+        /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
@@ -49,9 +58,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             return Ok(new { token, message });
         }
-       
 
-        // Yêu cầu quên mật khẩu (gửi OTP đặt lại)
+        /// <summary>
+        /// Yêu cầu quên mật khẩu (gửi OTP đặt lại)
+        /// </summary>
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -60,7 +70,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
-        // Xác nhận OTP và đặt lại mật khẩu
+        /// <summary>
+        /// Xác nhận OTP và đặt lại mật khẩu
+        /// </summary>
         [HttpPost("verify-forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyForgotPassword([FromBody] VerifyForgotPasswordRequest request)
@@ -69,6 +81,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
+        /// <summary>
+        /// Đăng xuất hệ thống
+        /// </summary>
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -83,6 +98,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = "Đăng xuất thành công!" });
         }
 
+        /// <summary>
+        /// Kiểm tra trạng thái đăng nhập
+        /// </summary>
         [HttpGet("check-login-status")]
         [Authorize]
         public async Task<IActionResult> CheckLoginStatus()
@@ -98,6 +116,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (user == null)
                 return Unauthorized(new { message = "Tài khoản không tồn tại." });
 
+            // Kiểm tra session còn hợp lệ không
             string tokenHash = HashToken(token);
             bool isValidSession = user.Sessions?.Any(s =>
                 s.SessionToken == tokenHash && s.ExpiresAt > DateTime.Now) == true;
@@ -114,6 +133,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             });
         }
 
+        /// <summary>
+        /// Mã hóa token bằng SHA256
+        /// </summary>
         private string HashToken(string token)
         {
             using var sha256 = SHA256.Create();
@@ -122,7 +144,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Convert.ToBase64String(hash);
         }
 
-        // Admin reset mật khẩu người dùng (chỉ admin mới được dùng)
+        /// <summary>
+        /// Admin đặt lại mật khẩu cho nhân viên
+        /// </summary>
         [HttpPost("admin-reset-password")]
         [Authorize]
         public async Task<IActionResult> AdminResetPassword([FromQuery] string email)
@@ -134,7 +158,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { message = result });
         }
 
-        // Lấy UserId hiện tại từ JWT (dùng chung toàn dự án)
+        /// <summary>
+        /// Lấy ID nhân viên hiện tại từ JWT token
+        /// </summary>
         private ulong GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(claim =>

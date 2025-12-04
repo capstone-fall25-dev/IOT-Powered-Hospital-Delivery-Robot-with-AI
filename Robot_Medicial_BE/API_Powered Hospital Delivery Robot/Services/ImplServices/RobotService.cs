@@ -7,6 +7,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý robot
+    /// </summary>
     public class RobotService : IRobotService
     {
         private readonly IRobotRepository _robotRepository;
@@ -16,6 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IAlertService _alertService;
         private readonly IRobotCompartmentRepository _robotCompartmentRepository;
 
+        // Các trạng thái hợp lệ của robot
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
         public RobotService(IRobotRepository robotRepository,
@@ -29,28 +33,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _robotCompartmentRepository = robotCompartmentRepository;
         }
 
+        /// <summary>
+        /// Gán bản đồ cho robot
+        /// </summary>
         public async Task<AssignMapResponseDto> AssignMapAsync(ulong robotId, ulong mapId)
         {
             var robot = await _robotRepository.GetByIdAsync(robotId, includeTasks: true);
             if (robot == null)
-                throw new InvalidOperationException("Robot not found");
+                throw new InvalidOperationException("Không tìm thấy robot");
 
             if (robot.Tasks.Any(t => t.Status == "in_progress" || t.Status == "transporting"))
-                throw new InvalidOperationException("Cannot assign map to robot with active tasks");
+                throw new InvalidOperationException("Không thể gán bản đồ cho robot đang có nhiệm vụ đang chạy");
 
             var map = await _mapRepository.GetByIdAsync(mapId);
             if (map == null)
-                throw new InvalidOperationException("Map not found");
+                throw new InvalidOperationException("Không tìm thấy bản đồ");
 
             var updatedRobot = await _robotRepository.AssignMapAsync(robotId, mapId);
             if (updatedRobot == null)
-                throw new InvalidOperationException("Failed to assign map");
+                throw new InvalidOperationException("Không thể gán bản đồ");
 
             await _logRepository.CreateAsync(new Log
             {
                 RobotId = robotId,
                 LogType = "info",
-                Message = $"Robot {robot.Code} assigned to map {map.MapName}",
+                Message = $"Robot {robot.Code} đã được gán bản đồ {map.MapName}",
                 CreatedAt = DateTime.Now
             });
 
@@ -59,20 +66,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = robotId,
                 MapId = mapId,
                 MapName = map.MapName,
-                Message = "Map assigned successfully"
+                Message = "Gán bản đồ thành công"
             };
         }
 
+        /// <summary>
+        /// Tạo robot mới
+        /// </summary>
         public async Task<RobotResponseDto> CreateAsync(RobotDto robotDto)
         {
+            if (string.IsNullOrEmpty(robotDto.Code))
+                throw new ArgumentException("Mã robot không được để trống");
+
             var existing = await _robotRepository.GetByCodeAsync(robotDto.Code);
             if (existing != null)
-                throw new InvalidOperationException("Robot code already exists");
+                throw new InvalidOperationException("Mã robot đã tồn tại");
 
             if (robotDto.BatteryPercent < 0 || robotDto.BatteryPercent > 100)
-                throw new ArgumentException("Battery percent must be between 0 and 100");
+                throw new ArgumentException("Phần trăm pin phải nằm trong khoảng 0 và 100");
 
-            // map robot từ DTO
+            // Ánh xạ robot từ DTO
             var robot = _mapper.Map<Robot>(robotDto);
 
             robot.Status = "at_station";
@@ -81,7 +94,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // Lưu robot trước
             var createdRobot = await _robotRepository.CreateAsync(robot);
 
-            // tạo compartments
+            // Tạo ngăn chứa
             var compartments = robotDto.Compartments.Select((c, index) => new RobotCompartment
             {
                 RobotId = createdRobot.Id,
@@ -91,7 +104,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 IsActive = true
             }).ToList();
 
-            // Lưu compartments
+            // Lưu ngăn chứa
             await _robotCompartmentRepository.CreateManyAsync(compartments);
 
 
@@ -114,38 +127,40 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
 
             return response;
-
         }
 
+        /// <summary>
+        /// Cập nhật thông tin robot
+        /// </summary>
         public async Task<RobotResponseDto> UpdateAsync(ulong robotId, UpdateRobotDto updateDto)
         {
-            // 1. Lấy robot hiện tại
+            // Lấy robot hiện tại
             var existingRobot = await _robotRepository.GetByIdAsync(robotId, includeCompartments: true, includeTasks: true);
             if (existingRobot == null)
                 throw new InvalidOperationException("Robot không tồn tại");
 
-            // 2. Không cho sửa nếu robot đang chạy nhiệm vụ
+            // Không cho sửa nếu robot đang chạy nhiệm vụ
             if (existingRobot.Tasks.Any(t => t.Status is "in_progress" or "transporting"))
                 throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
 
-            // 3. Cập nhật Tên (nếu có)
+            // Cập nhật tên (nếu có)
             if (!string.IsNullOrWhiteSpace(updateDto.Name))
                 existingRobot.Name = updateDto.Name.Trim();
 
-            // 4. Cập nhật Map (nếu có thay đổi)
+            // Cập nhật bản đồ (nếu có thay đổi)
             if (updateDto.MapId.HasValue)
             {
                 var map = await _mapRepository.GetByIdAsync(updateDto.MapId.Value);
                 if (map == null)
-                    throw new InvalidOperationException($"Map với ID {updateDto.MapId.Value} không tồn tại");
+                    throw new InvalidOperationException($"Bản đồ với ID {updateDto.MapId.Value} không tồn tại");
                 existingRobot.MapId = updateDto.MapId.Value;
             }
             else
             {
-                existingRobot.MapId = null; // Bỏ gán map
+                existingRobot.MapId = null; // Bỏ gán bản đồ
             }
 
-            // 5. Xóa hết compartments cũ + tạo mới
+            // Xóa hết ngăn chứa cũ + tạo mới
             await _robotCompartmentRepository.DeleteByRobotIdAsync(robotId);
 
             var newCompartments = updateDto.Compartments
@@ -161,16 +176,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             await _robotCompartmentRepository.CreateManyAsync(newCompartments);
 
-            // 6. Cập nhật thời gian
+            // Cập nhật thời gian
             existingRobot.UpdatedAt = DateTime.Now;
 
-            // 7. Lưu robot
+            // Lưu robot
             var updatedRobot = await _robotRepository.UpdateAsync(existingRobot);
 
-            // 8. Log hành động
+            // Ghi log hành động
             var mapChange = updateDto.MapId.HasValue
-                ? $"gán map '{updatedRobot.Map?.MapName}'"
-                : "bỏ gán map";
+                ? $"gán bản đồ '{updatedRobot.Map?.MapName}'"
+                : "bỏ gán bản đồ";
 
             await _logRepository.CreateAsync(new Log
             {
@@ -180,7 +195,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 CreatedAt = DateTime.Now
             });
 
-            // 9. Trả về response đầy đủ
+            // Trả về response đầy đủ
             return new RobotResponseDto
             {
                 Id = updatedRobot.Id,
@@ -197,12 +212,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             };
         }
 
+        /// <summary>
+        /// Lấy danh sách tất cả robot (có thể lọc theo trạng thái)
+        /// </summary>
         public async Task<IEnumerable<RobotResponseDto>> GetAllAsync(string? status = null)
         {
             var robots = await _robotRepository.GetAllAsync(status);
             return _mapper.Map<IEnumerable<RobotResponseDto>>(robots);
         }
 
+        /// <summary>
+        /// Lấy chi tiết robot theo ID
+        /// </summary>
         public async Task<RobotResponseDto?> GetByIdAsync(ulong id)
         {
             var robot = await _robotRepository.GetByIdAsync(id, includeCompartments: true, includeTasks: true, includeTaskStops: true);
@@ -226,26 +247,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 EtaReturnAt = robot.EtaReturnAt,
                 ErrorCountSession = robot.ErrorCountSession,
                 LastHeartbeatAt = robot.LastHeartbeatAt,
-
                 MapId = robot.MapId,
                 Compartments = robot.RobotCompartments.Select(c => new CompartmentDto
                 {
-
                     Code = c.CompartmentCode,
                     CategoryId = c.CategoryId
-
                 }).ToList(),
-
                 Tasks = robot
                 .Tasks
-                .
-
-                Select(t => new TaskResponseDto
+                .Select(t => new TaskResponseDto
                 {
                     Id = t.Id,
                     Status = t.Status,
                     RobotName = robot.Name,
-
                     Stops = t.TaskStops?
                     .OrderBy(ts => ts.SeqNo)
                     .Select(ts => new TaskStopResponseDto
@@ -253,20 +267,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         SeqNo = ts.SeqNo,
                         PatientName = ts.Patient?.FullName,
                         DestinationName = ts.CustomName,
-
-
-
                     })
                     .ToList() ?? new List<TaskStopResponseDto>()
-
                 }).ToList(),
-
-
-
-
             };
         }
 
+        /// <summary>
+        /// Cập nhật vị trí robot
+        /// </summary>
         public async Task<RobotResponseDto?> UpdatePositionAsync(ulong id, UpdatePositionDto dto)
         {
             var updated = await _robotRepository.UpdatePositionAsync(id, dto.Latitude, dto.Longitude);
@@ -280,51 +289,58 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     Severity = "high",
                     Category = "system",
                     Status = "open",
-                    Message = $"Robot {updated.Code} error threshold exceeded ({updated.ErrorCountSession} errors). Position: {dto.Latitude},{dto.Longitude}"
+                    Message = $"Robot {updated.Code} vượt quá ngưỡng lỗi ({updated.ErrorCountSession} lỗi). Vị trí: {dto.Latitude},{dto.Longitude}"
                 });
             }
 
             return _mapper.Map<RobotResponseDto>(updated);
         }
 
-        // ✅ ROS cập nhật trạng thái theo Code
+        /// <summary>
+        /// ROS cập nhật trạng thái robot theo mã
+        /// </summary>
         public async Task<RobotResponseDto?> UpdateStatusAsync(RobotStatusUpdateDto dto)
         {
             if (string.IsNullOrEmpty(dto.Code) || string.IsNullOrEmpty(dto.Status))
-                throw new ArgumentException("Robot code or status cannot be empty");
+                throw new ArgumentException("Mã robot hoặc trạng thái không được để trống");
 
             var updated = await _robotRepository.UpdateStatusAsync(dto.Code, dto.Status);
             if (updated == null)
-                throw new InvalidOperationException($"Robot with code {dto.Code} not found");
+                throw new InvalidOperationException($"Không tìm thấy robot với mã {dto.Code}");
 
             await _logRepository.CreateAsync(new Log
             {
                 RobotId = updated.Id,
                 LogType = "info",
-                Message = $"Robot {updated.Code} updated status to {dto.Status}",
+                Message = $"Robot {updated.Code} đã cập nhật trạng thái thành {dto.Status}",
                 CreatedAt = DateTime.Now
             });
 
             return _mapper.Map<RobotResponseDto>(updated);
         }
 
-        // ✅ Admin/Doctor cập nhật theo Id
+        /// <summary>
+        /// Admin/Doctor cập nhật trạng thái robot theo ID
+        /// </summary>
         public async Task<RobotResponseDto?> UpdateStatusAsync(ulong id, UpdateStatusDto dto)
         {
             if (!ValidStatuses.Contains(dto.Status))
-                throw new ArgumentException($"Invalid status: {dto.Status}. Must be one of: {string.Join(", ", ValidStatuses)}");
+                throw new ArgumentException($"Trạng thái không hợp lệ: {dto.Status}. Phải là một trong: {string.Join(", ", ValidStatuses)}");
 
             var existing = await _robotRepository.GetByIdAsync(id);
             if (existing == null)
-                throw new InvalidOperationException("Robot not found");
+                throw new InvalidOperationException("Không tìm thấy robot");
 
             if (existing.Status == "offline")
-                throw new InvalidOperationException("Cannot update status of offline robot");
+                throw new InvalidOperationException("Không thể cập nhật trạng thái của robot offline");
 
             var updated = await _robotRepository.UpdateStatusAsync(id, dto.Status);
             return updated != null ? _mapper.Map<RobotResponseDto>(updated) : null;
         }
 
+        /// <summary>
+        /// Lấy danh sách robot theo bản đồ
+        /// </summary>
         public async Task<IEnumerable<RobotResponseDto>> GetByMapAsync(ulong mapId)
         {
             var robots = await _robotRepository.GetAllByMapWithCompartmentsAsync(mapId);

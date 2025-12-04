@@ -4,28 +4,28 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho bản đồ và điểm đến
+    /// </summary>
     public class MapProfile : Profile
     {
         public MapProfile()
         {
-            // Map từ MapDto → Map (Create: map đầy đủ, bao gồm MapName)
+            // Tạo bản đồ
             CreateMap<MapDto, Map>()
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())  // Ignore chỉ CreatedAt
-                .ForMember(dest => dest.ImageData, opt => opt.Ignore());  // Ignore ImageData (set manual từ file)
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ImageData, opt => opt.Ignore());
 
-            // Cho Update, chúng ta dùng _mapper.Map(dto, existing) - sẽ map chỉ các trường khớp, giữ MapName cũ
-
-            // Map từ MapUploadDto → Map (ROS2 Upload)
+            // Upload bản đồ từ ROS2
             CreateMap<MapUploadDto, Map>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.ImageData, opt => opt.Ignore())
                 .ForMember(dest => dest.ImageName, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
-            // Map từ Destination → DestinationDto
             CreateMap<Destination, DestinationDto>();
 
-            // Map từ Map → MapResponseDto
+            // Bản đồ → Response DTO
             CreateMap<Map, MapResponseDto>()
                 .ForMember(dest => dest.Robots, opt => opt.MapFrom(src => src.Robots))
                 .ForMember(dest => dest.ImageData, opt => opt.MapFrom(src => src.ImageData))

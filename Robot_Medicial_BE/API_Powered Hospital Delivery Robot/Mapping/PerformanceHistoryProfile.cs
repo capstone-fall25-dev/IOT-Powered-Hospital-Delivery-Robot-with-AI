@@ -4,18 +4,21 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho lịch sử hiệu suất robot
+    /// </summary>
     public class PerformanceHistoryProfile : Profile
     {
         public PerformanceHistoryProfile()
         {
-            // Mapping từ DTO sang Entity (cho Create/Update)
+            // DTO → Entity (cho Create/Update)
             CreateMap<PerformanceHistoryDto, PerformanceHistory>()
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore()) 
-                .ForMember(dest => dest.CompletionDate, opt => opt.MapFrom(src => src.CompletionDate)); 
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CompletionDate, opt => opt.MapFrom(src => src.CompletionDate));
 
-            // Mapping từ Entity sang Response DTO (cho Get)
+            // Entity → Response DTO (cho Get)
             CreateMap<PerformanceHistory, PerformanceHistoryResponseDto>()
-                .ForMember(dest => dest.RobotCode, opt => opt.MapFrom(src => src.Robot.Code)); // Map từ relation Robot
+                .ForMember(dest => dest.RobotCode, opt => opt.MapFrom(src => src.Robot.Code));
         }
     }
 }

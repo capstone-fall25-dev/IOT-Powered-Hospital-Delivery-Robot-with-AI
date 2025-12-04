@@ -31,7 +31,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         // Hoàn thành toàn bộ task (robot báo xong, xác nhận giao thành công)
         Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId);
 
+        // Bắt đầu nhiệm vụ
         Task<TaskResponseDto?> StartTaskAsync(ulong taskId);
+        
+        // Tự động hủy các nhiệm vụ quá hạn chưa bắt đầu
         Task CancelOverduePendingTasksAsync();
+
+        // Hủy nhiệm vụ (giải phóng compartments, đưa robot về trạm, lưu vào DB)
+        Task<TaskResponseDto?> CancelTaskAsync(ulong taskId, string? reason = null);
     }
 }

@@ -4,6 +4,9 @@ using API_Powered_Hospital_Delivery_Robot.Hubs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Xử lý nhận và broadcast frame camera từ robot
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RobotCameraController : ControllerBase
@@ -17,6 +20,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Request gửi frame camera
+        /// </summary>
         public class CameraFrameRequest
         {
             public string Image_b64 { get; set; } = string.Empty;   // Ảnh base64 (jpg/png)
@@ -25,13 +31,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// 📸 Nhận frame từ ROS2 hoặc Node.js → broadcast tới FE
+        /// Nhận frame từ ROS2 hoặc Node.js và broadcast tới FE
         /// </summary>
         [HttpPost("SendFrame")]
         public async Task<IActionResult> SendFrame([FromBody] CameraFrameRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Image_b64))
-                return BadRequest("Image_b64 is required");
+                return BadRequest("Image_b64 là bắt buộc");
 
             try
             {
@@ -46,7 +52,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveCameraFrame", frameData);
-                // _logger.LogInformation("🎥 [Camera] Frame broadcasted (frame_id={FrameId})", req.FrameId);
 
                 return Ok(new { status = "sent", frame_id = req.FrameId });
             }

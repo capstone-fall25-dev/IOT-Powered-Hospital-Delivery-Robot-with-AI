@@ -4,6 +4,9 @@ using API_Powered_Hospital_Delivery_Robot.Hubs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Điều khiển bật/tắt robot qua SignalR
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RobotPowerController : ControllerBase
@@ -18,9 +21,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _logger = logger;
         }
 
-        // ============================================================
-        // 1️⃣ FE gọi để toggle trạng thái robot (bật/tắt)
-        // ============================================================
+        /// <summary>
+        /// Bật/tắt robot (toggle trạng thái)
+        /// </summary>
         [HttpPost("toggle")]
         public async Task<IActionResult> TogglePower()
         {
@@ -36,7 +39,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 timestamp = DateTime.Now
             };
 
-            // Gửi tới tất cả client kết nối SignalR (Node.js, FE, v.v.)
+            // Gửi tới tất cả client kết nối SignalR
             _logger.LogInformation("📡 [SignalR] Sending ReceiveRobotPower → state = {State}", state);
             await _hubContext.Clients.All.SendAsync("ReceiveRobotPower", command);
 
@@ -44,16 +47,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { status = "ok", power = _isRobotOn });
         }
 
-        // ============================================================
-        // 2️⃣ Node.js/ROS2 gửi phản hồi khi đã thực thi xong
-        // ============================================================
+        /// <summary>
+        /// Node.js/ROS2 gửi phản hồi khi đã thực thi xong
+        /// </summary>
         [HttpPost("report")]
         public async Task<IActionResult> ReportPower([FromBody] PowerReport report)
         {
             if (report == null)
             {
                 _logger.LogWarning("⚠️ [API] ReportPower called with null body.");
-                return BadRequest("Report body cannot be null.");
+                return BadRequest("Nội dung báo cáo không được để trống.");
             }
 
             _isRobotOn = report.Power;
@@ -61,7 +64,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             _logger.LogInformation("📥 [REPORT] Received from {Source}: Robot state = {State}", report.Source, state);
 
-            // Broadcast trạng thái này cho toàn bộ FE đang kết nối
+            // Broadcast trạng thái cho toàn bộ FE đang kết nối
             var message = new
             {
                 power = _isRobotOn,
@@ -77,9 +80,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(new { status = "ok", currentPower = _isRobotOn });
         }
 
-        // ============================================================
-        // 🔧 Model
-        // ============================================================
+        /// <summary>
+        /// Model báo cáo trạng thái robot
+        /// </summary>
         public class PowerReport
         {
             public bool Power { get; set; }

@@ -6,6 +6,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý lịch sử nhiệm vụ
+    /// </summary>
     public class TaskHistoryService : ITaskHistoryService
     {
         private readonly ITaskHistoryRepository _repo;
@@ -17,6 +20,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Tạo lịch sử từ nhiệm vụ (khi hoàn thành hoặc hủy)
+        /// </summary>
         public async System.Threading.Tasks.Task CreateHistoryFromTaskAsync(Models.Entities.Task task, string? note = null)
         {
             var history = new TaskHistory
@@ -66,6 +72,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _repo.AddAsync(history);
         }
 
+        /// <summary>
+        /// Lấy danh sách lịch sử nhiệm vụ (có phân trang và lọc)
+        /// </summary>
         public async Task<PagedTaskHistoryDto> GetHistoryAsync(TaskHistoryFilterDto filter)
         {
             var items = await _repo.GetHistoryAsync(filter);
@@ -79,10 +88,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 PageSize = filter.PageSize
             };
         }
+
+        /// <summary>
+        /// Lấy lịch sử gần nhất của một nhiệm vụ
+        /// </summary>
         public async Task<TaskHistory?> GetLastHistoryAsync(ulong taskId)
         {
             return await _repo.GetLastHistoryAsync(taskId);
         }
+
+        /// <summary>
+        /// Lấy chi tiết lịch sử nhiệm vụ theo ID
+        /// </summary>
         public async Task<TaskHistoryResponseDto?> GetDetailAsync(ulong historyId)
         {
             var entity = await _repo.GetByIdAsync(historyId);

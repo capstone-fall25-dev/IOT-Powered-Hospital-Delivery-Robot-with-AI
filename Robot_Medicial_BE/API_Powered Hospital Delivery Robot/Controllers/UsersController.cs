@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý tài khoản nhân viên (chỉ admin)
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "admin")]
@@ -20,7 +23,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách người dùng (có thể lọc theo trạng thái hoạt động)
+        /// <summary>
+        /// Lấy danh sách nhân viên (có thể lọc theo trạng thái hoạt động)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetAll([FromQuery] bool? isActive = null)
         {
@@ -28,7 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(users);
         }
 
-        // Lấy thông tin chi tiết một người dùng theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết một nhân viên theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<UserResponseDto>> GetById(ulong id)
         {
@@ -38,7 +45,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(user);
         }
 
-        // Lấy trạng thái online/offline hoặc thông tin hoạt động của người dùng
+        /// <summary>
+        /// Lấy trạng thái online/offline hoặc thông tin hoạt động của nhân viên
+        /// </summary>
         [HttpGet("{id}/status")]
         public async Task<ActionResult<UserStatusDto>> GetStatus(ulong id)
         {
@@ -53,7 +62,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Tạo người dùng mới
+        /// <summary>
+        /// Tạo tài khoản nhân viên mới
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<UserResponseDto>> Create([FromBody] UserDto userDto)
         {
@@ -68,7 +79,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin người dùng
+        /// <summary>
+        /// Cập nhật thông tin nhân viên
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<UserResponseDto>> Update(ulong id, [FromBody] UserDto userDto)
         {
@@ -85,7 +98,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Kích hoạt tài khoản người dùng
+        /// <summary>
+        /// Kích hoạt tài khoản nhân viên
+        /// </summary>
         [HttpPatch("{id}/activate")]
         public async Task<IActionResult> Activate(ulong id)
         {
@@ -102,7 +117,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Vô hiệu hóa tài khoản người dùng
+        /// <summary>
+        /// Vô hiệu hóa tài khoản nhân viên
+        /// </summary>
         [HttpPatch("{id}/deactivate")]
         public async Task<IActionResult> Deactivate(ulong id)
         {
@@ -119,27 +136,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Controllers/UsersController.cs — SỬA 2 METHOD NÀY
-
-        // GET: api/users/{id}/sessions
+        /// <summary>
+        /// Lấy danh sách session đăng nhập của nhân viên
+        /// </summary>
         [HttpGet("{id}/sessions")]
         //[Authorize(Roles = "admin")]
         public async Task<ActionResult> GetUserSessions(ulong id)
         {
-            var user = await _service.GetByIdAsync(id); // ĐÃ CÓ includeSessions trong service rồi!
+            var user = await _service.GetByIdAsync(id);
             if (user == null) return NotFound();
 
             var sessions = (user.ActiveSessions ?? Enumerable.Empty<SessionResponseDto>())
-    .Select(s => new
-    {
-        s.Id,
-        s.IpAddress,
-        s.UserAgent,
-        LoginAt = s.CreatedAt.ToString("dd/MM HH:mm"),
-        ExpiresAt = s.ExpiresAt.ToString("dd/MM HH:mm"),
-        IsCurrent = Request.Headers.Authorization.ToString().Contains(s.SessionToken ?? "")
-    })
-    .ToList();
+                .Select(s => new
+                {
+                    s.Id,
+                    s.IpAddress,
+                    s.UserAgent,
+                    LoginAt = s.CreatedAt.ToString("dd/MM HH:mm"),
+                    ExpiresAt = s.ExpiresAt.ToString("dd/MM HH:mm"),
+                    IsCurrent = Request.Headers.Authorization.ToString().Contains(s.SessionToken ?? "")
+                })
+                .ToList();
 
             return Ok(new
             {
@@ -151,7 +168,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             });
         }
 
-        // POST: api/users/{id}/kick-all
+        /// <summary>
+        /// Đăng xuất tất cả session của nhân viên (chỉ admin)
+        /// </summary>
         [HttpPost("{id}/kick-all")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> KickAllSessions(ulong id)
