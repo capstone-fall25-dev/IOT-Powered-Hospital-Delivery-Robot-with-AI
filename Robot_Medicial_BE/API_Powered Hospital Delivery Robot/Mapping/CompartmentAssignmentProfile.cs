@@ -4,6 +4,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho gán ngăn chứa
+    /// </summary>
     public class CompartmentAssignmentProfile : Profile
     {
         public CompartmentAssignmentProfile()
@@ -16,13 +19,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CompartmentCode, opt => opt.MapFrom(src => src.Compartment != null ? src.Compartment.CompartmentCode : null))
                 .ForMember(dest => dest.StopCustomName, opt => opt.MapFrom(src => src.Stop != null ? src.Stop.CustomName : null));
 
-            CreateMap<LoadCompartmentDto, CompartmentAssignment>() // Partial map for item_desc
+            // Mapping nạp ngăn chứa
+            CreateMap<LoadCompartmentDto, CompartmentAssignment>()
                 .ForMember(dest => dest.ItemDesc, opt => opt.MapFrom(src => src.ItemDesc));
 
             CreateMap<RobotCompartment, CompartmentDto>()
-    .ForMember(d => d.Code, o => o.MapFrom(s => s.CompartmentCode))
-    .ForMember(d => d.Id, o => o.MapFrom(s => s.Id));
-
+                .ForMember(d => d.Code, o => o.MapFrom(s => s.CompartmentCode))
+                .ForMember(d => d.Id, o => o.MapFrom(s => s.Id));
         }
     }
 }

@@ -6,6 +6,9 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý nhật ký hệ thống
+    /// </summary>
     public class LogService : ILogService
     {
         private readonly ILogRepository _repository;
@@ -17,6 +20,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Tạo nhật ký mới
+        /// </summary>
         public async Task<LogResponseDto> CreateAsync(LogDto logDto)
         {
             var log = _mapper.Map<Log>(logDto);
@@ -26,12 +32,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return _mapper.Map<LogResponseDto>(created);
         }
 
+        /// <summary>
+        /// Lấy danh sách nhật ký (có thể lọc theo robot, nhiệm vụ, loại nhật ký)
+        /// </summary>
         public async Task<IEnumerable<LogResponseDto>> GetAllAsync(ulong? robotId = null, ulong? taskId = null, string? logType = null)
         {
             var logs = await _repository.GetAllAsync(robotId, taskId, logType);
             return _mapper.Map<IEnumerable<LogResponseDto>>(logs);
         }
 
+        /// <summary>
+        /// Lấy chi tiết nhật ký theo ID
+        /// </summary>
         public async Task<LogResponseDto?> GetByIdAsync(ulong id)
         {
             var log = await _repository.GetByIdAsync(id);

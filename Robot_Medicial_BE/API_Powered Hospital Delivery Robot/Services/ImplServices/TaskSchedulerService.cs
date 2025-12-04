@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Service chạy nền để tự động hủy nhiệm vụ quá hạn
+    /// </summary>
     public class TaskSchedulerService : BackgroundService
     {
         private readonly IServiceProvider _services;
@@ -15,6 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _taskHub = taskHub;
         }
 
+        /// <summary>
+        /// Chạy vòng lặp kiểm tra và hủy nhiệm vụ quá hạn
+        /// </summary>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -24,7 +30,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 await taskService.CancelOverduePendingTasksAsync();
 
-                // Kiểm tra mỗi 30 giây (tùy chỉnh được)
+                // Kiểm tra mỗi 30 giây
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }

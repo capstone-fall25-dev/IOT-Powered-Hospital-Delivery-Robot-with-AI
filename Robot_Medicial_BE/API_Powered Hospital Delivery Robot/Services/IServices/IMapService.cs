@@ -12,7 +12,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Tạo mới bản đồ (hỗ trợ upload file ảnh map)
         Task<MapResponseDto> CreateAsync(MapDto mapDto, IFormFile? imageFile = null);
-        //Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto, IFormFile? imageFile = null);
 
         // Cập nhật thông tin bản đồ (không thay đổi ảnh)
         Task<MapResponseDto?> UpdateAsync(ulong id, MapDto mapDto);

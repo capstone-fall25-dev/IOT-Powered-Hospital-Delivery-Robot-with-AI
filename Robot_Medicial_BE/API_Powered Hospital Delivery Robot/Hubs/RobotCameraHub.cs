@@ -3,10 +3,13 @@ using Microsoft.AspNetCore.SignalR;
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
     /// <summary>
-    /// 🎥 Hub chuyên nhận & phát video/frame hình ảnh từ Robot lên các client web
+    /// Hub nhận và phát video/frame hình ảnh từ robot lên các client web
     /// </summary>
     public class RobotCameraHub : Hub
     {
+        /// <summary>
+        /// Khi client kết nối
+        /// </summary>
         public override async Task OnConnectedAsync()
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -15,6 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             await base.OnConnectedAsync();
         }
 
+        /// <summary>
+        /// Khi client ngắt kết nối
+        /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -30,7 +36,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 📡 Phát frame ảnh (Base64) đến tất cả client
+        /// Phát frame ảnh (Base64) đến tất cả client
         /// </summary>
         public async Task BroadcastCameraFrame(object frame)
         {

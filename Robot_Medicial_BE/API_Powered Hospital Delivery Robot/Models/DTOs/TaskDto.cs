@@ -52,6 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [Required(ErrorMessage = "Phải chọn loại ngăn chứa.")]
         public ulong CategoryId { get; set; }
 
+        // Mã đơn thuốc (bắt buộc nếu loại ngăn chứa liên quan đến thuốc)
+        public string? PrescriptionCode { get; set; }
+
         public string? CustomName { get; set; }
 
         // FE nhập mô tả vật phẩm (tùy chọn)
@@ -83,6 +86,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong PatientId { get; set; }
         public ulong CompartmentId { get; set; }
         public ulong CategoryId { get; set; }
+
+        // Mã đơn thuốc (bắt buộc nếu loại ngăn chứa liên quan đến thuốc)
+        public string? PrescriptionCode { get; set; }
 
         public string? CustomName { get; set; }
         public string? ItemDesc { get; set; }
@@ -293,6 +299,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     public class StopStatusChangeDto
     {
         public string Status { get; set; } = "";
+    }
+
+    public class CancelTaskDto
+    {
+        public string? Reason { get; set; }
     }
 
 }

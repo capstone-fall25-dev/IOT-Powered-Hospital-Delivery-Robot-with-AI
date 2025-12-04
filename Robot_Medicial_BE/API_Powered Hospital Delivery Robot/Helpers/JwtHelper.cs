@@ -6,28 +6,28 @@ using System.Text;
 
 namespace API_Powered_Hospital_Delivery_Robot.Helpers
 {
+    /// <summary>
+    /// Xử lý tạo và quản lý JWT token cho xác thực người dùng
+    /// </summary>
     public static class JwtHelper
     {
         /// <summary>
-        /// Tạo JWT Token cho người dùng sau khi đăng nhập thành công
+        /// Tạo JWT token cho nhân viên sau khi đăng nhập thành công
         /// </summary>
-        /// <param name="user">Thông tin người dùng</param>
-        /// <param name="configuration">Cấu hình từ appsettings.json</param>
-        /// <returns>Chuỗi JWT Token</returns>
         public static string GenerateToken(User user, IConfiguration configuration)
         {
-            // Tạo các claim (thông tin đưa vào token)
+            // Tạo thông tin xác thực đưa vào token
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role),
-                new Claim(ClaimTypes.Name, user.FullName ?? "User"),
-                new Claim("fullName", user.FullName ?? "User"),
+                new Claim(ClaimTypes.Name, user.FullName ?? "Nhân viên"),
+                new Claim("fullName", user.FullName ?? "Nhân viên"),
                 new Claim("CreatedAt", user.CreatedAt.ToString("O"))
             };
 
-            // Tạo key token
+            // Lấy khóa bí mật từ cấu hình
             var secretKey = configuration["Jwt:Secret"];
             if (string.IsNullOrEmpty(secretKey))
                 throw new Exception("Thiếu cấu hình JWT Secret Key trong appsettings.json");
@@ -35,7 +35,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Tạo token 
+            // Tạo token với thời gian hết hạn
             var token = new JwtSecurityToken(
                 issuer: configuration["Jwt:Issuer"],
                 audience: configuration["Jwt:Audience"],

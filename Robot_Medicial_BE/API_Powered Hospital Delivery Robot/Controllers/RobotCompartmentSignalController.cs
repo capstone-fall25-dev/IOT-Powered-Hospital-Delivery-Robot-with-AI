@@ -6,6 +6,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Điều khiển mở/đóng ngăn chứa robot qua SignalR
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class RobotCompartmentSignalController : ControllerBase
@@ -25,7 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// 📦 DTO: Request từ FE/ROS2 gửi yêu cầu điều khiển ngăn thuốc
+        /// Request từ FE/ROS2 gửi yêu cầu điều khiển ngăn chứa
         /// </summary>
         public class CompartmentSignalRequest
         {
@@ -37,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
-        /// 📡 Gửi tín hiệu mở/đóng ngăn thuốc sang ROS2 và cập nhật DB
+        /// Gửi tín hiệu mở/đóng ngăn chứa sang ROS2 và cập nhật database
         /// </summary>
         [HttpPost("signal")]
         public async Task<IActionResult> SendCompartmentSignal([FromBody] CompartmentSignalRequest req)
@@ -55,7 +58,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
             try
             {
-                // 1. Cập nhật trạng thái trong DB
+                // Cập nhật trạng thái trong database
                 var compartment = action == "open"
                     ? await _service.OpenCompartmentAsync(req.CompartmentId)
                     : await _service.CloseCompartmentAsync(req.CompartmentId);
@@ -63,7 +66,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 if (compartment == null)
                     return NotFound($"Không tìm thấy ngăn chứa có ID = {req.CompartmentId}.");
 
-                // 2️. Gửi tín hiệu tới ROS2 qua SignalR
+                // Gửi tín hiệu tới ROS2 qua SignalR
                 var signalData = new
                 {
                     type = "compartment_control",
@@ -75,7 +78,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 await _hubContext.Clients.All.SendAsync("ReceiveCompartmentSignal", signalData);
                 _logger.LogInformation("📦 Sent compartment signal: {Code} => {Action}", compartment.CompartmentCode, action.ToUpper());
 
-                // 3. Trả về kết quả thành công
                 return Ok(new
                 {
                     status = "sent",

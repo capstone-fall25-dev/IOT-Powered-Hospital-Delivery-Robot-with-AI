@@ -69,3 +69,12 @@ export async function fetchTaskHistory(params) {
 export async function fetchTaskHistoryDetail(id) {
     return await apiFetch(`/taskhistory/${id}`);
 }
+
+/**
+ * Hủy nhiệm vụ (chỉ cho phép khi task chưa bắt đầu - pending)
+ */
+export const cancelTask = (taskId, reason = null) =>
+  apiFetch(`/tasks/${taskId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });

@@ -4,30 +4,28 @@ using AutoMapper;
 
 namespace API_Powered_Hospital_Delivery_Robot.Mapping
 {
+    /// <summary>
+    /// Cấu hình mapping cho bệnh nhân, thuốc, đơn thuốc và phòng
+    /// </summary>
     public class MedicalProfile : Profile
     {
         public MedicalProfile()
         {
-            // ======================================================
-            //  PATIENT – CREATE
-            // ======================================================
+            // Tạo bệnh nhân
             CreateMap<PatientCreateDto, Patient>()
                 .ForMember(dest => dest.Dob,
                     opt => opt.MapFrom(src =>
                         src.Dob.HasValue ? DateOnly.FromDateTime(src.Dob.Value) : (DateOnly?)null))
                 .ForMember(dest => dest.CreatedAt,
-                    opt => opt.Ignore()); // Set in service
+                    opt => opt.Ignore());
 
-
-            // ======================================================
-            //  PATIENT – UPDATE (ONLY MAP WHEN SOURCE NOT NULL)
-            // ======================================================
+            // Cập nhật bệnh nhân (chỉ map field có giá trị)
             CreateMap<PatientUpdateDto, Patient>()
                 .ForAllMembers(opt =>
                     opt.Condition((src, dest, val) =>
-                        val != null)); // Chỉ map field có giá trị, tránh overwrite null
+                        val != null));
 
-            // Dob convert cho update
+            // Chuyển đổi ngày sinh cho update
             CreateMap<PatientUpdateDto, Patient>()
                 .ForMember(dest => dest.Dob,
                     opt => opt.MapFrom((src, dest) =>
@@ -35,9 +33,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForAllMembers(opt =>
                     opt.Condition((src, dest, val) => val != null));
 
-            // ======================================================
-            //  PATIENT → RESPONSE DTO
-            // ======================================================
+            // Bệnh nhân → Response DTO
             CreateMap<Patient, PatientResponseDto>()
                 .ForMember(dest => dest.RoomName,
                     opt => opt.MapFrom(src => src.Room != null ? src.Room.RoomName : null))
@@ -45,10 +41,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                     opt => opt.MapFrom(src =>
                         src.Dob.HasValue ? src.Dob.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null));
 
-
-            // ======================================================
-            //  PATIENT REPORT DTO
-            // ======================================================
+            // Báo cáo bệnh nhân
             CreateMap<Patient, PatientReportDto>()
                 .ForMember(dest => dest.TotalVisits,
                     opt => opt.MapFrom(src => src.Prescriptions.Count))
@@ -69,29 +62,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CurrentRoom,
                     opt => opt.MapFrom(src => src.Room != null ? src.Room.RoomName : null));
 
-
-            // ======================================================
-            //  PATIENT IN ROOM DTO
-            // ======================================================
+            // Bệnh nhân trong phòng
             CreateMap<Patient, PatientInRoomDto>()
                 .ForMember(dest => dest.Gender,
                     opt => opt.MapFrom(src => src.Gender ?? "-"))
                 .ForMember(dest => dest.Status,
                     opt => opt.MapFrom(src => src.Status));
 
-
-            // ======================================================
-            // DRUG CATEGORY
-            // ======================================================
+            // Danh mục thuốc
             CreateMap<CategoryCreateDto, DrugCategory>();
             CreateMap<CategoryUpdateDto, DrugCategory>();
-
             CreateMap<DrugCategory, CategoryResponseDto>();
 
-
-            // ======================================================
-            // MEDICINE
-            // ======================================================
+            // Thuốc
             CreateMap<MedicineCreateDto, Medicine>();
             CreateMap<MedicineUpdateDto, Medicine>()
                 .ForAllMembers(opt =>
@@ -101,32 +84,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CategoryName,
                     opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
 
-
-            // ======================================================
-            // PRESCRIPTION
-            // ======================================================
+            // Đơn thuốc
             CreateMap<Prescription, PrescriptionResponseDto>()
                 .ForMember(dest => dest.PatientName,
                     opt => opt.MapFrom(src => src.Patient.FullName))
                 .ForMember(dest => dest.Items,
                     opt => opt.MapFrom(src => src.PrescriptionItems));
 
-
-            // ======================================================
-            // PRESCRIPTION ITEM
-            // ======================================================
+            // Mục đơn thuốc
             CreateMap<PrescriptionItem, PrescriptionItemResponseDto>()
                 .ForMember(dest => dest.MedicineCode,
                     opt => opt.MapFrom(src => src.Medicine != null ? src.Medicine.MedicineCode : null))
                 .ForMember(dest => dest.MedicineName,
                     opt => opt.MapFrom(src => src.Medicine != null ? src.Medicine.Name : null));
 
-
-            // ======================================================
-            // ROOM
-            // ======================================================
+            // Phòng
             CreateMap<RoomDto, Room>();
-
             CreateMap<Room, RoomResponseDto>()
                 .ForMember(dest => dest.PatientCount,
                     opt => opt.MapFrom(src => src.Patients.Count))

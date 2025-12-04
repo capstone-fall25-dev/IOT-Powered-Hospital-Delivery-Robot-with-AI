@@ -129,10 +129,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
         public async Task<bool> IsCompartmentBusyAsync(ulong id)
         {
+            // Kiểm tra compartment có đang được sử dụng bởi task active không
+            // Chỉ coi là busy nếu assignment thuộc về task chưa completed/canceled/failed
             return await _context.CompartmentAssignments
+                .Include(a => a.Stop)
+                    .ThenInclude(s => s!.Task)
                 .AnyAsync(a => a.CompartmentId == id &&
                                a.Status != "delivered" &&
-                               a.Status != "canceled");
+                               a.Status != "canceled" &&
+                               a.Stop != null &&
+                               a.Stop.Task != null &&
+                               a.Stop.Task.Status != "completed" &&
+                               a.Stop.Task.Status != "canceled" &&
+                               a.Stop.Task.Status != "failed");
         }
 
         public async Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId)

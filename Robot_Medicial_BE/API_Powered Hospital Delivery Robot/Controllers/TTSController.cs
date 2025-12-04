@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Xử lý Text-to-Speech (chuyển văn bản thành giọng nói) cho robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class TTSController : ControllerBase
@@ -18,19 +21,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         public class TTSRequest
         {
-            public string Text { get; set; }
+            public string Text { get; set; } = string.Empty;
         }
 
-        // POST: api/TTS
-        // Body: { "text": "Xin chào, mời bạn nhận thuốc" }
+        /// <summary>
+        /// Gửi lệnh đọc văn bản xuống robot qua SignalR
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Speak([FromBody] TTSRequest request)
         {
             if (string.IsNullOrEmpty(request.Text))
-                return BadRequest("Text is required");
+                return BadRequest("Văn bản là bắt buộc");
 
-            // Gửi tín hiệu xuống tất cả Robot đang kết nối vào Hub
-            // Sự kiện tên là: "ReceiveTTS"
+            // Gửi tín hiệu xuống tất cả robot đang kết nối
             await _hubContext.Clients.All.SendAsync("ReceiveTTS", request.Text);
 
             return Ok(new { message = "Đã gửi lệnh đọc xuống Robot", text = request.Text });

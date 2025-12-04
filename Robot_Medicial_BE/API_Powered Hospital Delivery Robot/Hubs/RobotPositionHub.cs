@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.SignalR;
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
     /// <summary>
-    /// 🧠 Hub trung tâm giao tiếp thời gian thực giữa Robot - Backend - Giao diện người dùng
+    /// Hub trung tâm giao tiếp real-time giữa robot, backend và giao diện người dùng
     /// </summary>
     public class RobotPositionHub : Hub
     {
-        // Khi client (JS / ROS2 / App) kết nối
+        /// <summary>
+        /// Khi client (JS / ROS2 / App) kết nối
+        /// </summary>
         public override async Task OnConnectedAsync()
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -16,7 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             await base.OnConnectedAsync();
         }
 
-        // Khi client ngắt kết nối
+        /// <summary>
+        /// Khi client ngắt kết nối
+        /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -28,7 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 📡 Gửi dữ liệu vị trí robot (x, y, theta) đến tất cả client
+        /// Gửi dữ liệu vị trí robot (x, y, theta) đến tất cả client
         /// </summary>
         public async Task BroadcastPosition(object position)
         {
@@ -46,14 +50,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 📦 Gửi tín hiệu mở/đóng ngăn thuốc
+        /// Gửi tín hiệu mở/đóng ngăn chứa
         /// </summary>
         public async Task BroadcastCompartmentSignal(object signal)
         {
             try
             {
                 await Clients.All.SendAsync("ReceiveCompartmentSignal", signal);
-                Console.WriteLine($"📦 [Broadcast] Tín hiệu ngăn thuốc: {System.Text.Json.JsonSerializer.Serialize(signal)}");
+                Console.WriteLine($"📦 [Broadcast] Tín hiệu ngăn chứa: {System.Text.Json.JsonSerializer.Serialize(signal)}");
             }
             catch (Exception ex)
             {
@@ -64,7 +68,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 🤖 Gửi lệnh điều khiển chế độ robot (mapping / run_map / save_map / ...)
+        /// Gửi lệnh điều khiển chế độ robot (mapping / run_map / save_map / ...)
         /// </summary>
         public async Task BroadcastRobotCommand(object command)
         {
@@ -82,7 +86,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 🕹️ Gửi lệnh điều khiển động cơ (A/W/S/D/X)
+        /// Gửi lệnh điều khiển động cơ (A/W/S/D/X)
         /// </summary>
         public async Task BroadcastMotorCommand(object command)
         {
@@ -99,7 +103,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             }
         }
 
-        // Gửi danh sách điểm đến (lộ trình giao thuốc) xuống robot
+        /// <summary>
+        /// Gửi danh sách điểm đến (lộ trình giao hàng) xuống robot
+        /// </summary>
         public async Task BroadcastDestinationRoute(object route)
         {
             try
@@ -118,7 +124,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 👥 Tham gia vào một nhóm (ví dụ: nhóm theo mã robot hoặc phòng bệnh)
+        /// Tham gia vào một nhóm (ví dụ: nhóm theo mã robot hoặc phòng bệnh)
         /// </summary>
         public async Task JoinGroup(string groupName)
         {
@@ -127,7 +133,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         }
 
         /// <summary>
-        /// 🚪 Rời nhóm
+        /// Rời khỏi nhóm
         /// </summary>
         public async Task LeaveGroup(string groupName)
         {
@@ -135,8 +141,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             Console.WriteLine($"🚪 Client {Context.ConnectionId} đã rời nhóm '{groupName}'");
         }
 
-         /// <summary>
-        /// 📊 Broadcast tiến độ điều hướng (navigation progress) cho client
+        /// <summary>
+        /// Phát tiến độ điều hướng (navigation progress) cho client
         /// </summary>
         public async Task BroadcastNavigationProgress(object progress)
         {

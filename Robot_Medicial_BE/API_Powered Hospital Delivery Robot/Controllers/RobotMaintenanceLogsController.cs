@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý nhật ký bảo trì robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class RobotMaintenanceLogsController : ControllerBase
@@ -15,7 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách nhật ký bảo trì (có thể lọc theo robot)
+        /// <summary>
+        /// Lấy danh sách nhật ký bảo trì (có thể lọc theo robot)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RobotMaintenanceLogResponseDto>>> GetAll([FromQuery] ulong? robotId = null)
         {
@@ -28,7 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             });
         }
 
-        // Lấy chi tiết một bản ghi bảo trì theo id
+        /// <summary>
+        /// Lấy chi tiết một bản ghi bảo trì theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<RobotMaintenanceLogResponseDto>> GetById(ulong id)
         {
@@ -38,7 +45,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(log);
         }
 
-        // Tạo mới nhật ký bảo trì (khi kỹ thuật viên bảo trì, thay pin, sửa chữa, vệ sinh robot...)
+        /// <summary>
+        /// Tạo mới nhật ký bảo trì (khi kỹ thuật viên bảo trì, thay pin, sửa chữa, vệ sinh robot)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<RobotMaintenanceLogResponseDto>> Create([FromBody] RobotMaintenanceLogDto logDto)
         {

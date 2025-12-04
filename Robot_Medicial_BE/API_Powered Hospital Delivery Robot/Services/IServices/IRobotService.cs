@@ -28,6 +28,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         // Cập nhật trạng thái robot từ ROS (gửi theo Code thay vì ID)
         Task<RobotResponseDto?> UpdateStatusAsync(RobotStatusUpdateDto dto);
 
+        // Lấy danh sách robot theo bản đồ
         Task<IEnumerable<RobotResponseDto>> GetByMapAsync(ulong mapId);
     }
 }

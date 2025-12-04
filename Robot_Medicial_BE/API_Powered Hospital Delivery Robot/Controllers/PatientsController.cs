@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý thông tin bệnh nhân
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize]
@@ -17,7 +20,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả bệnh nhân
+        /// <summary>
+        /// Lấy danh sách tất cả bệnh nhân
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetAll()
         {
@@ -25,7 +30,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(patients);
         }
 
-        // Tìm kiếm và lọc bệnh nhân theo nhiều tiêu chí
+        /// <summary>
+        /// Tìm kiếm và lọc bệnh nhân theo nhiều tiêu chí
+        /// </summary>
         [HttpPost("filter")]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> Filter([FromBody] PatientFilterDto filter)
         {
@@ -33,7 +40,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(patients);
         }
 
-        // Lấy thông tin chi tiết bệnh nhân theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết bệnh nhân theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<PatientResponseDto>> GetById(ulong id)
         {
@@ -43,7 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(patient);
         }
 
-        // Tạo mới bệnh nhân (nhập viện)
+        /// <summary>
+        /// Tạo mới bệnh nhân (nhập viện)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<PatientResponseDto>> Create([FromBody] PatientCreateDto dto)
         {
@@ -58,7 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin bệnh nhân
+        /// <summary>
+        /// Cập nhật thông tin bệnh nhân
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<PatientResponseDto>> Update(ulong id, [FromBody] PatientUpdateDto dto)
         {
@@ -75,7 +88,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xuất viện cho bệnh nhân
+        /// <summary>
+        /// Xuất viện cho bệnh nhân
+        /// </summary>
         [HttpPatch("{id}/discharge")]
         public async Task<ActionResult<PatientResponseDto>> Discharge(ulong id, [FromBody] DischargeDto dto)
         {
@@ -92,7 +107,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Lấy lịch sử nhận thuốc của bệnh nhân (liên quan đến đơn thuốc và robot giao)
+        /// <summary>
+        /// Lấy lịch sử nhận thuốc của bệnh nhân (liên quan đến đơn thuốc và robot giao)
+        /// </summary>
         [HttpGet("{id}/medicine-history")]
         public async Task<IActionResult> MedicineHistory(ulong id)
         {
@@ -107,7 +124,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Lấy báo cáo tổng hợp tình trạng bệnh nhân (có thể dùng cho bác sĩ)
+        /// <summary>
+        /// Lấy báo cáo tổng hợp tình trạng bệnh nhân (dùng cho bác sĩ)
+        /// </summary>
         [HttpGet("{id}/report")]
         public async Task<IActionResult> Report(ulong id)
         {
@@ -122,6 +141,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy danh sách bệnh nhân có đơn thuốc đã được duyệt
+        /// </summary>
         [HttpGet("with-approved-prescription")]
         public async Task<ActionResult<IEnumerable<PatientResponseDto>>> GetPatientsWithApprovedPrescription()
         {

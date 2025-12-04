@@ -21,5 +21,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Khôi phục đơn thuốc đã xóa mềm
         Task<bool> RestoreAsync(ulong id);
+
+        // Xác nhận đơn thuốc theo mã code (dùng khi tạo task)
+        // Tự động chuyển status thành "approved" (pending/dispensed/approved → approved)
+        Task<PrescriptionResponseDto> ApproveByCodeAsync(string prescriptionCode);
     }
 }

@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
+    /// <summary>
+    /// Quản lý cảnh báo hệ thống
+    /// </summary>
     public class AlertService : IAlertService
     {
         private readonly IAlertRepository _repository;
@@ -34,6 +37,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _alertHub = alertHub;
         }
 
+        /// <summary>
+        /// Tạo cảnh báo mới
+        /// </summary>
         public async Task<AlertResponseDto> CreateAsync(AlertDto alertDto)
         {
             var alert = _mapper.Map<Alert>(alertDto);
@@ -41,76 +47,88 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
 
-            // Gửi alert real-time
+            // Gửi cảnh báo real-time qua SignalR
             await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
 
             return response;
         }
 
+        /// <summary>
+        /// Tạo cảnh báo liên quan đến thuốc (hư hỏng, thiếu, v.v.)
+        /// </summary>
         public async Task<AlertResponseDto> CreateMedicineAlertAsync(ulong prescriptionItemId, string reason, string description, ulong? taskId = null)
         {
             var item = await _itemRepository.GetByIdAsync(prescriptionItemId);
             if (item == null)
             {
-                throw new InvalidOperationException("Prescription item not found");
+                throw new InvalidOperationException("Không tìm thấy chi tiết đơn thuốc");
             }
 
             var medicine = await _medicineRepository.GetByIdAsync(item.MedicineId);
             if (medicine == null)
             {
-                throw new InvalidOperationException("Medicine not found");
+                throw new InvalidOperationException("Không tìm thấy thuốc");
             }
 
-            // Fetch robot_id from task (required since alerts.robot_id NOT NULL)
+            // Lấy robot_id từ task (bắt buộc vì alerts.robot_id NOT NULL)
             if (!taskId.HasValue)
             {
-                throw new ArgumentException("TaskId is required to fetch the associated robot");
+                throw new ArgumentException("TaskId là bắt buộc để lấy robot liên quan");
             }
 
             var task = await _taskRepository.GetByIdAsync(taskId.Value);
             if (task == null)
             {
-                throw new InvalidOperationException("Task not found");
+                throw new InvalidOperationException("Không tìm thấy nhiệm vụ");
             }
 
             if (task.RobotId == 0)
             {
-                throw new InvalidOperationException("Task has no assigned robot");
+                throw new InvalidOperationException("Nhiệm vụ chưa được gán robot");
             }
 
-            // Report damaged in item
+            // Tạo cảnh báo hư hỏng/thất lạc thuốc
             var alert = new Alert
             {
-                RobotId = task.RobotId, // Use robot from task
+                RobotId = task.RobotId,
                 Severity = "high",
                 Category = "manual",
                 Status = "open",
-                Message = $"Medicine '{medicine.Name}' in item {prescriptionItemId} is {reason}: {description}. Stock updated.",
+                Message = $"Thuốc '{medicine.Name}' trong chi tiết đơn {prescriptionItemId} bị {reason}: {description}. Đã cập nhật tồn kho.",
                 CreatedAt = DateTime.Now,
-                PrescriptionItemId = prescriptionItemId // Liên kết
+                PrescriptionItemId = prescriptionItemId
             };
 
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
 
-            // Gửi alert real-time
+            // Gửi cảnh báo real-time qua SignalR
             await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
 
             return response;
         }
 
+        /// <summary>
+        /// Lấy danh sách cảnh báo (có thể lọc theo robot, trạng thái, mức độ, chi tiết đơn thuốc)
+        /// </summary>
         public async Task<IEnumerable<AlertResponseDto>> GetAllAsync(ulong? robotId = null, string? status = null, string? severity = null, ulong? prescriptionItemId = null)
         {
             var alerts = await _repository.GetAllAsync(robotId, status, severity, prescriptionItemId);
             return _mapper.Map<IEnumerable<AlertResponseDto>>(alerts);
         }
 
+        /// <summary>
+        /// Lấy chi tiết cảnh báo theo ID
+        /// </summary>
         public async Task<AlertResponseDto?> GetByIdAsync(ulong id)
         {
             var alert = await _repository.GetByIdAsync(id);
             return alert != null ? _mapper.Map<AlertResponseDto>(alert) : null;
         }
 
+        /// <summary>
+        /// Cập nhật thông tin cảnh báo
+        /// </summary>
         public async Task<AlertResponseDto?> UpdateAsync(ulong id, AlertDto alertDto)
         {
             var alert = _mapper.Map<Alert>(alertDto);

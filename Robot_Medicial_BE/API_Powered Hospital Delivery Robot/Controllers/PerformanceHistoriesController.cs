@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý lịch sử hiệu suất robot
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize] 
@@ -16,7 +19,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách lịch sử hiệu suất (có thể lọc theo robot)
+        /// <summary>
+        /// Lấy danh sách lịch sử hiệu suất (có thể lọc theo robot)
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PerformanceHistoryResponseDto>>> GetAll(
             [FromQuery] ulong? robotId = null)
@@ -25,7 +30,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(histories);
         }
 
-        // Lấy chi tiết một bản ghi hiệu suất theo id
+        /// <summary>
+        /// Lấy chi tiết một bản ghi hiệu suất theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<PerformanceHistoryResponseDto>> GetById(ulong id)
         {
@@ -35,7 +42,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(history);
         }
 
-        // Tạo mới bản ghi hiệu suất (thường do robot hoặc hệ thống tự động ghi lại)
+        /// <summary>
+        /// Tạo mới bản ghi hiệu suất (thường do robot hoặc hệ thống tự động ghi lại)
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<PerformanceHistoryResponseDto>> Create([FromBody] PerformanceHistoryDto historyDto)
         {

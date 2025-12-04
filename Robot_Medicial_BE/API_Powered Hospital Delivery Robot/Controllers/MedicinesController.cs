@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý danh mục thuốc và thông tin thuốc
+    /// </summary>
     [Route("api/medicine")]
     [ApiController]
     //[Authorize]
@@ -16,9 +19,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // ============================== DANH MỤC THUỐC (CATEGORY) ==============================
+        // ============================== DANH MỤC THUỐC ==============================
 
-        // Lấy danh sách tất cả danh mục thuốc
+        /// <summary>
+        /// Lấy danh sách tất cả danh mục thuốc
+        /// </summary>
         [HttpGet("categories")]
         public async Task<ActionResult<IEnumerable<CategoryResponseDto>>> GetCategories()
         {
@@ -26,7 +31,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(categories);
         }
 
-        // Tạo danh mục thuốc mới
+        /// <summary>
+        /// Tạo danh mục thuốc mới
+        /// </summary>
         [HttpPost("categories")]
         public async Task<ActionResult<CategoryResponseDto>> CreateCategory([FromBody] CategoryCreateDto dto)
         {
@@ -41,7 +48,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật danh mục thuốc
+        /// <summary>
+        /// Cập nhật danh mục thuốc
+        /// </summary>
         [HttpPut("categories/{id}")]
         public async Task<ActionResult<CategoryResponseDto>> UpdateCategory(ulong id, [FromBody] CategoryUpdateDto dto)
         {
@@ -58,7 +67,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xóa danh mục thuốc (chỉ khi không còn thuốc nào thuộc về nó)
+        /// <summary>
+        /// Xóa danh mục thuốc (chỉ khi không còn thuốc nào thuộc về nó)
+        /// </summary>
         [HttpDelete("categories/{id}")]
         public async Task<IActionResult> DeleteCategory(ulong id)
         {
@@ -73,9 +84,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // ============================== THUỐC (MEDICINE) ==============================
+        // ============================== THUỐC ==============================
 
-        // Lấy danh sách tất cả thuốc
+        /// <summary>
+        /// Lấy danh sách tất cả thuốc
+        /// </summary>
         [HttpGet("list")]
         public async Task<ActionResult<IEnumerable<MedicineResponseDto>>> GetMedicines()
         {
@@ -83,7 +96,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(medicines);
         }
 
-        // Lấy thông tin chi tiết một loại thuốc theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết một loại thuốc theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<MedicineResponseDto>> GetMedicine(ulong id)
         {
@@ -93,7 +108,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(medicine);
         }
 
-        // Thêm thuốc mới vào hệ thống
+        /// <summary>
+        /// Thêm thuốc mới vào hệ thống
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<MedicineResponseDto>> CreateMedicine([FromBody] MedicineCreateDto dto)
         {
@@ -108,7 +125,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin thuốc (tên, liều lượng, đơn vị, tồn kho,...)
+        /// <summary>
+        /// Cập nhật thông tin thuốc (tên, liều lượng, đơn vị, tồn kho)
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<MedicineResponseDto>> UpdateMedicine(ulong id, [FromBody] MedicineUpdateDto dto)
         {
@@ -125,7 +144,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xóa thuốc 
+        /// <summary>
+        /// Xóa thuốc
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMedicine(ulong id)
         {

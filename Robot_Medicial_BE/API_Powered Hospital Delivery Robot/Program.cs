@@ -1,7 +1,6 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
-using API_Powered_Hospital_Delivery_Robot.Mappings;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -17,7 +16,15 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. BASIC SERVICES CONFIGURATION
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Cấu hình DateTime serialization: trả về local time (giờ Việt Nam UTC+7) thay vì UTC
+        // Điều này đảm bảo frontend nhận đúng giờ đã lưu trong database
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        // DateTime sẽ được serialize theo format ISO 8601 với local time (không có Z)
+        // Frontend sẽ parse đúng như local time
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

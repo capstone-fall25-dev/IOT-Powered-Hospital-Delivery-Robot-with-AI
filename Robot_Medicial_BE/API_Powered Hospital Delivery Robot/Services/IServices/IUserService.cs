@@ -66,8 +66,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         // Đổi mật khẩu
         Task<string> ChangePasswordAsync(string email, ChangePasswordDto dto);
 
-        // Chỉ cần token
+        // Đăng xuất (hủy session theo token)
         Task LogoutAsync(string token);
+        
+        // Buộc đăng xuất tất cả session của nhân viên
         Task<object> ForceLogoutAllSessionsAsync(ulong userId);
     }
 }

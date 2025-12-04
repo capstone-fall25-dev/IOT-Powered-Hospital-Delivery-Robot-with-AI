@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý thông tin phòng bệnh
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize] 
@@ -16,7 +19,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _service = service;
         }
 
-        // Lấy danh sách tất cả các phòng
+        /// <summary>
+        /// Lấy danh sách tất cả các phòng
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAll()
         {
@@ -24,7 +29,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(rooms);
         }
 
-        // Lấy thông tin chi tiết một phòng theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết một phòng theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<RoomResponseDto>> GetById(ulong id)
         {
@@ -34,7 +41,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(room);
         }
 
-        // Tạo phòng mới
+        /// <summary>
+        /// Tạo phòng mới
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<RoomResponseDto>> Create([FromBody] RoomDto roomDto)
         {
@@ -49,7 +58,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Cập nhật thông tin phòng (số phòng, loại phòng, trạng thái...)
+        /// <summary>
+        /// Cập nhật thông tin phòng (số phòng, loại phòng, trạng thái)
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<RoomResponseDto>> Update(ulong id, [FromBody] RoomDto roomDto)
         {
@@ -66,7 +77,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Xóa phòng (chỉ xóa khi không có bệnh nhân hoặc không có nhiệm vụ liên quan)
+        /// <summary>
+        /// Xóa phòng (chỉ xóa khi không có bệnh nhân hoặc không có nhiệm vụ liên quan)
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(ulong id)
         {
@@ -81,7 +94,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-        // Chuyển bệnh nhân từ phòng hiện tại sang phòng mới
+        /// <summary>
+        /// Chuyển bệnh nhân từ phòng hiện tại sang phòng mới
+        /// </summary>
         [HttpPatch("{id}/move-room")]
         public async Task<IActionResult> MoveRoom(ulong id, [FromBody] PatientMoveRoomDto dto)
         {

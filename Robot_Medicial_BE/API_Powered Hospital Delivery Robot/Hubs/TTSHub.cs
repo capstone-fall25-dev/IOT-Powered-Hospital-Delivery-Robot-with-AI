@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.SignalR;
-using System.Threading.Tasks;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
+    /// <summary>
+    /// Hub quản lý Text-to-Speech (chuyển văn bản thành giọng nói)
+    /// </summary>
     public class TTSHub : Hub
     {
-        // Robot (Python) sẽ lắng nghe sự kiện "ReceiveTTS" này
+        /// <summary>
+        /// Gửi văn bản để robot phát thành giọng nói
+        /// </summary>
         public async Task SendTextToSpeech(string text)
         {
             await Clients.All.SendAsync("ReceiveTTS", text);

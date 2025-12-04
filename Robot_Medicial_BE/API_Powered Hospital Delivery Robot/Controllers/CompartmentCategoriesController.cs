@@ -5,6 +5,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
+    /// <summary>
+    /// Quản lý danh mục ngăn chứa robot (loại khoang: thuốc viên, thuốc nước, bơm kim tiêm, v.v.)
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize]
@@ -17,7 +20,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             _context = context;
         }
 
-        // Lấy danh sách tất cả danh mục ngăn chứa (loại khoang: thuốc viên, thuốc nước, bơm kim tiêm, v.v.)
+        /// <summary>
+        /// Lấy danh sách tất cả danh mục ngăn chứa
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetAll()
         {
@@ -35,7 +40,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return Ok(categories);
         }
 
-        // Lấy thông tin chi tiết một danh mục theo id
+        /// <summary>
+        /// Lấy thông tin chi tiết một danh mục theo ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<object>> GetById(ulong id)
         {
@@ -55,7 +62,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 : Ok(category);
         }
 
-        // Tạo danh mục ngăn chứa mới
+        /// <summary>
+        /// Tạo danh mục ngăn chứa mới
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] CompartmentCategoryCreateDto dto)
         {
@@ -85,7 +94,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             return CreatedAtAction(nameof(GetById), new { id = category.Id }, result);
         }
 
-        // Cập nhật danh mục ngăn chứa
+        /// <summary>
+        /// Cập nhật danh mục ngăn chứa
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult> Update(ulong id, [FromBody] CompartmentCategoryUpdateDto dto)
         {
@@ -113,7 +124,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             });
         }
 
-        // Xóa danh mục ngăn chứa (chỉ khi không có khoang nào đang dùng)
+        /// <summary>
+        /// Xóa danh mục ngăn chứa (chỉ khi không có khoang nào đang dùng)
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(ulong id)
         {
