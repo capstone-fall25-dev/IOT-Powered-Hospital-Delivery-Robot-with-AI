@@ -9,6 +9,8 @@ import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
 
 import { createRoom, updateRoom } from "@/services/roomService";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 // Fix icon path Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -20,6 +22,7 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function DestinationByMapView() {
+  const { toast, showToast } = useToast();
   // ================== MAP STATE ==================
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -524,7 +527,7 @@ function handleSelectDestinationRow(dest) {
 
   function startEditSelected() {
   if (!selectedDestination) {
-    alert("Chọn một điểm đến trước!");
+    showToast("warning", "Chọn một điểm đến trước!");
     return;
   }
   setSelectedRoom(null); // Clear room selection
@@ -536,7 +539,7 @@ function handleSelectDestinationRow(dest) {
 
   function startCreateNew() {
   if (!selectedMap) {
-    alert("Chưa chọn bản đồ!");
+    showToast("warning", "Chưa chọn bản đồ!");
     return;
   }
   setSelectedRoom(null); // Clear room selection
@@ -554,7 +557,7 @@ function handleSelectDestinationRow(dest) {
 
   function handlePickOnMap() {
   if (!mapInfo || !selectedMap) {
-    alert("Chưa có bản đồ để chọn!");
+    showToast("warning", "Chưa có bản đồ để chọn!");
     return;
   }
   // Tắt picking phòng
@@ -567,7 +570,7 @@ function handleSelectDestinationRow(dest) {
   isPickingRef.current = true;
   setIsPicking(true);
   setSelectionMode("destination");
-  alert("🖱️ Click lên bản đồ để chọn vị trí cho điểm dừng.");
+  showToast("info", "🖱️ Click lên bản đồ để chọn vị trí cho điểm dừng.");
 }
 
   function handleCancelEdit() {
@@ -587,11 +590,11 @@ function handleSelectDestinationRow(dest) {
 
   async function handleSaveDestination() {
     if (!selectedMap) {
-      alert("Chưa chọn bản đồ!");
+      showToast("warning", "Chưa chọn bản đồ!");
       return;
     }
     if (!formName.trim() || formPos.x == null || formPos.y == null) {
-      alert("Nhập tên điểm và chọn vị trí trên bản đồ!");
+      showToast("warning", "Nhập tên điểm và chọn vị trí trên bản đồ!");
       return;
     }
 
@@ -627,7 +630,7 @@ function handleSelectDestinationRow(dest) {
           prev.map((d) => (d.id === updated.id ? updated : d))
         );
         setSelectedDestination(updated);
-        alert("✅ Đã cập nhật điểm đến!");
+        showToast("success", "✅ Đã cập nhật điểm đến!");
       } else if (mode === "create") {
         const res = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations", {
           method: "POST",
@@ -646,7 +649,7 @@ function handleSelectDestinationRow(dest) {
         const created = await res.json();
         setDestinations((prev) => [...prev, created]);
         setSelectedDestination(created);
-        alert("✅ Đã tạo điểm đến mới!");
+        showToast("success", "✅ Đã tạo điểm đến mới!");
 
         setMode("view");
       }
@@ -658,7 +661,7 @@ function handleSelectDestinationRow(dest) {
       }
     } catch (err) {
       const msg = err && err.message ? err.message : "Lỗi không xác định.";
-      alert("❌ Lỗi: " + msg);
+      showToast("error", "❌ Lỗi: " + msg);
     }
   }
 
@@ -683,7 +686,7 @@ function handleSelectDestinationRow(dest) {
 
   function startEditSelectedRoom() {
   if (!selectedRoom) {
-    alert("Chọn một phòng trước!");
+    showToast("warning", "Chọn một phòng trước!");
     return;
   }
   setSelectedDestination(null); // Clear destination selection
@@ -703,7 +706,7 @@ function handleSelectDestinationRow(dest) {
 }
  function startCreateNewRoom() {
   if (!selectedMap) {
-    alert("Chưa chọn bản đồ!");
+    showToast("warning", "Chưa chọn bản đồ!");
     return;
   }
   setSelectedDestination(null); // Clear destination selection
@@ -719,7 +722,7 @@ function handleSelectDestinationRow(dest) {
 
  function handleRoomPickOnMap() {
   if (!mapInfo || !selectedMap) {
-    alert("Chưa có bản đồ để chọn!");
+    showToast("warning", "Chưa có bản đồ để chọn!");
     return;
   }
   
@@ -733,7 +736,7 @@ function handleSelectDestinationRow(dest) {
   roomPickingRef.current = true;
   setRoomIsPicking(true);
   setSelectionMode("room");
-  alert("🖱️ Click lên bản đồ để chọn vị trí cho PHÒNG.");
+  showToast("info", "🖱️ Click lên bản đồ để chọn vị trí cho PHÒNG.");
 }
 
  function handleCancelRoomEdit() {
@@ -751,7 +754,7 @@ function handleSelectDestinationRow(dest) {
 
   async function handleSaveRoom() {
     if (!selectedMap) {
-      alert("Chưa chọn bản đồ!");
+      showToast("warning", "Chưa chọn bản đồ!");
       return;
     }
     if (
@@ -759,7 +762,7 @@ function handleSelectDestinationRow(dest) {
       !roomForm.latitude.trim() ||
       !roomForm.longitude.trim()
     ) {
-      alert("Nhập tên phòng và chọn toạ độ!");
+      showToast("warning", "Nhập tên phòng và chọn toạ độ!");
       return;
     }
 
@@ -774,11 +777,11 @@ function handleSelectDestinationRow(dest) {
       if (roomMode === "edit" && selectedRoom) {
         await updateRoom(selectedRoom.id, payload);
         await reloadRoomsForSelectedMap();
-        alert("✅ Đã cập nhật phòng!");
+        showToast("success", "✅ Đã cập nhật phòng!");
       } else if (roomMode === "create") {
         await createRoom(payload);
         await reloadRoomsForSelectedMap();
-        alert("✅ Đã tạo phòng mới!");
+        showToast("success", "✅ Đã tạo phòng mới!");
       }
 
       setRoomMode("view");
@@ -786,7 +789,7 @@ function handleSelectDestinationRow(dest) {
       roomPickingRef.current = false;
     } catch (err) {
       const msg = err && err.message ? err.message : "Lỗi không xác định.";
-      alert("❌ Lỗi: " + msg);
+      showToast("error", "❌ Lỗi: " + msg);
     }
   }
 
@@ -1262,6 +1265,7 @@ function handleSelectDestinationRow(dest) {
           </div>
         </div>
       </div>
+      <Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

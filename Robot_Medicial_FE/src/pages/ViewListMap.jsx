@@ -8,6 +8,8 @@ import mapErrorImg from "@/assets/image/map_error.jpg";
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -18,6 +20,7 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function ProjectMapListView() {
+  const { toast, showToast } = useToast();
   const mapRef = useRef(null);
   const worldPosRef = useRef(null);
 
@@ -391,11 +394,9 @@ export default function ProjectMapListView() {
     setIsSelecting(next);
 
     if (next) {
-      alert(
-        "🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!"
-      );
+      showToast("info", "🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!");
     } else {
-      alert("❌ Đã tắt chế độ chọn tọa độ");
+      showToast("info", "❌ Đã tắt chế độ chọn tọa độ");
     }
   }
 
@@ -406,7 +407,7 @@ export default function ProjectMapListView() {
     const world = worldPosRef.current;
 
     if (!selectedMap || !newMarker || !pointName.trim() || !world) {
-      alert("⚠️ Nhập tên điểm và click chọn vị trí trên bản đồ!");
+      showToast("warning", "⚠️ Nhập tên điểm và click chọn vị trí trên bản đồ!");
       return;
     }
 
@@ -426,7 +427,8 @@ export default function ProjectMapListView() {
 
       if (!res.ok) throw new Error("Không lưu được điểm!");
 
-      alert(
+      showToast(
+        "success",
         `✅ Đã lưu "${pointName}" tại (map.x=${world.x.toFixed(
           2
         )}, map.y=${world.y.toFixed(2)})`
@@ -441,7 +443,7 @@ export default function ProjectMapListView() {
         worldPosRef.current = null;
       }
     } catch (err) {
-      alert("❌ Lỗi: " + err.message);
+      showToast("error", "❌ Lỗi: " + err.message);
     }
   }
 
@@ -456,10 +458,10 @@ export default function ProjectMapListView() {
         body: JSON.stringify({ mode: "mapping" }),
       });
 
-      alert("🚀 Robot bắt đầu mapping!");
+      showToast("success", "🚀 Robot bắt đầu mapping!");
       navigate("/create-map");
     } catch (err) {
-      alert("❌ Lỗi mapping: " + err.message);
+      showToast("error", "❌ Lỗi mapping: " + err.message);
     }
   }
 
@@ -600,6 +602,7 @@ export default function ProjectMapListView() {
           </div>
         </div>
       </div>
+      <Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

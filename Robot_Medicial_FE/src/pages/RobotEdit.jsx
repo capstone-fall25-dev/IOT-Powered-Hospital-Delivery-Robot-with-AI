@@ -5,10 +5,13 @@ import { getRobotById, updateRobot } from "@/services/robotService";
 import { getAllMaps } from "@/services/mapService";
 import { getAllCategoryCompartment } from "@/services/categotiresCompartmentService";
 import styles from "@/assets/styles/createRobot.module.css"; // DÙNG CHUNG STYLE VỚI CREATE
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function RobotEdit() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     const [form, setForm] = useState({
         name: "",
@@ -21,13 +24,6 @@ export default function RobotEdit() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [toast, setToast] = useState({ show: false, type: "", message: "" });
-
-    // === TOAST HIỆU ỨNG ===
-    const showToast = (type, message) => {
-        setToast({ show: true, type, message });
-        setTimeout(() => setToast({ show: false, type: "", message: "" }), 2800);
-    };
 
     // === LOAD DỮ LIỆU ROBOT + MAP + CATEGORY ===
     useEffect(() => {
@@ -53,7 +49,7 @@ export default function RobotEdit() {
                 setCategories(catsRes);
                 setLoading(false);
             } catch (err) {
-                showToast("error", "Không thể tải dữ liệu robot!");
+                showToast("error", err.message || "Không thể tải dữ liệu robot!");
                 console.error(err);
             }
         }
@@ -115,8 +111,7 @@ export default function RobotEdit() {
             setTimeout(() => navigate(`/robot-detail/${id}`), 800);
         } catch (err) {
             console.error("Update robot error:", err);
-            const msg = err.response?.data?.message || err.message || "Cập nhật thất bại!";
-            showToast("error", msg);
+            showToast("error", err.message || "Cập nhật thất bại!");
         } finally {
             setSaving(false);
         }
@@ -136,22 +131,6 @@ export default function RobotEdit() {
 
     return (
         <div className={styles.page}>
-            {/* === TOAST === */}
-            <div className={`${styles.toastContainer} ${toast.show ? styles.show : ""}`}>
-                <div className={`${styles.toast} ${styles[toast.type]}`}>
-                    <div className={styles.toastIcon}>
-                        {toast.type === "success" && <i className="bi bi-check-lg"></i>}
-                        {toast.type === "error" && <i className="bi bi-x-lg"></i>}
-                        {toast.type === "warning" && <i className="bi bi-exclamation-lg"></i>}
-                        {toast.type === "info" && <i className="bi bi-info-lg"></i>}
-                    </div>
-                    <div className={styles.toastMessage}>{toast.message}</div>
-                    <button className={styles.toastClose} onClick={() => setToast({ ...toast, show: false })}>
-                        ×
-                    </button>
-                </div>
-            </div>
-
             <div className="container-xl py-4">
                 {/* HEADER */}
                 <div className={styles.headerSection}>
@@ -300,6 +279,7 @@ export default function RobotEdit() {
                     </form>
                 </div>
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

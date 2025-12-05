@@ -7,5 +7,8 @@ export const getUnlockedCompartments = (robotId) =>
 export const getCompartmentsByRobotAndCategory = (robotId, categoryId) =>
   apiFetch(`/RobotCompartments/robot/${robotId}/category/${categoryId}`);
 
+export const getCompartmentById = (id) =>
+  apiFetch(`/RobotCompartments/${id}`);
+
 export const getAllCategories = () =>
   apiFetch(`/CompartmentCategories`);

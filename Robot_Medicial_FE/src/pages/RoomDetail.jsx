@@ -209,7 +209,7 @@ export default function RoomDetail() {
                                     .filter(r => r.id !== Number(id))
                                     .map(r => (
                                         <option key={r.id} value={r.id}>
-                                            {r.roomName} — Map {r.mapId || "N/A"}
+                                            {r.roomName} — Map {r.mapId || "Không có"}
                                         </option>
                                     ))}
                             </select>

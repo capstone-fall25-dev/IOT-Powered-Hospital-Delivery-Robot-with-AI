@@ -34,7 +34,7 @@ export default function CompartmentCategoryManagerPage() {
       const data = await getAllCategoryCompartment();
       setRows(data || []);
     } catch (err) {
-      showToast("error", "Không thể tải danh sách danh mục!");
+      showToast("error", err.message || "Không thể tải danh sách danh mục!");
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export default function CompartmentCategoryManagerPage() {
       setShowModal(false);
       loadCategories();
     } catch (err) {
-      showToast("error", err?.response?.data?.message || "Có lỗi xảy ra!");
+      showToast("error", err.message || "Có lỗi xảy ra!");
     } finally {
       setFormLoading(false);
     }
@@ -79,7 +79,7 @@ export default function CompartmentCategoryManagerPage() {
         showToast("success", "Xóa danh mục thành công!");
         loadCategories();
       } catch (err) {
-        showToast("error", "Không thể xóa danh mục này!");
+        showToast("error", err.message || "Không thể xóa danh mục này!");
       }
     });
   };

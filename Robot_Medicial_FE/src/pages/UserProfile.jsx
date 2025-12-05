@@ -3,19 +3,22 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/utils/authContext";
 import { getMyProfile, updateMyProfile } from "@/services/profileService";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 import styles from "@/assets/styles/userProfile.module.css";
 
 export default function UserProfile() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { toast, showToast } = useToast();
+    
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [toast, setToast] = useState("");
-    const [error, setError] = useState("");
-    
-    // ✨ NEW: Edit mode state
     const [isEditing, setIsEditing] = useState(false);
+    const [avatar, setAvatar] = useState(null);
+    const [originalModel, setOriginalModel] = useState(null);
+    const fileRef = useRef(null);
 
     const [model, setModel] = useState({
         fullName: "",
@@ -29,11 +32,14 @@ export default function UserProfile() {
         activeSpecs: new Set([]),
     });
 
-    // ✨ NEW: Store original data for cancel
-    const [originalModel, setOriginalModel] = useState(null);
-
-    const [avatar, setAvatar] = useState(null);
-    const fileRef = useRef(null);
+    // Helper function để deep copy model mà giữ được Set
+    const deepCopyModel = (modelToCopy) => {
+        return {
+            ...modelToCopy,
+            activeSpecs: new Set(modelToCopy.activeSpecs),
+            specialties: [...modelToCopy.specialties]
+        };
+    };
 
     useEffect(() => {
         fetchProfile();
@@ -58,10 +64,9 @@ export default function UserProfile() {
             };
             
             setModel(modelData);
-            setOriginalModel(JSON.parse(JSON.stringify(modelData))); // Deep copy
+            setOriginalModel(deepCopyModel(modelData));
         } catch (err) {
-            setError(err.message || "Không thể tải thông tin profile");
-            setToast("❌ " + (err.message || "Không thể tải thông tin profile"));
+            showToast("error", err.message);
         } finally {
             setLoading(false);
         }
@@ -69,16 +74,23 @@ export default function UserProfile() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setModel((prev) => ({
-            ...prev,
-            [name]: name === "expYears" ? Number(value) : value,
-        }));
-        setError("");
-        setToast("");
+        
+        if (name === "fullName") {
+            const textOnly = value.replace(/[^a-zA-ZÀ-ỹ\s]/g, '');
+            setModel((prev) => ({
+                ...prev,
+                [name]: textOnly,
+            }));
+        } else {
+            setModel((prev) => ({
+                ...prev,
+                [name]: name === "expYears" ? Number(value) : value,
+            }));
+        }
     };
 
     const toggleSpec = (s) => {
-        if (!isEditing) return; // ✨ Chỉ toggle khi đang edit
+        if (!isEditing) return;
         
         setModel((prev) => {
             const next = new Set(prev.activeSpecs);
@@ -89,7 +101,7 @@ export default function UserProfile() {
     };
 
     const onPickFile = () => {
-        if (!isEditing) return; // ✨ Chỉ pick khi đang edit
+        if (!isEditing) return;
         fileRef.current?.click();
     };
 
@@ -105,48 +117,38 @@ export default function UserProfile() {
         return model.fullName.trim().length > 3;
     };
 
-    // ✨ NEW: Enable edit mode
     const startEditing = () => {
         setIsEditing(true);
-        setToast("");
-        setError("");
     };
 
-    // ✨ NEW: Cancel editing and restore original data
     const cancelEditing = () => {
-        setModel(JSON.parse(JSON.stringify(originalModel)));
+        if (originalModel) {
+            setModel(deepCopyModel(originalModel));
+        }
         setAvatar(null);
         setIsEditing(false);
-        setToast("");
-        setError("");
     };
 
     const onSave = async () => {
         if (!isValid()) {
-            setToast("❗ Vui lòng kiểm tra lại thông tin bắt buộc.");
+            showToast("warning", "Vui lòng kiểm tra lại thông tin bắt buộc.");
             return;
         }
 
         setSaving(true);
-        setToast("");
-        setError("");
 
         try {
-            const updateData = {
-                fullName: model.fullName,
-            };
-
+            const updateData = { fullName: model.fullName };
             const updated = await updateMyProfile(updateData);
+            
             setProfile(updated);
+            setOriginalModel(deepCopyModel(model));
             
-            // ✨ Update original model after successful save
-            setOriginalModel(JSON.parse(JSON.stringify(model)));
-            
-            setToast("✅ Đã lưu thông tin thành công!");
-            setIsEditing(false); // ✨ Exit edit mode
+            const successMessage = updated?.message || "Đã lưu thông tin thành công!";
+            showToast("success", successMessage);
+            setIsEditing(false);
         } catch (err) {
-            setError(err.message || "Cập nhật thất bại");
-            setToast("❌ " + (err.message || "Cập nhật thất bại"));
+            showToast("error", err.message);
         } finally {
             setSaving(false);
         }
@@ -161,13 +163,12 @@ export default function UserProfile() {
         }
     };
 
-    // Loading spinner
     if (loading && !profile) {
         return (
             <div className={styles.page}>
                 <div className={styles.loading}>
                     <div className={`spinner-border ${styles.spinner}`} role="status">
-                        <span className="visually-hidden">Loading...</span>
+                        <span className="visually-hidden">Đang tải...</span>
                     </div>
                 </div>
             </div>
@@ -176,15 +177,17 @@ export default function UserProfile() {
 
     return (
         <div className={styles.page}>
+            <Toast toast={toast} showToast={showToast} />
+
             <div className="container py-4 py-md-5">
-                <div className={styles.glass + " p-3 p-md-4 p-lg-5"}>
+                <div className={`${styles.glass} p-3 p-md-4 p-lg-5`}>
                     {/* Header */}
                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
                         <div className="d-flex align-items-center gap-2 flex-wrap">
                             <span className={styles.chip}>
                                 <i className="bi bi-person-gear me-1"></i> Hồ sơ
                             </span>
-                            <h4 className={styles.title + " mb-0"}>Thông Tin Cá Nhân</h4>
+                            <h4 className={`${styles.title} mb-0`}>Thông Tin Cá Nhân</h4>
                         </div>
                         <div className="d-flex gap-2 align-items-center flex-wrap">
                             <span className={styles.roleBadge}>
@@ -200,20 +203,13 @@ export default function UserProfile() {
                         </div>
                     </div>
 
-                    {/* Alert Messages */}
-                    {toast && (
-                        <div className={`alert ${toast.includes('✅') ? 'alert-success' : 'alert-warning'} d-flex align-items-center mb-4`} role="alert">
-                            <div>{toast}</div>
-                        </div>
-                    )}
-
                     <div className="row g-4">
                         {/* Left: Avatar */}
                         <div className="col-lg-3">
                             <div className="d-flex flex-column align-items-center gap-3">
                                 <div className={styles.avatar}>
                                     {avatar ? (
-                                        <img src={avatar} alt="avatar" />
+                                        <img src={avatar} alt="Ảnh đại diện" />
                                     ) : (
                                         <i className="bi bi-person fs-1" style={{ color: '#0d9488' }}></i>
                                     )}
@@ -251,14 +247,17 @@ export default function UserProfile() {
                                     className="d-none" 
                                     onChange={onFile} 
                                 />
-                                <div className="w-100 mt-2 p-3 rounded" style={{ background: 'rgba(13,148,136,0.05)', border: '1px solid rgba(13,148,136,0.1)' }}>
+                                <div className="w-100 mt-2 p-3 rounded" style={{ 
+                                    background: 'rgba(13,148,136,0.05)', 
+                                    border: '1px solid rgba(13,148,136,0.1)' 
+                                }}>
                                     <small className="text-muted d-block mb-1">
                                         <i className="bi bi-envelope me-2" style={{ color: '#0d9488' }}></i>
                                         {model.email}
                                     </small>
                                     <small className="text-muted d-block">
                                         <i className="bi bi-calendar-check me-2" style={{ color: '#0d9488' }}></i>
-                                        Gia nhập: {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString("vi-VN") : "N/A"}
+                                        Gia nhập: {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString("vi-VN") : "Không có"}
                                     </small>
                                 </div>
                             </div>
@@ -278,13 +277,21 @@ export default function UserProfile() {
                                         value={model.fullName} 
                                         onChange={handleChange}
                                         disabled={!isEditing}
-                                        placeholder="Nhập họ và tên"
+                                        placeholder="Nhập họ và tên (chỉ chữ cái)"
+                                        pattern="[a-zA-ZÀ-ỹ\s]+"
+                                        title="Họ và tên chỉ được chứa chữ cái và khoảng trắng"
                                         style={{ 
                                             borderRadius: '12px',
                                             backgroundColor: !isEditing ? '#f1f5f9' : 'white',
                                             cursor: !isEditing ? 'not-allowed' : 'text'
                                         }}
                                     />
+                                    {isEditing && (
+                                        <small className="text-muted d-block mt-1">
+                                            <i className="bi bi-info-circle me-1"></i>
+                                            Chỉ nhập chữ cái, không nhập số
+                                        </small>
+                                    )}
                                 </div>
 
                                 <div className="col-md-6">
@@ -355,22 +362,29 @@ export default function UserProfile() {
                                         Chuyên khoa
                                     </label>
                                     <div className="d-flex flex-wrap gap-2">
-                                        {model.specialties.map(s => (
-                                            <button 
-                                                key={s} 
-                                                type="button" 
-                                                disabled={!isEditing}
-                                                className={`btn btn-sm rounded-pill ${model.activeSpecs.has(s) ? 'btn-success ' + styles.spec + ' active' : 'btn-light ' + styles.spec}`} 
-                                                onClick={() => toggleSpec(s)}
-                                                style={{
-                                                    cursor: isEditing ? 'pointer' : 'not-allowed',
-                                                    opacity: isEditing ? 1 : 0.7
-                                                }}
-                                            >
-                                                {model.activeSpecs.has(s) && <i className="bi bi-check-lg me-1"></i>}
-                                                {s}
-                                            </button>
-                                        ))}
+                                        {model.specialties.map(s => {
+                                            const activeSpecsSet = model.activeSpecs instanceof Set 
+                                                ? model.activeSpecs 
+                                                : new Set(Array.isArray(model.activeSpecs) ? model.activeSpecs : []);
+                                            const isActive = activeSpecsSet.has(s);
+                                            
+                                            return (
+                                                <button 
+                                                    key={s} 
+                                                    type="button" 
+                                                    disabled={!isEditing}
+                                                    className={`btn btn-sm rounded-pill ${isActive ? 'btn-success ' + styles.spec + ' active' : 'btn-light ' + styles.spec}`} 
+                                                    onClick={() => toggleSpec(s)}
+                                                    style={{
+                                                        cursor: isEditing ? 'pointer' : 'not-allowed',
+                                                        opacity: isEditing ? 1 : 0.7
+                                                    }}
+                                                >
+                                                    {isActive && <i className="bi bi-check-lg me-1"></i>}
+                                                    {s}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                     <small className="text-muted d-block mt-2">Tính năng này sẽ được phát triển sau</small>
                                 </div>
@@ -421,12 +435,15 @@ export default function UserProfile() {
                             </div>
 
                             {/* Info Box */}
-                            <div className="mt-4 p-3 rounded" style={{ background: 'rgba(13,148,136,0.05)', border: '1px solid rgba(13,148,136,0.15)' }}>
+                            <div className="mt-4 p-3 rounded" style={{ 
+                                background: 'rgba(13,148,136,0.05)', 
+                                border: '1px solid rgba(13,148,136,0.15)' 
+                            }}>
                                 <div className="row g-2">
                                     <div className="col-md-6">
                                         <small className="text-muted">
                                             <i className="bi bi-clock-history me-2" style={{ color: '#0d9488' }}></i>
-                                            <strong>Cập nhật lần cuối:</strong> {profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString("vi-VN") : "N/A"}
+                                            <strong>Cập nhật lần cuối:</strong> {profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString("vi-VN") : "Không có"}
                                         </small>
                                     </div>
                                     <div className="col-md-6">

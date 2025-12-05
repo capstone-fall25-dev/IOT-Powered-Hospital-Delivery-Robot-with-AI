@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { API_CONFIG } from "@/utils/apiConfig";
+import { getAllRooms } from "@/services/roomService";
 import styles from "@/assets/styles/mapDetailView.module.css";
 import mapErrorImg from "@/assets/image/map_error.jpg";
 
@@ -31,6 +32,8 @@ export default function MapDetailView() {
   const [showCoords, setShowCoords] = useState(false);
   const [worldPos, setWorldPos] = useState({ x: 0, y: 0 });
   const [selectedDestId, setSelectedDestId] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
 
   /* ========================= FETCH DỮ LIỆU BẢN ĐỒ ========================= */
   useEffect(() => {
@@ -50,9 +53,31 @@ export default function MapDetailView() {
     fetchMap();
   }, [id]);
 
+  /* ========================= FETCH DANH SÁCH PHÒNG THEO MAP ========================= */
+  useEffect(() => {
+    async function fetchRooms() {
+      if (!id) return;
+      try {
+        setRoomsLoading(true);
+        const allRooms = await getAllRooms();
+        // Filter rooms theo mapId
+        const mapIdNum = Number(id);
+        const filteredRooms = allRooms.filter(
+          (room) => room.mapId && Number(room.mapId) === mapIdNum
+        );
+        setRooms(filteredRooms);
+      } catch (err) {
+        console.error("Lỗi tải danh sách phòng:", err);
+      } finally {
+        setRoomsLoading(false);
+      }
+    }
+    fetchRooms();
+  }, [id]);
+
   /* ========================= KHỞI TẠO LEAFLET MAP ========================= */
   useEffect(() => {
-    if (!mapData) return;
+    if (!mapData || !rooms) return;
 
     const container = document.getElementById("detailMap");
     if (!container) return;
@@ -97,8 +122,13 @@ export default function MapDetailView() {
       // Hiển thị ảnh bản đồ
       L.imageOverlay(imageUrl, realBounds).addTo(map);
 
-      // Fit vào khu ảnh thật
-      map.fitBounds(realBounds);
+      // Fit vào khu ảnh thật với padding âm để bản đồ to hơn
+      // Padding âm sẽ làm cho bản đồ zoom in hơn, hiển thị to hơn
+      const padding = [-20, -20]; // [top/bottom, left/right] - giá trị âm để bản đồ to hơn
+      map.fitBounds(realBounds, { 
+        padding: padding,
+        maxZoom: 8 // Giới hạn zoom tối đa để tránh quá to
+      });
       map.__initialBounds = realBounds;
 
       // Bật các tính năng tương tác sau khi ảnh load xong
@@ -117,7 +147,7 @@ export default function MapDetailView() {
 
         onAdd: function () {
           const container = L.DomUtil.create("div", "leaflet-bar custom-fit-btn");
-          container.innerHTML = `<a title="Reset zoom" role="button"><i class="bi bi-aspect-ratio"></i></a>`;
+          container.innerHTML = `<a title="Đặt lại zoom" role="button"><i class="bi bi-aspect-ratio"></i></a>`;
 
           // Ngăn map bị kéo khi click nút
           L.DomEvent.disableClickPropagation(container);
@@ -127,6 +157,8 @@ export default function MapDetailView() {
               map.fitBounds(map.__initialBounds, {
                 animate: true,
                 duration: 0.5,
+                padding: [-20, -20], // Giữ padding âm để bản đồ to hơn
+                maxZoom: 8
               });
             }
           };
@@ -157,6 +189,56 @@ export default function MapDetailView() {
         markers[dest.id] = marker;
       });
 
+      /* ========================= THÊM MARKERS CHO CÁC PHÒNG ========================= */
+      // Tạo icon riêng cho phòng (màu xanh lá)
+      const roomIcon = L.divIcon({
+        className: 'room-marker',
+        html: `<div style="
+          background-color: #10b981;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <i class="bi bi-door-open" style="color: white; font-size: 12px;"></i>
+        </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+      });
+
+      rooms.forEach((room) => {
+        // Room sử dụng Longitude (x) và Latitude (y)
+        const x = room.longitude ? Number(room.longitude) - originX : null;
+        const y = room.latitude ? Number(room.latitude) - originY : null;
+
+        if (x === null || y === null || isNaN(x) || isNaN(y)) return;
+
+        const marker = L.marker([y, x], { 
+          title: room.roomName,
+          icon: roomIcon
+        }).addTo(map);
+
+        const patientInfo = room.patientCount > 0 
+          ? `<br/><small><i class="bi bi-people"></i> ${room.patientCount} bệnh nhân</small>`
+          : '';
+
+        marker.bindPopup(`
+          <div style="font-family:system-ui;min-width:200px;">
+            <b style="font-size:1.1em;color:#10b981;">
+              <i class="bi bi-door-open"></i> ${room.roomName || `Phòng #${room.id}`}
+            </b>${patientInfo}
+            <br/><small>X: ${room.longitude}, Y: ${room.latitude}</small>
+          </div>
+        `);
+
+        markers[`room_${room.id}`] = marker;
+      });
+
       // Lưu markers vào map
       map.__markers = markers;
 
@@ -170,6 +252,21 @@ export default function MapDetailView() {
       });
 
       map.on("mouseout", () => setShowCoords(false));
+
+      // Quan trọng: Invalidate size sau khi map được tạo để đảm bảo tính toán đúng
+      // Đặc biệt khi container có kích thước lớn (100vh)
+      setTimeout(() => {
+        map.invalidateSize();
+        // Fit lại bounds sau khi invalidate để đảm bảo markers đúng vị trí
+        // Sử dụng cùng padding để giữ bản đồ to hơn
+        if (map.__initialBounds) {
+          map.fitBounds(map.__initialBounds, { 
+            animate: false,
+            padding: [-20, -20],
+            maxZoom: 8
+          });
+        }
+      }, 100);
 
       mapRef.current = map;
     };
@@ -197,7 +294,40 @@ export default function MapDetailView() {
 
     // Cleanup khi component unmount
     return () => mapRef.current?.remove();
-  }, [mapData, id]);
+  }, [mapData, id, rooms]);
+
+  /* ========================= XỬ LÝ RESIZE CONTAINER ========================= */
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const handleResize = () => {
+      if (mapRef.current) {
+        // Invalidate size khi container resize để đảm bảo markers đúng vị trí
+        mapRef.current.invalidateSize();
+      }
+    };
+
+    // Sử dụng ResizeObserver để theo dõi container thay đổi kích thước
+    const container = document.getElementById("detailMap");
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce để tránh gọi quá nhiều lần
+      clearTimeout(window.mapResizeTimeout);
+      window.mapResizeTimeout = setTimeout(handleResize, 150);
+    });
+
+    resizeObserver.observe(container);
+
+    // Cũng lắng nghe window resize
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", handleResize);
+      clearTimeout(window.mapResizeTimeout);
+    };
+  }, [mapData]); // Chỉ chạy khi mapData thay đổi (map đã được tạo)
 
   /* ========================= XỬ LÝ CHỌN ĐIỂM ĐẾN ========================= */
   function handleSelectDestination(dest) {
@@ -211,6 +341,8 @@ export default function MapDetailView() {
       mapRef.current.fitBounds(mapRef.current.__initialBounds, {
         animate: true,
         duration: 0.5,
+        padding: [-20, -20], // Giữ padding âm để bản đồ to hơn
+        maxZoom: 8
       });
     }
 
@@ -259,7 +391,7 @@ export default function MapDetailView() {
         return "Mất kết nối";
 
       default:
-        return status;
+        return "Không xác định";
     }
   }
 
@@ -303,9 +435,18 @@ export default function MapDetailView() {
               </p>
             </div>
 
-            <button className={styles.btnBack} onClick={() => navigate("/viewlistmap")}>
-              <i className="bi bi-arrow-left me-1"></i> Quay lại
-            </button>
+            <div className="d-flex gap-2">
+              <button 
+                className={styles.btnBack} 
+                onClick={() => navigate(`/maps/${id}/edit`)}
+                title="Chỉnh sửa tên bản đồ"
+              >
+                <i className="bi bi-pencil me-1"></i> Chỉnh sửa
+              </button>
+              <button className={styles.btnBack} onClick={() => navigate("/viewlistmap")}>
+                <i className="bi bi-arrow-left me-1"></i> Quay lại
+              </button>
+            </div>
           </div>
 
           {/* ========================= THỐNG KÊ CARDS ========================= */}
@@ -406,6 +547,62 @@ export default function MapDetailView() {
                   </div>
                 ) : (
                   <p className={styles.empty}>Chưa có điểm đến</p>
+                )}
+              </div>
+
+              {/* ========================= DANH SÁCH PHÒNG ========================= */}
+              <div className={styles.infoCard}>
+                <h5>
+                  <i className="bi bi-door-open me-2"></i>
+                  Phòng ({rooms.length})
+                </h5>
+
+                {roomsLoading ? (
+                  <p className={styles.empty}>
+                    <i className="bi bi-hourglass-split me-2"></i>
+                    Đang tải...
+                  </p>
+                ) : rooms.length > 0 ? (
+                  <div className={styles.roomList}>
+                    {rooms
+                      .sort((a, b) => {
+                        // Sắp xếp theo tên phòng
+                        const nameA = (a.roomName || "").toLowerCase();
+                        const nameB = (b.roomName || "").toLowerCase();
+                        return nameA.localeCompare(nameB);
+                      })
+                      .map((room) => (
+                        <div
+                          key={room.id}
+                          className={styles.roomItem}
+                          onClick={() => navigate(`/rooms/${room.id}`)}
+                        >
+                          <div>
+                            <strong>
+                              <i className="bi bi-door-open me-1"></i>
+                              {room.roomName || `Phòng #${room.id}`}
+                            </strong>
+                            {room.roomType && (
+                              <small>
+                                <br />
+                                <i className="bi bi-tag me-1"></i>
+                                {room.roomType}
+                              </small>
+                            )}
+                          </div>
+                          {room.patientCount !== undefined && room.patientCount > 0 && (
+                            <div className={styles.roomMeta}>
+                              <span className={styles.patientCount}>
+                                <i className="bi bi-people me-1"></i>
+                                {room.patientCount} bệnh nhân
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className={styles.empty}>Chưa có phòng</p>
                 )}
               </div>
             </div>

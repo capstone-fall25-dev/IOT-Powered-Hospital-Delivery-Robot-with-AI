@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getUserById, updateUser } from "@/services/userService";
 import styles from '@/assets/styles/userForm.module.css';
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function UserEdit() {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
     const [user, setUser] = useState(null);
     const [showPwd, setShowPwd] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -16,7 +19,7 @@ export default function UserEdit() {
             .then(u => setUser(u))
             .catch(err => {
                 console.error("Không thể load user:", err);
-                alert("Không thể tải thông tin người dùng");
+                showToast("error", err.message || "Không thể tải thông tin người dùng");
             });
     }, [userId]);
 
@@ -69,7 +72,10 @@ export default function UserEdit() {
     }
 
     const save = async () => {
-        if (!isValid()) return alert("Vui lòng kiểm tra lại các trường bắt buộc.");
+        if (!isValid()) {
+            showToast("warning", "Vui lòng kiểm tra lại các trường bắt buộc.");
+            return;
+        }
         setSaving(true);
         try {
             const userDto = { ...user };
@@ -77,10 +83,10 @@ export default function UserEdit() {
                 delete userDto.password;
             }
             await updateUser(userId, userDto);
-            alert("Lưu thành công!");
+            showToast("success", "Lưu thành công!");
         } catch (err) {
             console.error("Lỗi khi lưu:", err);
-            alert("Không thể lưu thay đổi. Vui lòng thử lại.");
+            showToast("error", err.message || "Không thể lưu thay đổi. Vui lòng thử lại.");
         } finally {
             setSaving(false);
         }
@@ -310,6 +316,7 @@ export default function UserEdit() {
                 </div>
 
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

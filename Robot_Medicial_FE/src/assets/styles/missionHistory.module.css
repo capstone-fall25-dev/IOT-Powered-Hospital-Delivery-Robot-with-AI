@@ -1,0 +1,102 @@
+/* src/assets/styles/missionHistory.module.css */
+:root {
+    --teal: #4CE1C6;
+    --teal-dark: #0d9488;
+    --ink: #0f172a;
+}
+
+.page {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #0b1324;
+    background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
+                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+                linear-gradient(180deg, #f6faf9 0%, #eef6f5 15%, #e9f3f1 35%, #e8f0ee 100%);
+    min-height: 100vh;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    border-radius: 5px;
+}
+
+.rounded2xl {
+    border-radius: 5px;
+}
+
+.btnTeal {
+    background: var(--teal);
+    color: #052a2b;
+    font-weight: 700;
+    border: none;
+}
+
+.btnTeal:hover {
+    background: #39d7bf;
+    color: #052a2b;
+}
+
+.chip {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(20, 226, 193, 0.15);
+    color: #0d3b3a;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.statusDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 28px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, rgba(76, 225, 198, 0.7), rgba(76, 225, 198, 0));
+}
+
+.tItem {
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.tItem::before {
+    content: '';
+    position: absolute;
+    left: -18px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--teal);
+    box-shadow: 0 0 0 4px rgba(76, 225, 198, 0.2);
+}
+
+.cursorPointer {
+    cursor: pointer;
+}
+
+.badgePill {
+    border-radius: 999px;
+}
+
+.smallMuted {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+

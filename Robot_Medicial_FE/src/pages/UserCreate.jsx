@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "@/services/userService";
-import styles from '@/assets/styles/userForm.module.css'; 
+import styles from '@/assets/styles/userForm.module.css';
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast"; 
 
 export default function UserCreate() {
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     const [form, setForm] = useState({
         email: "",
@@ -27,11 +30,13 @@ export default function UserCreate() {
         
         // Validation
         if (!form.email || !form.password || !form.fullName) {
-            return alert("Vui lòng điền đầy đủ thông tin!");
+            showToast("warning", "Vui lòng điền đầy đủ thông tin!");
+            return;
         }
 
         if (form.password.length < 8) {
-            return alert("Mật khẩu phải có ít nhất 8 ký tự!");
+            showToast("warning", "Mật khẩu phải có ít nhất 8 ký tự!");
+            return;
         }
 
         setLoading(true);
@@ -45,10 +50,10 @@ export default function UserCreate() {
                 isActive: form.isActive
             });
 
-            alert("Tạo tài khoản thành công!");
+            showToast("success", "Tạo tài khoản thành công!");
             navigate("/users");
         } catch (err) {
-            alert("Tạo tài khoản thất bại!");
+            showToast("error", err.message || "Tạo tài khoản thất bại!");
             console.error(err);
         } finally {
             setLoading(false);
@@ -254,6 +259,7 @@ export default function UserCreate() {
                 </div>
 
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

@@ -3,7 +3,10 @@ import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
 import mapError from "@/assets/image/map_error.jpg";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 export default function RobotRunMap() {
+  const { toast, showToast } = useToast();
   // ===================================
   // 🗺️ MAP REFS
   // ===================================
@@ -603,23 +606,32 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   }
 
   async function saveMap() {
-    if (!mapName.trim()) return alert("Nhập tên bản đồ!");
+    if (!mapName.trim()) {
+      showToast("warning", "Nhập tên bản đồ!");
+      return;
+    }
     try {
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Mode: "save_map", MapName: mapName }),
       });
-      alert("Đã gửi lệnh lưu bản đồ!");
-    } catch {
-      // ignore
+      showToast("success", "Đã gửi lệnh lưu bản đồ!");
+    } catch (err) {
+      showToast("error", err.message || "Không thể lưu bản đồ!");
     }
   }
 
   // 🔥 HÀM NÀY ĐÃ ĐƯỢC THÊM GỌI API TTS
   async function startRunMap() {
-    if (!selectedDestination) return alert("Chọn điểm đến!");
-    if (!selectedMapName) return alert("Không có mapName!");
+    if (!selectedDestination) {
+      showToast("warning", "Chọn điểm đến!");
+      return;
+    }
+    if (!selectedMapName) {
+      showToast("warning", "Không có mapName!");
+      return;
+    }
 
     try {
       // 1️⃣ Gửi mode run_map cho robot như cũ
@@ -645,9 +657,9 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
         console.error("Gửi TTS lỗi:", ttsErr);
       }
 
-      alert("Đã gửi lệnh run_map!");
-    } catch {
-      // ignore
+      showToast("success", "Đã gửi lệnh run_map!");
+    } catch (err) {
+      showToast("error", err.message || "Không thể gửi lệnh run_map!");
     }
   }
 
@@ -655,7 +667,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   async function sendCustomTts() {
     const text = ttsTextCustom.trim();
     if (!text) {
-      alert("Vui lòng nhập nội dung tiếng Việt để robot đọc.");
+      showToast("warning", "Vui lòng nhập nội dung để robot đọc.");
       return;
     }
 
@@ -665,15 +677,18 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      alert("Đã gửi nội dung cho robot đọc.");
+      showToast("success", "Đã gửi nội dung cho robot đọc.");
     } catch (err) {
       console.error("Gửi TTS tuỳ chỉnh lỗi:", err);
-      alert("Không gửi được nội dung cho robot đọc.");
+      showToast("error", err.message || "Không gửi được nội dung cho robot đọc.");
     }
   }
 
   async function sendRoute() {
-    if (!selectedDestination) return alert("Chọn điểm đến trước!");
+    if (!selectedDestination) {
+      showToast("warning", "Chọn điểm đến trước!");
+      return;
+    }
 
     const payload = {
       type: "destination_route",
@@ -696,9 +711,9 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      alert("📤 Route đã gửi!");
-    } catch {
-      // ignore
+      showToast("success", "📤 Route đã gửi!");
+    } catch (err) {
+      showToast("error", err.message || "Không thể gửi route!");
     }
   }
 
@@ -918,7 +933,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
 
     const conn = webRtcSignalConnRef.current;
     if (!conn || conn.state !== signalR.HubConnectionState.Connected) {
-      alert("Hub WebRTC chưa sẵn sàng.");
+      showToast("warning", "Hub WebRTC chưa sẵn sàng.");
       return;
     }
 
@@ -979,7 +994,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
     } catch (err) {
       console.error("startWebRtcCall error:", err);
       setWebRtcStatus("Không thể bắt đầu WebRTC call.");
-      alert("Không thể bắt đầu WebRTC: " + err.message);
+      showToast("error", "Không thể bắt đầu WebRTC: " + err.message);
       stopWebRtcCall();
     }
   }
@@ -1443,6 +1458,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
           </div>
         </div>
       </div>
+      <Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

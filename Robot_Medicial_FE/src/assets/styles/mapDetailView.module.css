@@ -99,7 +99,7 @@
 }
 
 .mapContainer {
-    height: 65vh;
+    height: 100vh;
     min-height: 450px;
     background: #e0f2f1;
 }
@@ -173,30 +173,35 @@
    LISTS
 ========================================================= */
 .robotList,
-.destList {
+.destList,
+.roomList {
     max-height: 200px;
     overflow-y: auto;
 }
 
 .robotItem,
-.destItem {
+.destItem,
+.roomItem {
     padding: 0.75rem 0;
     border-bottom: 1px solid #e2e8f0;
 }
 
 .robotItem:last-child,
-.destItem:last-child {
+.destItem:last-child,
+.roomItem:last-child {
     border-bottom: none;
 }
 
 .robotItem strong,
-.destItem strong {
+.destItem strong,
+.roomItem strong {
     font-weight: 700;
     color: var(--ink);
     font-size: 0.95rem;
 }
 
-.destItem small {
+.destItem small,
+.roomItem small {
     display: block;
     margin-top: 2px;
     color: #64748b;
@@ -314,4 +319,31 @@
 .destItemActive {
     background: rgba(13,148,136,0.15);
     border-right: 3px solid var(--teal-dark);
+}
+
+/* =========================================================
+   ROOM ITEM
+========================================================= */
+.roomItem {
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-right 0.2s ease;
+}
+
+.roomItem:hover {
+    background: rgba(13,148,136,0.06);
+}
+
+.roomMeta {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.patientCount {
+    font-size: 0.8rem;
+    color: var(--teal-dark);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
 }

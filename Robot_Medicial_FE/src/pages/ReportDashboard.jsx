@@ -37,7 +37,7 @@ const STATUS_LABELS = {
 };
 
 // Helper
-const toVietnamese = (status) => STATUS_LABELS[status] || status;
+const toVietnamese = (status) => STATUS_LABELS[status] || "Không xác định";
 
 /* ============================
    MAPPING MÀU THEO STATUS
@@ -148,7 +148,7 @@ export default function ReportDashboard() {
     const rows = statusData
       .filter(r => r.Robot !== "TỔNG CỘNG")
       .map(r => ({
-        robot: r.Robot || "N/A",
+        robot: r.Robot || "Không có",
         ...Object.fromEntries(
           Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task")
         )
@@ -186,7 +186,7 @@ export default function ReportDashboard() {
     const rows = timelineData
       .filter(r => r.Robot !== "TỔNG CỘNG")
       .map(r => ({
-        robot: r.Robot || "N/A",
+        robot: r.Robot || "Không có",
         ...Object.fromEntries(
           Object.entries(r).filter(([k]) => k !== "Robot" && k !== "Tổng task")
         )
