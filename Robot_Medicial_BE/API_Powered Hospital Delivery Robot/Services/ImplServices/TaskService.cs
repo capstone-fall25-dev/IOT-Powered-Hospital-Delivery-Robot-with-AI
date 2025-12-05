@@ -240,6 +240,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         TaskId = task.Id,
                         StopId = stop.Id,
                         CompartmentId = s.CompartmentId,
+                        CategoryId = s.CategoryId, // Lưu CategoryId để giữ lại khi task bị cancel
                         ItemDesc = itemDesc,
                         Status = "pending",
                         CreatedAt = DateTime.Now,
@@ -274,6 +275,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         {
             var task = await _repo.GetByIdAsync(id);
             if (task == null) return null;
+
+            // Đảm bảo Compartment được load cho mỗi assignment (với Category)
+            foreach (var stop in task.TaskStops)
+            {
+                foreach (var assign in stop.CompartmentAssignments)
+                {
+                    // Luôn load lại Compartment để đảm bảo có CategoryId đầy đủ
+                    if (assign.CompartmentId > 0)
+                    {
+                        var comp = await _repoRobotCom.GetByIdAsync(assign.CompartmentId);
+                        if (comp != null)
+                        {
+                            // Đảm bảo CategoryId được set nếu có Category object
+                            // Nếu CategoryId null nhưng có Category object → set CategoryId từ Category.Id
+                            if (!comp.CategoryId.HasValue && comp.Category != null && comp.Category.Id > 0)
+                            {
+                                comp.CategoryId = comp.Category.Id;
+                                // Cập nhật lại database để đảm bảo CategoryId được lưu
+                                await _repoRobotCom.AssignCategoryToCompartment(comp.Id, comp.Category.Id);
+                            }
+                            // Nếu cả CategoryId và Category đều null → có thể Compartment đã bị release
+                            // Trong trường hợp này, ta không thể lấy CategoryId, sẽ để frontend xử lý
+                            assign.Compartment = comp;
+                        }
+                    }
+                }
+            }
 
             return MapToEdit(task);
         }
@@ -361,8 +389,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (dto.Priority.HasValue)
                     task.Priority = dto.Priority.Value.ToString();
 
+                // Nếu task đã cancel và user thay đổi scheduledStartAt → cho phép sử dụng lại task
+                bool isReactivatingCanceledTask = task.Status.ToLower() == "canceled" && 
+                                                   dto.ScheduledStartAt.HasValue &&
+                                                   dto.ScheduledStartAt.Value != task.ScheduledStartAt;
+
                 if (dto.ScheduledStartAt.HasValue)
                     task.ScheduledStartAt = dto.ScheduledStartAt.Value;
+
+                // Nếu đang reactivate task đã cancel → tự động chuyển về pending
+                if (isReactivatingCanceledTask && (dto.Status == null || dto.Status.Trim().ToLower() == "pending"))
+                {
+                    task.Status = "pending";
+                }
 
                 bool taskStatusManuallyChanged =
                     dto.Status != null &&       // FE có gửi lên
@@ -469,9 +508,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             if (assignment != null)
                                 await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
 
-                            // Kiểm tra compartment status trước
+                            // Kiểm tra compartment status trước (đặc biệt quan trọng khi reactivate task đã cancel)
                             if (comp.Status == "locked")
-                                throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa.");
+                                throw new InvalidOperationException($"Khoang {comp.CompartmentCode} đang bị khóa. Khoang phải trống để sử dụng lại task.");
 
                             // Kiểm tra compartment có đang được sử dụng bởi task khác không
                             if (await _repo.IsCompartmentBusyAsync(sDto.CompartmentId))
@@ -503,6 +542,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     TaskId = task.Id,
                                     StopId = stop.Id,
                                     CompartmentId = sDto.CompartmentId,
+                                    CategoryId = sDto.CategoryId, // Lưu CategoryId để giữ lại khi task bị cancel
                                     Status = stop.Status,
                                     CreatedAt = DateTime.Now,
                                     UpdatedAt = DateTime.Now
@@ -514,6 +554,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             else
                             {
                                 assignment.CompartmentId = sDto.CompartmentId;
+                                assignment.CategoryId = sDto.CategoryId; // Cập nhật CategoryId khi edit
                                 assignment.UpdatedAt = DateTime.Now;
                             }
                         }
@@ -768,6 +809,44 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s =>
                 {
                     var assign = s.CompartmentAssignments.FirstOrDefault();
+                    
+                    // Lấy CategoryId và CompartmentId từ assignment
+                    ulong categoryId = 0;
+                    ulong compartmentId = 0;
+                    
+                    if (assign != null)
+                    {
+                        compartmentId = assign.CompartmentId;
+                        
+                        // Ưu tiên lấy CategoryId từ CompartmentAssignment (giữ lại khi task bị cancel)
+                        if (assign.CategoryId.HasValue && assign.CategoryId.Value > 0)
+                        {
+                            categoryId = assign.CategoryId.Value;
+                        }
+                        // Nếu CompartmentAssignment không có CategoryId, lấy từ Compartment
+                        else if (assign.Compartment != null)
+                        {
+                            // Compartment đã được include với Category trong GetByIdAsync
+                            // CategoryId là ulong? (nullable)
+                            if (assign.Compartment.CategoryId.HasValue && assign.Compartment.CategoryId.Value > 0)
+                            {
+                                categoryId = assign.Compartment.CategoryId.Value;
+                            }
+                            else if (assign.Compartment.Category != null && assign.Compartment.Category.Id > 0)
+                            {
+                                // Nếu CategoryId null nhưng Category object có → lấy từ Category.Id
+                                categoryId = assign.Compartment.Category.Id;
+                            }
+                            // Nếu cả CategoryId và Category đều null → để categoryId = 0
+                            // (có thể Compartment chưa được gán category)
+                        }
+                        else if (compartmentId > 0)
+                        {
+                            // Nếu Compartment chưa được load (đã được load trong GetEditDataAsync nhưng vẫn null)
+                            // → Có thể Compartment đã bị xóa, để categoryId = 0
+                            categoryId = 0;
+                        }
+                    }
 
                     return new TaskEditStopDto
                     {
@@ -775,8 +854,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         SeqNo = s.SeqNo,
                         DestinationId = s.DestinationId ?? 0,
                         PatientId = s.PatientId ?? 0,
-                        CategoryId = assign?.Compartment?.CategoryId ?? 0,
-                        CompartmentId = assign?.CompartmentId ?? 0,
+                        CategoryId = categoryId,
+                        CompartmentId = compartmentId,
                         CustomName = s.CustomName,
                         ItemDesc = assign?.ItemDesc,
                         Status = s.Status
@@ -794,7 +873,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             "in_progress",
             "awaiting_handover",
             "returning",
-            "at_station"
+            "at_station",
+            "canceled" // Cho phép edit task đã cancel để có thể sử dụng lại
         };
 
         private static readonly HashSet<string> ValidTaskStatuses = new()

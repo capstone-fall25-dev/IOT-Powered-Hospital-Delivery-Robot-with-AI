@@ -27,6 +27,9 @@ public partial class CompartmentAssignment
     [Column("compartment_id")]
     public ulong CompartmentId { get; set; }
 
+    [Column("category_id")]
+    public ulong? CategoryId { get; set; }
+
     [Column("item_desc")]
     [StringLength(255)]
     public string ItemDesc { get; set; } = null!;
