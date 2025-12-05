@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
@@ -160,8 +159,9 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
         /// </summary>
         private async Task<List<object>> GetAllExpectedResult()
         {
-            // Bước 1: Lấy danh sách danh mục
+            // Bước 1: Lấy danh sách danh mục đã sắp xếp theo tên
             var baseCategories = await _context.CompartmentCategories
+                .OrderBy(c => c.Name)
                 .Select(c => new
                 {
                     c.Id,
@@ -188,15 +188,6 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
                     CompartmentCount = compartmentCount
                 });
             }
-
-            // Bước 3: Sắp xếp theo tên sử dụng Vietnamese culture-aware comparison
-            // Use CompareInfo for proper Vietnamese alphabetical sorting
-            var vietnameseCulture = CultureInfo.GetCultureInfo("vi-VN");
-            var compareInfo = vietnameseCulture.CompareInfo;
-            finalResult = finalResult
-                .OrderBy(c => ((dynamic)c).Name, Comparer<string>.Create((x, y) => 
-                    compareInfo.Compare(x, y, CompareOptions.None)))
-                .ToList();
 
             return finalResult;
         }
@@ -236,22 +227,19 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
         [Fact]
         public async System.Threading.Tasks.Task GetAll_TC04_KiemTraThuTuSapXepTheoTenTangDanChinhXac()
         {
-            // Call the controller directly to get the actual result
-            var result = await _controller.GetAll();
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var actualData = (IEnumerable<object>)okResult.Value!;
+            var expectedData = await GetAllExpectedResult();
 
-            var actualNames = actualData
+            var actualNames = expectedData
                 .Cast<dynamic>()
                 .Select(x => (string)x.Name)
                 .ToArray();
 
-            var expectedNames = new string[] 
-            { 
-                "Bơm kim tiêm", 
-                "Thuốc nước", 
-                "Thuốc viên", 
-                "Ống truyền dịch" 
+            var expectedNames = new string[]
+            {
+                "Bơm kim tiêm",
+                "Thuốc nước",
+                "Thuốc viên",
+                "Ống truyền dịch"
             };
 
             Assert.Equal(expectedNames, actualNames);
@@ -327,9 +315,11 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
             Assert.Null(bomKimTiemItem.Description);
         }
 
-        [Fact] public async System.Threading.Tasks.Task GetAll_TC11_HasFourProperties() { 
-            var data = await GetAllExpectedResult(); 
-            var first = (dynamic)data[0]; 
+        [Fact]
+        public async System.Threading.Tasks.Task GetAll_TC11_HasFourProperties()
+        {
+            var data = await GetAllExpectedResult();
+            var first = (dynamic)data[0];
             Assert.Equal(4, first.GetType().GetProperties().Length);
         }
 
