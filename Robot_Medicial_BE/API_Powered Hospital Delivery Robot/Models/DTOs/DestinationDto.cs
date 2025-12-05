@@ -2,6 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo/cập nhật điểm đến
+    /// </summary>
     public class DestinationDto
     {
         [Required]
@@ -13,13 +16,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         [StringLength(64)]
         public string? Floor { get; set; }
-
-        // 🧭 Thêm 3 thuộc tính mới để FE gửi
         public double? X { get; set; }
         public double? Y { get; set; }
         public ulong? MapId { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin điểm đến
+    /// </summary>
     public class DestinationResponseDto
     {
         public ulong Id { get; set; }

@@ -1,5 +1,8 @@
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO phản hồi thông tin ngăn chứa của robot
+    /// </summary>
     public class RobotCompartmentResponseDto
     {
         public ulong Id { get; set; }

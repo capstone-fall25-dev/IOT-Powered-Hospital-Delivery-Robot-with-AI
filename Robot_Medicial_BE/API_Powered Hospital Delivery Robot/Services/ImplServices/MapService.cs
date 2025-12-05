@@ -127,7 +127,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var existing = await _repository.GetByIdAsync(id);
                     if (existing == null)
                     {
-                        throw new InvalidOperationException("Map not found");
+                        throw new InvalidOperationException("Không tìm thấy bản đồ");
                     }
 
                     if (mapDto.MapName != existing.MapName)
@@ -135,18 +135,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         var nameExisting = await _repository.GetByNameAsync(mapDto.MapName);
                         if (nameExisting != null)
                         {
-                            throw new InvalidOperationException("Map name already exists");
+                            throw new InvalidOperationException("Tên bản đồ đã tồn tại");
                         }
                     }
 
                     // Validate thresh 
                     if (mapDto.OccupiedThresh.HasValue && (mapDto.OccupiedThresh < 0 || mapDto.OccupiedThresh > 1))
                     {
-                        throw new ArgumentException("Occupied threshold must be between 0 and 1");
+                        throw new ArgumentException("Ngưỡng occupied phải nằm trong khoảng 0 và 1");
                     }
                     if (mapDto.FreeThresh.HasValue && (mapDto.FreeThresh < 0 || mapDto.FreeThresh > 1))
                     {
-                        throw new ArgumentException("Free threshold must be between 0 and 1");
+                        throw new ArgumentException("Ngưỡng free phải nằm trong khoảng 0 và 1");
                     }
 
                     var map = _mapper.Map<Map>(mapDto);

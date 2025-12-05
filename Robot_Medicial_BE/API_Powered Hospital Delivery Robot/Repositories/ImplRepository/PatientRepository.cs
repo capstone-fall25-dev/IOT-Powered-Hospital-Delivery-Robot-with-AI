@@ -5,18 +5,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý dữ liệu bệnh nhân
+    /// </summary>
     public class PatientRepository : IPatientRepository
     {
         private readonly RobotManagerContext _context;
 
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public PatientRepository(RobotManagerContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Kiểm tra phòng có tồn tại không
+        /// </summary>
         public async Task<bool> ExistsRoomAsync(ulong roomId)
             => await _context.Rooms.AnyAsync(r => r.Id == roomId);
 
+        /// <summary>
+        /// Tạo mới bệnh nhân
+        /// </summary>
         public async Task<Patient> CreateAsync(Patient patient)
         {
             _context.Patients.Add(patient);
@@ -24,6 +36,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return patient;
         }
 
+        /// <summary>
+        /// Lấy toàn bộ danh sách bệnh nhân
+        /// </summary>
         public async Task<IEnumerable<Patient>> GetAllAsync()
         {
             return await _context.Patients
@@ -32,6 +47,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lọc bệnh nhân theo nhiều tiêu chí
+        /// </summary>
         public async Task<IEnumerable<Patient>> FilterAsync(PatientFilterDto f)
         {
             var q = _context.Patients.Include(p => p.Room).AsQueryable();
@@ -51,6 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy bệnh nhân theo ID, có thể include phòng và đơn thuốc
+        /// </summary>
         public async Task<Patient?> GetByIdAsync(ulong id, bool includeRoom = false, bool includePrescriptions = false)
         {
             IQueryable<Patient> q = _context.Patients;
@@ -66,9 +87,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await q.FirstOrDefaultAsync(p => p.Id == id);
         }
 
+        /// <summary>
+        /// Lấy bệnh nhân theo mã bệnh nhân
+        /// </summary>
         public async Task<Patient?> GetByCodeAsync(string code)
             => await _context.Patients.FirstOrDefaultAsync(p => p.PatientCode == code);
 
+        /// <summary>
+        /// Cập nhật thông tin bệnh nhân theo ID
+        /// </summary>
         public async Task<Patient?> UpdateAsync(ulong id, Patient patient)
         {
             var ex = await _context.Patients.FindAsync(id);
@@ -80,6 +107,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return ex;
         }
 
+        /// <summary>
+        /// Cho bệnh nhân xuất viện
+        /// </summary>
         public async Task<Patient?> DischargeAsync(ulong id, string? reason)
         {
             var patient = await _context.Patients.FindAsync(id);
@@ -91,7 +121,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             if (!string.IsNullOrWhiteSpace(reason))
             {
-                // Format: FullName (Reason)
                 patient.FullName = $"{patient.FullName} ({reason})";
             }
 
@@ -99,6 +128,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return patient;
         }
 
+        /// <summary>
+        /// Lấy lịch sử nhận thuốc của bệnh nhân
+        /// </summary>
         public async Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong id)
         {
             return await _context.PrescriptionItems

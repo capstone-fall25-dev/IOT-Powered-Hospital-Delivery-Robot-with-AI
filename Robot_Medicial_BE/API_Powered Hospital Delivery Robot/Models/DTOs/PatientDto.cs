@@ -2,9 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
-    // ============================================
-    // CREATE
-    // ============================================
+    /// <summary>
+    /// DTO cho tạo bệnh nhân mới
+    /// </summary>
     public class PatientCreateDto
     {
         [Required, StringLength(64)]
@@ -26,9 +26,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Status { get; set; } = "active";
     }
 
-    // ============================================
-    // UPDATE (PATCH-like – optional fields)
-    // ============================================
+    /// <summary>
+    /// DTO cho cập nhật thông tin bệnh nhân (các trường tùy chọn)
+    /// </summary>
     public class PatientUpdateDto
     {
         [StringLength(64)]
@@ -48,26 +48,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; }
     }
 
-    // ============================================
-    // FILTER — NO PAGINATION
-    // ============================================
+    /// <summary>
+    /// DTO cho lọc danh sách bệnh nhân
+    /// </summary>
     public class PatientFilterDto
     {
         public string? Keyword { get; set; }    // Tìm theo tên, mã BN, khoa, phòng
-        public string? Status { get; set; }     // active / discharged / null = all
+        public string? Status { get; set; }
     }
 
-    // ============================================
-    // DISCHARGE
-    // ============================================
+    /// <summary>
+    /// DTO cho xuất viện bệnh nhân
+    /// </summary>
     public class DischargeDto
     {
         public string? Reason { get; set; }
     }
 
-    // ============================================
-    // RESPONSE
-    // ============================================
+    /// <summary>
+    /// DTO phản hồi thông tin bệnh nhân
+    /// </summary>
     public class PatientResponseDto
     {
         public ulong Id { get; set; }
@@ -85,9 +85,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Status { get; set; } = null!;
     }
 
-    // ============================================
-    // REPORT
-    // ============================================
+    /// <summary>
+    /// DTO cho báo cáo bệnh nhân
+    /// </summary>
     public class PatientReportDto
     {
         public string FullName { get; set; } = null!;
@@ -97,9 +97,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? CurrentRoom { get; set; }
     }
 
-    // ============================================
-    // MEDICINE HISTORY
-    // ============================================
+    /// <summary>
+    /// DTO cho lịch sử nhận thuốc của bệnh nhân
+    /// </summary>
     public class PatientMedicineHistoryDto
     {
         public string MedicineName { get; set; } = null!;

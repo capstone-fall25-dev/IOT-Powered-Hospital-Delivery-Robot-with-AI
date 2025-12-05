@@ -40,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 if (!string.IsNullOrEmpty(mapJsonDto.ImageBase64))
                 {
                     var bytes = Convert.FromBase64String(mapJsonDto.ImageBase64);
-                    imageFile = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "image", mapJsonDto.ImageName);
+                    imageFile = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "image", mapJsonDto.ImageName ?? "map.png");
                 }
 
                 var dto = new MapUploadDto

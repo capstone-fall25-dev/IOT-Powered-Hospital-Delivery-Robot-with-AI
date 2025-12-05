@@ -2,14 +2,17 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho phân bổ ngăn chứa
+    /// </summary>
     public class CompartmentAssignmentDto
     {
         public ulong Id { get; set; }
 
-        public ulong? CompartmentId { get; set; } // RobotCompartment Id
+        public ulong? CompartmentId { get; set; }
 
         [Required]
-        public ulong StopId { get; set; } // TaskStop Id
+        public ulong StopId { get; set; }
 
         [Required]
         public ulong TaskId { get; set; } 
@@ -17,20 +20,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Status { get; set; } = "pending"; 
     }
 
-    // DTO cho load (input)
+    /// <summary>
+    /// DTO cho nạp hàng vào ngăn chứa
+    /// </summary>
     public class LoadCompartmentDto
     {
         [StringLength(255)]
-        public string? ItemDesc { get; set; } // Mô tả item khi load (e.g., "Thuốc paracetamol 500mg")
+        public string? ItemDesc { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin phân bổ ngăn chứa
+    /// </summary>
     public class CompartmentAssignmentResponseDto
     {
         public ulong Id { get; set; }
         public ulong? CompartmentId { get; set; }
-        public string? CompartmentCode { get; set; } // Từ relation
+        public string? CompartmentCode { get; set; }
         public ulong StopId { get; set; }
-        public string? StopCustomName { get; set; } // Từ TaskStop
+        public string? StopCustomName { get; set; }
         public ulong TaskId { get; set; }
         public string Status { get; set; } = null!;
         public DateTime CreatedAt { get; set; }

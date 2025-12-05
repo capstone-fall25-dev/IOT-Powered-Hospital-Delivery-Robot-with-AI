@@ -157,6 +157,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             pres.Status = "approved";
 
             var updated = await _repo.UpdateAsync(pres);
+            if (updated == null)
+                throw new InvalidOperationException("Không thể cập nhật đơn thuốc.");
+            
             var full = await _repo.GetByIdAsync(updated.Id, includeItems: true);
             return _mapper.Map<PrescriptionResponseDto>(full);
         }

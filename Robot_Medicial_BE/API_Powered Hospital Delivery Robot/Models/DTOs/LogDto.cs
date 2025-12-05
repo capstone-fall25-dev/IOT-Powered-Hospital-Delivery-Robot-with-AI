@@ -2,6 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo log hệ thống
+    /// </summary>
     public class LogDto
     {
         [Required]
@@ -19,6 +22,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Message { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin log
+    /// </summary>
     public class LogResponseDto
     {
         public ulong Id { get; set; }

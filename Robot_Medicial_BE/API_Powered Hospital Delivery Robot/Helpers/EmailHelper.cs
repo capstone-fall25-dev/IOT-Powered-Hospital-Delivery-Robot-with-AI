@@ -22,11 +22,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
         {
             // Lấy cấu hình email từ appsettings.json
             var smtpHost = _config["EmailSettings:SmtpHost"];
-            var smtpPort = int.Parse(_config["EmailSettings:SmtpPort"]);
+            var smtpPortStr = _config["EmailSettings:SmtpPort"];
+            if (string.IsNullOrEmpty(smtpPortStr))
+                throw new InvalidOperationException("Cấu hình SmtpPort không được để trống");
+            var smtpPort = int.Parse(smtpPortStr);
+            
             var smtpUser = _config["EmailSettings:SmtpUser"];
+            if (string.IsNullOrEmpty(smtpUser))
+                throw new InvalidOperationException("Cấu hình SmtpUser không được để trống");
+            
             var smtpPass = _config["EmailSettings:SmtpPass"];
             var senderName = _config["EmailSettings:SenderName"];
-            var enableSsl = bool.Parse(_config["EmailSettings:EnableSsl"]);
+            
+            var enableSslStr = _config["EmailSettings:EnableSsl"];
+            if (string.IsNullOrEmpty(enableSslStr))
+                throw new InvalidOperationException("Cấu hình EnableSsl không được để trống");
+            var enableSsl = bool.Parse(enableSslStr);
 
             using (var client = new SmtpClient(smtpHost, smtpPort))
             {

@@ -2,10 +2,13 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho báo cáo thuốc bị hỏng
+    /// </summary>
     public class ReportDamagedMedicineDto
     {
         [Required]
-        public ulong PrescriptionItemId { get; set; } // Item cụ thể hỏng
+        public ulong PrescriptionItemId { get; set; }
 
         [Required]
         [StringLength(255)]
@@ -14,10 +17,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [StringLength(500)]
         public string? Description { get; set; } 
 
-        [Required] // Require TaskId to fetch RobotId, as alerts.robot_id is NOT NULL
-        public ulong TaskId { get; set; } // Liên kết task để lấy robot_id
+        [Required]
+        public ulong TaskId { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi báo cáo thuốc bị hỏng
+    /// </summary>
     public class ReportDamagedMedicineResponseDto
     {
         public ulong AlertId { get; set; }
@@ -26,22 +32,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Description { get; set; } = null!;
         public ulong TaskId { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string Message { get; set; } = null!; // "Alert created successfully"
+        public string Message { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho tạo cảnh báo
+    /// </summary>
     public class AlertDto
     {
         [Required]
         public ulong RobotId { get; set; }
         
         [Required]
-        public string Severity { get; set; } = "low"; // enum: 'low','medium','high','critical'
+        public string Severity { get; set; } = "low";
         
         [Required]
-        public string Category { get; set; } = null!; // enum: 'battery','network','obstacle','system','manual'
+        public string Category { get; set; } = null!;
         
         [Required]
-        public string Status { get; set; } = "open"; // enum: 'open','acknowledged','resolved'
+        public string Status { get; set; } = "open";
         
         [Required]
         [StringLength(500)]
@@ -49,6 +58,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? PrescriptionItemId { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin cảnh báo
+    /// </summary>
     public class AlertResponseDto
     {
         public ulong Id { get; set; }
