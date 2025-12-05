@@ -64,12 +64,24 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
             var result = await _controller.SendCompartmentSignal(Req(999, "open"));
 
             var ok = Assert.IsType<OkObjectResult>(result);
-            dynamic data = ok.Value!;
-            Assert.Equal("sent", (string)data.status);
+            // Use reflection to access the status property from anonymous object
+            var statusProperty = ok.Value!.GetType().GetProperty("status");
+            Assert.NotNull(statusProperty);
+            var statusValue = statusProperty.GetValue(ok.Value);
+            Assert.Equal("sent", statusValue?.ToString());
 
+            // Verify SignalR call - check the actual object structure using reflection
             _mockClientProxy.Verify(p => p.SendCoreAsync(
                 "ReceiveCompartmentSignal",
-                It.Is<object[]>(o => o[0]!.ToString()!.Contains("\"state\":1")),
+                It.Is<object[]>(o => 
+                {
+                    var signalData = o[0];
+                    var signalType = signalData.GetType();
+                    var stateProperty = signalType.GetProperty("state");
+                    if (stateProperty == null) return false;
+                    var stateValue = stateProperty.GetValue(signalData);
+                    return stateValue != null && stateValue.ToString() == "1";
+                }),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -90,9 +102,18 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
             var result = await _controller.SendCompartmentSignal(Req(888, "close"));
 
             Assert.IsType<OkObjectResult>(result);
+            // Verify SignalR call - check the actual object structure using reflection
             _mockClientProxy.Verify(p => p.SendCoreAsync(
                 It.IsAny<string>(),
-                It.Is<object[]>(o => o[0]!.ToString()!.Contains("\"state\":0")),
+                It.Is<object[]>(o => 
+                {
+                    var signalData = o[0];
+                    var signalType = signalData.GetType();
+                    var stateProperty = signalType.GetProperty("state");
+                    if (stateProperty == null) return false;
+                    var stateValue = stateProperty.GetValue(signalData);
+                    return stateValue != null && stateValue.ToString() == "0";
+                }),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
         }
