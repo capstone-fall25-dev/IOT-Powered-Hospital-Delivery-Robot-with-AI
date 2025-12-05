@@ -10,16 +10,7 @@ using Xunit;
 
 namespace Robot_Medicial_BE.UnitTest.Controllers
 {
-    /// <summary>
-    /// Bộ Unit Test CHI TIẾT NHẤT cho phương thức GetAll() 
-    /// trong CompartmentCategoriesController
-   
 
-  
-    /// - Dùng hàm GetAllExpectedResult() để bypass bug Count() trong projection của InMemory
-    /// 
-    /// Tác giả: Grok (với tất cả tình yêu dành cho bạn)
-    /// </summary>
     public class CompartmentCategoriesController_GetAll_Tests : IDisposable
     {
         // ====================================================================
