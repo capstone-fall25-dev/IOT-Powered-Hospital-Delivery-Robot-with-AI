@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Linq;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -34,10 +36,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     c.Description,
                     CompartmentCount = _context.RobotCompartments.Count(rc => rc.CategoryId == c.Id)
                 })
-                .OrderBy(c => c.Name)
                 .ToListAsync();
 
-            return Ok(categories);
+            // Sort using Vietnamese culture-aware comparison
+            // Use CompareInfo for proper Vietnamese alphabetical sorting
+            var vietnameseCulture = CultureInfo.GetCultureInfo("vi-VN");
+            var compareInfo = vietnameseCulture.CompareInfo;
+            var sortedCategories = categories
+                .OrderBy(c => c.Name, Comparer<string>.Create((x, y) => 
+                    compareInfo.Compare(x, y, CompareOptions.None)))
+                .ToList();
+
+            return Ok(sortedCategories);
         }
 
         /// <summary>
@@ -68,10 +78,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] CompartmentCategoryCreateDto dto)
         {
+            // Validate model state
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Manual validation for unit tests (ModelState might not work in all test scenarios)
+            if (dto == null)
+                return BadRequest(new { message = "Dữ liệu không hợp lệ." });
+
+            // Check for null or empty name
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { message = "Tên danh mục là bắt buộc" });
+
+            // Trim the name
             var trimmedName = dto.Name.Trim();
+
+            // Check if trimmed name is empty (spaces-only case)
+            if (string.IsNullOrEmpty(trimmedName))
+                return BadRequest(new { message = "Tên danh mục không được chỉ chứa khoảng trắng" });
+
+            // Validate length (2-100 characters)
+            if (trimmedName.Length < 2)
+                return BadRequest(new { message = "Tên phải từ 2-100 ký tự" });
+
+            if (trimmedName.Length > 100)
+                return BadRequest(new { message = "Tên phải từ 2-100 ký tự" });
+
+            // Check for duplicate name
             if (await _context.CompartmentCategories.AnyAsync(c => c.Name == trimmedName))
                 return Conflict(new { message = $"Danh mục '{trimmedName}' đã tồn tại." });
 
