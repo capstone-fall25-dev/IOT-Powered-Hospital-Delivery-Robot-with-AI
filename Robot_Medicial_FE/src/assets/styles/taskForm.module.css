@@ -131,6 +131,43 @@ select.form-select option[disabled] {
     cursor: not-allowed;
 }
 
+/* =================== FLOATING ADD STOP BUTTON =================== */
+.btnAddStopFloating {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-dark) 0%, #0891b2 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(13, 148, 136, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.btnAddStopFloating:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.5);
+    background: linear-gradient(135deg, #0a7c6f 0%, #067a8f 100%);
+}
+
+.btnAddStopFloating:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btnAddStopFloating:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
 .btnRemove {
     position: absolute;
     top: 1rem;

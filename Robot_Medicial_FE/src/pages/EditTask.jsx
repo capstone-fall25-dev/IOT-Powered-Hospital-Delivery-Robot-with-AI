@@ -1,18 +1,19 @@
 // src/pages/EditTask.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
 import { getTaskEditData, updateTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import {
     getUnlockedCompartments,
     getCompartmentsByRobotAndCategory,
+    getCompartmentById,
     getAllCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions, approvePrescriptionByCode } from "@/services/prescriptionServices";
+import { getAllPrescriptions, approvePrescriptionByCode, updatePrescription } from "@/services/prescriptionServices";
 import { getAvailableRobots } from "@/services/robotService";
-
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 import styles from "@/assets/styles/taskForm.module.css";
 
 // ======================= CONSTANTS =========================
@@ -59,6 +60,7 @@ const STOP_STATUS_OPTIONS = [
 export default function EditTask() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     // ===================== STATE =====================
     const [loading, setLoading] = useState(true);
@@ -68,10 +70,16 @@ export default function EditTask() {
     const [destinations, setDestinations] = useState([]);
     const [patients, setPatients] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState("");
 
     const [baseCompartments, setBaseCompartments] = useState([]);
+    const [unselectPrescriptionModal, setUnselectPrescriptionModal] = useState({
+        show: false,
+        prescriptionCode: "",
+        prescriptionId: null,
+        originalStatus: "",
+        stopIndex: -1,
+        loading: false,
+    });
 
     const [form, setForm] = useState({
         mapId: "",
@@ -87,6 +95,21 @@ export default function EditTask() {
 
     const [initLoaded, setInitLoaded] = useState(false);
 
+    // ============================================================
+    // PRESCRIPTION STATUS MAP (chuyển status sang tiếng Việt)
+    // ============================================================
+    const prescriptionStatusMap = {
+        pending: "Đang chờ",
+        approved: "Đã duyệt",
+        dispensed: "Đã phát",
+        canceled: "Đã hủy",
+    };
+
+    function getPrescriptionStatusText(status) {
+        if (!status) return "";
+        return prescriptionStatusMap[status.toLowerCase()] || "Không xác định";
+    }
+
     // ===================== LOAD INITIAL BASE DATA =====================
     useEffect(() => {
         async function loadInit() {
@@ -100,13 +123,14 @@ export default function EditTask() {
                     ]);
 
                 setMaps(mapsData);
-                setRobots(robotsData);
+                // getAvailableRobots() trả về {message, available_count, data: Array}
+                // Cần lấy data array
+                setRobots(robotsData?.data || robotsData || []);
                 setPatients(patientsData);
                 setCategories(categoriesData);
             } catch (err) {
                 console.error(err);
-                setMessage("❌ Không tải được dữ liệu ban đầu.");
-                setMessageType("error");
+                showToast("error", err.message);
             }
         }
 
@@ -115,39 +139,120 @@ export default function EditTask() {
 
     // ===================== LOAD TASK EDIT DTO =====================
     useEffect(() => {
-        if (!initLoaded) return;
+        if (!initLoaded) {
+            return;
+        }
+        if (!categories || categories.length === 0) {
+            return;
+        }
+        // Đợi robots được load để có thể so sánh và thêm robot fallback nếu cần
+        if (!robots || robots.length === 0) {
+            return;
+        }
 
         async function loadTask() {
             try {
                 const data = await getTaskEditData(id);
 
                 // Nếu robot hiện tại không nằm trong danh sách available → thêm robot "không khả dụng" vào list
-                if (Array.isArray(robots) && !robots.some((r) => r.id === data.robotId)) {
-                    setRobots((prev) => [
-                        ...prev,
-                        {
-                            id: data.robotId,
-                            name: `Robot #${data.robotId} (không khả dụng)`,
-                            batteryPercent: 0,
-                        },
-                    ]);
+                // So sánh với type conversion để tránh type mismatch (number vs string)
+                if (Array.isArray(robots) && data.robotId && 
+                    !robots.some((r) => Number(r.id) === Number(data.robotId))) {
+                    setRobots((prev) => {
+                        // Kiểm tra xem đã có robot này chưa (tránh duplicate)
+                        if (prev.some((r) => Number(r.id) === Number(data.robotId))) {
+                            return prev;
+                        }
+                        return [
+                            ...prev,
+                            {
+                                id: data.robotId,
+                                name: `Robot #${data.robotId} (không khả dụng)`,
+                                batteryPercent: 0,
+                            },
+                        ];
+                    });
                 }
 
                 // Convert stops BE -> structure FE
                 const editedStops = await Promise.all(
                     data.stops.map(async (s) => {
-                        let filtered = s.categoryId
-                            ? await getCompartmentsByRobotAndCategory(
-                                  data.robotId,
-                                  s.categoryId
-                              )
-                            : [];
+                        let filtered = [];
+                        let resolvedCategoryId = (s.categoryId && s.categoryId > 0) ? s.categoryId : null;
+                        
+                        // Nếu có categoryId từ BE → load compartments theo category
+                        if (s.categoryId && s.categoryId > 0) {
+                            filtered = await getCompartmentsByRobotAndCategory(
+                                data.robotId,
+                                s.categoryId
+                            );
+                        }
+                        // Nếu không có categoryId nhưng có compartmentId → cần tìm categoryId từ compartment
+                        else if (s.compartmentId && s.compartmentId > 0) {
+                            try {
+                                // Thử load compartment detail trực tiếp theo ID để lấy categoryId
+                                const compDetail = await getCompartmentById(s.compartmentId);
+                                
+                                if (compDetail && compDetail.categoryId) {
+                                    // Tìm thấy compartment và có categoryId → load compartments theo category
+                                    resolvedCategoryId = compDetail.categoryId;
+                                    filtered = await getCompartmentsByRobotAndCategory(
+                                        data.robotId,
+                                        resolvedCategoryId
+                                    );
+                                } else {
+                                    // Compartment không có categoryId → thử tìm trong unlocked compartments
+                                    const allCompartments = await getUnlockedCompartments(data.robotId);
+                                    const foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
+                                    
+                                    if (foundComp && foundComp.categoryId) {
+                                        resolvedCategoryId = foundComp.categoryId;
+                                        filtered = await getCompartmentsByRobotAndCategory(
+                                            data.robotId,
+                                            resolvedCategoryId
+                                        );
+                                    } else {
+                                        // Không tìm thấy compartment hoặc không có categoryId → thêm fallback
+                                        filtered = [
+                                            {
+                                                id: s.compartmentId,
+                                                compartmentCode: `#${s.compartmentId} (không khả dụng)`,
+                                            },
+                                        ];
+                                    }
+                                }
+                            } catch (err) {
+                                // Nếu không load được compartment detail, thử tìm trong unlocked compartments
+                                const allCompartments = await getUnlockedCompartments(data.robotId);
+                                const foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
+                                
+                                if (foundComp && foundComp.categoryId) {
+                                    resolvedCategoryId = foundComp.categoryId;
+                                    filtered = await getCompartmentsByRobotAndCategory(
+                                        data.robotId,
+                                        resolvedCategoryId
+                                    );
+                                } else {
+                                    // Không tìm thấy → thêm fallback
+                                    filtered = [
+                                        {
+                                            id: s.compartmentId,
+                                            compartmentCode: `#${s.compartmentId} (không khả dụng)`,
+                                        },
+                                    ];
+                                }
+                            }
+                        }
 
                         // Nếu compartmentId BE trả về không có trong filtered → thêm fallback
-                        if (
-                            s.compartmentId &&
-                            !filtered.some((c) => c.id === s.compartmentId)
-                        ) {
+                        // So sánh với cả number và string để tránh type mismatch
+                        const hasCompartment = s.compartmentId && s.compartmentId > 0 && filtered.some((c) => {
+                            const compId = Number(c.id);
+                            const stopCompId = Number(s.compartmentId);
+                            return compId === stopCompId;
+                        });
+                        
+                        if (s.compartmentId && s.compartmentId > 0 && !hasCompartment) {
                             filtered = [
                                 ...filtered,
                                 {
@@ -163,7 +268,11 @@ export default function EditTask() {
                         let prescriptionCode = "";
 
                         // Kiểm tra category có phải thuốc không (cần load categories trước)
-                        const category = categories.find((c) => c.id === s.categoryId);
+                        // Sử dụng resolvedCategoryId nếu có, nếu không dùng categoryId từ BE
+                        const finalCategoryId = resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null);
+                        const category = finalCategoryId && finalCategoryId > 0 
+                            ? categories.find((c) => Number(c.id) === Number(finalCategoryId))
+                            : null;
                         const isMedicine = category && category.name && 
                             ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"]
                                 .some((keyword) => category.name.toLowerCase().includes(keyword));
@@ -171,9 +280,12 @@ export default function EditTask() {
                         if (s.patientId && isMedicine) {
                             // Load tất cả prescriptions (pending, dispensed, approved) trừ canceled
                             const allPrescriptions = await getAllPrescriptions({ patientId: s.patientId });
-                            const validPrescriptions = (allPrescriptions || []).filter(
-                                (p) => p.status?.toLowerCase() !== "canceled"
-                            );
+                            const validPrescriptions = (allPrescriptions || [])
+                                .filter((p) => p.status?.toLowerCase() !== "canceled")
+                                .map((p) => ({
+                                    ...p,
+                                    originalStatus: p.status, // Lưu status ban đầu
+                                }));
                             prescriptionList = validPrescriptions;
 
                             // Tìm prescription đã được chọn (nếu có trong itemDesc hoặc prescriptionCode)
@@ -206,10 +318,13 @@ export default function EditTask() {
                         return {
                             stopId: s.stopId,
                             seqNo: s.seqNo,
-                            destinationId: s.destinationId,
-                            patientId: s.patientId,
-                            categoryId: s.categoryId,
-                            compartmentId: s.compartmentId,
+                            destinationId: s.destinationId ? String(s.destinationId) : "",
+                            patientId: s.patientId ? String(s.patientId) : "",
+                            // Sử dụng resolvedCategoryId nếu có, nếu không dùng categoryId từ BE (chỉ dùng nếu > 0)
+                            categoryId: (resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null)) 
+                                ? String(resolvedCategoryId || s.categoryId) 
+                                : "",
+                            compartmentId: s.compartmentId ? String(s.compartmentId) : "",
                             customName: s.customName ?? "",
                             itemDesc: s.itemDesc ?? "",
                             status: s.status, // giữ status hiện tại của stop
@@ -221,15 +336,17 @@ export default function EditTask() {
                     })
                 );
 
-                setForm({
-                    mapId: data.mapId,
-                    robotId: data.robotId,
+                const formData = {
+                    mapId: data.mapId ? String(data.mapId) : "",
+                    robotId: data.robotId ? String(data.robotId) : "",
                     priority: data.priority, // BE đang trả 0/1/2
                     scheduledStartAt: data.scheduledStartAt
                         ? formatDateTimeLocal(data.scheduledStartAt)
                         : "",
                     stops: editedStops,
-                });
+                };
+                
+                setForm(formData);
 
                 // Lưu trạng thái nhiệm vụ ban đầu
                 setTaskStatus(data.status);
@@ -246,14 +363,13 @@ export default function EditTask() {
                 setLoading(false);
             } catch (err) {
                 console.error(err);
-                setMessage("❌ Không tải được dữ liệu chỉnh sửa");
-                setMessageType("error");
+                showToast("error", err.message);
                 setLoading(false);
             }
         }
 
         loadTask();
-    }, [id, initLoaded, robots]);
+    }, [id, initLoaded, robots, categories]);
 
     // ===================== HELPER: Format datetime cho input datetime-local =====================
     // Input datetime-local cần format: YYYY-MM-DDTHH:mm (local time, không có timezone)
@@ -441,7 +557,10 @@ export default function EditTask() {
         }
     }
 
-    // ===================== CLICK VÀO MÃ ĐƠN THUỐC → TỰ ĐỘNG APPROVE =====================
+    // ===================== CLICK VÀO MÃ ĐƠN THUỐC =====================
+    //  - Nếu chưa chọn → TỰ ĐỘNG APPROVE
+    //  - Nếu đã chọn → Hiển thị modal xác nhận bỏ chọn
+    // =====================
     async function handleSelectPrescription(prescriptionCode, idx) {
         if (!prescriptionCode) {
             updateStop(idx, "prescriptionCode", "");
@@ -449,6 +568,28 @@ export default function EditTask() {
             return;
         }
 
+        const stop = form.stops[idx];
+        
+        // Nếu đơn thuốc này đã được chọn → hiển thị modal xác nhận bỏ chọn
+        if (stop.prescriptionCode === prescriptionCode) {
+            const prescription = stop.prescriptionList.find(
+                (p) => p.prescriptionCode === prescriptionCode
+            );
+            
+            if (prescription) {
+                setUnselectPrescriptionModal({
+                    show: true,
+                    prescriptionCode: prescriptionCode,
+                    prescriptionId: prescription.id,
+                    originalStatus: prescription.originalStatus || prescription.status,
+                    stopIndex: idx,
+                    loading: false,
+                });
+            }
+            return;
+        }
+
+        // Nếu chưa chọn → approve như bình thường
         try {
             // Gọi API approve prescription
             const approved = await approvePrescriptionByCode(prescriptionCode);
@@ -457,17 +598,54 @@ export default function EditTask() {
             updateStop(idx, "prescriptionCode", prescriptionCode);
             updateStop(idx, "prescriptionPreview", approved);
 
+            // Hiển thị toast thông báo
+            showToast("success", `Đã chọn và xác nhận đơn thuốc: ${prescriptionCode}`);
+
             // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
-            const stop = form.stops[idx];
             if (stop.patientId) {
                 const clone = [...form.stops];
                 await loadPrescriptionsForPatient(stop.patientId, idx, clone);
                 setForm((f) => ({ ...f, stops: clone }));
             }
         } catch (err) {
-            console.error("Error approve prescription:", err);
-            setMessage(`❌ Lỗi: ${err.message || "Không thể xác nhận đơn thuốc"}`);
-            setMessageType("error");
+            console.error("Lỗi xác nhận đơn thuốc:", err);
+            showToast("error", err.message);
+        }
+    }
+
+    // ===================== BỎ CHỌN ĐƠN THUỐC - Trả lại status ban đầu =====================
+    async function handleUnselectPrescription() {
+        const { prescriptionId, originalStatus, stopIndex, prescriptionCode } = unselectPrescriptionModal;
+
+        if (!prescriptionId || !originalStatus) {
+            setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false });
+            return;
+        }
+
+        setUnselectPrescriptionModal((prev) => ({ ...prev, loading: true }));
+
+        try {
+            // Gọi API update prescription với status ban đầu
+            await updatePrescription(prescriptionId, { status: originalStatus });
+
+            // Cập nhật state - bỏ chọn đơn thuốc
+            updateStop(stopIndex, "prescriptionCode", "");
+            updateStop(stopIndex, "prescriptionPreview", null);
+
+            // Cập nhật lại danh sách prescriptions
+            const stop = form.stops[stopIndex];
+            if (stop.patientId) {
+                const clone = [...form.stops];
+                await loadPrescriptionsForPatient(stop.patientId, stopIndex, clone);
+                setForm((f) => ({ ...f, stops: clone }));
+            }
+
+            showToast("success", `Đã bỏ chọn đơn thuốc: ${prescriptionCode}`);
+            setUnselectPrescriptionModal({ show: false, prescriptionCode: "", prescriptionId: null, originalStatus: "", stopIndex: -1, loading: false });
+        } catch (err) {
+            console.error("Lỗi bỏ chọn đơn thuốc:", err);
+            showToast("error", err.message);
+            setUnselectPrescriptionModal((prev) => ({ ...prev, loading: false }));
         }
     }
 
@@ -483,6 +661,57 @@ export default function EditTask() {
 
     // ===================== SUBMIT UPDATE =====================
     async function handleUpdate() {
+        // Validate bản đồ
+        if (!form.mapId) {
+            showToast("warning", "Vui lòng chọn bản đồ.");
+            return;
+        }
+
+        // Validate robot
+        if (!form.robotId) {
+            showToast("warning", "Vui lòng chọn robot.");
+            return;
+        }
+
+        // Validate có điểm dừng
+        if (form.stops.length === 0) {
+            showToast("warning", "Vui lòng có ít nhất một điểm dừng.");
+            return;
+        }
+
+        // Validate từng điểm dừng
+        for (let i = 0; i < form.stops.length; i++) {
+            const stop = form.stops[i];
+            const stopNumber = i + 1;
+
+            if (!stop.destinationId) {
+                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn điểm đến.`);
+                return;
+            }
+
+            if (!stop.patientId) {
+                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn bệnh nhân.`);
+                return;
+            }
+
+            if (!stop.categoryId) {
+                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn loại ngăn.`);
+                return;
+            }
+
+            if (!stop.compartmentId) {
+                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn ngăn chứa.`);
+                return;
+            }
+
+            // Nếu category là thuốc → phải chọn đơn thuốc
+            if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
+                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn đơn thuốc.`);
+                return;
+            }
+        }
+
+        // Tất cả validation đã pass → cập nhật task
         try {
             const payload = {
                 robotId: form.robotId ? Number(form.robotId) : 0,
@@ -520,17 +749,14 @@ export default function EditTask() {
             if (taskStatus && taskStatus !== initialTaskStatus) {
                 payload.status = taskStatus;
             }
-console.log("payload gửi lên BE:", payload);
 
             await updateTask(id, payload);
 
-            setMessage("✔ Cập nhật nhiệm vụ thành công");
-            setMessageType("success");
+            showToast("success", "Cập nhật nhiệm vụ thành công");
             setTimeout(() => navigate(`/task-detail/${id}`), 1500);
         } catch (err) {
             console.error(err);
-            setMessage(`❌ Lỗi: ${err.response?.data || err.message}`);
-            setMessageType("error");
+            showToast("error", err.message);
         }
     }
 
@@ -558,6 +784,8 @@ console.log("payload gửi lên BE:", payload);
     // ===========================================================
     return (
         <div className={styles.page}>
+            <Toast toast={toast} showToast={showToast} />
+            <div className={styles.page}>
             <div className="container-xl py-4">
                 <div className="row justify-content-center">
                     <div className="col-lg-11 col-xl-10">
@@ -626,7 +854,7 @@ console.log("payload gửi lên BE:", payload);
                                             — Chọn bản đồ —
                                         </option>
                                         {maps.map((m) => (
-                                            <option value={m.id} key={m.id}>
+                                            <option value={String(m.id)} key={m.id}>
                                                 #{m.id} - {m.mapName}
                                             </option>
                                         ))}
@@ -665,7 +893,7 @@ console.log("payload gửi lên BE:", payload);
                                     </label>
                                     <select
                                         className={`form-select ${styles.formSelect}`}
-                                        value={form.robotId}
+                                        value={form.robotId || ""}
                                         onChange={(e) =>
                                             handleSelectRobot(e.target.value)
                                         }
@@ -675,7 +903,7 @@ console.log("payload gửi lên BE:", payload);
                                         </option>
                                         {Array.isArray(robots) &&
                                             robots.map((r) => (
-                                            <option value={r.id} key={r.id}>
+                                            <option value={String(r.id)} key={r.id}>
                                                 #{r.id} - {r.name}
                                                 {typeof r.batteryPercent ===
                                                 "number"
@@ -870,7 +1098,7 @@ console.log("payload gửi lên BE:", payload);
                                                 {destinations.map((d) => (
                                                     <option
                                                         key={d.id}
-                                                        value={d.id}
+                                                        value={String(d.id)}
                                                     >
                                                         {d.name}
                                                     </option>
@@ -904,7 +1132,7 @@ console.log("payload gửi lên BE:", payload);
                                                 {patients.map((p) => (
                                                     <option
                                                         key={p.id}
-                                                        value={p.id}
+                                                        value={String(p.id)}
                                                     >
                                                         {p.fullName}
                                                     </option>
@@ -924,7 +1152,7 @@ console.log("payload gửi lên BE:", payload);
                                             </label>
                                             <select
                                                 className={`form-select ${styles.formSelect}`}
-                                                value={s.categoryId}
+                                                value={s.categoryId || ""}
                                                 onChange={(e) =>
                                                     updateStop(
                                                         idx,
@@ -936,14 +1164,17 @@ console.log("payload gửi lên BE:", payload);
                                                 <option value="">
                                                     — Chọn —
                                                 </option>
-                                                {categories.map((c) => (
-                                                    <option
-                                                        key={c.id}
-                                                        value={c.id}
-                                                    >
-                                                        {c.name}
-                                                    </option>
-                                                ))}
+                                                {categories.map((c) => {
+                                                    const catValue = String(c.id);
+                                                    return (
+                                                        <option
+                                                            key={c.id}
+                                                            value={catValue}
+                                                        >
+                                                            {c.name}
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
                                         </div>
 
@@ -959,7 +1190,7 @@ console.log("payload gửi lên BE:", payload);
                                             </label>
                                             <select
                                                 className={`form-select ${styles.formSelect}`}
-                                                value={s.compartmentId}
+                                                value={s.compartmentId || ""}
                                                 onChange={(e) =>
                                                     updateStop(
                                                         idx,
@@ -972,14 +1203,17 @@ console.log("payload gửi lên BE:", payload);
                                                     — Chọn —
                                                 </option>
                                                 {s.filteredCompartments.map(
-                                                    (c) => (
-                                                        <option
-                                                            key={c.id}
-                                                            value={c.id}
-                                                        >
-                                                            {c.compartmentCode}
-                                                        </option>
-                                                    )
+                                                    (c) => {
+                                                        const compValue = String(c.id);
+                                                        return (
+                                                            <option
+                                                                key={c.id}
+                                                                value={compValue}
+                                                            >
+                                                                {c.compartmentCode}
+                                                            </option>
+                                                        );
+                                                    }
                                                 )}
                                             </select>
                                         </div>
@@ -1036,7 +1270,7 @@ console.log("payload gửi lên BE:", payload);
                                                                         pres.status === "pending" ? "bg-warning" :
                                                                         pres.status === "dispensed" ? "bg-info" : "bg-secondary"
                                                                     }`}>
-                                                                        {pres.status}
+                                                                        {getPrescriptionStatusText(pres.status)}
                                                                     </span>
                                                                 )}
                                                             </button>
@@ -1058,9 +1292,9 @@ console.log("payload gửi lên BE:", payload);
                                         </div>
                                     )}
 
-                                    {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) */}
+                                    {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) - hidden */}
                                     {s.prescriptionPreview && s.prescriptionCode && (
-                                        <div className="col-12 mt-3">
+                                        <div className="col-12 mt-3" hidden>
                                             <div className={styles.rxBox}>
                                                 <h6 className={styles.rxTitle}>
                                                     <i className="bi bi-file-medical"></i>
@@ -1175,24 +1409,69 @@ console.log("payload gửi lên BE:", payload);
                                 Cập nhật nhiệm vụ
                             </button>
 
-                            {/* MESSAGE */}
-                            {message && (
-                                <div
-                                    className={`${styles.message} ${
-                                        messageType === "success"
-                                            ? styles.messageSuccess
-                                            : messageType === "error"
-                                            ? styles.messageError
-                                            : ""
-                                    }`}
-                                >
-                                    {message}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* MODAL XÁC NHẬN BỎ CHỌN ĐƠN THUỐC */}
+            {unselectPrescriptionModal.show && (
+                <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">
+                                    <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                                    Xác nhận bỏ chọn đơn thuốc
+                                </h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
+                                    disabled={unselectPrescriptionModal.loading}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <p>
+                                    Bạn có chắc chắn muốn bỏ chọn đơn thuốc <strong>{unselectPrescriptionModal.prescriptionCode}</strong>?
+                                </p>
+                                <p className="text-muted mb-0">
+                                    Đơn thuốc sẽ được trả về trạng thái ban đầu: <strong>{getPrescriptionStatusText(unselectPrescriptionModal.originalStatus)}</strong>
+                                </p>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
+                                    disabled={unselectPrescriptionModal.loading}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={handleUnselectPrescription}
+                                    disabled={unselectPrescriptionModal.loading}
+                                >
+                                    {unselectPrescriptionModal.loading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Đang xử lý...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-x-circle me-2"></i>
+                                            Xác nhận bỏ chọn
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
         </div>
     );
 }

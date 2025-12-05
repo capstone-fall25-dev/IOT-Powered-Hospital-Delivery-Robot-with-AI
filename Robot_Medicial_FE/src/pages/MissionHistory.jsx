@@ -1,43 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchTaskHistory } from "../services/taskService";
 import { useNavigate } from "react-router-dom";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
+import styles from "@/assets/styles/missionHistory.module.css";
 
 export default function TaskHistoryPage() {
     const navigate = useNavigate();
-
-    // =========================
-    // THEME STYLES
-    // =========================
-    const styles = (
-        <style>{`
-      :root{--teal:#4CE1C6;--ink:#0f172a}
-      .page{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1324;background:radial-gradient(1200px 600px at 15% 10%,rgba(76,225,198,.18),transparent 60%),radial-gradient(900px 500px at 90% 5%,rgba(76,225,198,.12),transparent 60%),linear-gradient(180deg,#f6faf9 0%,#eef6f5 15%,#e9f3f1 35%,#e8f0ee 100%);min-height:100vh}
-      .glass{background:rgba(255,255,255,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 30px rgba(15,23,42,.08);border-radius:24px}
-      .rounded-2xl{border-radius:28px}
-      .btn-teal{background:var(--teal);color:#052a2b;font-weight:700;border:none}
-      .btn-teal:hover{background:#39d7bf;color:#052a2b}
-      .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(20,226,193,.15);color:#0d3b3a;font-weight:600;font-size:.85rem}
-      .status-dot{width:10px;height:10px;border-radius:50%}
-      .timeline{position:relative;padding-left:28px}
-      .timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,rgba(76,225,198,.7),rgba(76,225,198,0))}
-      .t-item{position:relative;margin-bottom:18px}
-      .t-item::before{content:'';position:absolute;left:-18px;top:6px;width:12px;height:12px;border-radius:999px;background:var(--teal);box-shadow:0 0 0 4px rgba(76,225,198,.2)}
-      .cursor-pointer{cursor:pointer}
-      .badge-pill{border-radius:999px}
-      .small-muted{font-size:0.8rem;color:#6b7280}
-    `}</style>
-    );
+    const { toast, showToast } = useToast();
 
     // =========================
     // STATE
     // =========================
-    const [rawData, setRawData] = useState([]);      // danh sách snapshot từ API
+    const [rawData, setRawData] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
 
     // Filters
     const [robot, setRobot] = useState("all");
@@ -48,7 +28,7 @@ export default function TaskHistoryPage() {
     const [view, setView] = useState("table");
 
     // Task đang expand để xem snapshot
-    const [expandedTaskIds, setExpandedTaskIds] = useState({}); // { [taskId]: true/false }
+    const [expandedTaskIds, setExpandedTaskIds] = useState({});
 
     // =========================
     // HELPERS
@@ -81,6 +61,20 @@ export default function TaskHistoryPage() {
         return d.toLocaleTimeString("vi-VN", { timeStyle: "short" });
     };
 
+    // Mapping trạng thái stop
+    const stopStatusMap = {
+        pending: "Chờ xử lý",
+        in_progress: "Đang xử lý",
+        awaiting_handover: "Chờ bàn giao",
+        delivered: "Đã giao",
+        skipped: "Bỏ qua",
+        failed: "Thất bại",
+    };
+
+    const getStopStatusText = (status) => {
+        return stopStatusMap[status?.toLowerCase()] || status || "Không xác định";
+    };
+
     const StatusBadge = ({ s }) => {
         const map = {
             completed: "success",
@@ -100,7 +94,7 @@ export default function TaskHistoryPage() {
         const cls = map[s] || "secondary";
         return (
             <span className={`badge text-bg-${cls}`}>
-                {textMap[s] || s || "Unknown"}
+                {textMap[s] || s || "Không xác định"}
             </span>
         );
     };
@@ -113,15 +107,34 @@ export default function TaskHistoryPage() {
             canceled: "#94a3b8",
             awaiting_handover: "#eab308",
         };
-        return <span className="status-dot me-2" style={{ background: map[s] || "#9ca3af" }} />;
+        return <span className={styles.statusDot} style={{ background: map[s] || "#9ca3af" }} />;
+    };
+
+    // Mapping priority sang tiếng Việt
+    const priorityMap = {
+        "Urgent": "Khẩn cấp",
+        "High": "Cao",
+        "Normal": "Bình thường",
+        "Low": "Thấp",
+    };
+
+    const getPriorityText = (p) => {
+        if (!p && p !== 0) return "Bình thường";
+        // Nếu là số (0, 1, 2)
+        if (typeof p === "number") {
+            if (p === 2 || p === 1) return "Khẩn cấp";
+            if (p === 0) return "Bình thường";
+        }
+        // Nếu là string
+        return priorityMap[p] || p;
     };
 
     const priorityClass = (p) => {
-        if (p === "Urgent") return "bg-danger";
-        if (p === "High") return "bg-warning text-dark";
-        if (p === "Normal") return "bg-secondary";
-        if (p === "Low") return "bg-light text-dark";
-        return "bg-secondary";
+        const priorityText = getPriorityText(p);
+        if (priorityText === "Khẩn cấp" || p === "Urgent" || p === 2 || p === 1) return "bg-danger";
+        if (priorityText === "Cao" || p === "High") return "bg-warning text-dark";
+        if (priorityText === "Thấp" || p === "Low") return "bg-light text-dark";
+        return "bg-secondary"; // Bình thường
     };
 
     // =========================
@@ -130,7 +143,6 @@ export default function TaskHistoryPage() {
     const loadData = async () => {
         try {
             setLoading(true);
-            setError("");
 
             const res = await fetchTaskHistory({
                 robotId: robot !== "all" ? robot : "",
@@ -146,8 +158,8 @@ export default function TaskHistoryPage() {
             setTotalCount(res.totalCount || 0);
             setTotalPages(res.totalPages || 1);
         } catch (err) {
-            console.error(err);
-            setError("Không tải được lịch sử nhiệm vụ. Vui lòng thử lại.");
+            console.error("Lỗi tải lịch sử nhiệm vụ:", err);
+            showToast("error", err.message || "Không tải được lịch sử nhiệm vụ. Vui lòng thử lại.");
         } finally {
             setLoading(false);
         }
@@ -161,8 +173,6 @@ export default function TaskHistoryPage() {
     // =========================
     // DERIVED DATA
     // =========================
-
-    // Danh sách robot (để filter)
     const robots = useMemo(() => {
         const setCodes = new Set();
         rawData.forEach(x => {
@@ -171,7 +181,6 @@ export default function TaskHistoryPage() {
         return Array.from(setCodes);
     }, [rawData]);
 
-    // Group snapshot theo taskId
     const groupedByTask = useMemo(() => {
         const map = {};
         rawData.forEach(h => {
@@ -179,7 +188,6 @@ export default function TaskHistoryPage() {
             map[h.taskId].push(h);
         });
 
-        // sort snapshot mỗi task theo recordedAt tăng dần
         Object.keys(map).forEach(taskId => {
             map[taskId].sort((a, b) => {
                 const ta = new Date(a.recordedAt).getTime();
@@ -191,7 +199,6 @@ export default function TaskHistoryPage() {
         return map;
     }, [rawData]);
 
-    // Lấy snapshot mới nhất của mỗi task để hiển thị trong bảng / timeline
     const latestSnapshots = useMemo(() => {
         const arr = [];
         Object.keys(groupedByTask).forEach(taskId => {
@@ -201,7 +208,6 @@ export default function TaskHistoryPage() {
             }
         });
 
-        // sort theo recordedAt mới nhất (task mới nhất lên đầu)
         arr.sort((a, b) => {
             const ta = new Date(b.recordedAt).getTime();
             const tb = new Date(a.recordedAt).getTime();
@@ -211,7 +217,6 @@ export default function TaskHistoryPage() {
         return arr;
     }, [groupedByTask]);
 
-    // Stats tổng quan (dùng latestSnapshots)
     const stats = useMemo(() => {
         const s = {
             totalTasks: latestSnapshots.length,
@@ -239,7 +244,6 @@ export default function TaskHistoryPage() {
     // =========================
     // RENDER
     // =========================
-
     const renderExpandedRow = (taskId) => {
         const snapshots = groupedByTask[taskId] || [];
         if (snapshots.length <= 1) return null;
@@ -249,35 +253,34 @@ export default function TaskHistoryPage() {
                 <td colSpan={10} className="bg-light">
                     <div className="px-3 py-3">
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                            <div className="fw-semibold">Timeline snapshots của Task #{taskId}</div>
+                            <div className="fw-semibold">Timeline bản ghi của Nhiệm vụ #{taskId}</div>
                             <div className="small text-muted">
-                                Tổng snapshot: {snapshots.length}
+                                Tổng bản ghi: {snapshots.length}
                             </div>
                         </div>
 
                         <div className="row">
                             <div className="col-lg-7">
-                                {/* snapshot list */}
                                 <ol className="mb-0" style={{ paddingLeft: "1.2rem" }}>
                                     {snapshots.map((h, idx) => (
                                         <li key={h.id} className="mb-2">
                                             <div className="d-flex justify-content-between">
                                                 <div>
                                                     <span className="small text-muted">
-                                                        Snapshot #{idx + 1} • {formatTime(h.recordedAt)}
+                                                        Bản ghi #{idx + 1} • {formatTime(h.recordedAt)}
                                                     </span>
                                                     <div>
                                                         <StatusBadge s={h.finalStatus} />
-                                                        <span className="ms-2 small-muted">
-                                                            Delivered: {h.deliveredStops}/{h.totalStops}
+                                                        <span className={`ms-2 ${styles.smallMuted}`}>
+                                                            Đã giao: {h.deliveredStops}/{h.totalStops}
                                                             {h.failedStops > 0 && (
                                                                 <span className="text-danger ms-2">
-                                                                    Failed: {h.failedStops}
+                                                                    Thất bại: {h.failedStops}
                                                                 </span>
                                                             )}
                                                             {h.skippedStops > 0 && (
                                                                 <span className="text-warning ms-2">
-                                                                    Skipped: {h.skippedStops}
+                                                                    Bỏ qua: {h.skippedStops}
                                                                 </span>
                                                             )}
                                                         </span>
@@ -290,11 +293,10 @@ export default function TaskHistoryPage() {
                             </div>
 
                             <div className="col-lg-5 mt-3 mt-lg-0">
-                                {/* stops của snapshot mới nhất */}
                                 {snapshots.length > 0 && (
                                     <>
                                         <div className="fw-semibold mb-2">
-                                            Stops (snapshot mới nhất)
+                                            Điểm dừng (bản ghi mới nhất)
                                         </div>
                                         <ul className="list-unstyled mb-0">
                                             {snapshots[snapshots.length - 1].stops?.map(stop => (
@@ -304,16 +306,16 @@ export default function TaskHistoryPage() {
                                                     </span>
                                                     <span className="fw-semibold">{stop.destinationName}</span>
                                                     {stop.itemDesc && (
-                                                        <span className="small-muted"> • {stop.itemDesc}</span>
+                                                        <span className={styles.smallMuted}> • {stop.itemDesc}</span>
                                                     )}
-                                                    <span className="ms-2 badge badge-pill bg-secondary">
-                                                        {stop.status}
+                                                    <span className={`ms-2 badge ${styles.badgePill} bg-secondary`}>
+                                                        {getStopStatusText(stop.status)}
                                                     </span>
                                                 </li>
                                             ))}
                                             {(!snapshots[snapshots.length - 1].stops ||
                                                 snapshots[snapshots.length - 1].stops.length === 0) && (
-                                                <li className="small-muted">Không có thông tin điểm dừng</li>
+                                                <li className={styles.smallMuted}>Không có thông tin điểm dừng</li>
                                             )}
                                         </ul>
                                     </>
@@ -332,7 +334,7 @@ export default function TaskHistoryPage() {
         return (
             <div className="d-flex justify-content-between align-items-center mt-3">
                 <div className="small text-muted">
-                    Tổng {totalCount} snapshot • Trang {currentPage}/{totalPages}
+                    Tổng {totalCount} bản ghi • Trang {currentPage}/{totalPages}
                 </div>
                 <div className="btn-group">
                     <button
@@ -355,83 +357,104 @@ export default function TaskHistoryPage() {
     };
 
     return (
-        <div className="page">
-            {styles}
+        <div className={styles.page}>
+            <Toast toast={toast} showToast={showToast} />
 
             <div className="container-lg py-4 py-lg-5">
-
                 {/* Header */}
-                <div className="row align-items-start mb-4">
-                    {/* Left: Title */}
-                    <div className="col-lg-5">
-                        <h2 className="fw-bold mb-2">Lịch sử nhiệm vụ robot</h2>
-                        <div className="chip">
-                            Tra cứu hành trình • Xem timeline theo Task • Lọc nâng cao
+                <div className={`${styles.glass} p-4 ${styles.rounded2xl} mb-4`}>
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                        {/* Nút quay lại - Bên trái */}
+                        <button
+                            className="btn btn-outline-secondary"
+                            onClick={() => navigate(-1)}
+                            title="Quay lại"
+                        >
+                            <i className="bi bi-arrow-left me-1"></i>
+                            Quay lại
+                        </button>
+
+                        {/* Title + Chip - Ở giữa */}
+                        <div className="flex-grow-1 text-center">
+                            <h2 className="fw-bold mb-1">Lịch sử nhiệm vụ robot</h2>
+                            <div className={styles.chip}>
+                                <i className="bi bi-clock-history me-1"></i>
+                                Tra cứu hành trình • Xem timeline theo Nhiệm vụ • Lọc nâng cao
+                            </div>
+                        </div>
+
+                        {/* Chế độ xem - Bên phải */}
+                        <div className="d-flex flex-column gap-2">
+                            <div className="fw-semibold small text-muted text-end">Chế độ xem</div>
+                            <div className="btn-group" role="group">
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${view === 'table' ? styles.btnTeal : 'btn-outline-secondary'}`}
+                                    onClick={() => setView('table')}
+                                >
+                                    <i className="bi bi-table me-1"></i> Bảng
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn btn-sm ${view === 'timeline' ? styles.btnTeal : 'btn-outline-secondary'}`}
+                                    onClick={() => setView('timeline')}
+                                >
+                                    <i className="bi bi-clock-history me-1"></i> Timeline
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Right: Stats & View Toggle */}
-                    <div className="col-lg-7">
-                        <div className="glass p-3 rounded-2xl">
-                            <div className="row g-3">
-                                {/* Stats */}
-                                <div className="col-md-8">
-                                    <div className="fw-semibold mb-2">Thống kê nhanh</div>
-                                    <div className="row g-2 small">
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-muted">Tổng task</div>
-                                            <div className="fs-5 fw-bold">{stats.totalTasks}</div>
-                                        </div>
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-success">Hoàn thành</div>
-                                            <div className="fs-5 fw-bold text-success">{stats.completed}</div>
-                                        </div>
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-primary">Đang chạy</div>
-                                            <div className="fs-5 fw-bold text-primary">{stats.inProgress}</div>
-                                        </div>
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-danger">Lỗi</div>
-                                            <div className="fs-5 fw-bold text-danger">{stats.failed}</div>
-                                        </div>
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-warning">Chờ giao</div>
-                                            <div className="fs-5 fw-bold text-warning">{stats.awaiting}</div>
-                                        </div>
-                                        <div className="col-6 col-sm-4">
-                                            <div className="text-muted">Đã hủy</div>
-                                            <div className="fs-5 fw-bold text-muted">{stats.canceled}</div>
-                                        </div>
-                                    </div>
+                    {/* Thống kê nhanh */}
+                    <div className="border-top pt-3">
+                        <div className="fw-semibold mb-3">
+                            <i className="bi bi-bar-chart me-2"></i>
+                            Thống kê nhanh
+                        </div>
+                        <div className="row g-3">
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(13, 148, 136, 0.08)" }}>
+                                    <div className="text-muted small mb-1">Tổng nhiệm vụ</div>
+                                    <div className="fs-4 fw-bold text-dark">{stats.totalTasks}</div>
                                 </div>
-
-                                {/* View Toggle */}
-                                <div className="col-md-4">
-                                    <div className="fw-semibold mb-2">Chế độ xem</div>
-                                    <div className="d-flex flex-column gap-2">
-                                        <button 
-                                            className={`btn ${view === 'table' ? 'btn-teal' : 'btn-outline-secondary'}`}
-                                            onClick={() => setView('table')}
-                                        >
-                                            <i className="bi bi-table me-1"></i> Bảng
-                                        </button>
-                                        <button 
-                                            className={`btn ${view === 'timeline' ? 'btn-teal' : 'btn-outline-secondary'}`}
-                                            onClick={() => setView('timeline')}
-                                        >
-                                            <i className="bi bi-clock-history me-1"></i> Timeline
-                                        </button>
-                                    </div>
+                            </div>
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(34, 197, 94, 0.08)" }}>
+                                    <div className="text-success small mb-1">Hoàn thành</div>
+                                    <div className="fs-4 fw-bold text-success">{stats.completed}</div>
+                                </div>
+                            </div>
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(14, 165, 233, 0.08)" }}>
+                                    <div className="text-primary small mb-1">Đang chạy</div>
+                                    <div className="fs-4 fw-bold text-primary">{stats.inProgress}</div>
+                                </div>
+                            </div>
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(239, 68, 68, 0.08)" }}>
+                                    <div className="text-danger small mb-1">Lỗi</div>
+                                    <div className="fs-4 fw-bold text-danger">{stats.failed}</div>
+                                </div>
+                            </div>
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(234, 179, 8, 0.08)" }}>
+                                    <div className="text-warning small mb-1">Chờ giao</div>
+                                    <div className="fs-4 fw-bold text-warning">{stats.awaiting}</div>
+                                </div>
+                            </div>
+                            <div className="col-6 col-sm-4 col-md-2">
+                                <div className="text-center p-2 rounded" style={{ background: "rgba(107, 114, 128, 0.08)" }}>
+                                    <div className="text-muted small mb-1">Đã hủy</div>
+                                    <div className="fs-4 fw-bold text-muted">{stats.canceled}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {/* Filters */}
-                <div className="glass p-4 rounded-2xl mb-4">
-                    <div className="row g-3">
 
-                        {/* Robot */}
+                {/* Filters */}
+                <div className={`${styles.glass} p-4 ${styles.rounded2xl} mb-4`}>
+                    <div className="row g-3">
                         <div className="col-md-3">
                             <label className="form-label">Robot</label>
                             <select
@@ -446,7 +469,6 @@ export default function TaskHistoryPage() {
                             </select>
                         </div>
 
-                        {/* Status */}
                         <div className="col-md-3">
                             <label className="form-label">Trạng thái</label>
                             <select
@@ -463,7 +485,6 @@ export default function TaskHistoryPage() {
                             </select>
                         </div>
 
-                        {/* Date filters */}
                         <div className="col-md-3">
                             <label className="form-label">Từ ngày</label>
                             <input
@@ -484,7 +505,6 @@ export default function TaskHistoryPage() {
                             />
                         </div>
 
-                        {/* Search */}
                         <div className="col-md-9">
                             <label className="form-label">Tìm kiếm</label>
                             <input
@@ -495,9 +515,8 @@ export default function TaskHistoryPage() {
                             />
                         </div>
 
-                        {/* Page size */}
                         <div className="col-md-3">
-                            <label className="form-label">Số snapshot / trang</label>
+                            <label className="form-label">Số bản ghi / trang</label>
                             <select
                                 className="form-select"
                                 value={pageSize}
@@ -512,27 +531,23 @@ export default function TaskHistoryPage() {
                                 <option value={100}>100</option>
                             </select>
                         </div>
-
                     </div>
                 </div>
 
-                {error && (
-                    <div className="alert alert-danger">{error}</div>
-                )}
-
                 {loading && (
                     <div className="text-center py-5 text-muted">
+                        <span className="spinner-border spinner-border-sm me-2"></span>
                         Đang tải dữ liệu lịch sử nhiệm vụ…
                     </div>
                 )}
 
                 {!loading && view === "table" && (
-                    <div className="glass p-0 rounded-2xl overflow-hidden">
+                    <div className={`${styles.glass} p-0 ${styles.rounded2xl} overflow-hidden`}>
                         <table className="table table-hover mb-0 align-middle">
                             <thead className="bg-white">
                                 <tr>
                                     <th style={{ width: "40px" }}></th>
-                                    <th style={{ width: "100px" }}>Task</th>
+                                    <th style={{ width: "100px" }}>Nhiệm vụ</th>
                                     <th style={{ width: "140px" }}>Robot</th>
                                     <th style={{ width: "150px" }}>Người tạo</th>
                                     <th style={{ width: "140px" }}>Bản đồ</th>
@@ -546,7 +561,7 @@ export default function TaskHistoryPage() {
                             <tbody>
                                 {latestSnapshots.map(h => (
                                     <>
-                                        <tr key={h.taskId} className="cursor-pointer">
+                                        <tr key={h.taskId} className={styles.cursorPointer}>
                                             <td
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -560,32 +575,26 @@ export default function TaskHistoryPage() {
                                                     {expandedTaskIds[h.taskId] ? "−" : "+"}
                                                 </button>
                                             </td>
-                                            <td
-                                                onClick={() => navigate(`/tasks/history/${h.id}`)}
-                                            >
+                                            <td onClick={() => navigate(`/tasks/history/${h.id}`)}>
                                                 <span className="badge bg-light text-dark border">
                                                     #{h.taskId}
                                                 </span>
-                                                <div className="small-muted">
-                                                    {groupedByTask[h.taskId]?.length || 1} snapshot
+                                                <div className={styles.smallMuted}>
+                                                    {groupedByTask[h.taskId]?.length || 1} bản ghi
                                                 </div>
                                             </td>
-                                            <td
-                                                onClick={() => navigate(`/tasks/history/${h.id}`)}
-                                            >
+                                            <td onClick={() => navigate(`/tasks/history/${h.id}`)}>
                                                 <div className="fw-semibold">{h.robotCode}</div>
                                                 <small className="text-muted">{h.robotName}</small>
                                             </td>
-                                            <td
-                                                onClick={() => navigate(`/tasks/history/${h.id}`)}
-                                            >
+                                            <td onClick={() => navigate(`/tasks/history/${h.id}`)}>
                                                 <div>{h.assignedByName}</div>
                                                 <small className="text-muted">
                                                     {h.assignedByEmail}
                                                 </small>
                                             </td>
                                             <td onClick={() => navigate(`/tasks/history/${h.id}`)}>
-                                                <small className="text-muted">{h.mapName}</small>
+                                                <small className="text-muted">{h.nameMapFE || h.mapName}</small>
                                             </td>
                                             <td onClick={() => navigate(`/tasks/history/${h.id}`)}>
                                                 <div className="d-flex align-items-center gap-1">
@@ -639,7 +648,7 @@ export default function TaskHistoryPage() {
                                             </td>
                                             <td className="text-end">
                                                 <StatusBadge s={h.finalStatus} />
-                                                <div className="mt-1 small-muted">
+                                                <div className={`mt-1 ${styles.smallMuted}`}>
                                                     Cập nhật: {formatTime(h.recordedAt)}
                                                 </div>
                                             </td>
@@ -665,16 +674,15 @@ export default function TaskHistoryPage() {
                     </div>
                 )}
 
-             {!loading && view === "timeline" && (
+                {!loading && view === "timeline" && (
                     <>
-                        <div className="glass p-4 rounded-2xl timeline">
+                        <div className={`${styles.glass} p-4 ${styles.rounded2xl} ${styles.timeline}`}>
                             {latestSnapshots.map(h => {
                                 const snapshots = groupedByTask[h.taskId] || [];
                                 const isExpanded = expandedTaskIds[h.taskId];
-                                
+
                                 return (
-                                    <div className="t-item" key={h.taskId}>
-                                        {/* Header card */}
+                                    <div className={styles.tItem} key={h.taskId}>
                                         <div className="card border-0 shadow-sm mb-3">
                                             <div className="card-body">
                                                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -682,12 +690,12 @@ export default function TaskHistoryPage() {
                                                         <StatusDot s={h.finalStatus} />
                                                         <div className="flex-grow-1">
                                                             <div className="d-flex align-items-center gap-2 mb-1">
-                                                                <span className="fw-bold">Task #{h.taskId}</span>
+                                                                <span className="fw-bold">Nhiệm vụ #{h.taskId}</span>
                                                                 <span className="badge bg-light text-dark border">
                                                                     {h.robotCode}
                                                                 </span>
                                                                 <span className={`badge ${priorityClass(h.priority)}`}>
-                                                                    {h.priority}
+                                                                    {getPriorityText(h.priority)}
                                                                 </span>
                                                                 {h.totalErrors > 0 && (
                                                                     <span className="badge bg-danger">
@@ -697,22 +705,21 @@ export default function TaskHistoryPage() {
                                                             </div>
                                                             <div className="small text-muted">
                                                                 <i className="bi bi-geo-alt me-1"></i>
-                                                                {h.mapName} • 
+                                                                {h.nameMapFE || h.mapName} •
                                                                 <i className="bi bi-person ms-2 me-1"></i>
                                                                 {h.assignedByName}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div className="text-end">
                                                         <StatusBadge s={h.finalStatus} />
                                                         <div className="small text-muted mt-1">
-                                                            {snapshots.length} snapshot
+                                                            {snapshots.length} bản ghi
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Progress bar */}
                                                 <div className="mb-2">
                                                     <div className="d-flex justify-content-between small mb-1">
                                                         <span className="text-muted">Tiến độ</span>
@@ -721,26 +728,25 @@ export default function TaskHistoryPage() {
                                                         </span>
                                                     </div>
                                                     <div className="progress" style={{ height: "8px" }}>
-                                                        <div 
-                                                            className="progress-bar bg-success" 
+                                                        <div
+                                                            className="progress-bar bg-success"
                                                             style={{ width: `${(h.deliveredStops / h.totalStops * 100) || 0}%` }}
                                                         ></div>
                                                         {h.failedStops > 0 && (
-                                                            <div 
-                                                                className="progress-bar bg-danger" 
+                                                            <div
+                                                                className="progress-bar bg-danger"
                                                                 style={{ width: `${(h.failedStops / h.totalStops * 100) || 0}%` }}
                                                             ></div>
                                                         )}
                                                         {h.skippedStops > 0 && (
-                                                            <div 
-                                                                className="progress-bar bg-warning" 
+                                                            <div
+                                                                className="progress-bar bg-warning"
                                                                 style={{ width: `${(h.skippedStops / h.totalStops * 100) || 0}%` }}
                                                             ></div>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Time info */}
                                                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                                                     <div className="small">
                                                         {h.startedAt && (
@@ -764,7 +770,6 @@ export default function TaskHistoryPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Actions */}
                                                 <div className="d-flex gap-2 justify-content-end">
                                                     {snapshots.length > 1 && (
                                                         <button
@@ -776,7 +781,7 @@ export default function TaskHistoryPage() {
                                                         </button>
                                                     )}
                                                     <button
-                                                        className="btn btn-sm btn-teal"
+                                                        className={`btn btn-sm ${styles.btnTeal}`}
                                                         onClick={() => navigate(`/tasks/history/${h.id}`)}
                                                     >
                                                         <i className="bi bi-box-arrow-up-right me-1"></i>
@@ -784,16 +789,14 @@ export default function TaskHistoryPage() {
                                                     </button>
                                                 </div>
 
-                                                {/* Expanded snapshots timeline */}
                                                 {isExpanded && snapshots.length > 1 && (
                                                     <div className="mt-3 pt-3 border-top">
                                                         <div className="fw-semibold mb-3">
                                                             <i className="bi bi-clock-history me-2"></i>
-                                                            Timeline chi tiết ({snapshots.length} snapshots)
+                                                            Timeline chi tiết ({snapshots.length} bản ghi)
                                                         </div>
                                                         <div className="position-relative" style={{ paddingLeft: "32px" }}>
-                                                            {/* Vertical line */}
-                                                            <div 
+                                                            <div
                                                                 style={{
                                                                     position: "absolute",
                                                                     left: "10px",
@@ -803,15 +806,14 @@ export default function TaskHistoryPage() {
                                                                     background: "linear-gradient(180deg, var(--teal), rgba(76,225,198,0.3))"
                                                                 }}
                                                             ></div>
-                                                            
+
                                                             {snapshots.map((snap, idx) => (
-                                                                <div 
-                                                                    key={snap.id} 
+                                                                <div
+                                                                    key={snap.id}
                                                                     className="position-relative mb-3"
                                                                     style={{ paddingLeft: "8px" }}
                                                                 >
-                                                                    {/* Dot */}
-                                                                    <div 
+                                                                    <div
                                                                         style={{
                                                                             position: "absolute",
                                                                             left: "-22px",
@@ -824,7 +826,7 @@ export default function TaskHistoryPage() {
                                                                             border: "2px solid white"
                                                                         }}
                                                                     ></div>
-                                                                    
+
                                                                     <div className="small">
                                                                         <div className="d-flex justify-content-between align-items-start mb-1">
                                                                             <div>
@@ -871,13 +873,12 @@ export default function TaskHistoryPage() {
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="px-3">
                             {renderPagination()}
                         </div>
                     </>
                 )}
-
             </div>
         </div>
     );

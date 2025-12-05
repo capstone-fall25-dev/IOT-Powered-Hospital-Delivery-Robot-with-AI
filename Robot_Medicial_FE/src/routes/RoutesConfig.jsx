@@ -53,6 +53,7 @@ import RunMap from "@/pages/RunMap";
 import CreateMap from "@/pages/CreateMap";
 import DestinationByMapView from "@/pages/DestinationByMapView";
 import MapDetailView from "@/pages/MapDetailView";
+import EditMap from "@/pages/EditMap";
 
 import CompartmentCategoryManager from "@/pages/CompartmentCategoryManager";
 
@@ -345,6 +346,12 @@ const routes = [
   { path: "/maps/:id", element: (
       <ProtectedRoute>
         <MainLayout><MapDetailView /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  { path: "/maps/:id/edit", element: (
+      <ProtectedRoute>
+        <MainLayout><EditMap /></MainLayout>
       </ProtectedRoute>
     )
   },

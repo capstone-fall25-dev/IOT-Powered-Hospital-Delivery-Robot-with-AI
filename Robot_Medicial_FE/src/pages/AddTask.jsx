@@ -1,26 +1,27 @@
 // src/pages/AddTask.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { createTask } from "@/services/taskService";
 import { getAllMaps } from "@/services/mapService";
-import { getPatientsWithApprovedPrescription } from "@/services/patientService";
+import { getAllPatients } from "@/services/patientService";
 import { getDestinationsByMap } from "@/services/destinationService";
 import {
   getUnlockedCompartments,
   getCompartmentsByRobotAndCategory,
   getAllCategories as getAllCompartmentCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions, approvePrescriptionByCode } from "@/services/prescriptionServices";
+import { getAllPrescriptions, approvePrescriptionByCode, updatePrescription } from "@/services/prescriptionServices";
 import { getRobotsByMap } from "@/services/robotService";
-
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 import styles from "@/assets/styles/taskForm.module.css";
 import successSound from "@/sounds/success.mp3";
 
 export default function AddTask() {
   const navigate = useNavigate();
+  const { toast, showToast } = useToast();
 
   // ============================================================
   // DATETIME HELPERS
@@ -60,12 +61,59 @@ export default function AddTask() {
     taskStops: [],
   });
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
   const [baseCompartments, setBaseCompartments] = useState([]);
+  const [showFloatingAddButton, setShowFloatingAddButton] = useState(false);
+  const [unselectPrescriptionModal, setUnselectPrescriptionModal] = useState({
+    show: false,
+    prescriptionCode: "",
+    prescriptionId: null,
+    originalStatus: "",
+    stopIndex: -1,
+    loading: false,
+  });
 
   const canAddStop = form.robotId;
-  const canStart = form.robotId && form.taskStops.length > 0;
+  
+  // ============================================================
+  // VALIDATION: Kiểm tra điều kiện để bắt đầu nhiệm vụ
+  // ============================================================
+  const canStart = (() => {
+    // Phải chọn bản đồ và robot
+    if (!form.mapId || !form.robotId) return false;
+    
+    // Phải có ít nhất 1 điểm dừng
+    if (form.taskStops.length === 0) return false;
+    
+    // Kiểm tra từng điểm dừng
+    for (const stop of form.taskStops) {
+      // Phải có đầy đủ: điểm đến, bệnh nhân, loại ngăn, ngăn chứa
+      if (!stop.destinationId || !stop.patientId || !stop.categoryId || !stop.compartmentId) {
+        return false;
+      }
+      
+      // Nếu category là thuốc → phải chọn đơn thuốc
+      if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
+        return false;
+      }
+    }
+    
+    return true;
+  })();
+
+  // ============================================================
+  // PRESCRIPTION STATUS MAP (chuyển status sang tiếng Việt)
+  // ============================================================
+  const prescriptionStatusMap = {
+    pending: "Đang chờ",
+    approved: "Đã duyệt",
+    dispensed: "Đã phát",
+    canceled: "Đã hủy",
+  };
+
+  function getPrescriptionStatusText(status) {
+    if (!status) return "";
+    return prescriptionStatusMap[status.toLowerCase()] || "Không xác định";
+  }
 
   // ============================================================
   // SIGNALR
@@ -85,13 +133,12 @@ export default function AddTask() {
 
     conn.on("TaskCreated", (task) => {
       if (isMounted) {
-        setMessage(`📡 Nhiệm vụ mới được tạo #${task.id}`);
-        setMessageType("info");
+        showToast("info", `Nhiệm vụ mới được tạo #${task.id}`);
       }
     });
 
     conn.on("ConnectedToTaskHub", (m) => {
-      console.log("🔗 Server confirmed:", m);
+      console.log("🔗 Xác nhận từ server:", m);
     });
 
     conn.onreconnecting(() => console.log("🔄 SignalR đang kết nối lại..."));
@@ -104,9 +151,9 @@ export default function AddTask() {
       if (!isMounted) return;
       try {
         await conn.start();
-        if (isMounted) console.log("✅ SignalR Connected");
+        if (isMounted) console.log("✅ SignalR đã kết nối");
       } catch (err) {
-        console.error("❌ SignalR Connect Error:", err);
+        console.error("❌ Lỗi kết nối SignalR:", err);
         if (isMounted) {
           setTimeout(startConnection, 5000);
         }
@@ -120,8 +167,8 @@ export default function AddTask() {
       if (connectionRef.current) {
         connectionRef.current
           .stop()
-          .then(() => console.log("🔌 SignalR stopped gracefully"))
-          .catch((err) => console.error("⚠️ Error stopping SignalR:", err));
+          .then(() => console.log("🔌 SignalR đã dừng"))
+          .catch((err) => console.error("⚠️ Lỗi khi dừng SignalR:", err));
         connectionRef.current = null;
       }
     };
@@ -135,8 +182,8 @@ export default function AddTask() {
       try {
         const [mapsRes, patientsRes, categoriesRes] = await Promise.all([
           getAllMaps(),
-          // CHỈ lấy bệnh nhân có đơn thuốc được duyệt
-          getPatientsWithApprovedPrescription(),
+          // Lấy tất cả bệnh nhân (khi chọn đơn thuốc sẽ tự động approve)
+          getAllPatients(),
           // Danh mục loại ngăn của robot
           getAllCompartmentCategories(),
         ]);
@@ -145,9 +192,8 @@ export default function AddTask() {
         setPatients(patientsRes || []);
         setCategories(categoriesRes || []);
       } catch (err) {
-        console.error("Load init data error:", err);
-        setMessage("Không thể tải dữ liệu khởi tạo.");
-        setMessageType("error");
+        console.error("Lỗi tải dữ liệu khởi tạo:", err);
+        showToast("error", err.message);
       }
     }
     load();
@@ -168,6 +214,34 @@ export default function AddTask() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // ============================================================
+  // SCROLL DETECTION - Hiển thị nút floating khi scroll xuống
+  // ============================================================
+  useEffect(() => {
+    const handleScroll = () => {
+      const addButtonElement = document.querySelector(`.${styles.btnAddStop}`);
+      if (addButtonElement) {
+        const rect = addButtonElement.getBoundingClientRect();
+        // Nếu nút gốc đã scroll ra khỏi viewport (ở trên) → hiển thị nút floating
+        setShowFloatingAddButton(rect.top < -50);
+      } else {
+        // Nếu không tìm thấy nút gốc (chưa render) → ẩn nút floating
+        setShowFloatingAddButton(false);
+      }
+    };
+
+    // Kiểm tra ngay khi component mount và khi taskStops thay đổi
+    handleScroll();
+    
+    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [form.taskStops.length]);
 
   // ============================================================
   // MAP SELECTION
@@ -200,9 +274,8 @@ export default function AddTask() {
       );
       setRobots(atStation);
     } catch (err) {
-      console.error("Error when select map:", err);
-      setMessage("Không thể tải điểm đến / robot cho bản đồ này.");
-      setMessageType("error");
+      console.error("Lỗi khi chọn bản đồ:", err);
+      showToast("error", err.message);
     }
   }
 
@@ -227,9 +300,8 @@ export default function AddTask() {
       const data = await getUnlockedCompartments(robotId);
       setBaseCompartments(data || []);
     } catch (err) {
-      console.error("Error load unlocked compartments:", err);
-      setMessage("Không thể tải danh sách ngăn chứa của robot.");
-      setMessageType("error");
+      console.error("Lỗi tải ngăn chứa mở khóa:", err);
+      showToast("error", err.message);
     }
   }
 
@@ -238,6 +310,13 @@ export default function AddTask() {
   // ============================================================
   const selectedCompartments = form.taskStops
     .map((s) => Number(s.compartmentId))
+    .filter((id) => id > 0);
+
+  // ============================================================
+  // SELECTED PATIENTS (prevent duplicates)
+  // ============================================================
+  const selectedPatients = form.taskStops
+    .map((s) => Number(s.patientId))
     .filter((id) => id > 0);
 
   // ============================================================
@@ -332,7 +411,7 @@ export default function AddTask() {
             await loadPrescriptionsForPatient(clone[idx].patientId, idx, clone);
           }
         } catch (err) {
-          console.error("Error load compartments by category:", err);
+          console.error("Lỗi tải ngăn chứa theo loại:", err);
           clone[idx].filteredCompartments = [];
         }
       } else {
@@ -346,6 +425,8 @@ export default function AddTask() {
   // ============================================================
   // LOAD PRESCRIPTIONS FOR PATIENT
   //  - Load tất cả (pending, dispensed, approved) trừ canceled
+  //  - Lưu originalStatus để có thể restore sau này
+  //  - Giữ nguyên originalStatus cũ nếu đã có (không ghi đè khi reload)
   // ============================================================
   async function loadPrescriptionsForPatient(patientId, idx, stopsClone) {
     if (!patientId) return;
@@ -354,14 +435,30 @@ export default function AddTask() {
       // Load tất cả prescriptions (không filter status) rồi filter ở frontend
       const allPrescriptions = await getAllPrescriptions({ patientId });
       
-      // Lọc ra các đơn không bị canceled
-      const validPrescriptions = (allPrescriptions || []).filter(
-        (p) => p.status?.toLowerCase() !== "canceled"
-      );
+      // Lấy danh sách cũ để giữ nguyên originalStatus
+      const oldPrescriptionList = stopsClone[idx].prescriptionList || [];
+      const oldStatusMap = new Map();
+      oldPrescriptionList.forEach((p) => {
+        if (p.originalStatus) {
+          oldStatusMap.set(p.id, p.originalStatus);
+        }
+      });
+      
+      // Lọc ra các đơn không bị canceled và lưu originalStatus
+      const validPrescriptions = (allPrescriptions || [])
+        .filter((p) => p.status?.toLowerCase() !== "canceled")
+        .map((p) => {
+          // Nếu đã có originalStatus cũ → giữ nguyên, nếu chưa → lưu status hiện tại
+          const savedOriginalStatus = oldStatusMap.get(p.id);
+          return {
+            ...p,
+            originalStatus: savedOriginalStatus || p.status, // Giữ nguyên originalStatus cũ hoặc lưu status hiện tại
+          };
+        });
 
       stopsClone[idx].prescriptionList = validPrescriptions;
     } catch (err) {
-      console.error("Error load prescriptions:", err);
+      console.error("Lỗi tải đơn thuốc:", err);
       stopsClone[idx].prescriptionList = [];
     }
   }
@@ -396,9 +493,9 @@ export default function AddTask() {
   }
 
   // ============================================================
-  // CLICK VÀO MÃ ĐƠN THUỐC → TỰ ĐỘNG APPROVE
-  //  - pending/dispensed/approved → approved
-  //  - canceled → không cho phép
+  // CLICK VÀO MÃ ĐƠN THUỐC
+  //  - Nếu chưa chọn → TỰ ĐỘNG APPROVE
+  //  - Nếu đã chọn → Hiển thị modal xác nhận bỏ chọn
   // ============================================================
   async function handleSelectPrescription(prescriptionCode, idx) {
     if (!prescriptionCode) {
@@ -407,6 +504,28 @@ export default function AddTask() {
       return;
     }
 
+    const stop = form.taskStops[idx];
+    
+    // Nếu đơn thuốc này đã được chọn → hiển thị modal xác nhận bỏ chọn
+    if (stop.prescriptionCode === prescriptionCode) {
+      const prescription = stop.prescriptionList.find(
+        (p) => p.prescriptionCode === prescriptionCode
+      );
+      
+      if (prescription) {
+        setUnselectPrescriptionModal({
+          show: true,
+          prescriptionCode: prescriptionCode,
+          prescriptionId: prescription.id,
+          originalStatus: prescription.originalStatus || prescription.status,
+          stopIndex: idx,
+          loading: false,
+        });
+      }
+      return;
+    }
+
+    // Nếu chưa chọn → approve như bình thường
     try {
       // Gọi API approve prescription
       const approved = await approvePrescriptionByCode(prescriptionCode);
@@ -415,36 +534,131 @@ export default function AddTask() {
       updateStop(idx, "prescriptionCode", prescriptionCode);
       updateStop(idx, "prescriptionPreview", approved);
 
+      // Hiển thị toast thông báo
+      showToast("success", `Đã chọn và xác nhận đơn thuốc: ${prescriptionCode}`);
+
       // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
-      const stop = form.taskStops[idx];
       if (stop.patientId) {
         const clone = [...form.taskStops];
         await loadPrescriptionsForPatient(stop.patientId, idx, clone);
         setForm((f) => ({ ...f, taskStops: clone }));
       }
     } catch (err) {
-      console.error("Error approve prescription:", err);
-      setMessage(`❌ Lỗi: ${err.message || "Không thể xác nhận đơn thuốc"}`);
-      setMessageType("error");
+      console.error("Lỗi xác nhận đơn thuốc:", err);
+      showToast("error", err.message);
+    }
+  }
+
+  // ============================================================
+  // BỎ CHỌN ĐƠN THUỐC - Trả lại status ban đầu
+  // ============================================================
+  async function handleUnselectPrescription() {
+    const { prescriptionId, originalStatus, stopIndex, prescriptionCode } = unselectPrescriptionModal;
+
+    if (!prescriptionId || !originalStatus) {
+      setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false });
+      return;
+    }
+
+    setUnselectPrescriptionModal((prev) => ({ ...prev, loading: true }));
+
+    try {
+      // Gọi API update prescription với status ban đầu
+      await updatePrescription(prescriptionId, { status: originalStatus });
+
+      // Cập nhật state - bỏ chọn đơn thuốc
+      updateStop(stopIndex, "prescriptionCode", "");
+      updateStop(stopIndex, "prescriptionPreview", null);
+
+      // Cập nhật lại danh sách prescriptions
+      const stop = form.taskStops[stopIndex];
+      if (stop.patientId) {
+        const clone = [...form.taskStops];
+        await loadPrescriptionsForPatient(stop.patientId, stopIndex, clone);
+        setForm((f) => ({ ...f, taskStops: clone }));
+      }
+
+      showToast("success", `Đã bỏ chọn đơn thuốc: ${prescriptionCode}`);
+      setUnselectPrescriptionModal({ show: false, prescriptionCode: "", prescriptionId: null, originalStatus: "", stopIndex: -1, loading: false });
+    } catch (err) {
+      console.error("Lỗi bỏ chọn đơn thuốc:", err);
+      showToast("error", err.message);
+      setUnselectPrescriptionModal((prev) => ({ ...prev, loading: false }));
     }
   }
 
   // ============================================================
   // SUBMIT
-  //  - Validate thời gian bắt đầu PHẢI LÀ TƯƠNG LAI
+  //  - Validate đầy đủ thông tin trước khi tạo task
   // ============================================================
   async function startMission() {
-    try {
-      const now = new Date();
-      const selected = new Date(form.scheduledStartAt);
+    // Validate bản đồ
+    if (!form.mapId) {
+      showToast("warning", "Vui lòng chọn bản đồ.");
+      return;
+    }
 
-      // BẮT BUỘC phải lớn hơn hiện tại
-      if (selected <= now) {
-        setMessage("⏰ Thời gian bắt đầu phải lớn hơn thời gian hiện tại.");
-        setMessageType("error");
+    // Validate robot
+    if (!form.robotId) {
+      showToast("warning", "Vui lòng chọn robot.");
+      return;
+    }
+
+    // Validate có điểm dừng
+    if (form.taskStops.length === 0) {
+      showToast("warning", "Vui lòng thêm ít nhất một điểm dừng.");
+      return;
+    }
+
+    // Validate từng điểm dừng
+    for (let i = 0; i < form.taskStops.length; i++) {
+      const stop = form.taskStops[i];
+      const stopNumber = i + 1;
+
+      if (!stop.destinationId) {
+        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn điểm đến.`);
         return;
       }
 
+      if (!stop.patientId) {
+        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn bệnh nhân.`);
+        return;
+      }
+
+      if (!stop.categoryId) {
+        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn loại ngăn.`);
+        return;
+      }
+
+      if (!stop.compartmentId) {
+        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn ngăn chứa.`);
+        return;
+      }
+
+      // Nếu category là thuốc → phải chọn đơn thuốc
+      if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
+        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn đơn thuốc.`);
+        return;
+      }
+    }
+
+    // Validate thời gian bắt đầu
+    let selected;
+    try {
+      const now = new Date();
+      selected = new Date(form.scheduledStartAt);
+
+      if (selected <= now) {
+        showToast("warning", "Thời gian bắt đầu phải lớn hơn thời gian hiện tại.");
+        return;
+      }
+    } catch (err) {
+      showToast("error", "Thời gian bắt đầu không hợp lệ.");
+      return;
+    }
+
+    // Tất cả validation đã pass → tạo task
+    try {
       const payload = {
         mapId: Number(form.mapId),
         robotId: Number(form.robotId),
@@ -469,8 +683,7 @@ export default function AddTask() {
       const audio = new Audio(successSound);
       audio.play().catch(() => {});
 
-      setMessage("🎉 Tạo nhiệm vụ thành công!");
-      setMessageType("success");
+      showToast("success", "Tạo nhiệm vụ thành công!");
 
       // RESET FORM & BẬT lại realtime clock
       realtimeEnabled.current = true;
@@ -487,9 +700,8 @@ export default function AddTask() {
       setBaseCompartments([]);
       setRobots([]);
     } catch (err) {
-      console.error("Create task error:", err);
-      setMessage(`❌ Lỗi: ${err.message || "Không thể tạo nhiệm vụ"}`);
-      setMessageType("error");
+      console.error("Lỗi tạo nhiệm vụ:", err);
+      showToast("error", err.message);
     }
   }
 
@@ -497,6 +709,8 @@ export default function AddTask() {
   // RENDER
   // ============================================================
   return (
+    <>
+      <Toast toast={toast} showToast={showToast} />
     <div className={styles.page}>
       <div className="container-xl py-4">
         <div className="row justify-content-center">
@@ -688,11 +902,22 @@ export default function AddTask() {
                         }
                       >
                         <option value="">— Chọn bệnh nhân —</option>
-                        {patients.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.fullName} ({p.patientCode})
-                          </option>
-                        ))}
+                        {patients.map((p) => {
+                          const isSelected = selectedPatients.includes(Number(p.id));
+                          const isCurrentStop = Number(s.patientId) === Number(p.id);
+                          const isDisabled = isSelected && !isCurrentStop;
+                          
+                          return (
+                            <option
+                              key={p.id}
+                              value={p.id}
+                              disabled={isDisabled}
+                            >
+                              {p.fullName} ({p.patientCode})
+                              {isDisabled && " - Đã được chọn"}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -786,18 +1011,12 @@ export default function AddTask() {
                                     pres.status === "pending" ? "bg-warning" :
                                     pres.status === "dispensed" ? "bg-info" : "bg-secondary"
                                   }`}>
-                                    {pres.status}
+                                    {getPrescriptionStatusText(pres.status)}
                                   </span>
                                 )}
                               </button>
                             ))}
                           </div>
-                          {s.prescriptionCode && s.prescriptionPreview && (
-                            <div className="alert alert-success mb-0">
-                              <i className="bi bi-check-circle me-2"></i>
-                              Đã chọn và xác nhận đơn thuốc: <strong>{s.prescriptionCode}</strong>
-                            </div>
-                          )}
                         </>
                       ) : (
                         <div className="alert alert-warning mb-0">
@@ -808,9 +1027,9 @@ export default function AddTask() {
                     </div>
                   )}
 
-                  {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) */}
+                  {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) hidden -- sẽ phát triển sau này */}
                   {s.prescriptionPreview && s.prescriptionCode && (
-                    <div className="col-12 mt-3">
+                    <div className="col-12 mt-3" hidden>
                       <div className={styles.rxBox}>
                         <h6 className={styles.rxTitle}>
                           <i className="bi bi-file-medical"></i>
@@ -882,23 +1101,81 @@ export default function AddTask() {
                 Bắt đầu nhiệm vụ
               </button>
 
-              {message && (
-                <div
-                  className={`${styles.message} ${
-                    messageType === "success"
-                      ? styles.messageSuccess
-                      : messageType === "error"
-                      ? styles.messageError
-                      : ""
-                  }`}
-                >
-                  {message}
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* FLOATING ADD STOP BUTTON - Hiển thị khi scroll xuống */}
+      {showFloatingAddButton && (
+        <button
+          className={styles.btnAddStopFloating}
+          onClick={addStop}
+          disabled={!canAddStop}
+          title="Thêm điểm dừng"
+        >
+          <i className="bi bi-plus-circle"></i>
+        </button>
+      )}
+
+      {/* MODAL XÁC NHẬN BỎ CHỌN ĐƠN THUỐC */}
+      {unselectPrescriptionModal.show && (
+        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                  Xác nhận bỏ chọn đơn thuốc
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
+                  disabled={unselectPrescriptionModal.loading}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Bạn có chắc chắn muốn bỏ chọn đơn thuốc <strong>{unselectPrescriptionModal.prescriptionCode}</strong>?
+                </p>
+                <p className="text-muted mb-0">
+                  Đơn thuốc sẽ được trả về trạng thái ban đầu: <strong>{getPrescriptionStatusText(unselectPrescriptionModal.originalStatus)}</strong>
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
+                  disabled={unselectPrescriptionModal.loading}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleUnselectPrescription}
+                  disabled={unselectPrescriptionModal.loading}
+                >
+                  {unselectPrescriptionModal.loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-x-circle me-2"></i>
+                      Xác nhận bỏ chọn
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }

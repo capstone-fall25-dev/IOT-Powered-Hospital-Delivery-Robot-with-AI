@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function RobotCreateMap() {
+  const { toast, showToast } = useToast();
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
@@ -251,7 +254,10 @@ export default function RobotCreateMap() {
   // SAVE MAP
   // ===================================
   async function saveMap() {
-    if (!mapName.trim()) return alert("Nhập tên bản đồ!");
+    if (!mapName.trim()) {
+      showToast("warning", "Nhập tên bản đồ!");
+      return;
+    }
     try {
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
@@ -267,9 +273,9 @@ export default function RobotCreateMap() {
         ...l,
       ]);
       setMapName("");
-      alert("Đã gửi lệnh lưu bản đồ!");
+      showToast("success", "Đã gửi lệnh lưu bản đồ!");
     } catch (err) {
-      alert("Không thể lưu bản đồ!");
+      showToast("error", err.message || "Không thể lưu bản đồ!");
     }
   }
 
@@ -494,6 +500,7 @@ export default function RobotCreateMap() {
           </div>
         </div>
       </div>
+      <Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

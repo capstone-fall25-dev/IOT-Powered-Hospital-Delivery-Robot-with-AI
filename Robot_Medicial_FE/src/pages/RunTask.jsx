@@ -3,114 +3,152 @@ import { useParams } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import { updateStopStatus } from "@/services/taskService";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
-import mapErrorImage from "@/assets/image/map_error.jpg"; 
+import mapErrorImage from "@/assets/image/map_error.jpg";
+
 export default function RunTask() {
-  const { taskId } = useParams();
+    const { taskId } = useParams();
+    const { toast, showToast } = useToast();
 
-  // ===================================
-  // MAP REFS
-  // ===================================
-  const navMapRef = useRef(null);
-  const navMapLayer = useRef(null);
-  const destinationMarker = useRef(null);
+    // ===================================
+    // STATUS MAPPING (Tiếng Việt)
+    // ===================================
+    const statusMap = {
+        pending: "Chờ xử lý",
+        in_progress: "Đang xử lý",
+        awaiting_handover: "Chờ bàn giao",
+        delivered: "Đã giao",
+        skipped: "Bỏ qua",
+        failed: "Thất bại",
+    };
 
-  const liveMapRef = useRef(null);
-  const liveMapLayer = useRef(null);
-  const robotMarker = useRef(null);
+    function getStatusText(status) {
+        if (!status) return "";
+        return statusMap[status.toLowerCase()] || "Không xác định";
+    }
 
-  // ===================================
-  // STATE
-  // ===================================
-  const [status, setStatus] = useState("Đang kết nối...");
-  const [cameraFrame, setCameraFrame] = useState(null);
-  const [mapNameInput, setMapNameInput] = useState(""); // cho ô nhập tên map
-  const [logs, setLogs] = useState([]);
-  const [activeKey, setActiveKey] = useState("");
-  const [remoteMode, setRemoteMode] = useState(false);
+    // Collapsible sections state
+    const [collapsedSections, setCollapsedSections] = useState({
+        control: false,      // Mở mặc định
+        compartments: true,   // Đóng mặc định
+        audio: true,         // Đóng mặc định
+        logs: true,          // Đóng mặc định
+    });
 
-  const [compartments, setCompartments] = useState([
-    { id: 1, label: "Hộp 1", state: "closed" },
-    { id: 2, label: "Hộp 2", state: "closed" },
-  ]);
+    const toggleSection = (section) => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
 
-  // Task data
-  const [taskInfo, setTaskInfo] = useState(null);
-  const [stops, setStops] = useState([]);
-  const [selectedStop, setSelectedStop] = useState(null);
-  const [selectedMapName, setSelectedMapName] = useState("");
+    // ===================================
+    // MAP REFS
+    // ===================================
+    const navMapRef = useRef(null);
+    const navMapLayer = useRef(null);
+    const destinationMarker = useRef(null);
 
-  // Trạng thái điểm dừng đang chọn (để cập nhật status)
-  const [selectedStopStatus, setSelectedStopStatus] = useState("");
+    const liveMapRef = useRef(null);
+    const liveMapLayer = useRef(null);
+    const robotMarker = useRef(null);
+
+    // ===================================
+    // STATE
+    // ===================================
+    const [status, setStatus] = useState("Đang kết nối...");
+    const [cameraFrame, setCameraFrame] = useState(null);
+    const [mapNameInput, setMapNameInput] = useState("");
+    const [logs, setLogs] = useState([]);
+    const [activeKey, setActiveKey] = useState("");
+    const [remoteMode, setRemoteMode] = useState(false);
+
+    const [compartments, setCompartments] = useState([
+        { id: 1, label: "Hộp 1", state: "closed" },
+        { id: 2, label: "Hộp 2", state: "closed" },
+    ]);
+
+    // Task data
+    const [taskInfo, setTaskInfo] = useState(null);
+    const [stops, setStops] = useState([]);
+    const [selectedStop, setSelectedStop] = useState(null);
+    const [selectedMapName, setSelectedMapName] = useState("");
+
+    // Trạng thái điểm dừng đang chọn (để cập nhật status)
+    const [selectedStopStatus, setSelectedStopStatus] = useState("");
+
     // Tiến độ nhiệm vụ robot
-  const [navProgress, setNavProgress] = useState({
-    percent: 0,
-    robotCode: "",
-    pointName: "",
-  });
+    const [navProgress, setNavProgress] = useState({
+        percent: 0,
+        robotCode: "",
+        pointName: "",
+    });
 
-  // Text tiếng Việt để robot đọc
-  const [ttsTextCustom, setTtsTextCustom] = useState("");
+    // Text tiếng Việt để robot đọc
+    const [ttsTextCustom, setTtsTextCustom] = useState("");
 
-  // ===================================
-  // AUDIO – WebRTC
-  // ===================================
-  const [isCallActive, setIsCallActive] = useState(false);
-  const [webRtcStatus, setWebRtcStatus] = useState("Cuộc gọi WebRTC đang tắt.");
-  const pcRef = useRef(null);
-  const localStreamRef = useRef(null);
-  const remoteAudioRef = useRef(null);
-  const webRtcSignalConnRef = useRef(null);
+    // ===================================
+    // AUDIO – WebRTC
+    // ===================================
+    const [isCallActive, setIsCallActive] = useState(false);
+    const [webRtcStatus, setWebRtcStatus] = useState("Cuộc gọi WebRTC đang tắt.");
+    const pcRef = useRef(null);
+    const localStreamRef = useRef(null);
+    const remoteAudioRef = useRef(null);
+    const webRtcSignalConnRef = useRef(null);
 
-  // Mic cũ (SendChunk)
-  const [isWebMicOn, setIsWebMicOn] = useState(false);
-  const [webMicStatus, setWebMicStatus] = useState("Mic web đang tắt.");
-  const [robotMicConnected, setRobotMicConnected] = useState(false);
-  const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
+    // Mic cũ (SendChunk)
+    const [isWebMicOn, setIsWebMicOn] = useState(false);
+    const [webMicStatus, setWebMicStatus] = useState("Mic web đang tắt.");
+    const [robotMicConnected, setRobotMicConnected] = useState(false);
+    const [robotMicStatus, setRobotMicStatus] = useState("Robot mic chưa kết nối.");
 
-  const webAudioContextRef = useRef(null);
-  const webScriptNodeRef = useRef(null);
-  const webMediaStreamRef = useRef(null);
-  const webSourceNodeRef = useRef(null);
+    const webAudioContextRef = useRef(null);
+    const webScriptNodeRef = useRef(null);
+    const webMediaStreamRef = useRef(null);
+    const webSourceNodeRef = useRef(null);
 
-  const robotAudioContextRef = useRef(null);
-  const robotAudioConnRef = useRef(null);
-  const robotPlaybackTimeRef = useRef(0);
-  const robotGainNodeRef = useRef(null);
+    const robotAudioContextRef = useRef(null);
+    const robotAudioConnRef = useRef(null);
+    const robotPlaybackTimeRef = useRef(0);
+    const robotGainNodeRef = useRef(null);
 
-  // ===================================
-  // LOAD TASK INFO
-  // ===================================
-  useEffect(() => {
-    async function loadTask() {
-      try {
-        const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
-        const data = await res.json();
-        setTaskInfo(data);
-        setSelectedMapName(data.mapName || "");
-        setStops(data.stops || []);
+    // ===================================
+    // LOAD TASK INFO
+    // ===================================
+    useEffect(() => {
+        async function loadTask() {
+            try {
+                const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
+                const data = await res.json();
+                setTaskInfo(data);
+                setSelectedMapName(data.nameMapFE || data.mapName);
+                setStops(data.stops || []);
 
-        if (data.stops?.length > 0) {
-          const first = data.stops[0];
-          setSelectedStop(first);
-          setSelectedStopStatus(first.assignmentStatus || "");
-          loadNavigationMap(data.mapId, data.stops, first);
+                if (data.stops?.length > 0) {
+                    const first = data.stops[0];
+                    setSelectedStop(first);
+                    setSelectedStopStatus(first.assignmentStatus || "");
+                    loadNavigationMap(data.mapId, data.stops, first);
+                }
+            } catch (err) {
+                console.error("Lỗi load task:", err);
+                setStatus("Không tải được nhiệm vụ");
+                showToast("error", err.message || "Không thể tải thông tin nhiệm vụ!");
+            }
         }
-      } catch (err) {
-        console.error("Lỗi load task:", err);
-        setStatus("Không tải được nhiệm vụ");
-      }
-    }
-    loadTask();
-  }, [taskId]);
+        loadTask();
+    }, [taskId]);
 
-  // Khi đổi điểm dừng
-  useEffect(() => {
-    if (taskInfo && selectedStop) {
-      loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop);
-      setSelectedStopStatus(selectedStop.assignmentStatus || "");
-    }
-  }, [selectedStop, taskInfo]);
+    // Khi đổi điểm dừng
+    useEffect(() => {
+        if (taskInfo && selectedStop) {
+            loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop);
+            setSelectedStopStatus(selectedStop.assignmentStatus || "");
+        }
+    }, [selectedStop, taskInfo]);
 
 // ===================================
 // NAVIGATION MAP + MARKERS
@@ -302,62 +340,97 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
 }
 
 
-  // ===================================
-  // SIGNALR: POSITION + CAMERA
-  // ===================================
-  useEffect(() => {
-    const posConn = new signalR.HubConnectionBuilder()
-      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotposition")
-      .withAutomaticReconnect()
-      .build();
+    // ===================================
+    // SIGNALR: POSITION + CAMERA
+    // ===================================
+    useEffect(() => {
+        let isMounted = true;
+        let posConn = null;
+        let camConn = null;
 
-    const camConn = new signalR.HubConnectionBuilder()
-      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotcamera")
-      .withAutomaticReconnect()
-      .build();
+        const initConnections = async () => {
+            posConn = new signalR.HubConnectionBuilder()
+                .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotposition")
+                .withAutomaticReconnect()
+                .build();
 
-    posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
-    posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
-    
-        // Tiến độ nhiệm vụ từ backend
-    posConn.on("ReceiveNavigationProgress", (msg) => {
-      try {
-        const raw = msg?.text || msg?.Text || "";
-        if (!raw || typeof raw !== "string") return;
+            camConn = new signalR.HubConnectionBuilder()
+                .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotcamera")
+                .withAutomaticReconnect()
+                .build();
 
-        const parts = raw.split("|");
-        const robotCode = parts[0] || "";
-        const percentStr = parts[1] || "0";
-        const pointName = parts[2] || "";
+            posConn.on("ReceiveMapUpdate", (map) => drawLiveMap(map));
+            posConn.on("ReceivePosition", (pos) => updateRobotPosition(pos));
+            
+            // Tiến độ nhiệm vụ từ backend
+            posConn.on("ReceiveNavigationProgress", (msg) => {
+                try {
+                    const raw = msg?.text || msg?.Text || "";
+                    if (!raw || typeof raw !== "string") return;
 
-        let percent = parseFloat(percentStr);
-        if (Number.isNaN(percent) || !Number.isFinite(percent)) percent = 0;
-        percent = Math.min(100, Math.max(0, percent));
+                    const parts = raw.split("|");
+                    const robotCode = parts[0] || "";
+                    const percentStr = parts[1] || "0";
+                    const pointName = parts[2] || "";
 
-        setNavProgress({
-          percent,
-          robotCode,
-          pointName,
-        });
-      } catch (err) {
-        console.error("Parse ReceiveNavigationProgress error:", err);
-      }
-    });
+                    let percent = parseFloat(percentStr);
+                    if (Number.isNaN(percent) || !Number.isFinite(percent)) percent = 0;
+                    percent = Math.min(100, Math.max(0, percent));
 
+                    setNavProgress({
+                        percent,
+                        robotCode,
+                        pointName,
+                    });
+                } catch (err) {
+                    console.error("Parse ReceiveNavigationProgress error:", err);
+                }
+            });
 
-    camConn.on("ReceiveCameraFrame", (frame) => {
-      if (frame?.image_b64)
-        setCameraFrame(`data:image/jpeg;base64,${frame.image_b64}`);
-    });
+            camConn.on("ReceiveCameraFrame", (frame) => {
+                if (frame?.image_b64)
+                    setCameraFrame(`data:image/jpeg;base64,${frame.image_b64}`);
+            });
 
-    posConn.start().then(() => setStatus("Đã kết nối robot"));
-    camConn.start();
+            // Start connections với error handling
+            try {
+                await posConn.start();
+                if (isMounted) {
+                    setStatus("Đã kết nối robot");
+                    console.log("✅ Position Hub connected");
+                }
+            } catch (err) {
+                if (isMounted) {
+                    console.error("❌ Position Hub connection error:", err);
+                    setStatus("Lỗi kết nối robot");
+                }
+            }
 
-    return () => {
-      posConn.stop();
-      camConn.stop();
-    };
-  }, []);
+            try {
+                await camConn.start();
+                if (isMounted) {
+                    console.log("✅ Camera Hub connected");
+                }
+            } catch (err) {
+                if (isMounted) {
+                    console.error("❌ Camera Hub connection error:", err);
+                }
+            }
+        };
+
+        initConnections();
+
+        return () => {
+            isMounted = false;
+            // Cleanup: stop connections an toàn
+            if (posConn) {
+                posConn.stop().catch(() => {});
+            }
+            if (camConn) {
+                camConn.stop().catch(() => {});
+            }
+        };
+    }, []);
 
   // ===================================
   // LIVE MAP
@@ -449,173 +522,202 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
     } catch {}
   }
 
-  async function saveMap() {
-    if (!mapNameInput.trim()) return alert("Nhập tên bản đồ!");
-    try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Mode: "save_map", MapName: mapNameInput }),
-      });
-      alert("Đã gửi lệnh lưu bản đồ!");
-    } catch {}
-  }
-
-   async function startRunMap() {
-    if (!selectedStop) return alert("Chọn điểm dừng trước!");
-    if (!selectedMapName) return alert("Không có tên bản đồ!");
-
-    try {
-      // Bước 1: Kích hoạt task trên server → chuyển status + robot
-    const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!startRes.ok) throw new Error("Không thể bắt đầu task");
-    
-      // 1️⃣ Gửi mode run_map cho robot
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "run_map", mapName: selectedMapName }),
-      });
-
-      // 2️⃣ Gửi câu thông báo cho robot đọc
-      const ttsText = `Robot bắt đầu chạy trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop.order}: ${selectedStop.name}`;
-
-      try {
-        await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: ttsText }),
-        });
-      } catch (ttsErr) {
-        console.error("Gửi TTS lỗi:", ttsErr);
-      }
-
-      alert("Đã gửi lệnh run_map!");
-    } catch {
-      alert("Không gửi được lệnh run_map!");
+    async function saveMap() {
+        if (!mapNameInput.trim()) {
+            showToast("warning", "Vui lòng nhập tên bản đồ!");
+            return;
+        }
+        try {
+            await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ Mode: "save_map", MapName: mapNameInput }),
+            });
+            showToast("success", "Đã gửi lệnh lưu bản đồ!");
+        } catch (err) {
+            console.error("Lỗi lưu bản đồ:", err);
+            showToast("error", err.message || "Không thể gửi lệnh lưu bản đồ!");
+        }
     }
-  }
+
+    async function startRunMap() {
+        if (!selectedStop) {
+            showToast("warning", "Vui lòng chọn điểm dừng trước!");
+            return;
+        }
+        if (!selectedMapName) {
+            showToast("warning", "Không có tên bản đồ!");
+            return;
+        }
+
+        try {
+            // Bước 1: Kích hoạt task trên server → chuyển status + robot
+            const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+
+            if (!startRes.ok) {
+                const errorData = await startRes.json().catch(() => ({}));
+                throw new Error(errorData.message || "Không thể bắt đầu nhiệm vụ");
+            }
+
+            // 1️⃣ Gửi mode run_map cho robot
+            await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode: "run_map", mapName: selectedMapName }),
+            });
+
+            // 2️⃣ Gửi câu thông báo cho robot đọc
+            const ttsText = `Robot bắt đầu chạy trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop.order}: ${selectedStop.name}`;
+
+            try {
+                await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: ttsText }),
+                });
+            } catch (ttsErr) {
+                console.error("Gửi TTS lỗi:", ttsErr);
+            }
+
+            showToast("success", "Đã gửi lệnh bắt đầu chạy!");
+        } catch (err) {
+            console.error("Lỗi bắt đầu chạy:", err);
+            showToast("error", err.message || "Không thể gửi lệnh bắt đầu chạy!");
+        }
+    }
 
 
     // Gửi text tiếng Việt tuỳ ý cho robot đọc
-  async function sendCustomTts() {
-    const text = ttsTextCustom.trim();
-    if (!text) {
-      alert("Vui lòng nhập nội dung tiếng Việt để robot đọc.");
-      return;
+    async function sendCustomTts() {
+        const text = ttsTextCustom.trim();
+        if (!text) {
+            showToast("warning", "Vui lòng nhập nội dung để robot đọc.");
+            return;
+        }
+
+        try {
+            await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text }),
+            });
+            showToast("success", "Đã gửi nội dung cho robot đọc.");
+        } catch (err) {
+            console.error("Gửi TTS tuỳ chỉnh lỗi:", err);
+            showToast("error", err.message || "Không thể gửi nội dung cho robot đọc.");
+        }
     }
 
-    try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      alert("Đã gửi nội dung cho robot đọc.");
-    } catch (err) {
-      console.error("Gửi TTS tuỳ chỉnh lỗi:", err);
-      alert("Không gửi được nội dung cho robot đọc.");
+
+    async function sendRoute() {
+        if (!selectedStop) {
+            showToast("warning", "Vui lòng chọn điểm dừng trước!");
+            return;
+        }
+        const payload = {
+            type: "destination_route",
+            map_id: taskInfo.mapId,
+            timestamp: new Date().toISOString(),
+            destinations: [{
+                order: selectedStop.order,
+                id: selectedStop.destinationId,
+                name: selectedStop.name,
+                x: selectedStop.x,
+                y: selectedStop.y,
+            }],
+        };
+        try {
+            await fetch(`${API_CONFIG.API_BASE}/Destinations/send-route`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            showToast("success", "Đã gửi vị trí điểm đến!");
+        } catch (err) {
+            console.error("Lỗi gửi route:", err);
+            showToast("error", err.message || "Không thể gửi vị trí điểm đến!");
+        }
     }
-  }
+    // ===================================
+    // UPDATE STOP STATUS (CONFIRM)
+    // ===================================
+    async function handleUpdateSelectedStopStatus() {
+        if (!selectedStop) {
+            showToast("warning", "Vui lòng chọn điểm dừng trước!");
+            return;
+        }
+        if (selectedStop.assignmentStatus === "delivered") {
+            showToast("warning", "Điểm dừng đã giao rồi — không thể cập nhật thêm.");
+            return;
+        }
+        if (!selectedStop.stopId) {
+            console.error("Không có stopId trong selectedStop:", selectedStop);
+            showToast("error", "Không tìm thấy ID của điểm dừng!");
+            return;
+        }
+        if (!selectedStopStatus) {
+            showToast("warning", "Vui lòng chọn trạng thái điểm dừng!");
+            return;
+        }
 
+        try {
+            await updateStopStatus(taskId, selectedStop.stopId, selectedStopStatus);
+            showToast("success", "Cập nhật trạng thái điểm dừng thành công!");
 
-  async function sendRoute() {
-    if (!selectedStop) return alert("Chọn điểm dừng trước!");
-    const payload = {
-      type: "destination_route",
-      map_id: taskInfo.mapId,
-      timestamp: new Date().toISOString(),
-      destinations: [{
-        order: selectedStop.order,
-        id: selectedStop.destinationId,
-        name: selectedStop.name,
-        x: selectedStop.x,
-        y: selectedStop.y,
-      }],
-    };
-    try {
-      await fetch(`${API_CONFIG.API_BASE}/Destinations/send-route`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      alert("Route đã gửi!");
-    } catch {}
-  }
-  // ===================================
-  // UPDATE STOP STATUS (CONFIRM)
-  // ===================================
-  async function handleUpdateSelectedStopStatus() {
-    if (!selectedStop) return alert("Chọn điểm dừng trước!");
-    if (selectedStop.assignmentStatus === "delivered") {
-    return alert("Điểm dừng đã giao rồi — không thể cập nhật thêm.");
-  }
-    if (!selectedStop.stopId) {
-      console.error("Không có stopId trong selectedStop:", selectedStop);
-      return alert("Không tìm thấy StopId của điểm dừng!");
+            // Reload lại run-info để sync trạng thái mới
+            const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
+            const data = await res.json();
+            setTaskInfo(data);
+            setStops(data.stops || []);
+
+            // Tìm lại stop vừa cập nhật
+            const updated = data.stops?.find(s => s.stopId === selectedStop.stopId);
+
+            if (!updated) return;
+
+            // === (1) Nếu stop chưa delivered -> giữ nguyên
+            if (updated.assignmentStatus !== "delivered") {
+                setSelectedStop(updated);
+                setSelectedStopStatus(updated.assignmentStatus || "");
+                return;
+            }
+
+            // === (2) Nếu stop đã delivered → AUTO NEXT STOP
+            const currentIndex = data.stops.findIndex(s => s.stopId === updated.stopId);
+            const isLastStop = currentIndex === data.stops.length - 1;
+
+            if (!isLastStop) {
+                const nextStop = data.stops[currentIndex + 1];
+                setSelectedStop(nextStop);
+                setSelectedStopStatus(nextStop.assignmentStatus || "");
+                showToast("info", `Điểm dừng #${updated.order} đã giao — chuyển sang điểm #${nextStop.order}`);
+                return;
+            }
+
+            // === (3) Nếu là stop cuối và delivered → COMPLETE TASK
+            await completeTask();
+            showToast("success", "Tất cả điểm dừng đã giao — Nhiệm vụ hoàn thành!");
+        } catch (err) {
+            console.error("Lỗi cập nhật trạng thái điểm dừng:", err);
+            showToast("error", err.message || "Lỗi khi cập nhật điểm dừng");
+        }
     }
-    if (!selectedStopStatus) {
-      return alert("Chưa chọn trạng thái điểm dừng!");
+
+    async function completeTask() {
+        try {
+            await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/complete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+            showToast("success", "Nhiệm vụ đã hoàn thành!");
+        } catch (err) {
+            console.error("Lỗi hoàn thành nhiệm vụ:", err);
+            showToast("error", err.message || "Không thể hoàn thành nhiệm vụ!");
+        }
     }
-
-    try {
-      await updateStopStatus(taskId, selectedStop.stopId, selectedStopStatus);
-      alert("Cập nhật trạng thái điểm dừng thành công!");
-
-      // Reload lại run-info để sync trạng thái mới
-      const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
-      const data = await res.json();
-      setTaskInfo(data);
-      setStops(data.stops || []);
-
-      // Tìm lại stop vừa cập nhật
-const updated = data.stops?.find(s => s.stopId === selectedStop.stopId);
-
-if (!updated) return;
-
-// === (1) Nếu stop chưa delivered -> giữ nguyên
-if (updated.assignmentStatus !== "delivered") {
-  setSelectedStop(updated);
-  setSelectedStopStatus(updated.assignmentStatus || "");
-  return;
-}
-
-// === (2) Nếu stop đã delivered → AUTO NEXT STOP
-const currentIndex = data.stops.findIndex(s => s.stopId === updated.stopId);
-const isLastStop = currentIndex === data.stops.length - 1;
-
-if (!isLastStop) {
-  const nextStop = data.stops[currentIndex + 1];
-  setSelectedStop(nextStop);
-  setSelectedStopStatus(nextStop.assignmentStatus || "");
-  alert(`Điểm dừng #${updated.order} đã giao — chuyển sang điểm #${nextStop.order}`);
-  return;
-}
-
-// === (3) Nếu là stop cuối và delivered → COMPLETE TASK
-await completeTask();
-alert("Tất cả điểm dừng đã giao — Nhiệm vụ hoàn thành!");
-
-    } catch (err) {
-      console.error("Lỗi cập nhật trạng thái điểm dừng:", err);
-      alert("Lỗi khi cập nhật điểm dừng");
-    }
-  }
-async function completeTask() {
-  try {
-    await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    });
-    alert("Nhiệm vụ đã hoàn thành!");
-  } catch (err) {
-    console.error("Lỗi complete task:", err);
-  }
-}
 
   // ===================================
   // MIC WEB → ROBOT (SendChunk)
@@ -720,105 +822,158 @@ async function completeTask() {
     robotPlaybackTimeRef.current += buffer.duration;
   }
 
-  async function connectRobotMic() {
-    if (robotMicConnected) return;
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioCtx();
-    robotAudioContextRef.current = ctx;
+    async function connectRobotMic() {
+        if (robotMicConnected) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        robotAudioContextRef.current = ctx;
 
-    const gain = ctx.createGain();
-    gain.gain.value = 0.8;
-    gain.connect(ctx.destination);
-    robotGainNodeRef.current = gain;
-    robotPlaybackTimeRef.current = ctx.currentTime + 0.1;
+        const gain = ctx.createGain();
+        gain.gain.value = 0.8;
+        gain.connect(ctx.destination);
+        robotGainNodeRef.current = gain;
+        robotPlaybackTimeRef.current = ctx.currentTime + 0.1;
 
-    const conn = new signalR.HubConnectionBuilder()
-      .withUrl(`${API_CONFIG.API_BASE1}/hubs/robotaudio`)
-      .withAutomaticReconnect()
-      .build();
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl(`${API_CONFIG.API_BASE1}/hubs/robotaudio`)
+            .withAutomaticReconnect()
+            .build();
 
-    conn.on("ReceiveRobotMicChunk", (data) => {
-      const b64 = data.Audio_b64 || data.audio_b64;
-      if (b64) scheduleRobotAudio(base64Pcm16ToFloat32(b64), data.SampleRate);
-    });
+        conn.on("ReceiveRobotMicChunk", (data) => {
+            const b64 = data.Audio_b64 || data.audio_b64;
+            if (b64) scheduleRobotAudio(base64Pcm16ToFloat32(b64), data.SampleRate);
+        });
 
-    await conn.start();
-    robotAudioConnRef.current = conn;
-    setRobotMicConnected(true);
-    setRobotMicStatus("Đã kết nối Robot Mic.");
-  }
-
-  async function disconnectRobotMic() {
-    if (robotAudioConnRef.current) await robotAudioConnRef.current.stop();
-    if (robotAudioContextRef.current) robotAudioContextRef.current.close();
-    robotAudioConnRef.current = null;
-    robotAudioContextRef.current = null;
-    robotPlaybackTimeRef.current = 0;
-    setRobotMicConnected(false);
-    setRobotMicStatus("Robot mic đã tắt.");
-  }
-
-  // ===================================
-  // WebRTC CALL
-  // ===================================
-  useEffect(() => {
-    const conn = new signalR.HubConnectionBuilder()
-      .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotaudio")
-      .withAutomaticReconnect()
-      .build();
-
-    conn.on("ReceiveAnswer", async (sdp) => {
-      if (!pcRef.current) return;
-      await pcRef.current.setRemoteDescription({ type: "answer", sdp });
-      setWebRtcStatus("Đã nhận ANSWER từ robot.");
-    });
-
-    conn.on("ReceiveIceCandidate", async (candJson) => {
-      if (!pcRef.current) return;
-      const cand = JSON.parse(candJson);
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
-    });
-
-    conn.start().then(() => setWebRtcStatus("Hub WebRTC đã kết nối."));
-    webRtcSignalConnRef.current = conn;
-
-    return () => conn.stop();
-  }, []);
-
-  async function startWebRtcCall() {
-    if (isCallActive) return;
-    const conn = webRtcSignalConnRef.current;
-    if (!conn || conn.state !== signalR.HubConnectionState.Connected) return alert("Hub chưa sẵn sàng");
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      localStreamRef.current = stream;
-
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-
-      pc.ontrack = (e) => remoteAudioRef.current && (remoteAudioRef.current.srcObject = e.streams[0]);
-      pc.onicecandidate = (e) => e.candidate && conn.invoke("SendIceCandidate", JSON.stringify(e.candidate.toJSON()));
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") setWebRtcStatus("Đã kết nối WebRTC với robot.");
-        if (pc.connectionState === "failed") setWebRtcStatus("Kết nối WebRTC thất bại.");
-      };
-
-      pcRef.current = pc;
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await conn.invoke("SendOfferToRobot", offer.sdp);
-
-      setIsCallActive(true);
-      setWebRtcStatus("Đã gửi OFFER...");
-
-      startWebMic();
-      connectRobotMic();
-    } catch (err) {
-      alert("Lỗi WebRTC: " + err.message);
-      stopWebRtcCall();
+        try {
+            await conn.start();
+            robotAudioConnRef.current = conn;
+            setRobotMicConnected(true);
+            setRobotMicStatus("Đã kết nối Robot Mic.");
+            console.log("✅ Robot Mic Hub connected");
+        } catch (err) {
+            console.error("❌ Robot Mic Hub connection error:", err);
+            setRobotMicStatus("Lỗi kết nối Robot Mic.");
+            // Cleanup nếu start thất bại
+            if (robotAudioContextRef.current) {
+                robotAudioContextRef.current.close();
+                robotAudioContextRef.current = null;
+            }
+        }
     }
-  }
+
+    async function disconnectRobotMic() {
+        if (robotAudioConnRef.current) {
+            try {
+                await robotAudioConnRef.current.stop();
+            } catch (err) {
+                console.error("Error stopping robot mic connection:", err);
+            }
+        }
+        if (robotAudioContextRef.current) {
+            robotAudioContextRef.current.close();
+        }
+        robotAudioConnRef.current = null;
+        robotAudioContextRef.current = null;
+        robotPlaybackTimeRef.current = 0;
+        setRobotMicConnected(false);
+        setRobotMicStatus("Robot mic đã tắt.");
+    }
+
+    // ===================================
+    // WebRTC CALL
+    // ===================================
+    useEffect(() => {
+        let isMounted = true;
+        let conn = null;
+
+        const initConnection = async () => {
+            conn = new signalR.HubConnectionBuilder()
+                .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotaudio")
+                .withAutomaticReconnect()
+                .build();
+
+            conn.on("ReceiveAnswer", async (sdp) => {
+                if (!pcRef.current) return;
+                await pcRef.current.setRemoteDescription({ type: "answer", sdp });
+                if (isMounted) {
+                    setWebRtcStatus("Đã nhận ANSWER từ robot.");
+                }
+            });
+
+            conn.on("ReceiveIceCandidate", async (candJson) => {
+                if (!pcRef.current) return;
+                const cand = JSON.parse(candJson);
+                await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
+            });
+
+            // Start connection với error handling
+            try {
+                await conn.start();
+                if (isMounted) {
+                    setWebRtcStatus("Hub WebRTC đã kết nối.");
+                    console.log("✅ WebRTC Hub connected");
+                    webRtcSignalConnRef.current = conn;
+                }
+            } catch (err) {
+                if (isMounted) {
+                    console.error("❌ WebRTC Hub connection error:", err);
+                    setWebRtcStatus("Lỗi kết nối Hub WebRTC.");
+                }
+            }
+        };
+
+        initConnection();
+
+        return () => {
+            isMounted = false;
+            // Cleanup: stop connection an toàn
+            if (conn) {
+                conn.stop().catch(() => {});
+            }
+            if (webRtcSignalConnRef.current === conn) {
+                webRtcSignalConnRef.current = null;
+            }
+        };
+    }, []);
+
+    async function startWebRtcCall() {
+        if (isCallActive) return;
+        const conn = webRtcSignalConnRef.current;
+        if (!conn || conn.state !== signalR.HubConnectionState.Connected) {
+            showToast("warning", "Hub chưa sẵn sàng");
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            localStreamRef.current = stream;
+
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+            stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+            pc.ontrack = (e) => remoteAudioRef.current && (remoteAudioRef.current.srcObject = e.streams[0]);
+            pc.onicecandidate = (e) => e.candidate && conn.invoke("SendIceCandidate", JSON.stringify(e.candidate.toJSON()));
+            pc.onconnectionstatechange = () => {
+                if (pc.connectionState === "connected") setWebRtcStatus("Đã kết nối WebRTC với robot.");
+                if (pc.connectionState === "failed") setWebRtcStatus("Kết nối WebRTC thất bại.");
+            };
+
+            pcRef.current = pc;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await conn.invoke("SendOfferToRobot", offer.sdp);
+
+            setIsCallActive(true);
+            setWebRtcStatus("Đã gửi OFFER...");
+
+            startWebMic();
+            connectRobotMic();
+        } catch (err) {
+            console.error("Lỗi WebRTC:", err);
+            showToast("error", `Lỗi WebRTC: ${err.message}`);
+            stopWebRtcCall();
+        }
+    }
 
   function stopWebRtcCall() {
     if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
@@ -845,25 +1000,44 @@ async function completeTask() {
     };
   }, []);
 
-  // ===================================
-  // RENDER
-  // ===================================
-  if (!taskInfo || stops.length === 0) {
-    return <div className="p-4 text-center">Đang tải nhiệm vụ ID: {taskId}...</div>;
-  }
+    // ===================================
+    // RENDER
+    // ===================================
+    if (!taskInfo || stops.length === 0) {
+        return (
+            <div className={styles.page}>
+                <div className="p-4 text-center">
+                    <div className="spinner-border text-primary mb-3"></div>
+                    <p className="text-muted">Đang tải nhiệm vụ ID: {taskId}...</p>
+                </div>
+            </div>
+        );
+    }
 
-  return (
-    <div className={styles.page}>
+    return (
+        <div className={styles.page}>
+            <Toast toast={toast} showToast={showToast} />
       <div className="container-xxl py-3">
         <div className="row g-3" style={{ height: "calc(100vh - 2rem)" }}>
           {/* LEFT: CONTROLS */}
           <div className="col-lg-3 col-xl-3">
-            <div className={`${styles.glass} p-3 h-100`}>
+            <div className={`${styles.glass} p-2 h-100`}>
               <div className={styles.controlSidebar}>
 
-                {/* Điều khiển */}
-                <div className="mb-3">
-                  <h6 className={styles.sectionTitle}>Điều khiển</h6>
+                {/* Điều khiển - Collapsible */}
+                <div className={styles.collapsibleSection}>
+                  <div 
+                    className={styles.sectionHeader}
+                    onClick={() => toggleSection('control')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <h6 className={styles.sectionTitle}>
+                      <i className={`bi bi-chevron-${collapsedSections.control ? 'down' : 'up'} me-1`}></i>
+                      Điều khiển
+                    </h6>
+                  </div>
+                  {!collapsedSections.control && (
+                    <div className={styles.sectionContent}>
                   <button className={`${styles.btnPrimary} mt-2`} onClick={() => setRemoteMode(!remoteMode)}>
                     <i className={`bi ${remoteMode ? "bi-stop-circle" : "bi-controller"} me-1`}></i>
                     {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
@@ -884,14 +1058,24 @@ async function completeTask() {
                       </div>
                     </>
                   )}
+                    </div>
+                  )}
                 </div>
 
-                <hr className={styles.divider} />
-
-                {/* Hộp chứa */}
-                <div className="mb-3">
-                  <h6 className={styles.sectionTitle}>Hộp chứa</h6>
-                  <div className="mt-2">
+                {/* Hộp chứa - Collapsible */}
+                <div className={styles.collapsibleSection}>
+                  <div 
+                    className={styles.sectionHeader}
+                    onClick={() => toggleSection('compartments')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <h6 className={styles.sectionTitle}>
+                      <i className={`bi bi-chevron-${collapsedSections.compartments ? 'down' : 'up'} me-1`}></i>
+                      Hộp chứa
+                    </h6>
+                  </div>
+                  {!collapsedSections.compartments && (
+                    <div className={styles.sectionContent}>
                     {compartments.map(c => (
                       <div key={c.id} className={styles.compartmentItem}>
                         <span className={styles.compartmentLabel}>{c.label}</span>
@@ -900,15 +1084,25 @@ async function completeTask() {
                         </button>
                       </div>
                     ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                <hr className={styles.divider} />
-
-                {/* Âm thanh WebRTC */}
-                <div className="mb-3">
-                  <h6 className={styles.sectionTitle}>Âm thanh (WebRTC)</h6>
-                  <div className="mt-2 d-flex flex-column gap-2">
+                {/* Âm thanh WebRTC - Collapsible */}
+                <div className={styles.collapsibleSection}>
+                  <div 
+                    className={styles.sectionHeader}
+                    onClick={() => toggleSection('audio')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <h6 className={styles.sectionTitle}>
+                      <i className={`bi bi-chevron-${collapsedSections.audio ? 'down' : 'up'} me-1`}></i>
+                      Âm thanh (WebRTC)
+                    </h6>
+                  </div>
+                  {!collapsedSections.audio && (
+                    <div className={styles.sectionContent}>
+                      <div className="d-flex flex-column gap-2">
                     <button className={isCallActive ? styles.btnDanger : styles.btnSuccess} onClick={toggleWebRtcCall}>
                       <i className="bi bi-telephone-fill me-1"></i>
                       {isCallActive ? "Tắt cuộc gọi WebRTC" : "Bật cuộc gọi WebRTC"}
@@ -919,39 +1113,39 @@ async function completeTask() {
                       {webMicStatus}<br />
                       {robotMicStatus}
                     </small>
-                    <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
-                  </div>
+                        <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <hr className={styles.divider} />
-
-                {/* Điểm dừng nhiệm vụ */}
-                <div className="mb-3">
+                {/* Điểm dừng nhiệm vụ - QUAN TRỌNG, luôn hiển thị */}
+                <div className={styles.collapsibleSection}>
                   <h6 className={styles.sectionTitle}>Điểm dừng nhiệm vụ</h6>
-                  <select
-                    className={`${styles.formSelect} mt-2`}
-                    value={selectedStop?.stopId || ""}
-                    onChange={(e) => setSelectedStop(stops.find(s => s.stopId === Number(e.target.value)))}
-                  >
-                    {stops.map(s => (
-                      <option key={s.stopId} value={s.stopId}>
-                        {s.order}. {s.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className={styles.sectionContent}>
+                    <select
+                        className={`${styles.formSelect} mt-1`}
+                        value={selectedStop?.stopId || ""}
+                        onChange={(e) => setSelectedStop(stops.find(s => s.stopId === Number(e.target.value)))}
+                    >
+                        {stops.map(s => (
+                            <option key={s.stopId} value={s.stopId}>
+                                {s.order}. {s.name}
+                            </option>
+                        ))}
+                    </select>
 
-                   {/* ⭐ Tiến độ nhiệm vụ */}
-                  <div
-                    style={{
-                      marginTop: "10px",
-                      marginBottom: "6px",
-                      padding: "6px 8px",
-                      borderRadius: "8px",
-                      background:
-                        "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))",
-                      fontSize: "0.85rem",
-                    }}
-                  >
+                    {/* ⭐ Tiến độ nhiệm vụ */}
+                    <div
+                        style={{
+                            marginTop: "8px",
+                            marginBottom: "4px",
+                            padding: "5px 6px",
+                            borderRadius: "6px",
+                            background: "linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02))",
+                            fontSize: "0.8rem",
+                        }}
+                    >
                     <div
                       style={{
                         marginBottom: "4px",
@@ -995,122 +1189,152 @@ async function completeTask() {
                     </div>
                   </div>
 
-                  {/* ⭐ Text tiếng Việt cho robot đọc */}
-                  <div
-                    style={{
-                      marginTop: "8px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}
-                  >
-                    <textarea
-                      className={styles.formControl}
-                      rows={2}
-                      placeholder="Nhập câu tiếng Việt để robot đọc..."
-                      value={ttsTextCustom}
-                      onChange={(e) => setTtsTextCustom(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className={styles.btnPrimary}
-                      onClick={sendCustomTts}
+                    {/* ⭐ Text tiếng Việt cho robot đọc */}
+                    <div
+                        style={{
+                            marginTop: "6px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "4px",
+                        }}
                     >
-                      <i className="bi bi-megaphone-fill me-1"></i>
-                      Gửi cho robot đọc
-                    </button>
-                  </div>
-
-                  <button
-                    className={`${styles.btnTeal} mt-2 w-100`}
-                    onClick={startRunMap}
-                  >
-                    Bắt đầu chạy
-                  </button>
-
-                  <button className={`${styles.btnOutlinePrimary} mt-2 w-100`} onClick={sendRoute}>
-                    Gửi vị trí muốn đến
-                  </button>
-
-                  {selectedStop && (
-                    <div className={`${styles.destinationInfo} mt-2`}>
-                      <div><strong>{selectedStop.name}</strong></div>
-                      <div>Map: {selectedMapName}</div>
-                      <div>X: {selectedStop.x.toFixed(2)} | Y: {selectedStop.y.toFixed(2)}</div>
-                     {selectedStop.assignmentStatus && (
-  <div className="mt-1">
-    <small>
-      Trạng thái hiện tại:{" "}
-      <span
-        style={{
-          padding: "3px 8px",
-          borderRadius: "6px",
-          background:
-            selectedStop.assignmentStatus === "delivered" ? "#2ecc71" : "#bdc3c7",
-          color: "white",
-          fontWeight: "bold"
-        }}
-      >
-        {selectedStop.assignmentStatus}
-      </span>
-    </small>
-  </div>
-)}
-
+                        <textarea
+                            className={styles.formControl}
+                            rows={2}
+                            placeholder="Nhập câu tiếng Việt để robot đọc..."
+                            value={ttsTextCustom}
+                            onChange={(e) => setTtsTextCustom(e.target.value)}
+                            style={{ fontSize: "0.8rem", padding: "0.4rem 0.6rem" }}
+                        />
+                        <button
+                            type="button"
+                            className={styles.btnPrimary}
+                            onClick={sendCustomTts}
+                            style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                        >
+                            <i className="bi bi-megaphone-fill me-1"></i>
+                            Gửi cho robot đọc
+                        </button>
                     </div>
-                  )}
-                </div>
-{/* ====== CẬP NHẬT TRẠNG THÁI ĐIỂM DỪNG ====== */}
-<div className="mt-3">
-  <h6 className={styles.sectionTitle}>Xác nhận trạng thái điểm dừng</h6>
 
-  <div className="d-flex gap-2 mt-1">
-    <select
-      className={styles.formSelect}
-      value={selectedStopStatus}
-      onChange={(e) => setSelectedStopStatus(e.target.value)}
-      style={{ maxWidth: "260px" }}
-      disabled={selectedStop?.assignmentStatus === "delivered"}
-    >
-      <option value="">-- Chọn trạng thái --</option>
-      <option value="pending">Chờ xử lý</option>
-      <option value="in_progress">Đang xử lý</option>
-      <option value="awaiting_handover">Chờ bàn giao</option>
-      <option value="delivered">Đã giao</option>
-      <option value="skipped">Bỏ qua</option>
-      <option value="failed">Thất bại</option>
-    </select>
+                    <button
+                        className={`${styles.btnTeal} mt-1 w-100`}
+                        onClick={startRunMap}
+                        style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                    >
+                        Bắt đầu chạy
+                    </button>
 
-    <button
-      className={styles.btnSuccess}
-      onClick={handleUpdateSelectedStopStatus}
-      disabled={selectedStop?.assignmentStatus === "delivered"} 
-    >
-      Cập nhật
-    </button>
-  </div>
-</div>
+                    <button 
+                        className={`${styles.btnOutlinePrimary} mt-1 w-100`} 
+                        onClick={sendRoute}
+                        style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                    >
+                        Gửi vị trí muốn đến
+                    </button>
 
-                <hr className={styles.divider} />
-
-                {/* Logs */}
-                <div className="flex-grow-1">
-                  <div className={styles.headerBar}>
-                    <h6 className={styles.sectionTitle}>Nhật ký</h6>
-                    <button className={styles.btnOutlineDanger} onClick={() => setLogs([])}>Xóa</button>
-                  </div>
-                  <div className={styles.logsContainer}>
-                    {logs.length === 0 ? (
-                      <div className={styles.logsEmpty}>Chưa có log</div>
-                    ) : (
-                      logs.slice(0, 15).map((l, i) => (
-                        <div key={i} className={styles.logItem}>
-                          <div className={styles.logTime}>{l.time}</div>
-                          <div className={styles.logText}>{l.text}</div>
+                    {selectedStop && (
+                        <div className={`${styles.destinationInfo} mt-1`} style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
+                            <div><strong>{selectedStop.name}</strong></div>
+                            <div>Map: {selectedMapName}</div>
+                            <div>X: {selectedStop.x.toFixed(2)} | Y: {selectedStop.y.toFixed(2)}</div>
+                            {selectedStop.assignmentStatus && (
+                                <div className="mt-1">
+                                    <small>
+                                        Trạng thái:{" "}
+                                        <span
+                                            style={{
+                                                padding: "2px 6px",
+                                                borderRadius: "4px",
+                                                background: selectedStop.assignmentStatus === "delivered" ? "#2ecc71" : "#bdc3c7",
+                                                color: "white",
+                                                fontWeight: "bold",
+                                                fontSize: "0.7rem"
+                                            }}
+                                        >
+                                            {getStatusText(selectedStop.assignmentStatus)}
+                                        </span>
+                                    </small>
+                                </div>
+                            )}
                         </div>
-                      ))
                     )}
                   </div>
+                </div>
+
+                {/* Xác nhận trạng thái điểm dừng - QUAN TRỌNG, luôn hiển thị */}
+                <div className={styles.collapsibleSection}>
+                    <h6 className={styles.sectionTitle}>Xác nhận trạng thái điểm dừng</h6>
+                    <div className={styles.sectionContent}>
+                        <div className="d-flex gap-2 mt-1">
+                            <select
+                                className={styles.formSelect}
+                                value={selectedStopStatus}
+                                onChange={(e) => setSelectedStopStatus(e.target.value)}
+                                style={{ flex: 1, fontSize: "0.85rem", padding: "0.4rem 0.6rem" }}
+                                disabled={selectedStop?.assignmentStatus === "delivered"}
+                            >
+                                <option value="">-- Chọn trạng thái --</option>
+                                <option value="pending">Chờ xử lý</option>
+                                <option value="in_progress">Đang xử lý</option>
+                                <option value="awaiting_handover">Chờ bàn giao</option>
+                                <option value="delivered">Đã giao</option>
+                                <option value="skipped">Bỏ qua</option>
+                                <option value="failed">Thất bại</option>
+                            </select>
+
+                            <button
+                                className={styles.btnSuccess}
+                                onClick={handleUpdateSelectedStopStatus}
+                                disabled={selectedStop?.assignmentStatus === "delivered"}
+                                style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem" }}
+                            >
+                                Cập nhật
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Logs - Collapsible */}
+                <div className={`${styles.collapsibleSection} flex-grow-1`}>
+                  <div 
+                    className={styles.sectionHeader}
+                    onClick={() => toggleSection('logs')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className={styles.headerBar}>
+                      <h6 className={styles.sectionTitle}>
+                        <i className={`bi bi-chevron-${collapsedSections.logs ? 'down' : 'up'} me-1`}></i>
+                        Nhật ký
+                      </h6>
+                      <button 
+                        className={styles.btnOutlineDanger} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLogs([]);
+                        }}
+                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                  {!collapsedSections.logs && (
+                    <div className={styles.sectionContent}>
+                        <div className={styles.logsContainer}>
+                            {logs.length === 0 ? (
+                                <div className={styles.logsEmpty}>Chưa có log</div>
+                            ) : (
+                                logs.slice(0, 15).map((l, i) => (
+                                    <div key={i} className={styles.logItem}>
+                                        <div className={styles.logTime}>{l.time}</div>
+                                        <div className={styles.logText}>{l.text}</div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -1168,7 +1392,6 @@ async function completeTask() {
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>

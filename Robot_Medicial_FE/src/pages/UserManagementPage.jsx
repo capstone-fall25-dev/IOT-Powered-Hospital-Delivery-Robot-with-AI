@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllUsers, toggleActive, kickAllSessions } from '@/services/userService';
 import styles from '@/assets/styles/userManagement.module.css';
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function UserManagementPage() {
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState("");
@@ -33,7 +36,7 @@ export default function UserManagementPage() {
             setRows(mapped);
         } catch (err) {
             console.error("Lỗi khi lấy dữ liệu users:", err);
-            alert("Không thể tải danh sách người dùng");
+            showToast("error", err.message || "Không thể tải danh sách người dùng");
         } finally {
             setLoading(false);
         }
@@ -54,11 +57,11 @@ export default function UserManagementPage() {
 
         try {
             await kickAllSessions(row.id);
-            alert(`Đã đá tất cả thiết bị của ${row.fullName}`);
+            showToast("success", `Đã đá tất cả thiết bị của ${row.fullName}`);
             await loadUsers();
         } catch (err) {
             console.error("Lỗi khi đá thiết bị:", err);
-            alert("Không thể đá tất cả thiết bị!");
+            showToast("error", err.message || "Không thể đá tất cả thiết bị!");
         }
     };
 
@@ -66,10 +69,10 @@ export default function UserManagementPage() {
         try {
             await toggleActive(row.id, row.isActive);
             await loadUsers();
-            alert(row.isActive ? "Người dùng đã được khóa thành công." : "Người dùng đã được kích hoạt thành công.");
+            showToast("success", row.isActive ? "Người dùng đã được khóa thành công." : "Người dùng đã được kích hoạt thành công.");
         } catch (err) {
             console.error("Lỗi khi toggle trạng thái:", err);
-            alert("Không thể thay đổi trạng thái người dùng");
+            showToast("error", err.message || "Không thể thay đổi trạng thái người dùng");
         }
     };
 
@@ -240,7 +243,7 @@ export default function UserManagementPage() {
                                                         <i className="bi bi-pencil"></i>
                                                     </button>
 
-                                                    <button
+                                                    <button hidden
                                                         className={styles.btnDanger}
                                                         onClick={() => handleKickAll(r)}
                                                         title="Đá toàn bộ thiết bị"
@@ -266,6 +269,7 @@ export default function UserManagementPage() {
                 </div>
 
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

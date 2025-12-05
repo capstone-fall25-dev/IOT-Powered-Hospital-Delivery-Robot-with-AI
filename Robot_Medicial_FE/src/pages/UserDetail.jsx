@@ -6,10 +6,13 @@ import {
     deactivateUser
 } from "@/services/userService";
 import styles from '@/assets/styles/userDetail.module.css';
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function UserDetail() {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -24,7 +27,7 @@ export default function UserDetail() {
             const data = await getUserById(userId);
             setUser(data);
         } catch (err) {
-            alert("Không thể tải thông tin user");
+            showToast("error", err.message || "Không thể tải thông tin user");
         } finally {
             setLoading(false);
         }
@@ -47,8 +50,9 @@ export default function UserDetail() {
             else await activateUser(user.id);
 
             await loadUser();
+            showToast("success", user.isActive ? "Đã vô hiệu hóa tài khoản thành công!" : "Đã kích hoạt tài khoản thành công!");
         } catch (err) {
-            alert("Thao tác thất bại");
+            showToast("error", err.message || "Thao tác thất bại");
         } finally {
             setToggling(false);
         }
@@ -296,6 +300,7 @@ export default function UserDetail() {
                     </div>
                 </div>
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

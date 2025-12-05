@@ -4,9 +4,12 @@ import { createRobot } from "@/services/robotService";
 import { getAllMaps } from "@/services/mapService";
 import { getAllCategoryCompartment } from "@/services/categotiresCompartmentService";
 import styles from "@/assets/styles/createRobot.module.css";
+import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
 
 export default function CreateRobot() {
     const navigate = useNavigate();
+    const { toast, showToast } = useToast();
 
     const [form, setForm] = useState({
         name: "",
@@ -18,7 +21,6 @@ export default function CreateRobot() {
     const [maps, setMaps] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [toast, setToast] = useState({ show: false, type: "", message: "" });
 
     // === TỰ ĐỘNG SINH MÃ ROBOT: RB + 3 số ngẫu nhiên ===
     useEffect(() => {
@@ -39,7 +41,7 @@ export default function CreateRobot() {
                 const mapsData = await getAllMaps();
                 setMaps(mapsData);
             } catch (err) {
-                showToast("error", "Không thể tải danh sách map!");
+                showToast("error", err.message || "Không thể tải danh sách map!");
             }
         }
         fetchMaps();
@@ -52,19 +54,11 @@ export default function CreateRobot() {
                 const categoriesData = await getAllCategoryCompartment();
                 setCategories(categoriesData);
             } catch (err) {
-                showToast("error", "Không thể tải danh sách loại ngăn!");
+                showToast("error", err.message || "Không thể tải danh sách loại ngăn!");
             }
         }
         fetchCategories();
     }, []);
-
-    // === HIỆU ỨNG TOAST THUẦN CSS ===
-    const showToast = (type, message) => {
-        setToast({ show: true, type, message });
-        setTimeout(() => {
-            setToast({ show: false, type: "", message: "" });
-        }, 2800);
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -135,28 +129,9 @@ export default function CreateRobot() {
             setTimeout(() => navigate("/team"), 800);
         } catch (err) {
             console.error("Create robot error:", err);
-
-            let errorMessage = "Không thể tạo Robot. Vui lòng thử lại!";
-
-            if (err.response?.data?.message) {
-                const msg = err.response.data.message;
-
-                if (err.response.status === 409) {
-                    errorMessage = `Mã Robot đã tồn tại: "${form.code}". Vui lòng tạo mã mới!`;
-                } else if (err.response.status === 400) {
-                    errorMessage = msg;
-                } else if (err.response.status >= 500) {
-                    errorMessage = "Lỗi hệ thống. Vui lòng thử lại sau.";
-                } else {
-                    errorMessage = msg;
-                }
-            } else if (err.request) {
-                errorMessage = "Không thể kết nối đến máy chủ!";
-            } else {
-                errorMessage = err.message || errorMessage;
-            }
-
-            showToast("error", errorMessage);
+            // apiFetch đã parse message từ BE và đặt vào err.message
+            // Ưu tiên message từ BE, chỉ dùng fallback khi không có
+            showToast("error", err.message || "Không thể tạo Robot. Vui lòng thử lại!");
         } finally {
             setLoading(false);
         }
@@ -164,25 +139,6 @@ export default function CreateRobot() {
 
     return (
         <div className={styles.page}>
-            {/* === TOAST NOTIFICATIONS === */}
-            <div className={`${styles.toastContainer} ${toast.show ? styles.show : ""}`}>
-                <div className={`${styles.toast} ${styles[toast.type]}`}>
-                    <div className={styles.toastIcon}>
-                        {toast.type === "success" && <i className="bi bi-check-lg"></i>}
-                        {toast.type === "error" && <i className="bi bi-x-lg"></i>}
-                        {toast.type === "warning" && <i className="bi bi-exclamation-lg"></i>}
-                        {toast.type === "info" && <i className="bi bi-info-lg"></i>}
-                    </div>
-                    <div className={styles.toastMessage}>{toast.message}</div>
-                    <button
-                        className={styles.toastClose}
-                        onClick={() => setToast({ ...toast, show: false })}
-                    >
-                        ×
-                    </button>
-                </div>
-            </div>
-
             <div className="container-xl py-4">
                 {/* =================== HEADER =================== */}
                 <div className={styles.headerSection}>
@@ -357,6 +313,7 @@ export default function CreateRobot() {
                     </form>
                 </div>
             </div>
+            <Toast toast={toast} showToast={showToast} />
         </div>
     );
 }

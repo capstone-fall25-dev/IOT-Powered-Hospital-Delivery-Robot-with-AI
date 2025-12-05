@@ -4,8 +4,9 @@ import { getAllRobots } from "@/services/robotService";
 import { getAllTasks, cancelTask } from "@/services/taskService";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
-import styles from "@/assets/styles/robotDashboard.module.css";
 import useToast from "@/hooks/useToast";
+import Toast from "@/components/Toast";
+import styles from "@/assets/styles/robotDashboard.module.css";
 
 /* ========================= COMPONENT CHÍNH ========================= */
 export default function RobotTaskDashboard() {
@@ -56,6 +57,9 @@ export default function RobotTaskDashboard() {
     const refresh = () => fetchTasks();
 
     // Lắng nghe các sự kiện từ SignalR
+    connection.on("ConnectedToTaskHub", (data) => {
+      console.log("✅ TaskHub:", data.message);
+    });
     connection.on("TaskCreated", refresh);
     connection.on("TaskUpdated", refresh);
     connection.on("TaskStarted", () => {
@@ -85,9 +89,9 @@ export default function RobotTaskDashboard() {
         const formatted = data.map((r) => ({
           id: r.code,
           name: r.name,
-          dest: r.tasks?.[0]?.destination || "N/A",
+          dest: r.tasks?.[0]?.destination || "Không có",
           progress: r.progressOverallPct,
-          status: statusMap[r.status] || r.status,
+          status: statusMap[r.status] || "Không xác định",
         }));
         setRobots(formatted);
       } catch (err) {
@@ -114,7 +118,7 @@ export default function RobotTaskDashboard() {
             id: t.id,
             robotName: t.robotName,
             assignedBy: t.assignedBy,
-            status: statusMap[t.status] || t.status,
+            status: statusMap[t.status] || "Không xác định",
             statusRaw: t.status, // Giữ status gốc để kiểm tra
             createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
             scheduledStartAt: t.scheduledStartAt
@@ -152,10 +156,10 @@ export default function RobotTaskDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  /* ========================= TÍNH THỜI GIAN ĐÊM NGƯỢC ========================= */
+  /* ========================= TÍNH THỜI GIAN ĐẾM NGƯỢC ========================= */
   function getCountdownInfo(task) {
     if (!task.scheduledStartAtRaw) {
-        return { text: "—", className: "", note: null };
+      return { text: "—", className: "", note: null };
     }
 
     const now = new Date();
@@ -163,41 +167,39 @@ export default function RobotTaskDashboard() {
 
     // Nếu task ĐÃ CHẠY (in_progress hoặc hơn) → kiểm tra có chạy sớm không
     if ((task.status === "Đang tiến hành" || task.status === "Hoàn thành") && task.startedAt) {
-        if (task.startedAt) {
-        const started = new Date(task.startedAt);
-        const diffMs = scheduled.getTime() - started.getTime();
+      const started = new Date(task.startedAt);
+      const diffMs = scheduled.getTime() - started.getTime();
 
-        if (diffMs > 1000) { // chạy sớm > 1 giây
-            const diffMin = Math.floor(diffMs / 60000);
-            const diffSec = Math.floor((diffMs % 60000) / 1000);
+      if (diffMs > 1000) { // chạy sớm > 1 giây
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffSec = Math.floor((diffMs % 60000) / 1000);
 
-            const note = diffMin >= 1
-            ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
-            : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
+        const note = diffMin >= 1
+          ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
+          : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
 
-            return {
-            text: "Đã khởi hành",
-            className: styles.countdownStarted,
-            note: note,
-            };
-        }
-        }
+        return {
+          text: "Đã khởi hành",
+          className: styles.countdownStarted,
+          note: note,
+        };
+      }
     }
 
     // Chưa chạy → đếm ngược bình thường
     const diffMs = scheduled.getTime() - now.getTime();
 
     if (diffMs <= 0) {
-        return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
+      return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
     }
 
     const diffMin = Math.floor(diffMs / 60000);
     const diffSec = Math.floor((diffMs % 60000) / 1000);
 
     if (diffMin === 0)
-        return { text: `${diffSec}s`, className: styles.countdownSoon, note: null };
+      return { text: `${diffSec}s`, className: styles.countdownSoon, note: null };
     if (diffMin < 60)
-        return { text: `${diffMin}p ${diffSec}s`, className: styles.countdownNormal, note: null };
+      return { text: `${diffMin}p ${diffSec}s`, className: styles.countdownNormal, note: null };
 
     const hours = Math.floor(diffMin / 60);
     const mins = diffMin % 60;
@@ -302,26 +304,7 @@ export default function RobotTaskDashboard() {
   /* ========================= RENDER GIAO DIỆN ========================= */
   return (
     <div className={styles.page}>
-        {/* === TOAST NOTIFICATIONS === */}
-        <div className={`${styles.toastContainer} ${toast.show ? styles.show : ""}`}>
-            <div className={`${styles.toast} ${styles[toast.type]}`}>
-                <div className={styles.toastIcon}>
-                    {toast.type === "success" && <i className="bi bi-check-lg"></i>}
-                    {toast.type === "error" && <i className="bi bi-x-lg"></i>}
-                    {toast.type === "warning" && <i className="bi bi-exclamation-lg"></i>}
-                    {toast.type === "info" && <i className="bi bi-info-lg"></i>}
-                </div>
-
-                <div className={styles.toastMessage}>{toast.message}</div>
-
-                <button
-                    className={styles.toastClose}
-                    onClick={() => showToast("", "")}
-                >
-                    ×
-                </button>
-            </div>
-        </div>
+      <Toast toast={toast} showToast={showToast} />
 
       <div className="container-xl py-4">
         {/* ========================= TRẠNG THÁI HIỆN TẠI ========================= */}
@@ -472,20 +455,20 @@ export default function RobotTaskDashboard() {
 
                       {/* Cột đếm ngược */}
                       <td className="fw-semibold">
-                            {countdownInfo.note ? (
-                            <div className={styles.tooltipWrapper}>
-                                <span className={countdownInfo.className}>
-                                {countdownInfo.text}
-                                </span>
-                                <div className={styles.tooltip}>
-                                {countdownInfo.note}
-                                </div>
-                            </div>
-                            ) : (
+                        {countdownInfo.note ? (
+                          <div className={styles.tooltipWrapper}>
                             <span className={countdownInfo.className}>
-                                {countdownInfo.text}
+                              {countdownInfo.text}
                             </span>
-                            )}
+                            <div className={styles.tooltip}>
+                              {countdownInfo.note}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={countdownInfo.className}>
+                            {countdownInfo.text}
+                          </span>
+                        )}
                       </td>
 
                       {/* Cột thao tác */}
@@ -615,10 +598,44 @@ export default function RobotTaskDashboard() {
                   <label className="form-label">
                     <strong>Lý do hủy <span className="text-danger">*</span></strong>
                   </label>
+                  
+                  {/* Gợi ý lý do hủy */}
+                  <div className="mb-2">
+                    <small className="text-muted d-block mb-2">
+                      <i className="bi bi-lightbulb me-1"></i>
+                      Gợi ý lý do hủy (click để chọn):
+                    </small>
+                    <div className="d-flex flex-wrap gap-2">
+                      {[
+                        "Robot gặp sự cố kỹ thuật",
+                        "Bệnh nhân đã xuất viện",
+                        "Thay đổi kế hoạch điều trị",
+                        "Robot cần bảo trì",
+                        "Hủy theo yêu cầu bác sĩ",
+                        "Lỗi hệ thống",
+                        "Khẩn cấp khác",
+                      ].map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() =>
+                            setCancelModal((prev) => ({ ...prev, reason: suggestion }))
+                          }
+                          disabled={cancelModal.loading}
+                          style={{ fontSize: "0.85rem", borderRadius: "20px" }}
+                        >
+                          <i className="bi bi-plus-circle me-1"></i>
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <textarea
                     className="form-control"
                     rows="3"
-                    placeholder="Nhập lý do hủy nhiệm vụ..."
+                    placeholder="Nhập lý do hủy nhiệm vụ hoặc chọn từ gợi ý bên trên..."
                     value={cancelModal.reason}
                     onChange={(e) =>
                       setCancelModal((prev) => ({ ...prev, reason: e.target.value }))
@@ -641,7 +658,7 @@ export default function RobotTaskDashboard() {
                   className="btn btn-danger"
                   onClick={async () => {
                     if (!cancelModal.reason.trim()) {
-                      alert("Vui lòng nhập lý do hủy nhiệm vụ.");
+                      showToast("warning", "Vui lòng nhập lý do hủy nhiệm vụ.");
                       return;
                     }
 
@@ -662,7 +679,7 @@ export default function RobotTaskDashboard() {
                           id: t.id,
                           robotName: t.robotName,
                           assignedBy: t.assignedBy,
-                          status: statusMap[t.status] || t.status,
+                          status: statusMap[t.status] || "Không xác định",
                           statusRaw: t.status,
                           createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
                           scheduledStartAt: t.scheduledStartAt
@@ -687,10 +704,10 @@ export default function RobotTaskDashboard() {
 
                       // Đóng modal
                       setCancelModal({ show: false, taskId: null, reason: "", loading: false });
-                      showToast("success", "✅ Đã hủy nhiệm vụ thành công!");
+                      showToast("success", "Đã hủy nhiệm vụ thành công!");
                     } catch (err) {
                       console.error("Error cancel task:", err);
-                      showToast("error", `❌ Lỗi: ${err.message || "Không thể hủy nhiệm vụ"}`);
+                      showToast("error", err.message);
                       setCancelModal((prev) => ({ ...prev, loading: false }));
                     }
                   }}
