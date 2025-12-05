@@ -95,7 +95,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var createdRobot = await _robotRepository.CreateAsync(robot);
 
             // Tạo ngăn chứa
-            var compartments = robotDto.Compartments.Select((c, index) => new RobotCompartment
+            var compartments = (robotDto.Compartments ?? new List<CompartmentDto>()).Select((c, index) => new RobotCompartment
             {
                 RobotId = createdRobot.Id,
                 CompartmentCode = $"C{index + 1:000}",

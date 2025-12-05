@@ -4,15 +4,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý dữ liệu phòng bệnh
+    /// </summary>
     public class RoomRepository : IRoomRepository
     {
         private readonly RobotManagerContext _context;
 
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public RoomRepository(RobotManagerContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Tạo phòng mới
+        /// </summary>
         public async Task<Room> CreateAsync(Room room)
         {
             _context.Rooms.Add(room);
@@ -20,6 +29,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return room;
         }
 
+        /// <summary>
+        /// Lấy danh sách tất cả các phòng
+        /// </summary>
         public async Task<IEnumerable<Room>> GetAllAsync()
         {
             return await _context.Rooms
@@ -27,6 +39,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy thông tin phòng theo ID
+        /// </summary>
         public async Task<Room?> GetByIdAsync(ulong id)
         {
             return await _context.Rooms
@@ -34,6 +49,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
+        /// <summary>
+        /// Cập nhật thông tin phòng theo ID
+        /// </summary>
         public async Task<Room?> UpdateAsync(ulong id, Room room)
         {
             var existing = await _context.Rooms.FindAsync(id);
@@ -51,6 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return existing;
         }
 
+        /// <summary>
+        /// Xóa phòng theo ID (chỉ khi không còn bệnh nhân)
+        /// </summary>
         public async Task<bool> DeleteAsync(ulong id)
         {
             var room = await _context.Rooms

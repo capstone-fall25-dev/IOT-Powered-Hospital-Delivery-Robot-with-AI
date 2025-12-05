@@ -2,6 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo/cập nhật nhân viên
+    /// </summary>
     public class UserDto
     {
         public ulong Id { get; set; }
@@ -20,12 +23,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? FullName { get; set; }
 
         [Required]
-        public string Role { get; set; }
+        public string Role { get; set; } = null!;
 
         public bool IsActive { get; set; } = true;
     }
 
-    // Output DTO với Tasks và ActiveSessions
+    /// <summary>
+    /// DTO phản hồi thông tin nhân viên kèm Tasks và ActiveSessions
+    /// </summary>
     public class UserResponseDto
     {
         public ulong Id { get; set; }
@@ -40,7 +45,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime UpdatedAt { get; set; }
     }
 
-    // DTO cho status real-time
+    /// <summary>
+    /// DTO cho trạng thái real-time của nhân viên
+    /// </summary>
     public class UserStatusDto
     {
         public bool IsOnline { get; set; }

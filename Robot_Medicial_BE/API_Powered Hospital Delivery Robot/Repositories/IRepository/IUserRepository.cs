@@ -29,8 +29,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Cập nhật user (truyền trực tiếp entity)
         Task UpdateUserAsync(User user);
 
+        // Tạo mới session
         Task CreateSessionAsync(Session session);
+
+        // Cập nhật session
         Task UpdateSessionAsync(Session session);
+
+        // Lấy session theo token hash
         Task<Session?> GetSessionByTokenHashAsync(string tokenHash);
     }
 }

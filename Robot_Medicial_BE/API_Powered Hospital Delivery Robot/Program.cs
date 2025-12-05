@@ -67,6 +67,8 @@ builder.Services.AddSwaggerGen(options =>
 // 4. JWT AUTHENTICATION CONFIGURATION
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Secret"];
+if (string.IsNullOrEmpty(secretKey))
+    throw new InvalidOperationException("Cấu hình JWT Secret không được để trống");
 
 builder.Services.AddAuthentication(options =>
 {

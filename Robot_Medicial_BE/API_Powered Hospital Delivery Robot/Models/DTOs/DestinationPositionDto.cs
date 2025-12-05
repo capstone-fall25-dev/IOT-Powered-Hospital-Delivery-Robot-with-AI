@@ -1,5 +1,8 @@
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tọa độ vị trí điểm đến
+    /// </summary>
     public class DestinationPositionDto
     {
         public ulong Id { get; set; }

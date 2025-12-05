@@ -6,15 +6,24 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý dữ liệu task và các điểm dừng
+    /// </summary>
     public class TaskRepository : ITaskRepository
     {
         private readonly RobotManagerContext _context;
 
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public TaskRepository(RobotManagerContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Lấy danh sách task (có thể lọc theo robot, trạng thái, độ ưu tiên)
+        /// </summary>
         public async Task<IEnumerable<Models.Entities.Task>> GetListAsync(TaskFilterDto? filter)
         {
             var q = _context.Tasks
@@ -40,9 +49,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await q.OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy chi tiết một task theo ID (kèm đầy đủ thông tin liên quan)
+        /// </summary>
         public async Task<Models.Entities.Task?> GetByIdAsync(ulong id)
         {
             return await _context.Tasks
+                .AsSplitQuery()
 
                 // Robot + Map + Người giao
                 .Include(t => t.Robot)
@@ -64,7 +77,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
                 // Prescription FULL
                 .Include(t => t.TaskStops)
-                    .ThenInclude(s => s.Patient)
+                    .ThenInclude(s => s.Patient!)
                         .ThenInclude(p => p.Prescriptions!)
                             .ThenInclude(rx => rx.PrescriptionItems!)
                                 .ThenInclude(i => i.Medicine)
@@ -72,6 +85,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
+        /// <summary>
+        /// Tạo task mới
+        /// </summary>
         public async Task<Models.Entities.Task> CreateAsync(Models.Entities.Task task)
         {
             _context.Tasks.Add(task);
@@ -79,6 +95,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return task;
         }
 
+        /// <summary>
+        /// Cập nhật task theo ID
+        /// </summary>
         public async Task<Models.Entities.Task?> UpdateAsync(ulong id, Models.Entities.Task task)
         {
             var existing = await _context.Tasks.FindAsync(id);
@@ -92,6 +111,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return existing;
         }
 
+        /// <summary>
+        /// Xóa task theo ID
+        /// </summary>
         public async Task<bool> DeleteAsync(ulong id)
         {
             var task = await _context.Tasks.FindAsync(id);
@@ -101,6 +123,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return true;
         }
 
+        /// <summary>
+        /// Tạo mới một điểm dừng của task
+        /// </summary>
         public async Task<TaskStop> CreateStopAsync(TaskStop stop)
         {
             _context.TaskStops.Add(stop);
@@ -108,6 +133,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return stop;
         }
 
+        /// <summary>
+        /// Tạo phân bổ ngăn chứa cho task
+        /// </summary>
         public async Task<CompartmentAssignment> CreateAssignmentAsync(CompartmentAssignment assignment)
         {
             _context.CompartmentAssignments.Add(assignment);
@@ -115,18 +143,29 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return assignment;
         }
 
-        // ==== Helpers ====
+        /// <summary>
+        /// Lấy thông tin robot theo ID
+        /// </summary>
         public Task<Robot?> GetRobotAsync(ulong id)
             => _context.Robots.Include(r => r.RobotCompartments).FirstOrDefaultAsync(r => r.Id == id);
 
+        /// <summary>
+        /// Lấy thông tin bản đồ theo ID
+        /// </summary>
         public Task<Map?> GetMapAsync(ulong id)
             => _context.Maps.FirstOrDefaultAsync(m => m.Id == id);
 
+        /// <summary>
+        /// Lấy thông tin ngăn chứa của robot
+        /// </summary>
         public Task<RobotCompartment?> GetCompartmentAsync(ulong id)
                => _context.RobotCompartments
                    .Include(c => c.Category)
                    .FirstOrDefaultAsync(c => c.Id == id);
 
+        /// <summary>
+        /// Kiểm tra ngăn chứa đang được dùng chưa
+        /// </summary>
         public async Task<bool> IsCompartmentBusyAsync(ulong id)
         {
             // Kiểm tra compartment có đang được sử dụng bởi task active không
@@ -144,6 +183,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                                a.Stop.Task.Status != "failed");
         }
 
+        /// <summary>
+        /// Lấy đơn thuốc mới nhất của bệnh nhân
+        /// </summary>
         public async Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId)
         {
             return await _context.Prescriptions
@@ -154,6 +196,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync();
         }
 
+        /// <summary>
+        /// Lấy đơn thuốc theo mã code
+        /// </summary>
         public async Task<Prescription?> GetPrescriptionByCodeAsync(string code)
         {
             return await _context.Prescriptions
@@ -162,6 +207,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync(p => p.PrescriptionCode == code);
         }
 
+        /// <summary>
+        /// Cập nhật trạng thái robot
+        /// </summary>
         public async System.Threading.Tasks.Task UpdateRobotStatusAsync(ulong robotId, string status)
         {
             var robot = await _context.Robots.FindAsync(robotId);
@@ -173,16 +221,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Bắt đầu transaction
+        /// </summary>
         public async Task<IDbContextTransaction> BeginTransactionAsync()
         {
             return await _context.Database.BeginTransactionAsync();
         }
 
+        /// <summary>
+        /// Lưu thay đổi vào database
+        /// </summary>
         public async Task<int> SaveChangesAsync()
         {
             return await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Lấy task kèm danh sách các điểm dừng
+        /// </summary>
         public async Task<Models.Entities.Task?> GetTaskWithStopsAsync(ulong taskId)
         {
             return await _context.Tasks
@@ -193,6 +250,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync(t => t.Id == taskId);
         }
 
+        /// <summary>
+        /// Lấy bản đồ liên quan đến task
+        /// </summary>
         public async Task<Map?> GetMapByTaskIdAsync(ulong taskId)
         {
             return await _context.Tasks

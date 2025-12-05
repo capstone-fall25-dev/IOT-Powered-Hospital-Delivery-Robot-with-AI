@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho đăng ký nhân viên mới
+    /// </summary>
     public class RegisterRequest
     {
         public string Email { get; set; } = null!;
@@ -11,23 +14,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Role { get; set; } = "doctor";
     }
 
+    /// <summary>
+    /// DTO cho đăng nhập
+    /// </summary>
     public class LoginDto
     {
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho quên mật khẩu
+    /// </summary>
     public class ForgotPasswordRequest
     {
         public string Email { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// DTO phản hồi xác thực
+    /// </summary>
     public class AuthResponseDto
     {
-        public string Token { get; set; }
-        public string Message { get; set; }
+        public string Token { get; set; } = null!;
+        public string Message { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho xác thực quên mật khẩu
+    /// </summary>
     public class VerifyForgotPasswordRequest
     {
         public string Email { get; set; } = string.Empty;
@@ -35,6 +50,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string NewPassword { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// DTO cho xác thực OTP
+    /// </summary>
     public class VerifyOtpRequest
     {
         public string Email { get; set; } = string.Empty;
@@ -42,8 +60,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     }
 
     /// <summary>
-    /// DTO để user update profile của chính họ
-    /// Không cho phép đổi Email, Role, IsActive
+    /// DTO cho cập nhật profile nhân viên (không cho phép đổi Email, Role, IsActive)
     /// </summary>
     public class UpdateProfileDto
     {
@@ -52,7 +69,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string FullName { get; set; } = null!;
     }
 
-    // DTO để đổi mật khẩu
+    /// <summary>
+    /// DTO cho đổi mật khẩu
+    /// </summary>
     public class ChangePasswordDto
     {
         [Required]
@@ -68,6 +87,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string ConfirmPassword { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin profile nhân viên
+    /// </summary>
     public class ProfileResponseDto
     {
         public ulong Id { get; set; }

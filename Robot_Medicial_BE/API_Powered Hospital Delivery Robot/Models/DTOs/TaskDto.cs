@@ -3,9 +3,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
-    // =====================================
-    //  ENUM — PRIORITY
-    // =====================================
+    /// <summary>
+    /// Độ ưu tiên của task
+    /// </summary>
     public enum TaskPriority
     {
         Normal,
@@ -13,10 +13,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         Critical
     }
 
-    // =====================================
-    //  SECTION 1 — CREATE / UPDATE DTOs
-    // =====================================
-
+    /// <summary>
+    /// DTO cho tạo task mới
+    /// </summary>
     public class CreateTaskDto
     {
         [Required(ErrorMessage = "Vui lòng chọn bản đồ.")]
@@ -35,6 +34,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<CreateTaskStopDto> Stops { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho tạo điểm dừng của task
+    /// </summary>
     public class CreateTaskStopDto
     {
         [Required]
@@ -61,6 +63,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? ItemDesc { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho cập nhật task
+    /// </summary>
     public class UpdateTaskDto
     {
         // Cho phép đổi robot / map / priority / giờ bắt đầu
@@ -76,6 +81,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<UpdateTaskStopDto>? Stops { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho cập nhật điểm dừng của task
+    /// </summary>
     public class UpdateTaskStopDto
     {
         // Id stop hiện tại trong DB
@@ -95,10 +103,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; }
     }
 
-    // =====================================
-    //  SECTION 2 — STANDARD TASK RESPONSE
-    // =====================================
-
+    /// <summary>
+    /// DTO phản hồi thông tin task chuẩn
+    /// </summary>
     public class TaskResponseDto
     {
         public ulong Id { get; set; }
@@ -117,6 +124,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<TaskStopResponseDto> Stops { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin điểm dừng của task
+    /// </summary>
     public class TaskStopResponseDto
     {
         public int SeqNo { get; set; }
@@ -127,17 +137,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public PrescriptionSummaryDto? Prescription { get; set; }
     }
 
+    /// <summary>
+    /// DTO tóm tắt đơn thuốc
+    /// </summary>
     public class PrescriptionSummaryDto
     {
         public string Code { get; set; } = "";
         public List<PrescriptionItemResponseDto> Items { get; set; } = new();
     }
 
-    // =====================================
-    //  SECTION 3 — LIST VIEW DTOs
-    //        (Tối ưu cho trang list)
-    // =====================================
-
+    /// <summary>
+    /// DTO cho danh sách task (tối ưu cho trang list)
+    /// </summary>
     public class TaskListItemDto
     {
         // Basic info
@@ -159,15 +170,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PatientStopSummaryDto> Patients { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO tóm tắt bệnh nhân tại điểm dừng
+    /// </summary>
     public class PatientStopSummaryDto
     {
         public string PatientName { get; set; } = "";
         public string MedicineSummary { get; set; } = "";
     }
 
-    // =====================================
-    //  SECTION 4 — FILTER DTO
-    // =====================================
+    /// <summary>
+    /// DTO cho lọc danh sách task
+    /// </summary>
     public class TaskFilterDto
     {
         public ulong? RobotId { get; set; }
@@ -175,6 +189,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Priority { get; set; }
     }
 
+    /// <summary>
+    /// DTO chi tiết task
+    /// </summary>
     public class TaskDetailDto
     {
         // ========================
@@ -198,6 +215,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<TaskDetailStopDto> Stops { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO chi tiết điểm dừng của task
+    /// </summary>
     public class TaskDetailStopDto
     {
         public ulong StopId { get; set; }
@@ -227,6 +247,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public PrescriptionFullDto? Prescription { get; set; }
     }
 
+    /// <summary>
+    /// DTO đầy đủ thông tin đơn thuốc
+    /// </summary>
     public class PrescriptionFullDto
     {
         public string PrescriptionCode { get; set; } = "";
@@ -237,6 +260,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PrescriptionItemResponseDto> Items { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cho chỉnh sửa task
+    /// </summary>
     public class TaskEditDto
     {
         public ulong Id { get; set; }
@@ -249,6 +275,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<TaskEditStopDto> Stops { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cho chỉnh sửa điểm dừng của task
+    /// </summary>
     public class TaskEditStopDto
     {
         public ulong StopId { get; set; }
@@ -266,11 +295,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho thay đổi trạng thái task
+    /// </summary>
     public class TaskStatusChangeDto
     {
         public string Status { get; set; } = "";
     }
 
+    /// <summary>
+    /// DTO thông tin task để chạy
+    /// </summary>
     public class RunTaskInfoDto
     {
         public ulong TaskId { get; set; }
@@ -280,6 +315,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<RunTaskStopDto> Stops { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO điểm dừng để chạy task
+    /// </summary>
     public class RunTaskStopDto
     {
         public ulong StopId { get; set; }
@@ -290,17 +328,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public double Y { get; set; }
         public string AssignmentStatus { get; set; } = "pending";
     }
+
+    /// <summary>
+    /// DTO kết quả cập nhật điểm dừng
+    /// </summary>
     public class StopUpdateResultDto
     {
         public bool Success { get; set; }
         public string Message { get; set; } = "";
         public TaskDetailDto? Task { get; set; }
     }
+
+    /// <summary>
+    /// DTO cho thay đổi trạng thái điểm dừng
+    /// </summary>
     public class StopStatusChangeDto
     {
         public string Status { get; set; } = "";
     }
 
+    /// <summary>
+    /// DTO cho hủy task
+    /// </summary>
     public class CancelTaskDto
     {
         public string? Reason { get; set; }

@@ -71,13 +71,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return BadRequest(new { Message = "Validation failed", Errors = errors });
+                return BadRequest(new { Message = "Dữ liệu không hợp lệ", Errors = errors });
             }
 
             try
             {
                 if (imageFile != null && imageFile.Length > 10 * 1024 * 1024)
-                    return BadRequest("Image file too large (max 10MB)");
+                    return BadRequest("File ảnh quá lớn (tối đa 10MB)");
                 var created = await _service.CreateAsync(mapDto, imageFile);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }

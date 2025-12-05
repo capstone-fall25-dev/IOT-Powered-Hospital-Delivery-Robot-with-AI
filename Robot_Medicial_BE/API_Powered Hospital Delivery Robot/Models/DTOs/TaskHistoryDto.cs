@@ -1,5 +1,8 @@
 ﻿namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 
+/// <summary>
+/// DTO phản hồi lịch sử task
+/// </summary>
 public class TaskHistoryResponseDto
 {
     public ulong Id { get; set; }
@@ -33,6 +36,9 @@ public class TaskHistoryResponseDto
     public List<TaskStopHistoryDto> Stops { get; set; } = new();
 }
 
+/// <summary>
+/// DTO lịch sử điểm dừng của task
+/// </summary>
 public class TaskStopHistoryDto
 {
     public int SeqNo { get; set; }
@@ -48,18 +54,24 @@ public class TaskStopHistoryDto
     public int? DurationSeconds { get; set; }
 }
 
+/// <summary>
+/// DTO cho lọc lịch sử task
+/// </summary>
 public class TaskHistoryFilterDto
 {
     public ulong? RobotId { get; set; }
-    public string? Status { get; set; } // completed, canceled, failed
+    public string? Status { get; set; }
     public string? Priority { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
-    public string? Search { get; set; } // tìm theo robot, người tạo, điểm đến...
+    public string? Search { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }
 
+/// <summary>
+/// DTO phân trang lịch sử task
+/// </summary>
 public class PagedTaskHistoryDto
 {
     public List<TaskHistoryResponseDto> Data { get; set; } = new();

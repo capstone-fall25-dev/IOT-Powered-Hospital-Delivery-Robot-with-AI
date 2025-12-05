@@ -2,6 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo đơn thuốc mới
+    /// </summary>
     public class PrescriptionCreateDto
     {
         public string PrescriptionCode { get; set; } = null!;
@@ -12,6 +15,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PrescriptionItemCreateDto> Items { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cho cập nhật đơn thuốc
+    /// </summary>
     public class PrescriptionUpdateDto
     {
         public string? PrescriptionCode { get; set; }
@@ -19,6 +25,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin đơn thuốc
+    /// </summary>
     public class PrescriptionResponseDto
     {
         public ulong Id { get; set; }
@@ -31,6 +40,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PrescriptionItemResponseDto> Items { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cho tạo mục thuốc trong đơn thuốc
+    /// </summary>
     public class PrescriptionItemCreateDto
     {
         public ulong PrescriptionId { get; set; }
@@ -40,6 +52,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Instructions { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho cập nhật mục thuốc trong đơn thuốc
+    /// </summary>
     public class PrescriptionItemUpdateDto
     {
         public ulong MedicineId { get; set; }
@@ -48,6 +63,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Instructions { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin mục thuốc trong đơn thuốc
+    /// </summary>
     public class PrescriptionItemResponseDto
     {
         public ulong Id { get; set; }
@@ -59,6 +77,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Instructions { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho duyệt đơn thuốc theo mã code
+    /// </summary>
     public class ApprovePrescriptionByCodeDto
     {
         [Required(ErrorMessage = "Mã đơn thuốc là bắt buộc")]

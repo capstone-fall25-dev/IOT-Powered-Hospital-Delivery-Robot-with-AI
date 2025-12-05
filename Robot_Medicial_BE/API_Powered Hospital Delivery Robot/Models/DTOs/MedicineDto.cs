@@ -2,7 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
-    // CATEGORY ============================
+    /// <summary>
+    /// DTO cho tạo danh mục thuốc
+    /// </summary>
     public class CategoryCreateDto
     {
         [Required]
@@ -10,24 +12,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string Name { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho cập nhật danh mục thuốc
+    /// </summary>
     public class CategoryUpdateDto
     {
         [StringLength(128)]
         public string? Name { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin danh mục thuốc
+    /// </summary>
     public class CategoryResponseDto
     {
         public ulong Id { get; set; }
         public string Name { get; set; } = null!;
     }
 
-    // MEDICINE ===============================
+    /// <summary>
+    /// Trạng thái thuốc
+    /// </summary>
     public enum MedicineStatus
     {
         Active, Expired
     }
 
+    /// <summary>
+    /// DTO cho tạo thuốc mới
+    /// </summary>
     public class MedicineCreateDto
     {
         [Required]
@@ -51,6 +64,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public MedicineStatus Status { get; set; } = MedicineStatus.Active;
     }
 
+    /// <summary>
+    /// DTO cho cập nhật thuốc
+    /// </summary>
     public class MedicineUpdateDto
     {
         public string? MedicineCode { get; set; }
@@ -63,6 +79,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public MedicineStatus? Status { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin thuốc
+    /// </summary>
     public class MedicineResponseDto
     {
         public ulong Id { get; set; }

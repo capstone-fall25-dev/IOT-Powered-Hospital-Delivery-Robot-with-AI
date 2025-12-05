@@ -5,18 +5,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý lịch sử task
+    /// </summary>
     public class TaskHistoryRepository : ITaskHistoryRepository
     {
         private readonly RobotManagerContext _context;
+
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public TaskHistoryRepository(RobotManagerContext context) => _context = context;
 
+        /// <summary>
+        /// Thêm mới bản ghi lịch sử task
+        /// </summary>
         public async System.Threading.Tasks.Task AddAsync(TaskHistory history)
         {
             await _context.TaskHistories.AddAsync(history);
-            await _context.SaveChangesAsync();   // <--- THÊM DÒNG NÀY
+            await _context.SaveChangesAsync();
         }
 
-
+        /// <summary>
+        /// Lấy danh sách lịch sử task theo bộ lọc
+        /// </summary>
         public async Task<List<TaskHistory>> GetHistoryAsync(TaskHistoryFilterDto filter)
         {
             var query = _context.TaskHistories
@@ -66,6 +78,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await query.ToListAsync();
         }
 
+        /// <summary>
+        /// Đếm số lượng bản ghi lịch sử theo bộ lọc
+        /// </summary>
         public async Task<int> GetHistoryCountAsync(TaskHistoryFilterDto filter)
         {
             var query = _context.TaskHistories.AsQueryable();
@@ -93,6 +108,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await query.CountAsync();
         }
 
+        /// <summary>
+        /// Lấy bản ghi lịch sử cuối cùng của task
+        /// </summary>
         public async Task<TaskHistory?> GetLastHistoryAsync(ulong taskId)
         {
             return await _context.TaskHistories
@@ -101,11 +119,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .FirstOrDefaultAsync();
         }
 
+        /// <summary>
+        /// Lấy lịch sử task theo ID task
+        /// </summary>
         public async Task<TaskHistory?> GetByTaskIdAsync(ulong taskId)
             => await _context.TaskHistories
                 .Include(h => h.StopHistories)
                 .FirstOrDefaultAsync(h => h.TaskId == taskId);
 
+        /// <summary>
+        /// Lấy bản ghi lịch sử theo ID
+        /// </summary>
         public async Task<TaskHistory?> GetByIdAsync(ulong id)
         {
             return await _context.TaskHistories

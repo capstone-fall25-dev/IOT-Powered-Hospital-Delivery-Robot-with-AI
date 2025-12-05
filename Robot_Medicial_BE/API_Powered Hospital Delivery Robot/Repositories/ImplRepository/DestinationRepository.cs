@@ -5,15 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý điểm đến
+    /// </summary>
     public class DestinationRepository : IDestinationRepository
     {
         private readonly RobotManagerContext _context;
 
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public DestinationRepository(RobotManagerContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Tạo mới một điểm đến
+        /// </summary>
         public async Task<Destination> CreateAsync(Destination destination)
         {
             _context.Destinations.Add(destination);
@@ -21,6 +30,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return destination;
         }
 
+        /// <summary>
+        /// Lấy danh sách điểm đến (có thể lọc theo khu vực hoặc tầng)
+        /// </summary>
         public async Task<IEnumerable<Destination>> GetAllAsync(string? area = null, string? floor = null)
         {
             var query = _context.Destinations.AsQueryable();
@@ -29,16 +41,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await query.ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy điểm đến theo ID
+        /// </summary>
         public async Task<Destination?> GetByIdAsync(ulong id)
         {
             return await _context.Destinations.FindAsync(id);
         }
 
+        /// <summary>
+        /// Lấy điểm đến theo tên
+        /// </summary>
         public async Task<Destination?> GetByNameAsync(string name)
         {
             return await _context.Destinations.FirstOrDefaultAsync(d => d.Name == name);
         }
 
+        /// <summary>
+        /// Cập nhật thông tin điểm đến theo ID
+        /// </summary>
         public async Task<Destination?> UpdateAsync(ulong id, Destination destination)
         {
             var existing = await _context.Destinations.FindAsync(id);
@@ -53,7 +74,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return existing;
         }
 
-        // ✅ NEW: Lấy vị trí (x, y, name) theo ID
+        /// <summary>
+        /// Lấy tọa độ vị trí của điểm đến (dùng cho robot di chuyển)
+        /// </summary>
         public async Task<DestinationPositionDto?> GetPositionByIdAsync(ulong destinationId)
         {
             return await _context.Destinations

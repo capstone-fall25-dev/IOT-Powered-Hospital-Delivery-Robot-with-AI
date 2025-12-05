@@ -3,6 +3,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo/cập nhật robot
+    /// </summary>
     public class RobotDto
     {
         //public ulong Id { get; set; }
@@ -35,11 +38,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public int ErrorCountSession { get; set; } = 0;
 
-        public ulong? MapId { get; set; } // FK to maps
-
-        public List<CompartmentDto> Compartments { get; set; }
+        public ulong? MapId { get; set; }
+        public List<CompartmentDto>? Compartments { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho ngăn chứa của robot
+    /// </summary>
     public class CompartmentDto
     {
         public ulong Id { get; set; }
@@ -50,7 +55,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? CategoryId { get; set; }
     }
 
-    // Output DTO (include compartments, tasks)
+    /// <summary>
+    /// DTO phản hồi thông tin robot (kèm compartments và tasks)
+    /// </summary>
     public class RobotResponseDto
     {
         public ulong Id { get; set; }
@@ -70,20 +77,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public ulong? MapId { get; set; }
-
-
-        public List<CompartmentDto> Compartments { get; set; }
-        public IEnumerable<TaskResponseDto> Tasks { get; set; } = new List<TaskResponseDto>(); // Nhiệm vụ hiện tại
+        public List<CompartmentDto>? Compartments { get; set; }
+        public IEnumerable<TaskResponseDto> Tasks { get; set; } = new List<TaskResponseDto>();
     }
 
-    // DTO cho update status
+    /// <summary>
+    /// DTO cho cập nhật trạng thái robot
+    /// </summary>
     public class UpdateStatusDto
     {
         [Required]
         public string Status { get; set; } = null!; 
     }
 
-    // DTO cho update position
+    /// <summary>
+    /// DTO cho cập nhật vị trí robot
+    /// </summary>
     public class UpdatePositionDto
     {
         [Range(-90, 90)]
@@ -93,7 +102,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public decimal Longitude { get; set; }
     }
 
- public class RobotStatusUpdateDto
+    /// <summary>
+    /// DTO cho cập nhật trạng thái robot từ ROS
+    /// </summary>
+    public class RobotStatusUpdateDto
     {
         [Required]
         [StringLength(50)]
@@ -101,17 +113,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         [Required]
         [StringLength(50)]
-        public string Status { get; set; } = null!; // Trạng thái ROS gửi: transporting, at_station, error...
+        public string Status { get; set; } = null!;
     }
-    // DTO cho assign map
+
+    /// <summary>
+    /// DTO phản hồi gán bản đồ cho robot
+    /// </summary>
     public class AssignMapResponseDto
     {
         public ulong RobotId { get; set; }
         public ulong MapId { get; set; }
         public string MapName { get; set; } = null!;
-        public string Message { get; set; } = null!; // VD: "Assigned successfully"
+        public string Message { get; set; } = null!;
     }
 
+    /// <summary>
+    /// DTO cho cập nhật robot
+    /// </summary>
     public class UpdateRobotDto
     {
         public string? Name { get; set; } // Có thể để trống nếu không muốn đổi tên
@@ -119,6 +137,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<UpdateCompartmentDto> Compartments { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cho cập nhật ngăn chứa
+    /// </summary>
     public class UpdateCompartmentDto
     {
         public ulong CategoryId { get; set; }

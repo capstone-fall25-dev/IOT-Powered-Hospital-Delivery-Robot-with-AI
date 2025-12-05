@@ -2,6 +2,9 @@
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
+    /// <summary>
+    /// DTO cho tạo/cập nhật phòng bệnh
+    /// </summary>
     public class RoomDto
     {
         [Required]
@@ -15,6 +18,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? MapId { get; set; }
     }
 
+    /// <summary>
+    /// DTO phản hồi thông tin phòng bệnh
+    /// </summary>
     public class RoomResponseDto
     {
         public ulong Id { get; set; }
@@ -27,6 +33,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public List<PatientInRoomDto> Patients { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO thông tin bệnh nhân trong phòng
+    /// </summary>
     public class PatientInRoomDto
     {
         public ulong Id { get; set; }
@@ -37,6 +46,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime? CreatedAt { get; set; }
     }
 
+    /// <summary>
+    /// DTO cho chuyển bệnh nhân sang phòng khác
+    /// </summary>
     public class PatientMoveRoomDto
     {
         public ulong NewRoomId { get; set; }

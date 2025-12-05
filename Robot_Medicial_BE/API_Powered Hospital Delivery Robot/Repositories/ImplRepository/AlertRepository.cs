@@ -4,15 +4,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 {
+    /// <summary>
+    /// Repository quản lý cảnh báo
+    /// </summary>
     public class AlertRepository : IAlertRepository
     {
         private readonly RobotManagerContext _context;
 
+        /// <summary>
+        /// Khởi tạo repository với database context
+        /// </summary>
         public AlertRepository(RobotManagerContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Tạo mới một cảnh báo
+        /// </summary>
         public async Task<Alert> CreateAsync(Alert alert)
         {
             _context.Alerts.Add(alert);
@@ -20,6 +29,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return alert;
         }
 
+        /// <summary>
+        /// Lấy danh sách cảnh báo (có thể lọc theo robot, trạng thái, mức độ nghiêm trọng, hoặc đơn thuốc)
+        /// </summary>
         public async Task<IEnumerable<Alert>> GetAllAsync(ulong? robotId = null, string? status = null, string? severity = null, ulong? prescriptionItemId = null)
         {
             var query = _context.Alerts.AsQueryable();
@@ -46,11 +58,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy một cảnh báo theo ID
+        /// </summary>
         public async Task<Alert?> GetByIdAsync(ulong id)
         {
             return await _context.Alerts.FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        /// <summary>
+        /// Cập nhật cảnh báo
+        /// </summary>
         public async Task<Alert?> UpdateAsync(ulong id, Alert alert)
         {
             var existing = await _context.Alerts.FindAsync(id);
