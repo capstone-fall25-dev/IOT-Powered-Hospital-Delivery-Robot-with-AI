@@ -234,12 +234,12 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
                 .Select(x => (string)x.Name)
                 .ToArray();
 
-            var expectedNames = new string[] 
-            { 
-                "Bơm kim tiêm", 
-                "Thuốc nước", 
-                "Thuốc viên", 
-                "Ống truyền dịch" 
+            var expectedNames = new string[]
+            {
+                "Bơm kim tiêm",
+                "Thuốc nước",
+                "Thuốc viên",
+                "Ống truyền dịch"
             };
 
             Assert.Equal(expectedNames, actualNames);
@@ -315,9 +315,11 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
             Assert.Null(bomKimTiemItem.Description);
         }
 
-        [Fact] public async System.Threading.Tasks.Task GetAll_TC11_HasFourProperties() { 
-            var data = await GetAllExpectedResult(); 
-            var first = (dynamic)data[0]; 
+        [Fact]
+        public async System.Threading.Tasks.Task GetAll_TC11_HasFourProperties()
+        {
+            var data = await GetAllExpectedResult();
+            var first = (dynamic)data[0];
             Assert.Equal(4, first.GetType().GetProperties().Length);
         }
 
