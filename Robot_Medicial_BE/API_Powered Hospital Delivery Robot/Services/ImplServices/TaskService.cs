@@ -54,13 +54,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 Patients = t.TaskStops
                     .GroupBy(s => s.PatientId)
-                    .Select(g => new PatientStopSummaryDto
+                    .Select(g => 
                     {
-                        PatientName = g.First().Patient?.FullName ?? "",
-                        MedicineSummary = string.Join("; ", g
+                        var firstStop = g.First();
+                        var itemDescs = g
                             .SelectMany(s => s.CompartmentAssignments)
                             .Select(a => a.ItemDesc)
-                        )
+                            .Where(desc => !string.IsNullOrWhiteSpace(desc))
+                            .ToList();
+                        var itemDesc = itemDescs.Any() ? string.Join("; ", itemDescs) : null;
+                        
+                        return new PatientStopSummaryDto
+                        {
+                            PatientName = firstStop.Patient?.FullName ?? "",
+                            MedicineSummary = itemDesc ?? "", // Giữ lại để tương thích
+                            CustomName = firstStop.CustomName,
+                            ItemDesc = itemDesc
+                        };
                     }).ToList()
             });
         }
@@ -163,62 +173,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var patient = await _repoPatient.GetByIdAsync(s.PatientId)
                         ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
 
-                    // Kiểm tra loại ngăn chứa có liên quan đến thuốc không
-                    bool isMedicineCategory = IsMedicineRelatedCategory(comp.Category);
-
-                    Prescription? rx = null;
-                    string autoName = "";
-                    string itemDesc = "";
-
-                    if (isMedicineCategory)
+                    // Đảm bảo Category được load để lấy tên loại ngăn chứa
+                    CompartmentCategory? category = comp.Category;
+                    if (category == null)
                     {
-                        // Nếu là loại ngăn chứa thuốc, yêu cầu đơn thuốc được xác nhận
-                        if (string.IsNullOrWhiteSpace(s.PrescriptionCode))
-                            throw new InvalidOperationException(
-                                $"Loại ngăn chứa '{comp.Category?.Name ?? "N/A"}' liên quan đến thuốc. " +
-                                "Vui lòng chọn và xác nhận đơn thuốc cho bệnh nhân này."
-                            );
-
-                        // Lấy đơn thuốc theo mã code
-                        rx = await _repo.GetPrescriptionByCodeAsync(s.PrescriptionCode)
-                            ?? throw new InvalidOperationException(
-                                $"Không tìm thấy đơn thuốc với mã '{s.PrescriptionCode}'."
-                            );
-
-                        // Kiểm tra đơn thuốc thuộc về bệnh nhân này
-                        if (rx.PatientId != s.PatientId)
-                            throw new InvalidOperationException(
-                                $"Đơn thuốc '{s.PrescriptionCode}' không thuộc về bệnh nhân này."
-                            );
-
-                        // Kiểm tra đơn thuốc đã được xác nhận (phải là approved)
-                        // Frontend đã gọi API approve trước khi tạo task, nên status phải là approved
-                        if (rx.Status?.ToLower() != "approved")
-                            throw new InvalidOperationException(
-                                $"Đơn thuốc '{s.PrescriptionCode}' chưa được xác nhận. " +
-                                $"Trạng thái hiện tại: {rx.Status}. Vui lòng xác nhận đơn thuốc trước khi tạo task."
-                            );
-
-                        // Tạo autoName và itemDesc từ đơn thuốc (giữ lại để lưu lịch sử)
-                        autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
-                        autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-
-                        itemDesc = $"RX#{rx.PrescriptionCode}: " +
-                            string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-                    }
-                    else
-                    {
-                        // Nếu không phải thuốc, không cần đơn thuốc
-                        autoName = $"{patient.FullName} - {patient.PatientCode}";
-                        itemDesc = "Vật phẩm khác";
+                        var compWithCategory = await _repoRobotCom.GetByIdAsync(s.CompartmentId);
+                        category = compWithCategory?.Category;
                     }
 
+                    // CustomName: Nếu user nhập → dùng giá trị user nhập, nếu không → Tên bệnh nhân + mã bệnh nhân + loại ngăn chứa
                     var finalName = string.IsNullOrWhiteSpace(s.CustomName)
-                        ? autoName
+                        ? $"{patient.FullName} - {patient.PatientCode} - {category?.Name ?? "N/A"}"
                         : s.CustomName.Trim();
 
+                    // ItemDesc: Nếu user nhập → dùng giá trị user nhập, nếu không → null (lưu dưới dạng empty string)
                     var finalItemDesc = string.IsNullOrWhiteSpace(s.ItemDesc)
-                        ? itemDesc
+                        ? ""
                         : s.ItemDesc.Trim();
 
                     var stop = new TaskStop
@@ -241,7 +211,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         StopId = stop.Id,
                         CompartmentId = s.CompartmentId,
                         CategoryId = s.CategoryId, // Lưu CategoryId để giữ lại khi task bị cancel
-                        ItemDesc = itemDesc,
+                        ItemDesc = finalItemDesc,
                         Status = "pending",
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
@@ -397,9 +367,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (dto.ScheduledStartAt.HasValue)
                     task.ScheduledStartAt = dto.ScheduledStartAt.Value;
 
-                // Nếu đang reactivate task đã cancel → tự động chuyển về pending
+                // Nếu đang reactivate task đã cancel → tự động chuyển về pending (nếu đủ điều kiện)
                 if (isReactivatingCanceledTask && (dto.Status == null || dto.Status.Trim().ToLower() == "pending"))
                 {
+                    // Validate robot phải ở trạm để restore
+                    if (currentRobot.Status != "at_station")
+                    {
+                        throw new InvalidOperationException(
+                            $"Không thể restore nhiệm vụ. Robot '{currentRobot.Name}' phải ở trạm (at_station) để sử dụng lại nhiệm vụ. " +
+                            $"Trạng thái hiện tại: {currentRobot.Status}. Vui lòng đợi robot về trạm hoặc chọn robot khác."
+                        );
+                    }
+
+                    // Validate scheduledStartAt phải lớn hơn giờ hiện tại
+                    if (dto.ScheduledStartAt.HasValue && dto.ScheduledStartAt.Value <= DateTime.Now.AddMinutes(1))
+                    {
+                        throw new InvalidOperationException(
+                            "Thời gian bắt đầu phải lớn hơn thời gian hiện tại ít nhất 1 phút để restore nhiệm vụ."
+                        );
+                    }
+
                     task.Status = "pending";
                 }
 
@@ -460,10 +447,51 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // ------------------------------
                 if (dto.Stops != null)
                 {
+                    // Lấy danh sách stopId từ dto để xác định stop nào bị xóa
+                    var stopIdsInDto = dto.Stops.Where(s => s.StopId > 0).Select(s => s.StopId).ToList();
+                    
+                    // Xóa các stop không có trong dto (đã bị xóa ở frontend)
+                    var stopsToDelete = task.TaskStops.Where(s => !stopIdsInDto.Contains(s.Id)).ToList();
+                    foreach (var stopToDelete in stopsToDelete)
+                    {
+                        // Release compartments trước khi xóa
+                        foreach (var assign in stopToDelete.CompartmentAssignments)
+                        {
+                            await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                        }
+                        // Xóa stop
+                        await _repo.DeleteStopAsync(stopToDelete.Id);
+                        task.TaskStops.Remove(stopToDelete);
+                    }
+
                     foreach (var sDto in dto.Stops)
                     {
-                        var stop = task.TaskStops.FirstOrDefault(x => x.Id == sDto.StopId)
-                            ?? throw new InvalidOperationException($"Không tìm thấy Stop {sDto.StopId}");
+                        TaskStop stop;
+                        
+                        // Nếu stopId = 0 → tạo stop mới
+                        if (sDto.StopId == 0)
+                        {
+                            stop = new TaskStop
+                            {
+                                TaskId = task.Id,
+                                SeqNo = sDto.SeqNo,
+                                DestinationId = sDto.DestinationId,
+                                PatientId = sDto.PatientId,
+                                CustomName = "",
+                                Status = "pending",
+                                CreatedAt = DateTime.Now,
+                                UpdatedAt = DateTime.Now
+                            };
+                            
+                            stop = await _repo.CreateStopAsync(stop);
+                            task.TaskStops.Add(stop);
+                        }
+                        else
+                        {
+                            // Tìm stop hiện có
+                            stop = task.TaskStops.FirstOrDefault(x => x.Id == sDto.StopId)
+                                ?? throw new InvalidOperationException($"Không tìm thấy Stop {sDto.StopId}");
+                        }
 
                         // 4.1 Update Stop Status
                         if (!string.IsNullOrWhiteSpace(sDto.Status))
@@ -559,75 +587,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             }
                         }
 
-                        // Xử lý prescription code nếu category là thuốc
+                        // Lấy thông tin bệnh nhân và category để tạo autoName
                         var patient = await _repoPatient.GetByIdAsync(sDto.PatientId)
                             ?? throw new InvalidOperationException("Không tìm thấy bệnh nhân.");
 
-                        bool isMedicineCategory = IsMedicineRelatedCategory(comp.Category);
-                        Prescription? rx = null;
-                        string autoName = "";
-                        string itemDesc = "";
-
-                        if (isMedicineCategory)
-                        {
-                            // Nếu là loại ngăn chứa thuốc, yêu cầu đơn thuốc được xác nhận
-                            if (string.IsNullOrWhiteSpace(sDto.PrescriptionCode))
-                                throw new InvalidOperationException(
-                                    $"Loại ngăn chứa '{comp.Category?.Name ?? "N/A"}' liên quan đến thuốc. " +
-                                    "Vui lòng chọn và xác nhận đơn thuốc cho bệnh nhân này."
-                                );
-
-                            // Lấy đơn thuốc theo mã code
-                            rx = await _repo.GetPrescriptionByCodeAsync(sDto.PrescriptionCode)
-                                ?? throw new InvalidOperationException(
-                                    $"Không tìm thấy đơn thuốc với mã '{sDto.PrescriptionCode}'."
-                                );
-
-                            // Kiểm tra đơn thuốc thuộc về bệnh nhân này
-                            if (rx.PatientId != sDto.PatientId)
-                                throw new InvalidOperationException(
-                                    $"Đơn thuốc '{sDto.PrescriptionCode}' không thuộc về bệnh nhân này."
-                                );
-
-                            // Kiểm tra đơn thuốc đã được xác nhận (phải là approved)
-                            if (rx.Status?.ToLower() != "approved")
-                                throw new InvalidOperationException(
-                                    $"Đơn thuốc '{sDto.PrescriptionCode}' chưa được xác nhận. " +
-                                    $"Trạng thái hiện tại: {rx.Status}. Vui lòng xác nhận đơn thuốc trước khi cập nhật task."
-                                );
-
-                            // Tạo autoName và itemDesc từ đơn thuốc (giữ lại để lưu lịch sử)
-                            autoName = $"{patient.FullName} - {patient.PatientCode} - {rx.PrescriptionCode}";
-                            autoName += " - " + string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-
-                            itemDesc = $"RX#{rx.PrescriptionCode}: " +
-                                string.Join("; ", rx.PrescriptionItems.Select(i => $"{i.Medicine.Name} x {i.Quantity}"));
-                        }
-                        else
-                        {
-                            // Nếu không phải thuốc, không cần đơn thuốc
-                            autoName = $"{patient.FullName} - {patient.PatientCode}";
-                            itemDesc = "Vật phẩm khác";
-                        }
-
-                        // CustomName
+                        // CustomName: Nếu user nhập → dùng giá trị user nhập, nếu không → Tên bệnh nhân + mã bệnh nhân + loại ngăn chứa
                         if (!string.IsNullOrWhiteSpace(sDto.CustomName))
                             stop.CustomName = sDto.CustomName.Trim();
                         else
-                            stop.CustomName = autoName; // Dùng autoName nếu không có CustomName
+                        {
+                            var categoryName = comp.Category?.Name ?? "N/A";
+                            stop.CustomName = $"{patient.FullName} - {patient.PatientCode} - {categoryName}";
+                        }
 
-                        // ItemDesc
+                        // ItemDesc: Nếu user nhập → dùng giá trị user nhập, nếu không → empty string
                         if (assignment != null)
                         {
-                            if (!string.IsNullOrWhiteSpace(sDto.ItemDesc))
-                            {
-                                assignment.ItemDesc = sDto.ItemDesc.Trim();
-                            }
-                            else
-                            {
-                                assignment.ItemDesc = itemDesc; // Dùng itemDesc từ prescription nếu không có ItemDesc
-                            }
-
+                            assignment.ItemDesc = !string.IsNullOrWhiteSpace(sDto.ItemDesc)
+                                ? sDto.ItemDesc.Trim()
+                                : "";
                             assignment.UpdatedAt = DateTime.Now;
                         }
                     }
@@ -771,6 +749,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         CompartmentStatus = assign?.Compartment?.Status ?? "",
                         CompartmentCategory = assign?.Compartment?.Category?.Name,
 
+                        CustomName = s.CustomName,
                         ItemDesc = assign?.ItemDesc ?? "",
                         StopStatus = s.Status,
                         AssignmentStatus = s.Status,
@@ -856,6 +835,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         PatientId = s.PatientId ?? 0,
                         CategoryId = categoryId,
                         CompartmentId = compartmentId,
+                        CompartmentCode = assign?.Compartment?.CompartmentCode, // Thêm CompartmentCode từ Compartment
                         CustomName = s.CustomName,
                         ItemDesc = assign?.ItemDesc,
                         Status = s.Status
@@ -870,11 +850,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private static readonly HashSet<string> AllowedStatusForEdit = new()
         {
             "pending",
-            "in_progress",
-            "awaiting_handover",
-            "returning",
-            "at_station",
-            "canceled" // Cho phép edit task đã cancel để có thể sử dụng lại
+            "canceled" // Cho phép edit task đã cancel để có thể restore
         };
 
         private static readonly HashSet<string> ValidTaskStatuses = new()
@@ -919,8 +895,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var categoryName = category.Name.ToLower().Trim();
             
-            // Kiểm tra các từ khóa liên quan đến thuốc
-            var medicineKeywords = new[] { "thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical" };
+            // Kiểm tra các từ khóa liên quan đến thuốc (mở rộng danh sách)
+            var medicineKeywords = new[] { 
+                "thuốc", 
+                "medicine", 
+                "drug", 
+                "medication", 
+                "dược phẩm", 
+                "pharmaceutical",
+                "dược",
+                "med",
+                "rx",
+                "prescription"
+            };
             
             return medicineKeywords.Any(keyword => categoryName.Contains(keyword));
         }

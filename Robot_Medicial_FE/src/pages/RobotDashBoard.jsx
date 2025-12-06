@@ -111,8 +111,10 @@ export default function RobotTaskDashboard() {
         const formatted = data.map((t) => {
           const patientCount = t.patients?.length || 0;
           const firstPatient = t.patients?.[0]?.patientName || "—";
-          const medicineSummary =
-            t.patients?.map((p) => p.medicineSummary).join("; ") || "—";
+          
+          // Lấy ItemDesc hoặc CustomName từ patient đầu tiên
+          const firstPatientData = t.patients?.[0];
+          const displayText = firstPatientData?.itemDesc || firstPatientData?.customName || "—";
 
           return {
             id: t.id,
@@ -130,7 +132,7 @@ export default function RobotTaskDashboard() {
             firstDestination: t.firstDestination || "—",
             patientCount,
             firstPatient,
-            medicineSummary,
+            displayText, // ItemDesc hoặc CustomName
             priority:
               t.priority === 2
                 ? "Khẩn cấp"
@@ -429,7 +431,7 @@ export default function RobotTaskDashboard() {
                         </div>
 
                         <div className={styles.taskInfo}>
-                          <strong>Ghi chú:</strong> {t.medicineSummary}
+                          <strong>Ghi chú:</strong> {t.displayText}
                         </div>
                       </td>
 
@@ -672,8 +674,10 @@ export default function RobotTaskDashboard() {
                       const formatted = data.map((t) => {
                         const patientCount = t.patients?.length || 0;
                         const firstPatient = t.patients?.[0]?.patientName || "—";
-                        const medicineSummary =
-                          t.patients?.map((p) => p.medicineSummary).join("; ") || "—";
+                        
+                        // Lấy ItemDesc hoặc CustomName từ patient đầu tiên
+                        const firstPatientData = t.patients?.[0];
+                        const displayText = firstPatientData?.itemDesc || firstPatientData?.customName || "—";
 
                         return {
                           id: t.id,
@@ -691,7 +695,7 @@ export default function RobotTaskDashboard() {
                           firstDestination: t.firstDestination || "—",
                           patientCount,
                           firstPatient,
-                          medicineSummary,
+                          displayText, // ItemDesc hoặc CustomName
                           priority:
                             t.priority === 2
                               ? "Khẩn cấp"

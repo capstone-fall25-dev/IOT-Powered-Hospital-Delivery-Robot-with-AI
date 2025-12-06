@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as signalR from "@microsoft/signalr";
 import { getAllRobots } from "@/services/robotService";
+import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotFleetCards.module.css";
 
 export default function RobotFleetCards() {
@@ -23,19 +25,87 @@ export default function RobotFleetCards() {
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
     const [loading, setLoading] = useState(true);
+    
+    // Tiến độ nhiệm vụ real-time từ SignalR (theo robotCode)
+    const [navProgressByRobot, setNavProgressByRobot] = useState({});
 
+    // ===================================
+    // SIGNALR: Nhận tiến độ nhiệm vụ real-time
+    // ===================================
+    useEffect(() => {
+        let posConn = null;
+
+        const initConnection = async () => {
+            posConn = new signalR.HubConnectionBuilder()
+                .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotposition")
+                .withAutomaticReconnect()
+                .build();
+
+            // Tiến độ nhiệm vụ từ backend (giống RunTask)
+            posConn.on("ReceiveNavigationProgress", (msg) => {
+                try {
+                    const raw = msg?.text || msg?.Text || "";
+                    if (!raw || typeof raw !== "string") return;
+
+                    const parts = raw.split("|");
+                    const robotCode = parts[0] || "";
+                    const percentStr = parts[1] || "0";
+                    const pointName = parts[2] || "";
+
+                    let percent = parseFloat(percentStr);
+                    if (Number.isNaN(percent) || !Number.isFinite(percent)) percent = 0;
+                    percent = Math.min(100, Math.max(0, percent));
+
+                    // Cập nhật tiến độ theo robotCode
+                    if (robotCode) {
+                        setNavProgressByRobot(prev => ({
+                            ...prev,
+                            [robotCode]: {
+                                percent,
+                                pointName,
+                            }
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Parse ReceiveNavigationProgress error:", err);
+                }
+            });
+
+            try {
+                await posConn.start();
+            } catch (err) {
+                console.error("SignalR connection error:", err);
+            }
+        };
+
+        initConnection();
+
+        return () => {
+            if (posConn) {
+                posConn.stop().catch(() => {});
+            }
+        };
+    }, []);
+
+    // Load robots ban đầu
     useEffect(() => {
         async function fetchRobots() {
             try {
                 const data = await getAllRobots();
-                const formatted = data.map((r) => ({
-                    id: r.id,
-                    code: r.code,
-                    name: r.name,
-                    battery: r.batteryPercent ?? 0,
-                    mission: r.progressOverallPct ?? 0,
-                    status: statusMap[r.status] || "sansang",
-                }));
+                const formatted = data.map((r) => {
+                    // Ưu tiên dùng tiến độ real-time từ SignalR, nếu không có thì dùng từ API
+                    const realTimeProgress = navProgressByRobot[r.code]?.percent;
+                    const mission = realTimeProgress !== undefined ? realTimeProgress : (r.progressOverallPct ?? 0);
+                    
+                    return {
+                        id: r.id,
+                        code: r.code,
+                        name: r.name,
+                        battery: r.batteryPercent ?? 0,
+                        mission: mission,
+                        status: statusMap[r.status] || "sansang",
+                    };
+                });
                 setRobots(formatted);
                 setLoading(false);
             } catch (err) {
@@ -45,6 +115,17 @@ export default function RobotFleetCards() {
         }
         fetchRobots();
     }, []);
+
+    // Cập nhật mission khi nhận tiến độ real-time từ SignalR
+    useEffect(() => {
+        setRobots(prev => prev.map(r => {
+            const realTimeProgress = navProgressByRobot[r.code]?.percent;
+            if (realTimeProgress !== undefined) {
+                return { ...r, mission: realTimeProgress };
+            }
+            return r;
+        }));
+    }, [navProgressByRobot]);
 
     const filtered = useMemo(
         () =>

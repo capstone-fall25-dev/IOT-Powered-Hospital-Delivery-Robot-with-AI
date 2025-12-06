@@ -10,7 +10,6 @@ import {
   getCompartmentsByRobotAndCategory,
   getAllCategories as getAllCompartmentCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions, approvePrescriptionByCode, updatePrescription } from "@/services/prescriptionServices";
 import { getRobotsByMap } from "@/services/robotService";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
@@ -28,17 +27,15 @@ export default function AddTask() {
   // ============================================================
   function getMinDateTime() {
     const now = new Date();
-    // +3 phút để đảm bảo lớn hơn DateTime.Now.AddMinutes(1) ở backend (giờ Việt Nam)
-    // (tránh lỗi do timezone hoặc độ trễ network)
-    now.setMinutes(now.getMinutes() + 3);
+    
+    now.setMinutes(now.getMinutes() + 5);
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
     const HH = String(now.getHours()).padStart(2, "0");
     const MM = String(now.getMinutes()).padStart(2, "0");
-    const SS = String(now.getSeconds()).padStart(2, "0");
-
-    return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
+    
+    return `${yyyy}-${mm}-${dd}T${HH}:${MM}`;
   }
 
   const realtimeEnabled = useRef(true);
@@ -63,14 +60,6 @@ export default function AddTask() {
 
   const [baseCompartments, setBaseCompartments] = useState([]);
   const [showFloatingAddButton, setShowFloatingAddButton] = useState(false);
-  const [unselectPrescriptionModal, setUnselectPrescriptionModal] = useState({
-    show: false,
-    prescriptionCode: "",
-    prescriptionId: null,
-    originalStatus: "",
-    stopIndex: -1,
-    loading: false,
-  });
 
   const canAddStop = form.robotId;
   
@@ -91,8 +80,8 @@ export default function AddTask() {
         return false;
       }
       
-      // Nếu category là thuốc → phải chọn đơn thuốc
-      if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
+      // Nếu category là thuốc → phải nhập customName và xác nhận (tick)
+      if (isMedicineCategory(stop.categoryId) && (!stop.customName || !stop.confirmedCustomName)) {
         return false;
       }
     }
@@ -100,20 +89,6 @@ export default function AddTask() {
     return true;
   })();
 
-  // ============================================================
-  // PRESCRIPTION STATUS MAP (chuyển status sang tiếng Việt)
-  // ============================================================
-  const prescriptionStatusMap = {
-    pending: "Đang chờ",
-    approved: "Đã duyệt",
-    dispensed: "Đã phát",
-    canceled: "Đã hủy",
-  };
-
-  function getPrescriptionStatusText(status) {
-    if (!status) return "";
-    return prescriptionStatusMap[status.toLowerCase()] || "Không xác định";
-  }
 
   // ============================================================
   // SIGNALR
@@ -229,6 +204,7 @@ export default function AddTask() {
         // Nếu không tìm thấy nút gốc (chưa render) → ẩn nút floating
         setShowFloatingAddButton(false);
       }
+
     };
 
     // Kiểm tra ngay khi component mount và khi taskStops thay đổi
@@ -336,10 +312,8 @@ export default function AddTask() {
           categoryId: "",
           compartmentId: "",
           filteredCompartments: [],
-          prescriptionPreview: null,
-          prescriptionList: [], // Danh sách đơn thuốc để chọn
-          prescriptionCode: "", // Mã đơn thuốc đã chọn và xác nhận
           customName: "",
+          confirmedCustomName: false, // Đã tick xác nhận customName chưa
           itemDesc: "",
         },
       ],
@@ -377,10 +351,11 @@ export default function AddTask() {
     return medicineKeywords.some((keyword) => categoryName.includes(keyword));
   }
 
+
   // ============================================================
   // UPDATE STOP
   //  - Đặc biệt xử lý khi đổi Category → lọc compartment theo robot+category
-  //  - Nếu category là thuốc và đã chọn patient → load prescriptions
+  //  - Reset customName và confirmedCustomName khi đổi category (nếu không phải thuốc)
   // ============================================================
   async function updateStop(idx, key, value) {
     const clone = [...form.taskStops];
@@ -388,9 +363,11 @@ export default function AddTask() {
 
     if (key === "categoryId") {
       clone[idx].compartmentId = "";
-      clone[idx].prescriptionList = [];
-      clone[idx].prescriptionCode = "";
-      clone[idx].prescriptionPreview = null;
+      // Reset customName và confirmedCustomName khi đổi category
+      if (!isMedicineCategory(value)) {
+        clone[idx].customName = "";
+        clone[idx].confirmedCustomName = false;
+      }
 
       if (value) {
         try {
@@ -405,11 +382,6 @@ export default function AddTask() {
           );
 
           clone[idx].filteredCompartments = comps;
-
-          // Nếu category là thuốc và đã chọn patient → load prescriptions
-          if (isMedicineCategory(value) && clone[idx].patientId) {
-            await loadPrescriptionsForPatient(clone[idx].patientId, idx, clone);
-          }
         } catch (err) {
           console.error("Lỗi tải ngăn chứa theo loại:", err);
           clone[idx].filteredCompartments = [];
@@ -423,168 +395,34 @@ export default function AddTask() {
   }
 
   // ============================================================
-  // LOAD PRESCRIPTIONS FOR PATIENT
-  //  - Load tất cả (pending, dispensed, approved) trừ canceled
-  //  - Lưu originalStatus để có thể restore sau này
-  //  - Giữ nguyên originalStatus cũ nếu đã có (không ghi đè khi reload)
+  // PATIENT SELECTION
+  //  - Không cần load prescriptions nữa, chỉ cần update patientId
   // ============================================================
-  async function loadPrescriptionsForPatient(patientId, idx, stopsClone) {
-    if (!patientId) return;
-
-    try {
-      // Load tất cả prescriptions (không filter status) rồi filter ở frontend
-      const allPrescriptions = await getAllPrescriptions({ patientId });
-      
-      // Lấy danh sách cũ để giữ nguyên originalStatus
-      const oldPrescriptionList = stopsClone[idx].prescriptionList || [];
-      const oldStatusMap = new Map();
-      oldPrescriptionList.forEach((p) => {
-        if (p.originalStatus) {
-          oldStatusMap.set(p.id, p.originalStatus);
-        }
-      });
-      
-      // Lọc ra các đơn không bị canceled và lưu originalStatus
-      const validPrescriptions = (allPrescriptions || [])
-        .filter((p) => p.status?.toLowerCase() !== "canceled")
-        .map((p) => {
-          // Nếu đã có originalStatus cũ → giữ nguyên, nếu chưa → lưu status hiện tại
-          const savedOriginalStatus = oldStatusMap.get(p.id);
-          return {
-            ...p,
-            originalStatus: savedOriginalStatus || p.status, // Giữ nguyên originalStatus cũ hoặc lưu status hiện tại
-          };
-        });
-
-      stopsClone[idx].prescriptionList = validPrescriptions;
-    } catch (err) {
-      console.error("Lỗi tải đơn thuốc:", err);
-      stopsClone[idx].prescriptionList = [];
-    }
-  }
-
-  // ============================================================
-  // PATIENT → LOAD PRESCRIPTIONS
-  //  - Nếu category là thuốc → load tất cả (pending, dispensed, approved) trừ canceled
-  //  - Nếu không phải thuốc → không load đơn thuốc
-  // ============================================================
-  async function handleSelectPatient(patientId, idx) {
-    const stop = form.taskStops[idx];
+  function handleSelectPatient(patientId, idx) {
     updateStop(idx, "patientId", patientId);
-
-    if (!patientId) {
-      updateStop(idx, "prescriptionPreview", null);
-      updateStop(idx, "prescriptionList", []);
-      updateStop(idx, "prescriptionCode", "");
-      return;
-    }
-
-    // Chỉ load prescriptions nếu category là thuốc
-    if (isMedicineCategory(stop.categoryId)) {
-      const clone = [...form.taskStops];
-      await loadPrescriptionsForPatient(patientId, idx, clone);
-      setForm((f) => ({ ...f, taskStops: clone }));
-    } else {
-      // Không phải thuốc → không load đơn thuốc
-      updateStop(idx, "prescriptionPreview", null);
-      updateStop(idx, "prescriptionList", []);
-      updateStop(idx, "prescriptionCode", "");
-    }
   }
 
   // ============================================================
-  // CLICK VÀO MÃ ĐƠN THUỐC
-  //  - Nếu chưa chọn → TỰ ĐỘNG APPROVE
-  //  - Nếu đã chọn → Hiển thị modal xác nhận bỏ chọn
+  // CONFIRM CUSTOM NAME (Tick button)
+  //  - Xác nhận customName đã nhập đúng
   // ============================================================
-  async function handleSelectPrescription(prescriptionCode, idx) {
-    if (!prescriptionCode) {
-      updateStop(idx, "prescriptionCode", "");
-      updateStop(idx, "prescriptionPreview", null);
-      return;
-    }
-
+  function handleConfirmCustomName(idx) {
     const stop = form.taskStops[idx];
-    
-    // Nếu đơn thuốc này đã được chọn → hiển thị modal xác nhận bỏ chọn
-    if (stop.prescriptionCode === prescriptionCode) {
-      const prescription = stop.prescriptionList.find(
-        (p) => p.prescriptionCode === prescriptionCode
-      );
-      
-      if (prescription) {
-        setUnselectPrescriptionModal({
-          show: true,
-          prescriptionCode: prescriptionCode,
-          prescriptionId: prescription.id,
-          originalStatus: prescription.originalStatus || prescription.status,
-          stopIndex: idx,
-          loading: false,
-        });
-      }
+    if (!stop.customName || stop.customName.trim() === "") {
+      showToast("warning", "Vui lòng nhập mã đơn thuốc trước khi xác nhận.");
       return;
     }
-
-    // Nếu chưa chọn → approve như bình thường
-    try {
-      // Gọi API approve prescription
-      const approved = await approvePrescriptionByCode(prescriptionCode);
-      
-      // Cập nhật state
-      updateStop(idx, "prescriptionCode", prescriptionCode);
-      updateStop(idx, "prescriptionPreview", approved);
-
-      // Hiển thị toast thông báo
-      showToast("success", `Đã chọn và xác nhận đơn thuốc: ${prescriptionCode}`);
-
-      // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
-      if (stop.patientId) {
-        const clone = [...form.taskStops];
-        await loadPrescriptionsForPatient(stop.patientId, idx, clone);
-        setForm((f) => ({ ...f, taskStops: clone }));
-      }
-    } catch (err) {
-      console.error("Lỗi xác nhận đơn thuốc:", err);
-      showToast("error", err.message);
-    }
+    
+    updateStop(idx, "confirmedCustomName", true);
+    showToast("success", "Đã xác nhận mã đơn thuốc.");
   }
 
   // ============================================================
-  // BỎ CHỌN ĐƠN THUỐC - Trả lại status ban đầu
+  // UNCONFIRM CUSTOM NAME (Uncheck)
+  //  - Bỏ xác nhận customName
   // ============================================================
-  async function handleUnselectPrescription() {
-    const { prescriptionId, originalStatus, stopIndex, prescriptionCode } = unselectPrescriptionModal;
-
-    if (!prescriptionId || !originalStatus) {
-      setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false });
-      return;
-    }
-
-    setUnselectPrescriptionModal((prev) => ({ ...prev, loading: true }));
-
-    try {
-      // Gọi API update prescription với status ban đầu
-      await updatePrescription(prescriptionId, { status: originalStatus });
-
-      // Cập nhật state - bỏ chọn đơn thuốc
-      updateStop(stopIndex, "prescriptionCode", "");
-      updateStop(stopIndex, "prescriptionPreview", null);
-
-      // Cập nhật lại danh sách prescriptions
-      const stop = form.taskStops[stopIndex];
-      if (stop.patientId) {
-        const clone = [...form.taskStops];
-        await loadPrescriptionsForPatient(stop.patientId, stopIndex, clone);
-        setForm((f) => ({ ...f, taskStops: clone }));
-      }
-
-      showToast("success", `Đã bỏ chọn đơn thuốc: ${prescriptionCode}`);
-      setUnselectPrescriptionModal({ show: false, prescriptionCode: "", prescriptionId: null, originalStatus: "", stopIndex: -1, loading: false });
-    } catch (err) {
-      console.error("Lỗi bỏ chọn đơn thuốc:", err);
-      showToast("error", err.message);
-      setUnselectPrescriptionModal((prev) => ({ ...prev, loading: false }));
-    }
+  function handleUnconfirmCustomName(idx) {
+    updateStop(idx, "confirmedCustomName", false);
   }
 
   // ============================================================
@@ -635,10 +473,16 @@ export default function AddTask() {
         return;
       }
 
-      // Nếu category là thuốc → phải chọn đơn thuốc
-      if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
-        showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn đơn thuốc.`);
-        return;
+      // Nếu category là thuốc → phải nhập customName và xác nhận (tick)
+      if (isMedicineCategory(stop.categoryId)) {
+        if (!stop.customName || stop.customName.trim() === "") {
+          showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng nhập mã đơn thuốc.`);
+          return;
+        }
+        if (!stop.confirmedCustomName) {
+          showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng xác nhận mã đơn thuốc (tick).`);
+          return;
+        }
       }
     }
 
@@ -646,10 +490,16 @@ export default function AddTask() {
     let selected;
     try {
       const now = new Date();
+      // datetime-local input trả về local time (không có timezone)
+      // Parse như local time
       selected = new Date(form.scheduledStartAt);
 
-      if (selected <= now) {
-        showToast("warning", "Thời gian bắt đầu phải lớn hơn thời gian hiện tại.");
+      // Backend yêu cầu scheduledStartAt > DateTime.Now.AddMinutes(1)
+      // Vì có thể có delay network và timezone conversion, thêm buffer 2 phút
+      const minRequiredTime = new Date(now.getTime() + 2 * 60 * 1000);
+
+      if (selected <= minRequiredTime) {
+        showToast("warning", "Thời gian bắt đầu phải lớn hơn thời gian hiện tại ít nhất 2 phút.");
         return;
       }
     } catch (err) {
@@ -659,22 +509,40 @@ export default function AddTask() {
 
     // Tất cả validation đã pass → tạo task
     try {
+      // Format local time string (không có timezone) để backend parse như local time
+      // Backend dùng DateTime.Now (local time UTC+7), nên cần gửi local time string
+      const year = selected.getFullYear();
+      const month = String(selected.getMonth() + 1).padStart(2, "0");
+      const day = String(selected.getDate()).padStart(2, "0");
+      const hours = String(selected.getHours()).padStart(2, "0");
+      const minutes = String(selected.getMinutes()).padStart(2, "0");
+      const seconds = String(selected.getSeconds()).padStart(2, "0");
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      
       const payload = {
         mapId: Number(form.mapId),
         robotId: Number(form.robotId),
         priority: Number(form.priority),
-        scheduledStartAt: selected.toISOString(),
+        scheduledStartAt: localTimeString,
 
-        stops: form.taskStops.map((s) => ({
-          seqNo: s.seqNo,
-          destinationId: Number(s.destinationId),
-          patientId: Number(s.patientId),
-          compartmentId: Number(s.compartmentId),
-          categoryId: Number(s.categoryId),
-          prescriptionCode: s.prescriptionCode || null, // Gửi prescriptionCode nếu có
-          customName: s.customName ?? "",
-          itemDesc: s.itemDesc ?? "",
-        })),
+        stops: form.taskStops.map((s) => {
+          const stopPayload = {
+            seqNo: s.seqNo,
+            destinationId: Number(s.destinationId),
+            patientId: Number(s.patientId),
+            compartmentId: Number(s.compartmentId),
+            categoryId: Number(s.categoryId),
+            customName: s.customName ?? "",
+            itemDesc: s.itemDesc ?? "",
+          };
+          
+          // Nếu category là thuốc và có customName (mã đơn thuốc) → gửi prescriptionCode
+          if (isMedicineCategory(s.categoryId) && s.customName && s.customName.trim() !== "") {
+            stopPayload.prescriptionCode = s.customName.trim();
+          }
+          
+          return stopPayload;
+        }),
       };
 
       await createTask(payload);
@@ -752,7 +620,7 @@ export default function AddTask() {
                     <option value="">— Chọn bản đồ —</option>
                     {maps.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.mapName}
+                        {m.nameMapFE || m.mapName}
                       </option>
                     ))}
                   </select>
@@ -921,7 +789,7 @@ export default function AddTask() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className={`form-label ${styles.formLabel}`}>
                         Loại ngăn <span className="text-danger">*</span>
                       </label>
@@ -941,7 +809,7 @@ export default function AddTask() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-md-6">
                       <label className={`form-label ${styles.formLabel}`}>
                         Ngăn chứa <span className="text-danger">*</span>
                       </label>
@@ -965,115 +833,95 @@ export default function AddTask() {
                         ))}
                       </select>
                     </div>
-
-                    <div className="col-md-4">
-                      <label className={`form-label ${styles.formLabel}`}>
-                        Ghi chú riêng
-                      </label>
-                      <input
-                        type="text"
-                        className={`form-control ${styles.formControl}`}
-                        placeholder="VD: Giao ngay..."
-                        value={s.customName}
-                        onChange={(e) =>
-                          updateStop(idx, "customName", e.target.value)
-                        }
-                      />
-                    </div>
                   </div>
 
-                  {/* Hiển thị danh sách đơn thuốc nếu category là thuốc */}
-                  {isMedicineCategory(s.categoryId) && s.patientId && (
-                    <div className="col-12 mt-3">
-                      <label className={`form-label ${styles.formLabel}`}>
-                        Chọn đơn thuốc <span className="text-danger">*</span>
-                      </label>
-                      {s.prescriptionList && s.prescriptionList.length > 0 ? (
-                        <>
-                          <div className="d-flex flex-wrap gap-2 mb-2">
-                            {s.prescriptionList.map((pres) => (
-                              <button
-                                key={pres.id}
-                                type="button"
-                                className={`btn ${
-                                  s.prescriptionCode === pres.prescriptionCode
-                                    ? "btn-success"
-                                    : "btn-outline-primary"
-                                }`}
-                                onClick={() => handleSelectPrescription(pres.prescriptionCode, idx)}
-                                style={{ borderRadius: "5px" }}
-                              >
-                                <i className="bi bi-file-medical me-1"></i>
-                                {pres.prescriptionCode}
-                                {pres.status && (
-                                  <span className={`badge ms-2 ${
-                                    pres.status === "approved" ? "bg-success" :
-                                    pres.status === "pending" ? "bg-warning" :
-                                    pres.status === "dispensed" ? "bg-info" : "bg-secondary"
-                                  }`}>
-                                    {getPrescriptionStatusText(pres.status)}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="alert alert-warning mb-0">
-                          <i className="bi bi-exclamation-triangle me-2"></i>
-                          Bệnh nhân này chưa có đơn thuốc nào (hoặc tất cả đơn đã bị hủy).
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Mô tả vật phẩm và Mã đơn thuốc - chỉ hiển thị khi category là thuốc */}
+                  {isMedicineCategory(s.categoryId) && (
+                    <div className="row g-3 mt-3">
+                      {/* Mô tả vật phẩm - bên trái */}
+                      <div className="col-md-6">
+                        <label className={`form-label ${styles.formLabel}`}>
+                          Mô tả vật phẩm (tùy chọn)
+                        </label>
+                        <input
+                          type="text"
+                          className={`form-control ${styles.formControl}`}
+                          placeholder="VD: 2 túi dịch truyền..."
+                          value={s.itemDesc}
+                          onChange={(e) =>
+                            updateStop(idx, "itemDesc", e.target.value)
+                          }
+                        />
+                      </div>
 
-                  {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) hidden -- sẽ phát triển sau này */}
-                  {s.prescriptionPreview && s.prescriptionCode && (
-                    <div className="col-12 mt-3" hidden>
-                      <div className={styles.rxBox}>
-                        <h6 className={styles.rxTitle}>
-                          <i className="bi bi-file-medical"></i>
-                          Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
-                        </h6>
-
-                        {s.prescriptionPreview.items && s.prescriptionPreview.items.map((item) => (
-                          <div key={item.id} className={styles.rxItem}>
-                            <div className={styles.rxMedicineName}>
-                              {item.medicineName}
-                            </div>
-                            <div className={styles.rxInfo}>
-                              <strong>Số lượng:</strong> {item.quantity}
-                            </div>
-                            <div className={styles.rxInfo}>
-                              <strong>Liều dùng:</strong> {item.dosage}
-                            </div>
-                            <div className={styles.rxInfo}>
-                              <strong>Hướng dẫn:</strong> {item.instructions}
-                            </div>
-                          </div>
-                        ))}
-
-                        <div className="mt-3">
-                          <label className={`form-label ${styles.formLabel}`}>
-                            Mô tả vật phẩm (tùy chọn)
-                          </label>
+                      {/* Mã đơn thuốc - bên phải */}
+                      <div className="col-md-6">
+                        <label className={`form-label ${styles.formLabel}`}>
+                          Mã đơn thuốc <span className="text-danger">*</span>
+                        </label>
+                        <div className="d-flex gap-2 align-items-start">
                           <input
                             type="text"
                             className={`form-control ${styles.formControl}`}
-                            placeholder="VD: 2 túi dịch truyền..."
-                            value={s.itemDesc}
-                            onChange={(e) =>
-                              updateStop(idx, "itemDesc", e.target.value)
-                            }
+                            placeholder="Nhập mã đơn thuốc..."
+                            value={s.customName}
+                            onChange={(e) => {
+                              updateStop(idx, "customName", e.target.value);
+                              // Tự động bỏ tick khi user sửa text
+                              if (s.confirmedCustomName) {
+                                updateStop(idx, "confirmedCustomName", false);
+                              }
+                            }}
+                            style={{ flex: 1 }}
                           />
+                          <button
+                            type="button"
+                            className={`btn ${
+                              s.confirmedCustomName
+                                ? "btn-success"
+                                : "btn-outline-secondary"
+                            }`}
+                            onClick={() => {
+                              if (s.confirmedCustomName) {
+                                handleUnconfirmCustomName(idx);
+                              } else {
+                                handleConfirmCustomName(idx);
+                              }
+                            }}
+                            disabled={!s.customName || s.customName.trim() === ""}
+                            style={{
+                              minWidth: "50px",
+                              height: "46px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            title={
+                              s.confirmedCustomName
+                                ? "Bỏ xác nhận"
+                                : "Xác nhận mã đơn thuốc"
+                            }
+                          >
+                            {s.confirmedCustomName ? (
+                              <i className="bi bi-check-circle-fill"></i>
+                            ) : (
+                              <i className="bi bi-check-circle"></i>
+                            )}
+                          </button>
                         </div>
+                        {s.confirmedCustomName && (
+                          <div className="alert alert-success mt-2 mb-0">
+                            <i className="bi bi-check-circle me-2"></i>
+                            Đã xác nhận mã đơn thuốc: <strong>{s.customName}</strong>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {/* Mô tả vật phẩm cho trường hợp không phải thuốc */}
                   {!isMedicineCategory(s.categoryId) && (
-                    <div className="col-12 mt-3">
+                    <div className="col-6 mt-3">
                       <label className={`form-label ${styles.formLabel}`}>
                         Mô tả vật phẩm (tùy chọn)
                       </label>
@@ -1118,63 +966,6 @@ export default function AddTask() {
         </button>
       )}
 
-      {/* MODAL XÁC NHẬN BỎ CHỌN ĐƠN THUỐC */}
-      {unselectPrescriptionModal.show && (
-        <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                  Xác nhận bỏ chọn đơn thuốc
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
-                  disabled={unselectPrescriptionModal.loading}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  Bạn có chắc chắn muốn bỏ chọn đơn thuốc <strong>{unselectPrescriptionModal.prescriptionCode}</strong>?
-                </p>
-                <p className="text-muted mb-0">
-                  Đơn thuốc sẽ được trả về trạng thái ban đầu: <strong>{getPrescriptionStatusText(unselectPrescriptionModal.originalStatus)}</strong>
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
-                  disabled={unselectPrescriptionModal.loading}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleUnselectPrescription}
-                  disabled={unselectPrescriptionModal.loading}
-                >
-                  {unselectPrescriptionModal.loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-x-circle me-2"></i>
-                      Xác nhận bỏ chọn
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </>
   );

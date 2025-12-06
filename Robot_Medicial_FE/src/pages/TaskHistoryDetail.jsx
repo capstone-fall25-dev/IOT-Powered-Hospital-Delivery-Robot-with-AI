@@ -401,13 +401,26 @@ export default function TaskHistoryDetail() {
                                         </div>
                                     </div>
 
-                                    {s.itemDesc && (
-                                        <div className="mt-2 small">
-                                            <div className="text-muted">
-                                                <i className="bi bi-file-medical me-1"></i>
-                                                Nội dung / thuốc
-                                            </div>
-                                            <div>{s.itemDesc}</div>
+                                    {(s.customName || s.itemDesc) && (
+                                        <div className="row small g-2 mt-2">
+                                            {s.customName && (
+                                                <div className="col-md-6">
+                                                    <div className="text-muted">
+                                                        <i className="bi bi-prescription me-1"></i>
+                                                        Mã đơn thuốc
+                                                    </div>
+                                                    <div>{s.customName}</div>
+                                                </div>
+                                            )}
+                                            {s.itemDesc && (
+                                                <div className="col-md-6">
+                                                    <div className="text-muted">
+                                                        <i className="bi bi-file-medical me-1"></i>
+                                                        Mô tả
+                                                    </div>
+                                                    <div>{s.itemDesc}</div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

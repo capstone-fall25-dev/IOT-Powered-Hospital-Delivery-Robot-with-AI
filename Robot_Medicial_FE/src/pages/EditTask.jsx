@@ -10,7 +10,6 @@ import {
     getCompartmentById,
     getAllCategories,
 } from "@/services/robotCompartmentService";
-import { getAllPrescriptions, approvePrescriptionByCode, updatePrescription } from "@/services/prescriptionServices";
 import { getAvailableRobots } from "@/services/robotService";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
@@ -34,16 +33,13 @@ const TASK_STATUS_OPTIONS = [
     { value: "at_station", valueVi: "Đang ở trạm" },
     { value: "completed", valueVi: "Hoàn tất" },
     { value: "failed", valueVi: "Thất bại" },
-    { value: "canceled", valueVi: "Đã hủy" },
+    { value: "canceled", valueVi: "Hủy bỏ" },
 ];
 
 // Các trạng thái nhiệm vụ cho phép EDIT (đồng bộ với AllowedStatusForEdit bên BE)
 const EDITABLE_TASK_STATUSES = [
     "pending",
-    "in_progress",
-    "awaiting_handover",
-    "returning",
-    "at_station",
+    "canceled", // Cho phép edit task đã cancel để có thể restore
 ];
 
 // Các trạng thái cho Stop
@@ -72,14 +68,6 @@ export default function EditTask() {
     const [categories, setCategories] = useState([]);
 
     const [baseCompartments, setBaseCompartments] = useState([]);
-    const [unselectPrescriptionModal, setUnselectPrescriptionModal] = useState({
-        show: false,
-        prescriptionCode: "",
-        prescriptionId: null,
-        originalStatus: "",
-        stopIndex: -1,
-        loading: false,
-    });
 
     const [form, setForm] = useState({
         mapId: "",
@@ -95,20 +83,6 @@ export default function EditTask() {
 
     const [initLoaded, setInitLoaded] = useState(false);
 
-    // ============================================================
-    // PRESCRIPTION STATUS MAP (chuyển status sang tiếng Việt)
-    // ============================================================
-    const prescriptionStatusMap = {
-        pending: "Đang chờ",
-        approved: "Đã duyệt",
-        dispensed: "Đã phát",
-        canceled: "Đã hủy",
-    };
-
-    function getPrescriptionStatusText(status) {
-        if (!status) return "";
-        return prescriptionStatusMap[status.toLowerCase()] || "Không xác định";
-    }
 
     // ===================== LOAD INITIAL BASE DATA =====================
     useEffect(() => {
@@ -179,6 +153,8 @@ export default function EditTask() {
                     data.stops.map(async (s) => {
                         let filtered = [];
                         let resolvedCategoryId = (s.categoryId && s.categoryId > 0) ? s.categoryId : null;
+                        let compDetail = null; // Khai báo ở scope cao hơn để có thể sử dụng sau
+                        let foundComp = null;  // Khai báo ở scope cao hơn để có thể sử dụng sau
                         
                         // Nếu có categoryId từ BE → load compartments theo category
                         if (s.categoryId && s.categoryId > 0) {
@@ -189,9 +165,10 @@ export default function EditTask() {
                         }
                         // Nếu không có categoryId nhưng có compartmentId → cần tìm categoryId từ compartment
                         else if (s.compartmentId && s.compartmentId > 0) {
+                            
                             try {
-                                // Thử load compartment detail trực tiếp theo ID để lấy categoryId
-                                const compDetail = await getCompartmentById(s.compartmentId);
+                                // Thử load compartment detail trực tiếp theo ID để lấy categoryId và compartmentCode
+                                compDetail = await getCompartmentById(s.compartmentId);
                                 
                                 if (compDetail && compDetail.categoryId) {
                                     // Tìm thấy compartment và có categoryId → load compartments theo category
@@ -200,10 +177,18 @@ export default function EditTask() {
                                         data.robotId,
                                         resolvedCategoryId
                                     );
-                                } else {
-                                    // Compartment không có categoryId → thử tìm trong unlocked compartments
+                                }
+                            } catch (err) {
+                                // Compartment có thể không tồn tại (404) hoặc đã bị xóa/release
+                                // Không cần log error vì đây là trường hợp có thể xảy ra khi restore task canceled
+                                // Tiếp tục thử tìm trong unlocked compartments
+                            }
+                            
+                            // Nếu vẫn chưa có categoryId, thử tìm trong unlocked compartments
+                            if (!resolvedCategoryId) {
+                                try {
                                     const allCompartments = await getUnlockedCompartments(data.robotId);
-                                    const foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
+                                    foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
                                     
                                     if (foundComp && foundComp.categoryId) {
                                         resolvedCategoryId = foundComp.categoryId;
@@ -211,40 +196,15 @@ export default function EditTask() {
                                             data.robotId,
                                             resolvedCategoryId
                                         );
-                                    } else {
-                                        // Không tìm thấy compartment hoặc không có categoryId → thêm fallback
-                                        filtered = [
-                                            {
-                                                id: s.compartmentId,
-                                                compartmentCode: `#${s.compartmentId} (không khả dụng)`,
-                                            },
-                                        ];
                                     }
-                                }
-                            } catch (err) {
-                                // Nếu không load được compartment detail, thử tìm trong unlocked compartments
-                                const allCompartments = await getUnlockedCompartments(data.robotId);
-                                const foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
-                                
-                                if (foundComp && foundComp.categoryId) {
-                                    resolvedCategoryId = foundComp.categoryId;
-                                    filtered = await getCompartmentsByRobotAndCategory(
-                                        data.robotId,
-                                        resolvedCategoryId
-                                    );
-                                } else {
-                                    // Không tìm thấy → thêm fallback
-                                    filtered = [
-                                        {
-                                            id: s.compartmentId,
-                                            compartmentCode: `#${s.compartmentId} (không khả dụng)`,
-                                        },
-                                    ];
+                                } catch (err2) {
+                                    // Không cần log error, chỉ cần tiếp tục với fallback
                                 }
                             }
+                            
                         }
 
-                        // Nếu compartmentId BE trả về không có trong filtered → thêm fallback
+                        // Nếu compartmentId BE trả về không có trong filtered → thêm fallback với compartmentCode đúng
                         // So sánh với cả number và string để tránh type mismatch
                         const hasCompartment = s.compartmentId && s.compartmentId > 0 && filtered.some((c) => {
                             const compId = Number(c.id);
@@ -253,22 +213,41 @@ export default function EditTask() {
                         });
                         
                         if (s.compartmentId && s.compartmentId > 0 && !hasCompartment) {
+                            // Ưu tiên lấy compartmentCode từ BE response (đã có sẵn và đáng tin cậy nhất)
+                            let compartmentCode = s.compartmentCode || null;
+                            
+                            // Nếu BE không trả về compartmentCode, thử từ foundComp (nếu đã load - nhanh hơn)
+                            if (!compartmentCode && foundComp && foundComp.compartmentCode) {
+                                compartmentCode = foundComp.compartmentCode;
+                            }
+                            // Thử từ compDetail (nếu đã load)
+                            else if (!compartmentCode && compDetail && compDetail.compartmentCode) {
+                                compartmentCode = compDetail.compartmentCode;
+                            }
+                            // Chỉ thử load lại compartment detail nếu thực sự cần và chưa load trước đó
+                            else if (!compartmentCode && !compDetail) {
+                                try {
+                                    const compDetailRetry = await getCompartmentById(s.compartmentId);
+                                    if (compDetailRetry && compDetailRetry.compartmentCode) {
+                                        compartmentCode = compDetailRetry.compartmentCode;
+                                        compDetail = compDetailRetry; // Lưu lại để dùng sau
+                                    }
+                                } catch (err) {
+                                    // Compartment không tồn tại (404) - có thể đã bị xóa hoặc không tồn tại
+                                }
+                            }
+                            
+                            // Thêm vào filtered với compartmentCode đúng (hoặc fallback nếu không tìm thấy)
                             filtered = [
                                 ...filtered,
                                 {
                                     id: s.compartmentId,
-                                    compartmentCode: `#${s.compartmentId} (không khả dụng)`,
+                                    compartmentCode: compartmentCode || `#${s.compartmentId} (không khả dụng)`,
                                 },
                             ];
                         }
 
-                        // Load prescription preview và list nếu có bệnh nhân và category là thuốc
-                        let prescriptionPreview = null;
-                        let prescriptionList = [];
-                        let prescriptionCode = "";
-
-                        // Kiểm tra category có phải thuốc không (cần load categories trước)
-                        // Sử dụng resolvedCategoryId nếu có, nếu không dùng categoryId từ BE
+                        // Kiểm tra category có phải thuốc không để set confirmedCustomName
                         const finalCategoryId = resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null);
                         const category = finalCategoryId && finalCategoryId > 0 
                             ? categories.find((c) => Number(c.id) === Number(finalCategoryId))
@@ -276,44 +255,9 @@ export default function EditTask() {
                         const isMedicine = category && category.name && 
                             ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"]
                                 .some((keyword) => category.name.toLowerCase().includes(keyword));
-
-                        if (s.patientId && isMedicine) {
-                            // Load tất cả prescriptions (pending, dispensed, approved) trừ canceled
-                            const allPrescriptions = await getAllPrescriptions({ patientId: s.patientId });
-                            const validPrescriptions = (allPrescriptions || [])
-                                .filter((p) => p.status?.toLowerCase() !== "canceled")
-                                .map((p) => ({
-                                    ...p,
-                                    originalStatus: p.status, // Lưu status ban đầu
-                                }));
-                            prescriptionList = validPrescriptions;
-
-                            // Tìm prescription đã được chọn (nếu có trong itemDesc hoặc prescriptionCode)
-                            // Hoặc lấy approved đầu tiên
-                            if (validPrescriptions.length > 0) {
-                                // Tìm prescription code từ itemDesc nếu có
-                                const itemDescMatch = s.itemDesc?.match(/RX#([A-Z0-9-]+)/);
-                                const codeFromItemDesc = itemDescMatch ? itemDescMatch[1] : null;
-                                
-                                if (codeFromItemDesc) {
-                                    prescriptionPreview = validPrescriptions.find(
-                                        (p) => p.prescriptionCode === codeFromItemDesc
-                                    );
-                                    if (prescriptionPreview) {
-                                        prescriptionCode = prescriptionPreview.prescriptionCode;
-                                    }
-                                } else {
-                                    // Lấy approved đầu tiên hoặc latest
-                                    prescriptionPreview = validPrescriptions
-                                        .filter((p) => p.status?.toLowerCase() === "approved")
-                                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] 
-                                        || validPrescriptions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-                                    if (prescriptionPreview) {
-                                        prescriptionCode = prescriptionPreview.prescriptionCode;
-                                    }
-                                }
-                            }
-                        }
+                        
+                        // Nếu có customName và category là thuốc → tự động confirm
+                        const confirmedCustomName = isMedicine && s.customName && s.customName.trim() !== "";
 
                         return {
                             stopId: s.stopId,
@@ -327,11 +271,9 @@ export default function EditTask() {
                             compartmentId: s.compartmentId ? String(s.compartmentId) : "",
                             customName: s.customName ?? "",
                             itemDesc: s.itemDesc ?? "",
+                            confirmedCustomName: confirmedCustomName, // Đã tick xác nhận customName chưa
                             status: s.status, // giữ status hiện tại của stop
                             filteredCompartments: filtered,
-                            prescriptionPreview,
-                            prescriptionList,
-                            prescriptionCode,
                         };
                     })
                 );
@@ -349,8 +291,10 @@ export default function EditTask() {
                 setForm(formData);
 
                 // Lưu trạng thái nhiệm vụ ban đầu
-                setTaskStatus(data.status);
-                setInitialTaskStatus(data.status);
+                // Đảm bảo status không null/undefined, nếu không có thì mặc định là "pending"
+                const taskStatusValue = (data.status || data.Status || "").trim().toLowerCase() || "pending";
+                setTaskStatus(taskStatusValue);
+                setInitialTaskStatus(taskStatusValue);
 
                 // load destinations theo map
                 const mapDetail = await getMapById(data.mapId);
@@ -370,6 +314,18 @@ export default function EditTask() {
 
         loadTask();
     }, [id, initLoaded, robots, categories]);
+
+    // ===================== HELPER: Lấy min datetime (hiện tại) =====================
+    function getMinDateTime() {
+        const now = new Date();
+        // Format: YYYY-MM-DDTHH:MM (không có giây)
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
 
     // ===================== HELPER: Format datetime cho input datetime-local =====================
     // Input datetime-local cần format: YYYY-MM-DDTHH:mm (local time, không có timezone)
@@ -443,24 +399,21 @@ export default function EditTask() {
         return medicineKeywords.some((keyword) => categoryName.includes(keyword));
     }
 
-    // ===================== LOAD PRESCRIPTIONS FOR PATIENT =====================
-    async function loadPrescriptionsForPatient(patientId, idx, stopsClone) {
-        if (!patientId) return;
-
-        try {
-            // Load tất cả prescriptions (không filter status) rồi filter ở frontend
-            const allPrescriptions = await getAllPrescriptions({ patientId });
-            
-            // Lọc ra các đơn không bị canceled
-            const validPrescriptions = (allPrescriptions || []).filter(
-                (p) => p.status?.toLowerCase() !== "canceled"
-            );
-
-            stopsClone[idx].prescriptionList = validPrescriptions;
-        } catch (err) {
-            console.error("Error load prescriptions:", err);
-            stopsClone[idx].prescriptionList = [];
+    // ===================== CONFIRM CUSTOM NAME (Tick button) =====================
+    function handleConfirmCustomName(idx) {
+        const stop = form.stops[idx];
+        if (!stop.customName || stop.customName.trim() === "") {
+            showToast("warning", "Vui lòng nhập mã đơn thuốc trước khi xác nhận.");
+            return;
         }
+        
+        updateStop(idx, "confirmedCustomName", true);
+        showToast("success", "Đã xác nhận mã đơn thuốc.");
+    }
+
+    // ===================== UNCONFIRM CUSTOM NAME (Uncheck) =====================
+    function handleUnconfirmCustomName(idx) {
+        updateStop(idx, "confirmedCustomName", false);
     }
 
     // ===================== UPDATE STOP FIELD =====================
@@ -477,9 +430,12 @@ export default function EditTask() {
         if (key === "categoryId") {
             const oldCompartment = clone[idx].compartmentId;
             clone[idx].compartmentId = "";
-            clone[idx].prescriptionList = [];
-            clone[idx].prescriptionCode = "";
-            clone[idx].prescriptionPreview = null;
+            
+            // Reset customName và confirmedCustomName khi đổi category (nếu không phải thuốc)
+            if (!isMedicineCategory(value)) {
+                clone[idx].customName = "";
+                clone[idx].confirmedCustomName = false;
+            }
 
             let list = await getCompartmentsByRobotAndCategory(
                 form.robotId,
@@ -498,11 +454,6 @@ export default function EditTask() {
             }
 
             clone[idx].filteredCompartments = list;
-
-            // Nếu category là thuốc và đã chọn patient → load prescriptions
-            if (isMedicineCategory(value) && clone[idx].patientId) {
-                await loadPrescriptionsForPatient(clone[idx].patientId, idx, clone);
-            }
         }
 
         setForm((f) => ({ ...f, stops: clone }));
@@ -534,125 +485,68 @@ export default function EditTask() {
 
     // ===================== SELECT PATIENT =====================
     async function handleSelectPatient(patientId, idx) {
-        const stop = form.stops[idx];
         updateStop(idx, "patientId", patientId);
-
-        if (!patientId) {
-            updateStop(idx, "prescriptionPreview", null);
-            updateStop(idx, "prescriptionList", []);
-            updateStop(idx, "prescriptionCode", "");
-            return;
-        }
-
-        // Chỉ load prescriptions nếu category là thuốc
-        if (isMedicineCategory(stop.categoryId)) {
-            const clone = [...form.stops];
-            await loadPrescriptionsForPatient(patientId, idx, clone);
-            setForm((f) => ({ ...f, stops: clone }));
-        } else {
-            // Không phải thuốc → không load đơn thuốc
-            updateStop(idx, "prescriptionPreview", null);
-            updateStop(idx, "prescriptionList", []);
-            updateStop(idx, "prescriptionCode", "");
-        }
     }
 
-    // ===================== CLICK VÀO MÃ ĐƠN THUỐC =====================
-    //  - Nếu chưa chọn → TỰ ĐỘNG APPROVE
-    //  - Nếu đã chọn → Hiển thị modal xác nhận bỏ chọn
-    // =====================
-    async function handleSelectPrescription(prescriptionCode, idx) {
-        if (!prescriptionCode) {
-            updateStop(idx, "prescriptionCode", "");
-            updateStop(idx, "prescriptionPreview", null);
-            return;
-        }
+    // ===================== ADD STOP =====================
+    function addStop() {
+        const nextSeq = form.stops.length > 0 
+            ? Math.max(...form.stops.map(s => s.seqNo)) + 1 
+            : 1;
 
+        const newStop = {
+            stopId: 0, // 0 = stop mới, backend sẽ tạo mới
+            seqNo: nextSeq,
+            destinationId: "",
+            patientId: "",
+            categoryId: "",
+            compartmentId: "",
+            customName: "",
+            itemDesc: "",
+            confirmedCustomName: false,
+            status: "pending",
+            filteredCompartments: [],
+        };
+
+        setForm((f) => ({
+            ...f,
+            stops: [...f.stops, newStop],
+        }));
+    }
+
+    // ===================== REMOVE STOP =====================
+    function removeStop(idx) {
         const stop = form.stops[idx];
         
-        // Nếu đơn thuốc này đã được chọn → hiển thị modal xác nhận bỏ chọn
-        if (stop.prescriptionCode === prescriptionCode) {
-            const prescription = stop.prescriptionList.find(
-                (p) => p.prescriptionCode === prescriptionCode
-            );
-            
-            if (prescription) {
-                setUnselectPrescriptionModal({
-                    show: true,
-                    prescriptionCode: prescriptionCode,
-                    prescriptionId: prescription.id,
-                    originalStatus: prescription.originalStatus || prescription.status,
-                    stopIndex: idx,
-                    loading: false,
-                });
+        // Nếu là stop mới (stopId = 0) → xóa luôn
+        // Nếu là stop đã có trong DB → cần xác nhận hoặc đánh dấu để xóa
+        if (stop.stopId === 0 || !stop.stopId) {
+            setForm((f) => ({
+                ...f,
+                stops: f.stops.filter((_, i) => i !== idx).map((s, i) => ({
+                    ...s,
+                    seqNo: i + 1, // Cập nhật lại seqNo
+                })),
+            }));
+        } else {
+            // Stop đã có trong DB → đánh dấu để xóa (backend sẽ xử lý)
+            // Hoặc có thể hiển thị confirm dialog
+            if (window.confirm(`Bạn có chắc muốn xóa điểm dừng #${stop.seqNo}?`)) {
+                setForm((f) => ({
+                    ...f,
+                    stops: f.stops.filter((_, i) => i !== idx).map((s, i) => ({
+                        ...s,
+                        seqNo: i + 1, // Cập nhật lại seqNo
+                    })),
+                }));
             }
-            return;
-        }
-
-        // Nếu chưa chọn → approve như bình thường
-        try {
-            // Gọi API approve prescription
-            const approved = await approvePrescriptionByCode(prescriptionCode);
-            
-            // Cập nhật state
-            updateStop(idx, "prescriptionCode", prescriptionCode);
-            updateStop(idx, "prescriptionPreview", approved);
-
-            // Hiển thị toast thông báo
-            showToast("success", `Đã chọn và xác nhận đơn thuốc: ${prescriptionCode}`);
-
-            // Cập nhật lại danh sách prescriptions (status đã đổi thành approved)
-            if (stop.patientId) {
-                const clone = [...form.stops];
-                await loadPrescriptionsForPatient(stop.patientId, idx, clone);
-                setForm((f) => ({ ...f, stops: clone }));
-            }
-        } catch (err) {
-            console.error("Lỗi xác nhận đơn thuốc:", err);
-            showToast("error", err.message);
         }
     }
 
-    // ===================== BỎ CHỌN ĐƠN THUỐC - Trả lại status ban đầu =====================
-    async function handleUnselectPrescription() {
-        const { prescriptionId, originalStatus, stopIndex, prescriptionCode } = unselectPrescriptionModal;
-
-        if (!prescriptionId || !originalStatus) {
-            setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false });
-            return;
-        }
-
-        setUnselectPrescriptionModal((prev) => ({ ...prev, loading: true }));
-
-        try {
-            // Gọi API update prescription với status ban đầu
-            await updatePrescription(prescriptionId, { status: originalStatus });
-
-            // Cập nhật state - bỏ chọn đơn thuốc
-            updateStop(stopIndex, "prescriptionCode", "");
-            updateStop(stopIndex, "prescriptionPreview", null);
-
-            // Cập nhật lại danh sách prescriptions
-            const stop = form.stops[stopIndex];
-            if (stop.patientId) {
-                const clone = [...form.stops];
-                await loadPrescriptionsForPatient(stop.patientId, stopIndex, clone);
-                setForm((f) => ({ ...f, stops: clone }));
-            }
-
-            showToast("success", `Đã bỏ chọn đơn thuốc: ${prescriptionCode}`);
-            setUnselectPrescriptionModal({ show: false, prescriptionCode: "", prescriptionId: null, originalStatus: "", stopIndex: -1, loading: false });
-        } catch (err) {
-            console.error("Lỗi bỏ chọn đơn thuốc:", err);
-            showToast("error", err.message);
-            setUnselectPrescriptionModal((prev) => ({ ...prev, loading: false }));
-        }
-    }
 
     // ===================== TASK STATUS HELPERS =====================
-    const canEditTaskStatus = EDITABLE_TASK_STATUSES.includes(
-        initialTaskStatus
-    );
+    // Chỉ cho phép sửa status khi task là "pending" (không cho phép khi "canceled")
+    const canEditTaskStatus = initialTaskStatus === "pending";
 
     function handleChangeTaskStatus(next) {
         if (!canEditTaskStatus) return;
@@ -661,6 +555,12 @@ export default function EditTask() {
 
     // ===================== SUBMIT UPDATE =====================
     async function handleUpdate() {
+        // Validate task có thể edit
+        if (!EDITABLE_TASK_STATUSES.includes(initialTaskStatus)) {
+            showToast("error", "Nhiệm vụ không thể chỉnh sửa ở trạng thái hiện tại. Chỉ có thể chỉnh sửa khi trạng thái là 'pending' hoặc 'canceled'.");
+            return;
+        }
+
         // Validate bản đồ
         if (!form.mapId) {
             showToast("warning", "Vui lòng chọn bản đồ.");
@@ -677,6 +577,32 @@ export default function EditTask() {
         if (form.stops.length === 0) {
             showToast("warning", "Vui lòng có ít nhất một điểm dừng.");
             return;
+        }
+
+        // Validate scheduledStartAt không được là quá khứ
+        if (form.scheduledStartAt) {
+            try {
+                const now = new Date();
+                const selected = new Date(form.scheduledStartAt);
+                
+                if (selected <= now) {
+                    showToast("warning", "Thời gian bắt đầu không được là quá khứ. Vui lòng chọn thời gian trong tương lai.");
+                    return;
+                }
+                
+                // Nếu task đang canceled (để restore), cần thêm buffer ít nhất 2 phút
+                const isCanceledTask = initialTaskStatus === "canceled";
+                if (isCanceledTask) {
+                    const minRequiredTime = new Date(now.getTime() + 2 * 60 * 1000);
+                    if (selected <= minRequiredTime) {
+                        showToast("warning", "Thời gian bắt đầu phải lớn hơn thời gian hiện tại ít nhất 2 phút để restore nhiệm vụ.");
+                        return;
+                    }
+                }
+            } catch (err) {
+                showToast("error", "Thời gian bắt đầu không hợp lệ.");
+                return;
+            }
         }
 
         // Validate từng điểm dừng
@@ -704,10 +630,16 @@ export default function EditTask() {
                 return;
             }
 
-            // Nếu category là thuốc → phải chọn đơn thuốc
-            if (isMedicineCategory(stop.categoryId) && !stop.prescriptionCode) {
-                showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng chọn đơn thuốc.`);
-                return;
+            // Nếu category là thuốc → phải nhập customName và xác nhận (tick)
+            if (isMedicineCategory(stop.categoryId)) {
+                if (!stop.customName || stop.customName.trim() === "") {
+                    showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng nhập mã đơn thuốc.`);
+                    return;
+                }
+                if (!stop.confirmedCustomName) {
+                    showToast("warning", `Điểm dừng #${stopNumber}: Vui lòng xác nhận mã đơn thuốc (tick).`);
+                    return;
+                }
             }
         }
 
@@ -723,30 +655,39 @@ export default function EditTask() {
                 scheduledStartAt: form.scheduledStartAt
                     ? new Date(form.scheduledStartAt).toISOString()
                     : null,
-                stops: form.stops.map((s) => ({
-                    stopId: s.stopId,
-                    seqNo: s.seqNo,
-                    destinationId: s.destinationId
-                        ? Number(s.destinationId)
-                        : 0,
-                    patientId: s.patientId ? Number(s.patientId) : 0,
-                    compartmentId: s.compartmentId
-                        ? Number(s.compartmentId)
-                        : 0,
-                    categoryId: s.categoryId
-                        ? Number(s.categoryId)
-                        : 0,
-                    prescriptionCode: s.prescriptionCode || null, // Gửi prescriptionCode nếu có
-                    customName: s.customName,
-                    itemDesc: s.itemDesc,
-                    // Chỉ gửi status stop nếu user chọn 1 giá trị rõ ràng
-                    ...(s.status ? { status: s.status } : {}),
-                })),
+                stops: form.stops.map((s) => {
+                    const stopPayload = {
+                        stopId: s.stopId || 0, // 0 = stop mới, backend sẽ tạo mới
+                        seqNo: s.seqNo,
+                        destinationId: s.destinationId
+                            ? Number(s.destinationId)
+                            : 0,
+                        patientId: s.patientId ? Number(s.patientId) : 0,
+                        compartmentId: s.compartmentId
+                            ? Number(s.compartmentId)
+                            : 0,
+                        categoryId: s.categoryId
+                            ? Number(s.categoryId)
+                            : 0,
+                        customName: s.customName ?? "",
+                        itemDesc: s.itemDesc ?? "",
+                        // Chỉ gửi status stop nếu task là "pending" và user chọn 1 giá trị rõ ràng
+                        ...(initialTaskStatus === "pending" && s.status ? { status: s.status } : {}),
+                    };
+                    
+                    // Nếu category là thuốc và có customName (mã đơn thuốc) → gửi prescriptionCode
+                    if (isMedicineCategory(s.categoryId) && s.customName && s.customName.trim() !== "") {
+                        stopPayload.prescriptionCode = s.customName.trim();
+                    }
+                    
+                    return stopPayload;
+                }),
             };
 
             // Nếu user đã đổi trạng thái task → gửi status lên BE
+            // Chỉ gửi status khi task là "pending" (không gửi khi "canceled")
             // Nếu giữ nguyên → KHÔNG gửi field status để BE auto-complete khi tất cả stop delivered
-            if (taskStatus && taskStatus !== initialTaskStatus) {
+            if (initialTaskStatus === "pending" && taskStatus && taskStatus !== initialTaskStatus) {
                 payload.status = taskStatus;
             }
 
@@ -760,6 +701,9 @@ export default function EditTask() {
         }
     }
 
+    // ===================== CHECK IF TASK CAN BE EDITED =====================
+    const canEditTask = EDITABLE_TASK_STATUSES.includes(initialTaskStatus);
+
     // ===================== LOADING UI =====================
     if (loading) {
         return (
@@ -772,6 +716,38 @@ export default function EditTask() {
                         <div className="text-center">
                             <div className="spinner-border text-primary mb-3"></div>
                             <p className="text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ===================== NOT EDITABLE UI =====================
+    if (!canEditTask) {
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className="row justify-content-center">
+                        <div className="col-lg-11 col-xl-10">
+                            <div className={`${styles.glass} p-5 text-center`}>
+                                <div className="mb-4">
+                                    <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: "4rem" }}></i>
+                                </div>
+                                <h4 className="mb-3">Không thể chỉnh sửa nhiệm vụ</h4>
+                                <p className="text-muted mb-4">
+                                    Nhiệm vụ đang ở trạng thái <strong>"{initialTaskStatus}"</strong>.
+                                    <br />
+                                    Chỉ có thể chỉnh sửa nhiệm vụ khi trạng thái là <strong>"pending"</strong> hoặc <strong>"canceled"</strong>.
+                                </p>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => navigate(`/task-detail/${id}`)}
+                                >
+                                    <i className="bi bi-arrow-left me-2"></i>
+                                    Quay lại chi tiết nhiệm vụ
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -826,13 +802,22 @@ export default function EditTask() {
                         {/* =================== FORM =================== */}
                         <div className={`${styles.glass} p-4 p-md-5`}>
                             {/* ========== BLOCK 1: THÔNG TIN NHIỆM VỤ ========= */}
-                            <h5 className={styles.sectionTitle}>
-                                <i
-                                    className="bi bi-clipboard-check me-2"
-                                    style={{ color: "var(--teal-dark)" }}
-                                ></i>
-                                Thông tin nhiệm vụ
-                            </h5>
+                            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                <h5 className={styles.sectionTitle} style={{ marginBottom: 0 }}>
+                                    <i
+                                        className="bi bi-clipboard-check me-2"
+                                        style={{ color: "var(--teal-dark)" }}
+                                    ></i>
+                                    Thông tin nhiệm vụ
+                                </h5>
+                                {initialTaskStatus === "canceled" && (
+                                    <div className="alert alert-info mb-0 py-2 px-3" style={{ fontSize: "0.85rem", maxWidth: "600px" }}>
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        <strong>Nhiệm vụ đã bị hủy.</strong> Để restore, cập nhật "Thời gian bắt đầu" thành thời điểm trong tương lai.
+                                        Nhiệm vụ sẽ tự động chuyển về trạng thái "chờ xử lý" khi đủ điều kiện (robot ở trạm, ngăn chứa trống).
+                                    </div>
+                                )}
+                            </div>
 
                             {/* MAP + TIME */}
                             <div className="row g-4 mb-3">
@@ -871,13 +856,23 @@ export default function EditTask() {
                                         type="datetime-local"
                                         className={`form-control ${styles.formControl}`}
                                         value={form.scheduledStartAt}
-                                        onChange={(e) =>
+                                        min={getMinDateTime()}
+                                        onChange={(e) => {
+                                            const selectedValue = e.target.value;
+                                            const selected = new Date(selectedValue);
+                                            const now = new Date();
+                                            
+                                            // Kiểm tra nếu chọn thời gian quá khứ
+                                            if (selected <= now) {
+                                                showToast("warning", "Thời gian bắt đầu không được là quá khứ. Vui lòng chọn thời gian trong tương lai.");
+                                                return;
+                                            }
+                                            
                                             setForm((f) => ({
                                                 ...f,
-                                                scheduledStartAt:
-                                                    e.target.value,
-                                            }))
-                                        }
+                                                scheduledStartAt: selectedValue,
+                                            }));
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -942,80 +937,100 @@ export default function EditTask() {
                                 </div>
                             </div>
 
-                            {/* TASK STATUS — đặt sau info, không để đầu form */}
-                            <div className="mb-4">
-                                <label
-                                    className={`form-label ${styles.formLabel}`}
-                                >
-                                    Trạng thái nhiệm vụ
-                                </label>
-                                <div className="d-flex flex-wrap gap-2">
-                                    {TASK_STATUS_OPTIONS.map((opt) => {
-                                        const isActive =
-                                            taskStatus === opt.value;
-                                        const canClick = canEditTaskStatus;
+                            {/* TASK STATUS — chỉ hiển thị khi task là "pending" */}
+                            {initialTaskStatus === "pending" && (
+                                <div className="mb-4">
+                                    <label
+                                        className={`form-label ${styles.formLabel}`}
+                                    >
+                                        Trạng thái nhiệm vụ
+                                    </label>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        {TASK_STATUS_OPTIONS.map((opt) => {
+                                            const isActive =
+                                                taskStatus === opt.value;
 
-                                        return (
-                                            <button
-                                                key={opt.value}
-                                                type="button"
-                                                className="btn btn-sm"
-                                                onClick={() =>
-                                                    canClick &&
-                                                    handleChangeTaskStatus(
-                                                        opt.value
-                                                    )
-                                                }
-                                                style={{
-                                                    borderRadius: "999px",
-                                                    border: isActive
-                                                        ? "1px solid var(--teal-dark)"
-                                                        : "1px solid rgba(148,163,184,0.6)",
-                                                    background: isActive
-                                                        ? "linear-gradient(135deg, rgba(13,148,136,0.9) 0%, rgba(8,145,178,0.9) 100%)"
-                                                        : "rgba(255,255,255,0.9)",
-                                                    color: isActive
-                                                        ? "#ffffff"
-                                                        : "#0f172a",
-                                                    padding:
-                                                        "0.25rem 0.85rem",
-                                                    fontWeight: 600,
-                                                    fontSize: "0.8rem",
-                                                    opacity: canClick
-                                                        ? 1
-                                                        : 0.5,
-                                                    cursor: canClick
-                                                        ? "pointer"
-                                                        : "not-allowed",
-                                                }}
-                                            >
-                                                {opt.valueVi}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {!canEditTaskStatus && (
-                                    <div className="text-muted small mt-1">
-                                        Nhiệm vụ đang ở trạng thái không cho
-                                        phép chỉnh sửa trạng thái. Bạn vẫn có
-                                        thể cập nhật điểm dừng.
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    className="btn btn-sm"
+                                                    onClick={() =>
+                                                        handleChangeTaskStatus(
+                                                            opt.value
+                                                        )
+                                                    }
+                                                    style={{
+                                                        borderRadius: "999px",
+                                                        border: isActive
+                                                            ? "1px solid var(--teal-dark)"
+                                                            : "1px solid rgba(148,163,184,0.6)",
+                                                        background: isActive
+                                                            ? "linear-gradient(135deg, rgba(13,148,136,0.9) 0%, rgba(8,145,178,0.9) 100%)"
+                                                            : "rgba(255,255,255,0.9)",
+                                                        color: isActive
+                                                            ? "#ffffff"
+                                                            : "#0f172a",
+                                                        padding:
+                                                            "0.25rem 0.85rem",
+                                                        fontWeight: 600,
+                                                        fontSize: "0.8rem",
+                                                    }}
+                                                >
+                                                    {opt.valueVi}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             <hr className={styles.divider} />
 
                             {/* ========== BLOCK 2: DANH SÁCH ĐIỂM DỪNG ========= */}
-                            <h5 className={styles.sectionTitle}>
-                                <i
-                                    className="bi bi-geo-alt me-2"
-                                    style={{ color: "var(--teal-dark)" }}
-                                ></i>
-                                Danh sách điểm dừng ({form.stops.length})
-                            </h5>
+                            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                <h5 className={styles.sectionTitle} style={{ marginBottom: 0 }}>
+                                    <i
+                                        className="bi bi-geo-alt me-2"
+                                        style={{ color: "var(--teal-dark)" }}
+                                    ></i>
+                                    Danh sách điểm dừng ({form.stops.length})
+                                </h5>
+                                <button
+                                    className={styles.btnAddStop}
+                                    onClick={addStop}
+                                    disabled={!form.robotId}
+                                    style={{ borderRadius: "5px" }}
+                                >
+                                    <i className="bi bi-plus-circle me-1"></i>
+                                    Thêm điểm dừng
+                                </button>
+                            </div>
 
                             {form.stops.map((s, idx) => (
-                                <div className={styles.stopCard} key={idx}>
+                                <div className={styles.stopCard} key={idx} style={{ position: "relative" }}>
+                                    {/* Nút xóa điểm dừng */}
+                                    <button
+                                        className={styles.btnRemove}
+                                        onClick={() => removeStop(idx)}
+                                        title="Xóa điểm dừng"
+                                        style={{
+                                            position: "absolute",
+                                            top: "10px",
+                                            right: "10px",
+                                            zIndex: 10,
+                                            borderRadius: "50%",
+                                            width: "30px",
+                                            height: "30px",
+                                            padding: 0,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+
                                     {/* HEADER: bên trái là số + tên, bên phải là status stop */}
                                     <div
                                         className={`${styles.stopHeader} d-flex justify-content-between align-items-center`}
@@ -1029,44 +1044,47 @@ export default function EditTask() {
                                             </div>
                                         </div>
 
-                                        <div className="d-flex align-items-center gap-2">
-                                            <span
-                                                className={styles.formLabel}
-                                                style={{
-                                                    marginBottom: 0,
-                                                    fontSize: "0.78rem",
-                                                }}
-                                            >
-                                                Trạng thái
-                                            </span>
-                                            <select
-                                                className={`form-select ${styles.formSelect}`}
-                                                style={{
-                                                    width: "180px",
-                                                    padding: "0.3rem 0.75rem",
-                                                    fontSize: "0.8rem",
-                                                }}
-                                                value={s.status ?? ""}
-                                                onChange={(e) =>
-                                                    updateStop(
-                                                        idx,
-                                                        "status",
-                                                        e.target.value
-                                                    )
-                                                }
-                                            >
-                                                {STOP_STATUS_OPTIONS.map(
-                                                    (opt) => (
-                                                        <option
-                                                            key={opt.value}
-                                                            value={opt.value}
-                                                        >
-                                                            {opt.label}
-                                                        </option>
-                                                    )
-                                                )}
-                                            </select>
-                                        </div>
+                                        {/* Chỉ hiển thị status của stop khi task là "pending" */}
+                                        {initialTaskStatus === "pending" && (
+                                            <div className="d-flex align-items-center gap-2">
+                                                <span
+                                                    className={styles.formLabel}
+                                                    style={{
+                                                        marginBottom: 0,
+                                                        fontSize: "0.78rem",
+                                                    }}
+                                                >
+                                                    Trạng thái
+                                                </span>
+                                                <select
+                                                    className={`form-select ${styles.formSelect}`}
+                                                    style={{
+                                                        width: "180px",
+                                                        padding: "0.3rem 0.75rem",
+                                                        fontSize: "0.8rem",
+                                                    }}
+                                                    value={s.status ?? ""}
+                                                    onChange={(e) =>
+                                                        updateStop(
+                                                            idx,
+                                                            "status",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                >
+                                                    {STOP_STATUS_OPTIONS.map(
+                                                        (opt) => (
+                                                            <option
+                                                                key={opt.value}
+                                                                value={opt.value}
+                                                            >
+                                                                {opt.label}
+                                                            </option>
+                                                        )
+                                                    )}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* BODY: thông tin chi tiết */}
@@ -1141,7 +1159,7 @@ export default function EditTask() {
                                         </div>
 
                                         {/* CATEGORY */}
-                                        <div className="col-md-4">
+                                        <div className="col-md-6">
                                             <label
                                                 className={`form-label ${styles.formLabel}`}
                                             >
@@ -1179,7 +1197,7 @@ export default function EditTask() {
                                         </div>
 
                                         {/* COMPARTMENT */}
-                                        <div className="col-md-4">
+                                        <div className="col-md-6">
                                             <label
                                                 className={`form-label ${styles.formLabel}`}
                                             >
@@ -1218,167 +1236,12 @@ export default function EditTask() {
                                             </select>
                                         </div>
 
-                                        {/* CUSTOM NAME */}
-                                        <div className="col-md-4">
-                                            <label
-                                                className={`form-label ${styles.formLabel}`}
-                                            >
-                                                Ghi chú riêng
-                                            </label>
-                                            <input
-                                                className={`form-control ${styles.formControl}`}
-                                                value={s.customName}
-                                                onChange={(e) =>
-                                                    updateStop(
-                                                        idx,
-                                                        "customName",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="VD: Giao ngay..."
-                                            />
-                                        </div>
                                     </div>
 
-                                    {/* PRESCRIPTION BOX */}
-                                    {/* Hiển thị danh sách đơn thuốc nếu category là thuốc */}
-                                    {isMedicineCategory(s.categoryId) && s.patientId && (
-                                        <div className="col-12 mt-3">
-                                            <label className={`form-label ${styles.formLabel}`}>
-                                                Chọn đơn thuốc <span className="text-danger">*</span>
-                                            </label>
-                                            {s.prescriptionList && s.prescriptionList.length > 0 ? (
-                                                <>
-                                                    <div className="d-flex flex-wrap gap-2 mb-2">
-                                                        {s.prescriptionList.map((pres) => (
-                                                            <button
-                                                                key={pres.id}
-                                                                type="button"
-                                                                className={`btn ${
-                                                                    s.prescriptionCode === pres.prescriptionCode
-                                                                        ? "btn-success"
-                                                                        : "btn-outline-primary"
-                                                                }`}
-                                                                onClick={() => handleSelectPrescription(pres.prescriptionCode, idx)}
-                                                                style={{ borderRadius: "5px" }}
-                                                            >
-                                                                <i className="bi bi-file-medical me-1"></i>
-                                                                {pres.prescriptionCode}
-                                                                {pres.status && (
-                                                                    <span className={`badge ms-2 ${
-                                                                        pres.status === "approved" ? "bg-success" :
-                                                                        pres.status === "pending" ? "bg-warning" :
-                                                                        pres.status === "dispensed" ? "bg-info" : "bg-secondary"
-                                                                    }`}>
-                                                                        {getPrescriptionStatusText(pres.status)}
-                                                                    </span>
-                                                                )}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    {s.prescriptionCode && s.prescriptionPreview && (
-                                                        <div className="alert alert-success mb-0">
-                                                            <i className="bi bi-check-circle me-2"></i>
-                                                            Đã chọn và xác nhận đơn thuốc: <strong>{s.prescriptionCode}</strong>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="alert alert-warning mb-0">
-                                                    <i className="bi bi-exclamation-triangle me-2"></i>
-                                                    Bệnh nhân này chưa có đơn thuốc nào (hoặc tất cả đơn đã bị hủy).
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Hiển thị chi tiết đơn thuốc đã chọn (nếu có) - hidden */}
-                                    {s.prescriptionPreview && s.prescriptionCode && (
-                                        <div className="col-12 mt-3" hidden>
-                                            <div className={styles.rxBox}>
-                                                <h6 className={styles.rxTitle}>
-                                                    <i className="bi bi-file-medical"></i>
-                                                    Đơn thuốc: {s.prescriptionPreview.prescriptionCode}
-                                                </h6>
-
-                                                {s.prescriptionPreview.items && s.prescriptionPreview.items.map(
-                                                    (item) => (
-                                                    <div
-                                                        key={item.id}
-                                                        className={
-                                                            styles.rxItem
-                                                        }
-                                                    >
-                                                        <div
-                                                            className={
-                                                                styles.rxMedicineName
-                                                            }
-                                                        >
-                                                            {item.medicineName}
-                                                        </div>
-                                                        <div
-                                                            className={
-                                                                styles.rxInfo
-                                                            }
-                                                        >
-                                                            <strong>
-                                                                Số lượng:
-                                                            </strong>{" "}
-                                                            {item.quantity}
-                                                        </div>
-                                                        <div
-                                                            className={
-                                                                styles.rxInfo
-                                                            }
-                                                        >
-                                                            <strong>
-                                                                Liều dùng:
-                                                            </strong>{" "}
-                                                            {item.dosage}
-                                                        </div>
-                                                        <div
-                                                            className={
-                                                                styles.rxInfo
-                                                            }
-                                                        >
-                                                            <strong>
-                                                                Hướng dẫn:
-                                                            </strong>{" "}
-                                                            {item.instructions}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            )}
-
-                                                {/* ITEM DESC */}
-                                                <div className="mt-3">
-                                                    <label
-                                                        className={`form-label ${styles.formLabel}`}
-                                                    >
-                                                        Mô tả vật phẩm
-                                                        (tùy chọn)
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        className={`form-control ${styles.formControl}`}
-                                                        placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
-                                                        value={s.itemDesc}
-                                                        onChange={(e) =>
-                                                            updateStop(
-                                                                idx,
-                                                                "itemDesc",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Mô tả vật phẩm cho trường hợp không phải thuốc */}
-                                    {!isMedicineCategory(s.categoryId) && (
-                                        <div className="col-12 mt-3">
+                                    {/* Mô tả vật phẩm và Mã đơn thuốc */}
+                                    <div className="row g-3 mt-3">
+                                        {/* Mô tả vật phẩm - luôn hiển thị */}
+                                        <div className={isMedicineCategory(s.categoryId) ? "col-md-6" : "col-md-12"}>
                                             <label className={`form-label ${styles.formLabel}`}>
                                                 Mô tả vật phẩm (tùy chọn)
                                             </label>
@@ -1388,15 +1251,76 @@ export default function EditTask() {
                                                 placeholder="VD: 2 túi dịch truyền + 1 ống tiêm..."
                                                 value={s.itemDesc}
                                                 onChange={(e) =>
-                                                    updateStop(
-                                                        idx,
-                                                        "itemDesc",
-                                                        e.target.value
-                                                    )
+                                                    updateStop(idx, "itemDesc", e.target.value)
                                                 }
                                             />
                                         </div>
-                                    )}
+
+                                        {/* Mã đơn thuốc - chỉ hiển thị khi category là thuốc */}
+                                        {isMedicineCategory(s.categoryId) && (
+                                            <div className="col-md-6">
+                                                <label className={`form-label ${styles.formLabel}`}>
+                                                    Mã đơn thuốc <span className="text-danger">*</span>
+                                                </label>
+                                                <div className="d-flex gap-2 align-items-start">
+                                                    <input
+                                                        type="text"
+                                                        className={`form-control ${styles.formControl}`}
+                                                        placeholder="Nhập mã đơn thuốc..."
+                                                        value={s.customName}
+                                                        onChange={(e) => {
+                                                            updateStop(idx, "customName", e.target.value);
+                                                            // Tự động bỏ tick khi user sửa text
+                                                            if (s.confirmedCustomName) {
+                                                                updateStop(idx, "confirmedCustomName", false);
+                                                            }
+                                                        }}
+                                                        style={{ flex: 1 }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className={`btn ${
+                                                            s.confirmedCustomName
+                                                                ? "btn-success"
+                                                                : "btn-outline-secondary"
+                                                        }`}
+                                                        onClick={() => {
+                                                            if (s.confirmedCustomName) {
+                                                                handleUnconfirmCustomName(idx);
+                                                            } else {
+                                                                handleConfirmCustomName(idx);
+                                                            }
+                                                        }}
+                                                        disabled={!s.customName || s.customName.trim() === ""}
+                                                        style={{
+                                                            minWidth: "50px",
+                                                            height: "46px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                        }}
+                                                        title={
+                                                            s.confirmedCustomName
+                                                                ? "Bỏ xác nhận"
+                                                                : "Xác nhận mã đơn thuốc"
+                                                        }
+                                                    >
+                                                        {s.confirmedCustomName ? (
+                                                            <i className="bi bi-check-circle-fill"></i>
+                                                        ) : (
+                                                            <i className="bi bi-check-circle"></i>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                                {s.confirmedCustomName && (
+                                                    <div className="alert alert-success mt-2 mb-0">
+                                                        <i className="bi bi-check-circle me-2"></i>
+                                                        Đã xác nhận mã đơn thuốc
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
 
@@ -1414,63 +1338,6 @@ export default function EditTask() {
                 </div>
             </div>
 
-            {/* MODAL XÁC NHẬN BỎ CHỌN ĐƠN THUỐC */}
-            {unselectPrescriptionModal.show && (
-                <div className="modal fade show" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                                    Xác nhận bỏ chọn đơn thuốc
-                                </h5>
-                                <button
-                                    type="button"
-                                    className="btn-close"
-                                    onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
-                                    disabled={unselectPrescriptionModal.loading}
-                                ></button>
-                            </div>
-                            <div className="modal-body">
-                                <p>
-                                    Bạn có chắc chắn muốn bỏ chọn đơn thuốc <strong>{unselectPrescriptionModal.prescriptionCode}</strong>?
-                                </p>
-                                <p className="text-muted mb-0">
-                                    Đơn thuốc sẽ được trả về trạng thái ban đầu: <strong>{getPrescriptionStatusText(unselectPrescriptionModal.originalStatus)}</strong>
-                                </p>
-                            </div>
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setUnselectPrescriptionModal({ ...unselectPrescriptionModal, show: false })}
-                                    disabled={unselectPrescriptionModal.loading}
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-danger"
-                                    onClick={handleUnselectPrescription}
-                                    disabled={unselectPrescriptionModal.loading}
-                                >
-                                    {unselectPrescriptionModal.loading ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                            Đang xử lý...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-x-circle me-2"></i>
-                                            Xác nhận bỏ chọn
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
         </div>
     );

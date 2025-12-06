@@ -126,6 +126,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         /// <summary>
         /// Tạo mới một điểm dừng của task
         /// </summary>
+        public async Task<bool> DeleteStopAsync(ulong stopId)
+        {
+            var stop = await _context.TaskStops.FindAsync(stopId);
+            if (stop == null) return false;
+
+            _context.TaskStops.Remove(stop);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<TaskStop> CreateStopAsync(TaskStop stop)
         {
             _context.TaskStops.Add(stop);

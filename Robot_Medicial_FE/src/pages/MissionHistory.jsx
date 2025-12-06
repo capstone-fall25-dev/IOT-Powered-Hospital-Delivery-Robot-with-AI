@@ -305,6 +305,9 @@ export default function TaskHistoryPage() {
                                                         #{stop.seqNo}
                                                     </span>
                                                     <span className="fw-semibold">{stop.destinationName}</span>
+                                                    {stop.customName && (
+                                                        <span className={styles.smallMuted}> • Mã đơn: {stop.customName}</span>
+                                                    )}
                                                     {stop.itemDesc && (
                                                         <span className={styles.smallMuted}> • {stop.itemDesc}</span>
                                                     )}

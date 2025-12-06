@@ -59,6 +59,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     PatientName = s.Patient?.FullName,
                     RoomNumber = s.Patient?.RoomNumber,
                     CompartmentCode = s.CompartmentAssignments.FirstOrDefault()?.Compartment?.CompartmentCode,
+                    CustomName = s.CustomName, // Mã đơn thuốc
                     ItemDesc = s.CompartmentAssignments.FirstOrDefault()?.ItemDesc,
                     Status = s.Status,
                     ArrivedAt = s.ArrivedAt,
