@@ -27,6 +27,8 @@ public class TaskStopHistory
     public ulong? CompartmentId { get; set; }
     public string? CompartmentCode { get; set; }
 
+    [Column("prescription_code")]
+    public string? CustomName { get; set; } // Mã đơn thuốc (map sang column prescription_code trong DB)
     public string? ItemDesc { get; set; }
 
     public string Status { get; set; } = null!;

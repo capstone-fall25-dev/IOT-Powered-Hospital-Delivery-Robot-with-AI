@@ -47,6 +47,7 @@ public class TaskStopHistoryDto
     public string? PatientName { get; set; } = null!;
     public string? RoomNumber { get; set; }
     public string? CompartmentCode { get; set; }
+    public string? CustomName { get; set; } // Mã đơn thuốc
     public string? ItemDesc { get; set; }
     public string Status { get; set; } = null!;
     public DateTime? ArrivedAt { get; set; }

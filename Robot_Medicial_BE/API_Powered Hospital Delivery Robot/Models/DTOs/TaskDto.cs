@@ -177,6 +177,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     {
         public string PatientName { get; set; } = "";
         public string MedicineSummary { get; set; } = "";
+        public string? CustomName { get; set; }
+        public string? ItemDesc { get; set; }
     }
 
     /// <summary>
@@ -239,6 +241,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? CompartmentCategory { get; set; }
 
         // ASSIGNMENT
+        public string? CustomName { get; set; }
         public string ItemDesc { get; set; } = "";
         public string StopStatus { get; set; } = "";        // ⭐ TRẢ VỀ STATUS CHUẨN CỦA STOP
         public string AssignmentStatus { get; set; } = "";  // ⭐ SẼ = StopStatus để FE hiển thị
@@ -288,6 +291,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         public ulong CategoryId { get; set; }
         public ulong CompartmentId { get; set; }
+        public string? CompartmentCode { get; set; } // Thêm CompartmentCode để frontend không cần load lại
 
         public string? CustomName { get; set; }
         public string? ItemDesc { get; set; }

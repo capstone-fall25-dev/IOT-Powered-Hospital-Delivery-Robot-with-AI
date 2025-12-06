@@ -24,6 +24,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Tạo mới một điểm dừng của task
         Task<TaskStop> CreateStopAsync(TaskStop stop);
 
+        // Xóa một điểm dừng của task
+        Task<bool> DeleteStopAsync(ulong stopId);
+
         // Tạo phân bổ ngăn chứa cho task
         Task<CompartmentAssignment> CreateAssignmentAsync(CompartmentAssignment assignment);
 
