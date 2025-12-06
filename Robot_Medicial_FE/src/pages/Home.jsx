@@ -4,6 +4,7 @@ import vehicle1 from "../assets/image/vehicle-1.jpg";
 import vehicle2 from "../assets/image/vehicle-2.jpg";
 import logoMain from "../assets/image/logo-main.png";
 import styles from "../assets/styles/landing.module.css";
+import video from "../assets/video/video_beta_demo.mp4";
 
 export default function MedFleetLanding() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -180,15 +181,14 @@ export default function MedFleetLanding() {
                         <div className="col-lg-6 order-1 order-lg-2">
                             <div className={`${styles.glass} ${styles.rounded2xl} p-2 ${styles.shadowSoft}`}>
                                 <div className={`ratio ratio-16x9 ${styles.rounded2xl} overflow-hidden`}>
-                                    <iframe
-                                        src=""
-                                        title="Demo thao tác điều lệnh & theo dõi trực tiếp"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                    ></iframe>
+                                    <video
+                                        src={video}
+                                        autoPlay muted loop playsInline controls
+                                        className="w-100 h-100"
+                                    />
                                 </div>
                                 <div className="text-center small text-muted py-2">
-                                    Demo thao tác điều lệnh &amp; theo dõi trực tiếp
+                                    Demo về Robot
                                 </div>
                             </div>
                         </div>
