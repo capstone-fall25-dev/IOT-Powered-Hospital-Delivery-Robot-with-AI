@@ -559,13 +559,10 @@ export default function TaskDetail() {
                                                 </div>
                                             )}
 
-                                            {s.prescription && s.prescription.prescriptionCode && (
+                                            {s.customName && (
                                                 <div className="col-md-6">
-                                                    <div className={styles.infoLabel}>Đơn thuốc</div>
-                                                    <div className={`${styles.infoValue} text-primary`}>
-                                                        <i className="bi bi-file-medical-fill me-2"></i>
-                                                        {s.prescription.prescriptionCode}
-                                                    </div>
+                                                    <div className={styles.infoLabel}>Mã đơn thuốc</div>
+                                                    <div className={styles.infoValue}>{s.customName || "—"}</div>
                                                 </div>
                                             )}
                                         </div>

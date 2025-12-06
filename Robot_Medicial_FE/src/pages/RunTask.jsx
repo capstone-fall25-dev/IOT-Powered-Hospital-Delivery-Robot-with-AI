@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import { updateStopStatus } from "@/services/taskService";
+import { getAllRooms } from "@/services/roomService";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
@@ -47,9 +48,10 @@ export default function RunTask() {
     // ===================================
     // MAP REFS
     // ===================================
-    const navMapRef = useRef(null);
-    const navMapLayer = useRef(null);
-    const destinationMarker = useRef(null);
+  const navMapRef = useRef(null);
+  const navMapLayer = useRef(null);
+  const destinationMarker = useRef(null);
+  const roomMarkersRef = useRef(null); // Layer group cho room markers
 
     const liveMapRef = useRef(null);
     const liveMapLayer = useRef(null);
@@ -75,6 +77,7 @@ export default function RunTask() {
     const [stops, setStops] = useState([]);
     const [selectedStop, setSelectedStop] = useState(null);
     const [selectedMapName, setSelectedMapName] = useState("");
+    const [rooms, setRooms] = useState([]); // Danh sách rooms trên bản đồ
 
     // Trạng thái điểm dừng đang chọn (để cập nhật status)
     const [selectedStopStatus, setSelectedStopStatus] = useState("");
@@ -127,11 +130,26 @@ export default function RunTask() {
                 setSelectedMapName(data.nameMapFE || data.mapName);
                 setStops(data.stops || []);
 
+                // Load rooms theo mapId (giống RunMap)
+                let filteredRooms = [];
+                if (data.mapId) {
+                    try {
+                        const allRooms = await getAllRooms();
+                        const mapIdNum = Number(data.mapId);
+                        filteredRooms = (allRooms || []).filter(
+                            (r) => Number(r.mapId) === mapIdNum
+                        );
+                        setRooms(filteredRooms);
+                    } catch (roomErr) {
+                        console.error("Không lấy được danh sách phòng:", roomErr);
+                    }
+                }
+
                 if (data.stops?.length > 0) {
                     const first = data.stops[0];
                     setSelectedStop(first);
                     setSelectedStopStatus(first.assignmentStatus || "");
-                    loadNavigationMap(data.mapId, data.stops, first);
+                    loadNavigationMap(data.mapId, data.stops, first, filteredRooms);
                 }
             } catch (err) {
                 console.error("Lỗi load task:", err);
@@ -142,18 +160,18 @@ export default function RunTask() {
         loadTask();
     }, [taskId]);
 
-    // Khi đổi điểm dừng
+    // Khi đổi điểm dừng hoặc rooms thay đổi
     useEffect(() => {
         if (taskInfo && selectedStop) {
-            loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop);
+            loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop, rooms);
             setSelectedStopStatus(selectedStop.assignmentStatus || "");
         }
-    }, [selectedStop, taskInfo]);
+    }, [selectedStop, taskInfo, rooms]);
 
 // ===================================
 // NAVIGATION MAP + MARKERS
 // ===================================
-async function loadNavigationMap(mapId, stops, highlightStop) {
+async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
   if (!window.L || !mapId) return;
   const L = window.L;
 
@@ -193,6 +211,10 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
 
       // Xoá marker, vì map lỗi không có toạ độ thật
       if (window.navMapMarkers) window.navMapMarkers.clearLayers();
+      if (roomMarkersRef.current) {
+        navMapRef.current.removeLayer(roomMarkersRef.current);
+        roomMarkersRef.current = null;
+      }
       if (destinationMarker.current) {
         navMapRef.current.removeLayer(destinationMarker.current);
         destinationMarker.current = null;
@@ -246,6 +268,75 @@ async function loadNavigationMap(mapId, stops, highlightStop) {
       // Xóa hết marker cũ
       if (window.navMapMarkers) window.navMapMarkers.clearLayers();
       else window.navMapMarkers = L.layerGroup().addTo(navMapRef.current);
+
+      // Xóa room markers cũ
+      if (roomMarkersRef.current) {
+        navMapRef.current.removeLayer(roomMarkersRef.current);
+      }
+      roomMarkersRef.current = L.layerGroup().addTo(navMapRef.current);
+
+      // === VẼ CÁC PHÒNG TRÊN MAP ===
+      if (rooms && rooms.length > 0) {
+        const roomIcon = L.divIcon({
+          className: "",
+          html: `
+            <div
+              style="
+                width: 24px;
+                height: 24px;
+                border-radius: 999px;
+                background: #0d6efd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+              "
+            >
+              <i
+                class="bi bi-hospital-fill"
+                style="font-size: 14px; color: #ffffff;"
+              ></i>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 24],
+        });
+
+        rooms.forEach((room) => {
+          // Dùng latitude/longitude như RunMap
+          if (
+            room.latitude == null ||
+            room.longitude == null ||
+            room.latitude === "" ||
+            room.longitude === ""
+          )
+            return;
+
+          const worldX = Number(room.longitude);
+          const worldY = Number(room.latitude);
+          if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+          const localX = worldX - originX;
+          const localY = worldY - originY;
+          if (!Number.isFinite(localX) || !Number.isFinite(localY)) return;
+
+          const latlng = L.latLng(localY, localX);
+
+          const label =
+            room.roomName || room.name || `Phòng ${room.id ?? "không tên"}`;
+
+          const marker = L.marker(latlng, { icon: roomIcon });
+
+          marker.bindTooltip(label, {
+            permanent: true,
+            direction: "top",
+            offset: L.point(0, -10),
+            opacity: 0.9,
+          });
+
+          marker.addTo(roomMarkersRef.current);
+        });
+      }
 
       // === VẼ TẤT CẢ ĐIỂM DỪNG ===
       stops.forEach((stop, idx) => {
