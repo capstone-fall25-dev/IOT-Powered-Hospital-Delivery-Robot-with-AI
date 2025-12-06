@@ -22,8 +22,8 @@ export default function RobotCreateMap() {
   const [activeKey, setActiveKey] = useState("");
   const [remoteMode, setRemoteMode] = useState(false);
   const [compartments, setCompartments] = useState([
-    { id: 1, label: "Hộp 1", state: "closed" },
-    { id: 2, label: "Hộp 2", state: "closed" },
+    { id: 21, label: "Hộp 1", state: "closed" },
+    { id: 22, label: "Hộp 2", state: "closed" },
   ]);
 
   // ===================================
