@@ -387,77 +387,79 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     /// Gửi lệnh bật/tắt robot xuống ROS2 qua SignalR (không ghi DB).
     /// FE sẽ chỉ đổi UI khi có ack từ ROS2 (RobotPowerStatus).
     /// </summary>
-    public async Task<RobotPowerResponseDto> TogglePowerAsync(ToggleRequestDto req)
+    // KHÔNG GIỚI HẠN robotCode KHI GỬI LỆNH
+public async Task<RobotPowerResponseDto> TogglePowerAsync(ToggleRequestDto req)
+{
+    if (req == null || string.IsNullOrWhiteSpace(req.RobotCode))
+        throw new ArgumentException("robotCode không được để trống");
+
+    // FE muốn bật/tắt → chỉ đảo trạng thái mong muốn để hiển thị tạm thời nếu cần
+    _desiredOn = !_desiredOn;
+    var state = _desiredOn ? "on" : "off";
+
+    var payload = new
     {
-        if (req == null || string.IsNullOrWhiteSpace(req.RobotCode))
-            throw new ArgumentException("robotCode không được để trống");
+        type = "robot_power",
+        robotCode = req.RobotCode,       // 👈 gửi đúng robotCode FE yêu cầu
+        state,
+        timestamp = DateTime.UtcNow
+    };
 
-        if (!string.Equals(req.RobotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Robot không được phép điều khiển");
+    // Theo yêu cầu: BE cứ gửi xuống; ROS2 sẽ tự lọc con nào hợp lệ (RBT001)
+    await _hub.Clients.All.SendAsync("ReceiveRobotPower", payload);
+    _logger.LogInformation("Sent ReceiveRobotPower for {RobotCode} → {State}", req.RobotCode, state);
 
-        _desiredOn = !_desiredOn;
-        var state = _desiredOn ? "on" : "off";
+    // Không ghi DB tại đây; chờ ROS2 report → BE ghi DB & broadcast ack
+    return new RobotPowerResponseDto
+    {
+        RobotCode = req.RobotCode,
+        Power = _desiredOn,
+        Status = _desiredOn ? "at_station" : "offline",
+        Time = DateTime.UtcNow,
+        Message = "sent"
+    };
+}
 
-        var payload = new
-        {
-            type = "robot_power",
-            robotCode = req.RobotCode,
-            state,
-            timestamp = DateTime.UtcNow
-        };
+// CHỈ CHẤP NHẬN REPORT TỪ RBT001; robot khác → từ chối, không ghi DB
+public async Task<RobotPowerResponseDto> ReportPowerAsync(PowerReportDto report)
+{
+    if (report == null || string.IsNullOrWhiteSpace(report.RobotCode))
+        throw new ArgumentException("Thiếu robotCode.");
 
-        await _hub.Clients.All.SendAsync("ReceiveRobotPower", payload);
-        _logger.LogInformation("Sent ReceiveRobotPower for {RobotCode} → {State}", req.RobotCode, state);
-
-        // Không ghi DB ở đây; chỉ trả về cho FE biết đã gửi lệnh
-        return new RobotPowerResponseDto
-        {
-            RobotCode = req.RobotCode,
-            Power = _desiredOn,
-            Status = _desiredOn ? "at_station" : "offline",
-            Time = DateTime.UtcNow,
-            Message = "sent"
-        };
+    // ❗ Chỉ RBT001 mới được điều khiển/ghi DB
+    if (!string.Equals(report.RobotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
+    {
+        _logger.LogWarning("Reject power report from {RobotCode}: not allowed", report.RobotCode);
+        // Có thể trả về DTO với message “not_allowed”, hoặc ném lỗi.
+        // Ở đây ném lỗi để controller trả 400/403.
+        throw new InvalidOperationException("Robot không hợp lệ để điều khiển.");
     }
 
-    /// <summary>
-    /// ROS2 báo cáo kết quả (ground truth): xác thực robot rồi GHI DB + broadcast ack.
-    /// </summary>
-    public async Task<RobotPowerResponseDto> ReportPowerAsync(PowerReportDto report)
+    var robot = await _robotRepository.GetByCodeAsync(report.RobotCode);
+    if (robot == null)
+        throw new InvalidOperationException($"Robot {report.RobotCode} không tồn tại.");
+
+    var newStatus = report.Power ? "at_station" : "offline";
+
+    var updated = await _robotRepository.UpdateStatusAsync(robot.Id, newStatus);
+    if (updated == null)
+        throw new InvalidOperationException("Cập nhật trạng thái thất bại.");
+
+    var response = new RobotPowerResponseDto
     {
-        if (report == null || string.IsNullOrWhiteSpace(report.RobotCode))
-            throw new ArgumentException("Thiếu robotCode.");
+        RobotCode = report.RobotCode,
+        Power = report.Power,
+        Status = newStatus,
+        Time = DateTime.UtcNow,
+        Message = "ok"
+    };
 
-        if (!string.Equals(report.RobotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Robot không hợp lệ.");
+    // Broadcast ack cho FE (FE chỉ cập nhật khi nhận event này)
+    await _hub.Clients.All.SendAsync("RobotPowerStatus", response);
+    _logger.LogInformation("Persisted {RobotCode} status → {Status}", report.RobotCode, newStatus);
 
-        var robot = await _robotRepository.GetByCodeAsync(report.RobotCode);
-        if (robot == null)
-            throw new InvalidOperationException($"Robot {report.RobotCode} không tồn tại.");
-
-        // on → at_station ; off → offline
-        var newStatus = report.Power ? "at_station" : "offline";
-
-        // Ghi DB qua repository (đảm bảo UpdatedAt cập nhật)
-        var updated = await _robotRepository.UpdateStatusAsync(robot.Id, newStatus);
-        if (updated == null)
-            throw new InvalidOperationException("Cập nhật trạng thái thất bại.");
-
-        var response = new RobotPowerResponseDto
-        {
-            RobotCode = report.RobotCode,
-            Power = report.Power,
-            Status = newStatus,
-            Time = DateTime.UtcNow,
-            Message = "ok"
-        };
-
-        // Phát ack cho FE — FE chỉ update UI khi nhận event này
-        await _hub.Clients.All.SendAsync("RobotPowerStatus", response);
-        _logger.LogInformation("Persisted {RobotCode} status → {Status}", report.RobotCode, newStatus);
-
-        return response;
-    }
+    return response;
+}
 
     }
 }
