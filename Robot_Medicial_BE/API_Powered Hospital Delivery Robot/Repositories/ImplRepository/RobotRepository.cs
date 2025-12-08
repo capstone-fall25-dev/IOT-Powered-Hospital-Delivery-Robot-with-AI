@@ -173,6 +173,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return null;
 
             robot.Status = status;
+            robot.LastHeartbeatAt = DateTime.Now; // ➕ ghi nhận heartbeat khi có report
             robot.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return robot;

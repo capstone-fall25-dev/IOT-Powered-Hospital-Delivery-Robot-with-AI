@@ -145,4 +145,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong CategoryId { get; set; }
         public bool IsLocked { get; set; } = false;
     }
+
+
+    public class ToggleRequestDto
+{
+    public string RobotCode { get; set; } = "";
+}
+
+public class PowerReportDto
+{
+    public bool Power { get; set; }
+    public string Source { get; set; } = "unknown";
+    public string RobotCode { get; set; } = "";
+}
+
+public class RobotPowerResponseDto
+{
+    public string RobotCode { get; set; } = "";
+    public bool Power { get; set; }
+    public string Status { get; set; } = "";
+    public DateTime Time { get; set; }
+    public string Message { get; set; } = "ok";
+}
 }

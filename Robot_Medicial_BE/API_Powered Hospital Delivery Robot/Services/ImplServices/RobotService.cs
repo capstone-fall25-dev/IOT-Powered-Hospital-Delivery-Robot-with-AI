@@ -4,7 +4,10 @@ using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
-
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     /// <summary>
@@ -18,12 +21,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly ILogRepository _logRepository;
         private readonly IAlertService _alertService;
         private readonly IRobotCompartmentRepository _robotCompartmentRepository;
+   private readonly IHubContext<RobotHub> _hub;
+    private readonly IConfiguration _config;
+    private readonly ILogger<RobotService> _logger;
+
+      // Mong muốn từ UI (không phải ground truth)
+    private static bool _desiredOn = false;
+    // Mã robot được phép điều khiển (cấu hình trong appsettings, mặc định RBT001)
+    private string AllowedRobotCode => _config["Robots:AllowedCode"] ?? "RBT001";
+
 
         // Các trạng thái hợp lệ của robot
         private readonly string[] ValidStatuses = { "transporting", "awaiting_handover", "returning_to_station", "at_station", "completed", "charging", "needs_attention", "manual_control", "offline" };
 
         public RobotService(IRobotRepository robotRepository,
-            IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService, IRobotCompartmentRepository robotCompartmentRepository)
+            IMapper mapper, IMapRepository mapRepository, ILogRepository logRepository, IAlertService alertService, IRobotCompartmentRepository robotCompartmentRepository, IHubContext<RobotHub> hub,
+        IConfiguration config,
+        ILogger<RobotService> logger)
         {
             _robotRepository = robotRepository;
             _mapper = mapper;
@@ -31,6 +45,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _logRepository = logRepository;
             _alertService = alertService;
             _robotCompartmentRepository = robotCompartmentRepository;
+            
+             // ➕ ADD
+        _hub = hub;
+        _config = config;
+        _logger = logger;
         }
 
         /// <summary>
@@ -363,5 +382,82 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 }).ToList()
             });
         }
+
+            /// <summary>
+    /// Gửi lệnh bật/tắt robot xuống ROS2 qua SignalR (không ghi DB).
+    /// FE sẽ chỉ đổi UI khi có ack từ ROS2 (RobotPowerStatus).
+    /// </summary>
+    public async Task<RobotPowerResponseDto> TogglePowerAsync(ToggleRequestDto req)
+    {
+        if (req == null || string.IsNullOrWhiteSpace(req.RobotCode))
+            throw new ArgumentException("robotCode không được để trống");
+
+        if (!string.Equals(req.RobotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Robot không được phép điều khiển");
+
+        _desiredOn = !_desiredOn;
+        var state = _desiredOn ? "on" : "off";
+
+        var payload = new
+        {
+            type = "robot_power",
+            robotCode = req.RobotCode,
+            state,
+            timestamp = DateTime.UtcNow
+        };
+
+        await _hub.Clients.All.SendAsync("ReceiveRobotPower", payload);
+        _logger.LogInformation("Sent ReceiveRobotPower for {RobotCode} → {State}", req.RobotCode, state);
+
+        // Không ghi DB ở đây; chỉ trả về cho FE biết đã gửi lệnh
+        return new RobotPowerResponseDto
+        {
+            RobotCode = req.RobotCode,
+            Power = _desiredOn,
+            Status = _desiredOn ? "at_station" : "offline",
+            Time = DateTime.UtcNow,
+            Message = "sent"
+        };
+    }
+
+    /// <summary>
+    /// ROS2 báo cáo kết quả (ground truth): xác thực robot rồi GHI DB + broadcast ack.
+    /// </summary>
+    public async Task<RobotPowerResponseDto> ReportPowerAsync(PowerReportDto report)
+    {
+        if (report == null || string.IsNullOrWhiteSpace(report.RobotCode))
+            throw new ArgumentException("Thiếu robotCode.");
+
+        if (!string.Equals(report.RobotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Robot không hợp lệ.");
+
+        var robot = await _robotRepository.GetByCodeAsync(report.RobotCode);
+        if (robot == null)
+            throw new InvalidOperationException($"Robot {report.RobotCode} không tồn tại.");
+
+        // on → at_station ; off → offline
+        var newStatus = report.Power ? "at_station" : "offline";
+
+        // Ghi DB qua repository (đảm bảo UpdatedAt cập nhật)
+        var updated = await _robotRepository.UpdateStatusAsync(robot.Id, newStatus);
+        if (updated == null)
+            throw new InvalidOperationException("Cập nhật trạng thái thất bại.");
+
+        var response = new RobotPowerResponseDto
+        {
+            RobotCode = report.RobotCode,
+            Power = report.Power,
+            Status = newStatus,
+            Time = DateTime.UtcNow,
+            Message = "ok"
+        };
+
+        // Phát ack cho FE — FE chỉ update UI khi nhận event này
+        await _hub.Clients.All.SendAsync("RobotPowerStatus", response);
+        _logger.LogInformation("Persisted {RobotCode} status → {Status}", report.RobotCode, newStatus);
+
+        return response;
+    }
+
     }
 }
