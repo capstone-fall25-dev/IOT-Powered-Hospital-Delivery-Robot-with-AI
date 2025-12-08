@@ -12,13 +12,13 @@ class MapUploader(Node):
         super().__init__('map_uploader')
 
         # === Config API endpoint ===
-       # self.api_url = "https://medigorobot.online/api/MapsUpload/json"
-        self.api_url = "http://localhost:5170/api/MapsUpload/json"
+        self.api_url = "https://medigorobot.online/api/MapsUpload/json"
+        #self.api_url = "http://localhost:5170/api/MapsUpload/json"
 
         # === Path to your map files ===
         pkg_share = get_package_share_directory("robot_navigation")
-        yaml_path = os.path.join(pkg_share,"map" ,'test_map03.yaml')
-        pgm_path = os.path.join(pkg_share,"map" ,'test_map03.pgm')
+        yaml_path = os.path.join(pkg_share,"map" ,'done1.yaml')
+        pgm_path = os.path.join(pkg_share,"map" ,'done1.pgm')
 
         self.get_logger().info(f"Reading map YAML: {yaml_path}")
 

@@ -11,10 +11,17 @@ export default function RobotDetail() {
 
   const [robot, setRobot] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Power toggle pending
   const [pendingToggle, setPendingToggle] = useState(false);
+  const ackTimerRef = useRef(null);
+
+  // Voice toggle state
+  const [voice, setVoice] = useState(1); // 1 = VITS (Nam), 2 = Piper (Nữ)
+  const [pendingVoice, setPendingVoice] = useState(false);
+  const voiceAckTimerRef = useRef(null);
 
   const connRef = useRef(null);
-  const ackTimerRef = useRef(null);
 
   // ============================
   // Load robot info
@@ -25,8 +32,14 @@ export default function RobotDetail() {
       try {
         const data = await getRobotById(id);
         if (!mounted) return;
+
+        // Suy luận power từ status
         const power = (data?.status || "").toLowerCase() === "at_station";
         setRobot({ ...data, power });
+
+        // Nếu BE có lưu voice trong profile robot (chưa có), có thể setVoice(data.voice || 1)
+        setVoice(1);
+        // eslint-disable-next-line no-console
         console.log("Robot loaded:", data);
       } catch (err) {
         console.error("Failed to load robot:", err);
@@ -40,7 +53,7 @@ export default function RobotDetail() {
   }, [id]);
 
   // ============================
-  // SignalR realtime (listen for ack)
+  // SignalR realtime (listen for ACKs)
   // ============================
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
@@ -50,11 +63,12 @@ export default function RobotDetail() {
 
     connRef.current = connection;
 
+    // ---- POWER ACK ----
     connection.on("RobotPowerStatus", (data) => {
-      console.log("SignalR Power Update:", data);
+      // Payload gợi ý: { robotCode, power: bool, status, ... }
       if (!robot || !data || data.robotCode !== robot.code) return;
 
-      // Ground truth from server (persisted already)
+      // Ground truth từ server
       setRobot((prev) => ({
         ...prev,
         power: !!data.power,
@@ -69,6 +83,25 @@ export default function RobotDetail() {
       }
     });
 
+    // ---- VOICE ACK ----
+    connection.on("VoiceStatus", (payload) => {
+      // Payload: { robotCode, voice, ok, message }
+      if (!robot) return;
+      if (payload?.robotCode && payload.robotCode !== robot.code) return;
+
+      if (voiceAckTimerRef.current) {
+        window.clearTimeout(voiceAckTimerRef.current);
+        voiceAckTimerRef.current = null;
+      }
+      setPendingVoice(false);
+
+      if (payload?.ok) {
+        setVoice(Number(payload.voice) === 2 ? 2 : 1);
+      } else {
+        alert("Đổi giọng thất bại: " + (payload?.message || "unknown"));
+      }
+    });
+
     connection
       .start()
       .then(() => console.log("SignalR connected"))
@@ -79,15 +112,19 @@ export default function RobotDetail() {
         window.clearTimeout(ackTimerRef.current);
         ackTimerRef.current = null;
       }
+      if (voiceAckTimerRef.current) {
+        window.clearTimeout(voiceAckTimerRef.current);
+        voiceAckTimerRef.current = null;
+      }
       connection.stop();
       connRef.current = null;
     };
-    // re-subscribe when robot code changes (navigate to another robot)
+    // Re-subscribe khi đổi robot code
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [robot?.code]);
 
   // ============================
-  // Toggle power (send then wait for ack)
+  // Toggle power (send then wait for ACK)
   // ============================
   const togglePower = useCallback(async () => {
     if (!robot || pendingToggle) return;
@@ -108,18 +145,56 @@ export default function RobotDetail() {
         return;
       }
 
-      // Wait for ROS2 ack via SignalR
+      // Wait for ROS2 ack via SignalR (timeout 5s)
       if (ackTimerRef.current) window.clearTimeout(ackTimerRef.current);
       ackTimerRef.current = window.setTimeout(() => {
         setPendingToggle(false);
         alert("Không nhận được phản hồi từ robot. Trạng thái không thay đổi.");
-      }, 10000);
+      }, 5000);
     } catch (err) {
       console.error("Toggle error:", err);
       setPendingToggle(false);
       alert("Lỗi gửi lệnh bật/tắt: " + (err?.message || "unknown"));
     }
   }, [robot, pendingToggle]);
+
+  // ============================
+  // Toggle voice (send then wait for ACK)
+  // ============================
+  const toggleVoice = useCallback(async () => {
+    if (!robot || !robot.power || pendingVoice) return;
+
+    const next = voice === 1 ? 2 : 1;
+    try {
+      setPendingVoice(true);
+      const res = await fetch(API_CONFIG.API_BASE1 + "/api/TTS/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voice: next,           // 1 = VITS (Nam), 2 = Piper (Nữ)
+          robotCode: robot.code, // để ROS chỉ đổi đúng robot
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setPendingVoice(false);
+        alert("Đổi giọng thất bại: " + (err?.error || res.statusText));
+        return;
+      }
+
+      // Chờ ACK VoiceStatus từ ROS qua SignalR (timeout 5s)
+      if (voiceAckTimerRef.current) window.clearTimeout(voiceAckTimerRef.current);
+      voiceAckTimerRef.current = window.setTimeout(() => {
+        setPendingVoice(false);
+        alert("Không nhận được phản hồi đổi giọng từ robot.");
+      }, 5000);
+    } catch (e) {
+      console.error("Voice toggle error:", e);
+      setPendingVoice(false);
+      alert("Lỗi gọi API đổi giọng");
+    }
+  }, [voice, robot, pendingVoice]);
 
   // ============================
   // UI helpers
@@ -141,7 +216,7 @@ export default function RobotDetail() {
     if (p < 30) return styles.progressDanger;
     if (p < 60) return styles.progressWarning;
     return styles.progressSuccess;
-    };
+  };
 
   if (loading) {
     return (
@@ -200,6 +275,7 @@ export default function RobotDetail() {
             </div>
 
             <div className={styles.robotActions}>
+              {/* Power */}
               <button
                 className={robot.power ? styles.btnPowerOff : styles.btnPowerOn}
                 onClick={togglePower}
@@ -210,6 +286,18 @@ export default function RobotDetail() {
                 {pendingToggle ? "Đang chờ robot..." : robot.power ? "Tắt robot" : "Bật robot"}
               </button>
 
+              {/* Voice toggle */}
+              <button
+                className={styles.btnTeal}
+                disabled={!robot.power || pendingVoice}
+                onClick={toggleVoice}
+                title={!robot.power ? "Chỉ dùng khi robot đang bật" : ""}
+              >
+                <i className="bi bi-megaphone me-1"></i>
+                {pendingVoice ? "Đang đổi giọng..." : `Đổi giọng (${voice === 1 ? "Nam" : "Nữ"})`}
+              </button>
+
+              {/* Control */}
               <button
                 className={styles.btnTeal}
                 disabled={!robot.power || pendingToggle}
