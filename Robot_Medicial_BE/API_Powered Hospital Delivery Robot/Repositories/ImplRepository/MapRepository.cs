@@ -94,14 +94,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         /// Cập nhật bản đồ theo ID
         /// </summary>
         public async Task<Map?> UpdateAsync(ulong id, Map map)
-        {
-            var existing = await _context.Maps.FindAsync(id);
-            if (existing == null)
-                return null;
+{
+    var existing = await _context.Maps.FirstOrDefaultAsync(m => m.Id == id);
+    if (existing == null)
+        return null;
 
-            await _context.SaveChangesAsync();
-            return existing;
-        }
+    // Nếu muốn giữ nguyên tên cũ thì bỏ dòng dưới đi.
+    existing.MapName = map.MapName;
+
+    existing.Resolution    = map.Resolution;
+    existing.OriginX       = map.OriginX;
+    existing.OriginY       = map.OriginY;
+    existing.OriginZ       = map.OriginZ;
+    existing.OccupiedThresh= map.OccupiedThresh;
+    existing.FreeThresh    = map.FreeThresh;
+    existing.Negate        = map.Negate;
+
+    // Chỉ cập nhật ảnh khi có gửi lên
+    if (map.ImageData != null && map.ImageData.Length > 0)
+    {
+        existing.ImageData = map.ImageData;
+        existing.ImageName = map.ImageName;
+    }
+
+    await _context.SaveChangesAsync();
+    return existing;
+}
+
 
         /// <summary>
         /// Xóa bản đồ theo ID
