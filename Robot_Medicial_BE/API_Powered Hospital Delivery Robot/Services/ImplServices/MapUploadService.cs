@@ -7,66 +7,119 @@ using Microsoft.AspNetCore.Http;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
-    /// <summary>
-    /// Xử lý upload bản đồ từ robot (ROS2)
-    /// </summary>
     public class MapUploadService : IMapUploadService
     {
         private readonly IMapRepository _repository;
         private readonly IMapper _mapper;
+        private readonly ILogger<MapUploadService> _logger;
 
-        public MapUploadService(IMapRepository repository, IMapper mapper)
+        public MapUploadService(IMapRepository repository, IMapper mapper, ILogger<MapUploadService> logger)
         {
             _repository = repository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         /// <summary>
-        /// Upload bản đồ mới (từ ROS2)
+        /// Upload từ ROS2 (multipart/file). Trùng tên => update.
         /// </summary>
         public async Task<MapResponseDto> UploadAsync(MapUploadDto dto, IFormFile? imageFile = null)
-{
-    // Ánh xạ DTO -> Entity (dùng cho cả create/update)
-    var incoming = _mapper.Map<Map>(dto);
+        {
+            var incoming = _mapper.Map<Map>(dto);
 
-    // Validate ngưỡng
-    if (dto.OccupiedThresh.HasValue && (dto.OccupiedThresh < 0 || dto.OccupiedThresh > 1))
-        throw new ArgumentException("Ngưỡng chiếm lĩnh phải nằm trong khoảng 0 và 1");
+            if (dto.OccupiedThresh is < 0 or > 1)
+                throw new ArgumentException("Ngưỡng chiếm lĩnh phải nằm trong khoảng 0 và 1");
+            if (dto.FreeThresh is < 0 or > 1)
+                throw new ArgumentException("Ngưỡng free phải nằm trong khoảng 0 và 1");
 
-    if (dto.FreeThresh.HasValue && (dto.FreeThresh < 0 || dto.FreeThresh > 1))
-        throw new ArgumentException("Ngưỡng free phải nằm trong khoảng 0 và 1");
+            if (imageFile != null && imageFile.Length > 0)
+            {
+                if (imageFile.Length > 10 * 1024 * 1024)
+                    throw new ArgumentException("File ảnh quá lớn (tối đa 10MB)");
 
-    // Nếu có ảnh thì đọc bytes để sẵn trong 'incoming'
-    if (imageFile != null && imageFile.Length > 0)
-    {
-        if (imageFile.Length > 10 * 1024 * 1024)
-            throw new ArgumentException("File ảnh quá lớn (tối đa 10MB)");
+                using var ms = new MemoryStream();
+                await imageFile.CopyToAsync(ms);
+                incoming.ImageData = ms.ToArray();
+                incoming.ImageName = imageFile.FileName;
+                _logger.LogInformation("[MapUploadService] file upload: {Name}, {Len} bytes", incoming.ImageName, incoming.ImageData.Length);
+            }
 
-        using var ms = new MemoryStream();
-        await imageFile.CopyToAsync(ms);
-        incoming.ImageData = ms.ToArray();
-        incoming.ImageName = imageFile.FileName;
+            var existing = await _repository.GetByNameAsync(dto.MapName);
+            if (existing != null)
+            {
+                incoming.Id        = existing.Id;
+                incoming.CreatedAt = existing.CreatedAt;
+
+                var updated = await _repository.UpdateAsync(existing.Id, incoming);
+                return _mapper.Map<MapResponseDto>(updated!);
+            }
+            else
+            {
+                incoming.CreatedAt = DateTime.UtcNow;
+                var created = await _repository.UploadAsync(incoming);
+                return _mapper.Map<MapResponseDto>(created);
+            }
+        }
+
+        /// <summary>
+        /// Upload JSON base64 trực tiếp. Trùng tên => update toàn bộ; không gửi ảnh => giữ ảnh cũ.
+        /// </summary>
+        public async Task<MapResponseDto> UploadJsonAsync(MapUploadJsonDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.MapName))
+                throw new ArgumentException("MapName không được trống");
+
+            // Map tất cả field metadata
+            var incoming = new Map
+            {
+                MapName        = dto.MapName,
+                Mode           = dto.Mode,
+                Resolution     = dto.Resolution,
+                OriginX        = dto.OriginX,
+                OriginY        = dto.OriginY,
+                OriginZ        = dto.OriginZ,
+                OccupiedThresh = dto.OccupiedThresh,
+                FreeThresh     = dto.FreeThresh,
+                Negate         = dto.Negate,
+                ImageName      = dto.ImageName
+            };
+
+            // Decode ảnh nếu có
+            if (!string.IsNullOrWhiteSpace(dto.ImageBase64))
+            {
+                try
+                {
+                    incoming.ImageData = Convert.FromBase64String(dto.ImageBase64);
+                    if (string.IsNullOrWhiteSpace(incoming.ImageName))
+                        incoming.ImageName = "map.bin";
+                    _logger.LogInformation("[MapUploadService] json upload: {Name}, {Len} bytes", incoming.ImageName, incoming.ImageData?.Length ?? 0);
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException("ImageBase64 không hợp lệ");
+                }
+            }
+
+            var existing = await _repository.GetByNameAsync(dto.MapName);
+            if (existing != null)
+            {
+                incoming.Id        = existing.Id;
+                incoming.CreatedAt = existing.CreatedAt;
+
+                var updated = await _repository.UpdateAsync(existing.Id, incoming);
+
+                // Reload để đảm bảo trả về giá trị mới nhất
+                var reloaded = await _repository.GetByIdAsync(updated!.Id);
+                return _mapper.Map<MapResponseDto>(reloaded!);
+            }
+            else
+            {
+                incoming.CreatedAt = DateTime.UtcNow;
+                var created = await _repository.UploadAsync(incoming);
+
+                var reloaded = await _repository.GetByIdAsync(created.Id);
+                return _mapper.Map<MapResponseDto>(reloaded!);
+            }
+        }
     }
-
-    // Kiểm tra trùng tên → UPDATE; không trùng → CREATE
-    var existing = await _repository.GetByNameAsync(dto.MapName);
-    if (existing != null)
-    {
-        // Giữ nguyên Id/CreatedAt của bản đồ cũ
-        incoming.Id        = existing.Id;
-        incoming.CreatedAt = existing.CreatedAt;
-
-        // Gọi Update để ghi đè các field (ảnh chỉ thay khi có gửi lên)
-        var updated = await _repository.UpdateAsync(existing.Id, incoming);
-        return _mapper.Map<MapResponseDto>(updated!);
-    }
-    else
-    {
-        // CREATE như cũ
-        incoming.CreatedAt = DateTime.Now;
-        var created = await _repository.UploadAsync(incoming);
-        return _mapper.Map<MapResponseDto>(created);
-    }
-}
- }
 }

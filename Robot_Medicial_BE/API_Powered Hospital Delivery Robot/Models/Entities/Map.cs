@@ -49,7 +49,7 @@ public partial class Map
     public string? Mode { get; set; }
 
     [Column("negate")]
-    public sbyte? Negate { get; set; }
+    public bool? Negate { get; set; }
 
     [Column("occupied_thresh")]
     public float? OccupiedThresh { get; set; }
