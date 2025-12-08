@@ -4,6 +4,7 @@ import subprocess
 import asyncio
 import json
 import threading
+import time
 import rclpy
 from rclpy.node import Node
 from signalrcore.hub_connection_builder import HubConnectionBuilder
@@ -16,6 +17,9 @@ from get_api_url import get_api
 BACKEND_URL = get_api()
 HUB_URL = f"{BACKEND_URL}/hubs/robot"
 ROBOT_NAME = "RobotA"
+
+# ⚠️ CHỈ NHẬN/GỬI CHO ROBOT NÀY
+ROBOT_CODE = "RBT001"   # ← đổi nếu cần
 
 SERVICES = [
     "robot_driver.service",
@@ -50,8 +54,9 @@ def control_services(power_on: bool):
 
 
 def report_power_state(power_on: bool):
+    """Gửi kết quả thực thi lên backend kèm robotCode."""
     try:
-        data = {"power": power_on, "source": ROBOT_NAME}
+        data = {"power": power_on, "source": ROBOT_NAME, "robotCode": ROBOT_CODE}  # <-- robotCode
         resp = requests.post(
             f"{BACKEND_URL}/api/RobotPower/report",
             json=data, timeout=5
@@ -76,11 +81,10 @@ class RobotPowerListener(Node):
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
         self.hub_connection = None
+        self.heartbeat_thread = None
+        self.stop_heartbeat = threading.Event()
 
-        asyncio.run_coroutine_threadsafe(
-            self.signalr_connect_loop(),
-            self.loop
-        )
+        asyncio.run_coroutine_threadsafe(self.signalr_connect_loop(), self.loop)
 
     # ------------------------------------------------------------
     # 🔁 AUTO RECONNECT LOOP
@@ -91,7 +95,6 @@ class RobotPowerListener(Node):
                 await self.start_signalr_once()
                 print("🔄 Waiting for disconnect event...")
                 await self.wait_for_disconnect()
-
             except Exception as e:
                 print(f"⚠️ SignalR loop error: {e}")
 
@@ -99,17 +102,13 @@ class RobotPowerListener(Node):
             await asyncio.sleep(5)
 
     # ------------------------------------------------------------
-    # 🛑 WAIT UNTIL HUB DISCONNECTS
-    # ------------------------------------------------------------
     async def wait_for_disconnect(self):
         while True:
-            if (not self.hub_connection):
+            if not self.hub_connection:
                 print("❌ Hub disconnected!")
                 return
             await asyncio.sleep(1)
 
-    # ------------------------------------------------------------
-    # 🔌 CONNECT ONE TIME
     # ------------------------------------------------------------
     async def start_signalr_once(self):
         print(f"🔌 Connecting to SignalR Hub at {HUB_URL}...")
@@ -141,11 +140,14 @@ class RobotPowerListener(Node):
                 print("\n⚡ Received Robot Power Command:\n",
                       json.dumps(data, indent=2, ensure_ascii=False))
 
-                power_on = (data.get("state", "") == "on")
+                # ❗ Chỉ xử lý nếu đúng robotCode
+                if data.get("robotCode") != ROBOT_CODE:
+                    print(f"🚫 Ignored command for robotCode={data.get('robotCode')} (expected {ROBOT_CODE})")
+                    return
 
+                power_on = (data.get("state", "") == "on")
                 control_services(power_on)
                 report_power_state(power_on)
-
                 print(f"✅ Robot power changed → {'🟢 ON' if power_on else '🔴 OFF'}")
             except Exception as e:
                 print(f"❌ Error processing command: {e}")
@@ -161,15 +163,42 @@ class RobotPowerListener(Node):
         self.hub_connection.on("ReceiveRobotPower", on_receive_robot_power)
         self.hub_connection.on("ReceiveRobotCommand", on_receive_robot_command)
 
-        self.hub_connection.on_open(lambda: print("✅ Connected to Hub"))
-        self.hub_connection.on_close(lambda: print("❌ Connection closed"))
+        def on_open():
+            print("✅ Connected to Hub")
+            # 🔐 Đăng ký robotCode với server (Hub.RegisterRobot)
+            try:
+                self.hub_connection.send("RegisterRobot", [ROBOT_CODE])
+                print(f"📝 Registered robotCode={ROBOT_CODE}")
+            except Exception as e:
+                print(f"⚠️ RegisterRobot error: {e}")
+
+            # (Tuỳ chọn) start heartbeat background
+            if self.heartbeat_thread is None or not self.heartbeat_thread.is_alive():
+                self.stop_heartbeat.clear()
+                self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
+                self.heartbeat_thread.start()
+
+        def on_close():
+            print("❌ Connection closed")
+            self.stop_heartbeat.set()
+
+        self.hub_connection.on_open(on_open)
+        self.hub_connection.on_close(on_close)
         self.hub_connection.on_error(lambda err: print(f"⚠️ Hub error: {err}"))
 
         self.hub_connection.start()
-
-  
-
         print("🎉 Hub started successfully")
+
+    # ------------------------------------------------------------
+    # ❤️ Heartbeat loop (gọi Hub.Heartbeat(robotCode) mỗi 10s)
+    # ------------------------------------------------------------
+    def _heartbeat_loop(self):
+        while not self.stop_heartbeat.is_set():
+            try:
+                self.hub_connection.send("Heartbeat", [ROBOT_CODE])
+            except Exception as e:
+                print(f"⚠️ Heartbeat send error: {e}")
+            self.stop_heartbeat.wait(10.0)
 
 # ============================================================
 # 🚀 MAIN

@@ -19,51 +19,36 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     {
         private readonly IMapUploadService _uploadService;
         private readonly IMapService _mapService;
+        private readonly ILogger<MapsUploadController> _logger;
+
 
         public MapsUploadController(
             IMapUploadService uploadService, 
-            IMapService mapService)
+            IMapService mapService, ILogger<MapsUploadController> logger)
         {
             _uploadService = uploadService;
             _mapService = mapService;
+             _logger = logger;
         }
 
-        /// <summary>
-        /// ROS2 gửi bản đồ (yaml + pgm base64)
+         /// <summary>
+        /// ROS2 gửi bản đồ (yaml + pgm/png base64). Trùng tên -> UPDATE; ngược lại -> CREATE.
         /// </summary>
         [HttpPost("json")]
-        public async Task<ActionResult<MapResponseDto>> UploadJson([FromBody] MapUploadJsonDto mapJsonDto)
+        public async Task<ActionResult<MapResponseDto>> UploadJson([FromBody] MapUploadJsonDto dto)
         {
             try
             {
-                IFormFile? imageFile = null;
-                if (!string.IsNullOrEmpty(mapJsonDto.ImageBase64))
-                {
-                    var bytes = Convert.FromBase64String(mapJsonDto.ImageBase64);
-                    imageFile = new FormFile(new MemoryStream(bytes), 0, bytes.Length, "image", mapJsonDto.ImageName ?? "map.png");
-                }
-
-                var dto = new MapUploadDto
-                {
-                    MapName = mapJsonDto.MapName,
-                    Resolution = mapJsonDto.Resolution,
-                    OriginX = mapJsonDto.OriginX,
-                    OriginY = mapJsonDto.OriginY,
-                    OriginZ = mapJsonDto.OriginZ,
-                    OccupiedThresh = mapJsonDto.OccupiedThresh,
-                    FreeThresh = mapJsonDto.FreeThresh,
-                    Negate = mapJsonDto.Negate
-                };
-
-                var created = await _uploadService.UploadAsync(dto, imageFile);
-                return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+                var result = await _uploadService.UploadJsonAsync(dto);
+                // Có thể phân biệt create/update nếu muốn (200 vs 201). Ở đây trả 201 cho đơn giản.
+                return StatusCode(201, result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "UploadJson failed for {MapName}", dto?.MapName);
                 return StatusCode(500, new { message = "Lỗi khi nhận map từ robot.", error = ex.Message });
             }
         }
-
         /// <summary>
         /// Lấy thông tin bản đồ theo ID
         /// </summary>
