@@ -14,14 +14,16 @@ export default function RobotDetail() {
 
   // Power toggle pending
   const [pendingToggle, setPendingToggle] = useState(false);
-  const ackTimerRef = useRef(null);
+  const powerAckTimerRef = useRef(null);
 
   // Voice toggle state
   const [voice, setVoice] = useState(1); // 1 = VITS (Nam), 2 = Piper (Nữ)
   const [pendingVoice, setPendingVoice] = useState(false);
   const voiceAckTimerRef = useRef(null);
 
-  const connRef = useRef(null);
+  // 2 connections
+  const robotConnRef = useRef(null);
+  const ttsConnRef = useRef(null);
 
   // ============================
   // Load robot info
@@ -37,7 +39,7 @@ export default function RobotDetail() {
         const power = (data?.status || "").toLowerCase() === "at_station";
         setRobot({ ...data, power });
 
-        // Nếu BE có lưu voice trong profile robot (chưa có), có thể setVoice(data.voice || 1)
+        // Nếu BE có lưu voice trong robot profile, có thể setVoice(data.voice || 1)
         setVoice(1);
         // eslint-disable-next-line no-console
         console.log("Robot loaded:", data);
@@ -53,18 +55,18 @@ export default function RobotDetail() {
   }, [id]);
 
   // ============================
-  // SignalR realtime (listen for ACKs)
+  // SignalR realtime (2 hubs)
   // ============================
   useEffect(() => {
-    const connection = new signalR.HubConnectionBuilder()
+    // hub 1: robot (power/status)
+    const robotConnection = new signalR.HubConnectionBuilder()
       .withUrl(API_CONFIG.API_BASE1 + "/hubs/robot")
       .withAutomaticReconnect()
       .build();
 
-    connRef.current = connection;
+    robotConnRef.current = robotConnection;
 
-    // ---- POWER ACK ----
-    connection.on("RobotPowerStatus", (data) => {
+    robotConnection.on("RobotPowerStatus", (data) => {
       // Payload gợi ý: { robotCode, power: bool, status, ... }
       if (!robot || !data || data.robotCode !== robot.code) return;
 
@@ -77,14 +79,21 @@ export default function RobotDetail() {
       }));
 
       setPendingToggle(false);
-      if (ackTimerRef.current) {
-        window.clearTimeout(ackTimerRef.current);
-        ackTimerRef.current = null;
+      if (powerAckTimerRef.current) {
+        window.clearTimeout(powerAckTimerRef.current);
+        powerAckTimerRef.current = null;
       }
     });
 
-    // ---- VOICE ACK ----
-    connection.on("VoiceStatus", (payload) => {
+    // hub 2: tts (voice change)
+    const ttsConnection = new signalR.HubConnectionBuilder()
+      .withUrl(API_CONFIG.API_BASE1 + "/hubs/ttsHub")
+      .withAutomaticReconnect()
+      .build();
+
+    ttsConnRef.current = ttsConnection;
+
+    ttsConnection.on("VoiceStatus", (payload) => {
       // Payload: { robotCode, voice, ok, message }
       if (!robot) return;
       if (payload?.robotCode && payload.robotCode !== robot.code) return;
@@ -102,22 +111,23 @@ export default function RobotDetail() {
       }
     });
 
-    connection
-      .start()
-      .then(() => console.log("SignalR connected"))
+    Promise.all([robotConnection.start(), ttsConnection.start()])
+      .then(() => console.log("SignalR connected (robot + tts)"))
       .catch((err) => console.error("SignalR error:", err));
 
     return () => {
-      if (ackTimerRef.current) {
-        window.clearTimeout(ackTimerRef.current);
-        ackTimerRef.current = null;
+      if (powerAckTimerRef.current) {
+        window.clearTimeout(powerAckTimerRef.current);
+        powerAckTimerRef.current = null;
       }
       if (voiceAckTimerRef.current) {
         window.clearTimeout(voiceAckTimerRef.current);
         voiceAckTimerRef.current = null;
       }
-      connection.stop();
-      connRef.current = null;
+      robotConnection.stop();
+      ttsConnection.stop();
+      robotConnRef.current = null;
+      ttsConnRef.current = null;
     };
     // Re-subscribe khi đổi robot code
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,9 +155,9 @@ export default function RobotDetail() {
         return;
       }
 
-      // Wait for ROS2 ack via SignalR (timeout 5s)
-      if (ackTimerRef.current) window.clearTimeout(ackTimerRef.current);
-      ackTimerRef.current = window.setTimeout(() => {
+      // Chờ ROS2 ack qua SignalR (timeout 5s)
+      if (powerAckTimerRef.current) window.clearTimeout(powerAckTimerRef.current);
+      powerAckTimerRef.current = window.setTimeout(() => {
         setPendingToggle(false);
         alert("Không nhận được phản hồi từ robot. Trạng thái không thay đổi.");
       }, 5000);
@@ -183,12 +193,12 @@ export default function RobotDetail() {
         return;
       }
 
-      // Chờ ACK VoiceStatus từ ROS qua SignalR (timeout 5s)
+      // Chờ ACK VoiceStatus từ ROS qua TTS Hub (timeout 20s)
       if (voiceAckTimerRef.current) window.clearTimeout(voiceAckTimerRef.current);
       voiceAckTimerRef.current = window.setTimeout(() => {
         setPendingVoice(false);
         alert("Không nhận được phản hồi đổi giọng từ robot.");
-      }, 5000);
+      }, 20000);
     } catch (e) {
       console.error("Voice toggle error:", e);
       setPendingVoice(false);
@@ -286,7 +296,7 @@ export default function RobotDetail() {
                 {pendingToggle ? "Đang chờ robot..." : robot.power ? "Tắt robot" : "Bật robot"}
               </button>
 
-              {/* Voice toggle */}
+              {/* Voice toggle (chỉ dùng khi robot bật) */}
               <button
                 className={styles.btnTeal}
                 disabled={!robot.power || pendingVoice}
