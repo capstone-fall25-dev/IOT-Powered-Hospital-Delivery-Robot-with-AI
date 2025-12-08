@@ -30,8 +30,8 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   const [remoteMode, setRemoteMode] = useState(false);
 
   const [compartments, setCompartments] = useState([
-    { id: 21, label: "Hộp 1", state: "closed" },
-    { id: 22, label: "Hộp 2", state: "closed" },
+    { id: 64, label: "Hộp 1", state: "closed" },
+    { id: 65, label: "Hộp 2", state: "closed" },
   ]);
 
   const [destinations, setDestinations] = useState([]);
