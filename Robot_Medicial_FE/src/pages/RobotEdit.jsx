@@ -93,7 +93,7 @@ export default function RobotEdit() {
         e.preventDefault();
         if (!form.name.trim()) return showToast("error", "Tên robot không được để trống!");
         if (form.compartments.some(c => !c.categoryId)) return showToast("error", "Vui lòng chọn loại ngăn cho tất cả ô!");
-
+        if (form.name.trim().length > 255) return showToast("error", "Tên robot không được vượt quá 255 kí tự!");
         setSaving(true);
 
         const payload = {
