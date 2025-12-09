@@ -68,20 +68,20 @@ def upload_map_to_api(yaml_path, pgm_path):
 # ==========================================================
 def restart_stm32():
     try:
-        print("🔄 Restarting stm32.service...")
+        print("🔄 Restarting robot_driver.service (STM32)...")
         subprocess.run(["bash", "-c", "sudo systemctl restart robot_driver.service"], check=False)
         time.sleep(2)
     except Exception as e:
         print(f"⚠️ Error restarting stm32: {e}")
 
+
 def stop_slam():
     try:
-        print("🔄 Stop slam_launch.service...")
+        print("🔄 Stopping slam_launch.service...")
         subprocess.run(["bash", "-c", "sudo systemctl stop slam_launch.service"], check=False)
         time.sleep(2)
     except Exception as e:
-        print(f"⚠️ Error restarting stm32: {e}")
-
+        print(f"⚠️ Error stopping slam: {e}")
 
 
 # ==========================================================
@@ -90,6 +90,7 @@ def stop_slam():
 def restart_navigation(map_name):
     try:
         print(f"🚀 Restarting navigation with map '{map_name}'...")
+        # nav-restart là script/binary do bạn định nghĩa sẵn
         subprocess.run(["bash", "-c", f"nav-restart {map_name}"], check=False)
     except Exception as e:
         print(f"⚠️ Error restarting navigation: {e}")
@@ -133,14 +134,24 @@ class MapSignalSubscriber(Node):
             def on_receive_robot_command(args):
                 try:
                     data = args[0] if args else {}
-                    mode = data.get("mode", "").lower()
-                    map_name = data.get("map_name", "map_default")
+
+                    # Hỗ trợ nhiều kiểu key từ backend
+                    mode_raw = data.get("mode") or data.get("Mode") or ""
+                    mode = str(mode_raw).lower()
+
+                    map_name = (
+                        data.get("map_name")
+                        or data.get("mapName")
+                        or data.get("MapName")
+                        or "map_default"
+                    )
 
                     print(f"\n🤖 Received Robot Command → mode={mode}, map={map_name}")
-                    restart_stm32()
+
                     # ========== MAPPING MODE ==========
                     if mode == "mapping":
                         print("🧭 Starting SLAM (Mapping mode)")
+                        # Tùy nhu cầu, bạn có thể restart stm32 trước khi chạy SLAM
                         restart_stm32()
                         subprocess.run(
                             [
@@ -158,45 +169,54 @@ class MapSignalSubscriber(Node):
                         yaml_path = os.path.join(MAP_FOLDER, f"{map_name}.yaml")
                         pgm_path = os.path.join(MAP_FOLDER, f"{map_name}.pgm")
 
+                        # ❗ Không restart_stm32 hoặc stop SLAM trước khi save map
+                        # vì sẽ làm mất publisher /map
+
                         # Xóa map cũ nếu tồn tại
                         for f in [yaml_path, pgm_path]:
                             if os.path.exists(f):
+                                print(f"🧹 Removing old map file: {f}")
                                 os.remove(f)
 
-
-                        # Gọi map_saver
-                        cmd = f"ros2 run nav2_map_server map_saver_cli -f {MAP_FOLDER}/{map_name}"
+                        # Gọi map_saver với topic + timeout rõ ràng
+                        cmd = (
+                            "ros2 run nav2_map_server map_saver_cli "
+                            f"-f {MAP_FOLDER}/{map_name} "
+                            "--ros-args -p topic:=/map -p save_map_timeout:=10.0"
+                        )
                         print(f"🧭 Running: {cmd}")
                         subprocess.run(["bash", "-c", cmd], check=False)
 
                         # Chờ file xuất hiện
-                        timeout = 15
+                        timeout = 30
                         while timeout > 0 and not (
                             os.path.exists(yaml_path) and os.path.exists(pgm_path)
                         ):
                             time.sleep(1)
                             timeout -= 1
 
-                        if not os.path.exists(yaml_path) or not os.path.exists(pgm_path):
+                        if not (os.path.exists(yaml_path) and os.path.exists(pgm_path)):
                             print("⚠️ Map save failed or timed out.")
                             return
 
                         print("✅ Map saved successfully. Uploading to API...")
                         upload_map_to_api(yaml_path, pgm_path)
 
-                        # Stop SLAM và khởi động lại navigation
+                        # Sau khi save & upload xong, tuỳ luồng công việc mà:
+                        # 1. Dừng SLAM
+                        # 2. Khởi động lại navigation với map vừa lưu
                         print("🛑 Stopping SLAM and restarting navigation...")
                         subprocess.run(
                             ["bash", "-c", "sudo systemctl stop slam_launch.service"],
                             check=False,
                         )
-                        # restart_stm32()
-                        # restart_navigation(map_name)
-                        print(f"🗺️ Map '{map_name}' loaded successfully!")
+                        restart_navigation(map_name)
+                        print(f"🗺️ Map '{map_name}' loaded successfully in navigation!")
 
                     # ========== RUN MAP MODE ==========
                     elif mode == "run_map":
                         print(f"🗺️ Running navigation on map '{map_name}'...")
+                        # Tùy nhu cầu: có thể restart stm32 trước khi chạy navigation
                         restart_stm32()
                         stop_slam()
                         restart_navigation(map_name)

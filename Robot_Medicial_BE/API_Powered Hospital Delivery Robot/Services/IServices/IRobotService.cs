@@ -30,5 +30,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Lấy danh sách robot theo bản đồ
         Task<IEnumerable<RobotResponseDto>> GetByMapAsync(ulong mapId);
+
+          // Gửi lệnh bật/tắt xuống ROS2 qua SignalR (không ghi DB)
+        Task<RobotPowerResponseDto> TogglePowerAsync(ToggleRequestDto req);
+
+        // ROS2 báo cáo kết quả thực thi (ghi DB + broadcast ack)
+        Task<RobotPowerResponseDto> ReportPowerAsync(PowerReportDto report);
     }
 }

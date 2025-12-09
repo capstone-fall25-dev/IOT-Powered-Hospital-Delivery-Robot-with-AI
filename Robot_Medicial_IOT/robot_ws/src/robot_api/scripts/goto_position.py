@@ -6,6 +6,9 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from std_msgs.msg import String
 import time, json, os, sys, signal, requests, logging, asyncio, threading
 from signalrcore.hub_connection_builder import HubConnectionBuilder
+from concurrent.futures import ThreadPoolExecutor
+from rclpy.duration import Duration
+
 
 # ============================================================
 # ⚙️ Setup logging
@@ -16,6 +19,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger("RouteNavigator")
+
 
 # ============================================================
 # 🌍 BASE CONFIG
@@ -37,26 +41,46 @@ def signal_handler(signum, frame):
 # ============================================================
 class APIConfig:
     def __init__(self):
-        # API cập nhật trạng thái robot
         self.send_status_url = f"{BASE_URL}/api/robots/update-status"
-        # ⭐ API text-only nhận % progress
         self.send_progress_url = f"{BASE_URL}/api/RobotMode/navigation-progress"
-
-        # Code robot (lấy từ env hoặc default)
-        self.robot_code = os.environ.get('ROBOT_CODE', 'RB-01')
+        self.robot_code = os.environ.get('ROBOT_CODE', 'RBT001')
         self.headers = {'Content-Type': 'application/json'}
-        self.max_retries = 3
-        self.retry_delay = 2
+        
+        # ⭐ Throttling config
+        self.progress_interval = 2.0  # Gửi mỗi 2 giây
+        self.progress_threshold = 3.0  # Hoặc khi thay đổi >= 3%
+        self.status_retry_max = 3
+        self.status_retry_delay = 2
 
 
 class APIHandler:
-    """🛰️ Handle REST API communication"""
+    """🛰️ Handle REST API communication with throttling & async"""
 
     def __init__(self, config: APIConfig):
         self.config = config
+        
+        # ⭐ Throttling state
+        self.last_progress_time = 0
+        self.last_progress_value = -1
+        
+        # ⭐ Thread pool cho async calls
+        self.executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="API")
+        self._shutdown = False
 
+    def shutdown(self):
+        """Cleanup resources"""
+        self._shutdown = True
+        self.executor.shutdown(wait=True, cancel_futures=True)
+        logger.info("🧹 APIHandler executor closed")
+
+    # ============================================================
+    # STATUS UPDATE (synchronous - quan trọng)
+    # ============================================================
     def send_status_to_api(self, status: str):
-        """Gửi trạng thái robot lên API (không bao giờ crash)"""
+        """Gửi trạng thái robot lên API (synchronous với retry)"""
+        if self._shutdown:
+            return
+            
         status_mapping = {
             'NAVIGATION_STARTED': 'transporting',
             'IN_PROGRESS': 'transporting',
@@ -73,57 +97,97 @@ class APIHandler:
         api_status = status_mapping.get(status, 'at_station')
         payload = {"code": self.config.robot_code, "status": api_status}
 
-        try:
-            res = requests.post(
-                self.config.send_status_url,
-                json=payload,
-                headers=self.config.headers,
-                timeout=5
-            )
-
-            if res.status_code != 200:
-                logger.warning(
-                    f"⚠️ API rejected status ({res.status_code}): {res.text}"
+        # ⭐ Retry logic cho status (quan trọng)
+        for attempt in range(1, self.config.status_retry_max + 1):
+            try:
+                res = requests.post(
+                    self.config.send_status_url,
+                    json=payload,
+                    headers=self.config.headers,
+                    timeout=5
                 )
-                return
 
-            logger.info(f"✅ Status sent → {api_status}")
+                if res.status_code == 200:
+                    logger.info(f"✅ Status sent → {api_status}")
+                    return
+                else:
+                    logger.warning(
+                        f"⚠️ API rejected status ({res.status_code}): {res.text}"
+                    )
+                    
+            except Exception as e:
+                if attempt < self.config.status_retry_max:
+                    logger.warning(
+                        f"⚠️ Status send failed (attempt {attempt}/{self.config.status_retry_max}), retrying..."
+                    )
+                    time.sleep(self.config.status_retry_delay)
+                else:
+                    logger.error(f"❌ Status send failed after {attempt} attempts: {e}")
 
-        except Exception as e:
-            logger.warning(f"⚠️ Cannot send status now → {e}")
-            time.sleep(1)
-
-    # ⭐ NEW: gửi % progress dạng text-only
+    # ============================================================
+    # PROGRESS UPDATE (async - không quan trọng bằng)
+    # ============================================================
     def send_progress_to_api(self, progress: float, point_name: str = None):
         """
-        Gửi % progress dạng text đơn giản.
-        Ví dụ text: "RB-01|37.5|Phòng 102"
+        ⭐ Gửi % progress async với throttling
+        - Chỉ gửi mỗi X giây HOẶC khi thay đổi đáng kể
+        - Không block navigation loop
         """
+        if self._shutdown:
+            return
+            
+        current_time = time.time()
+        
+        # ⭐ THROTTLING: Kiểm tra thời gian và threshold thay đổi
+        time_elapsed = current_time - self.last_progress_time
+        progress_change = abs(progress - self.last_progress_value)
+        
+        if (time_elapsed < self.config.progress_interval and 
+            progress_change < self.config.progress_threshold):
+            return  # Bỏ qua request này
+        
+        # ⭐ Gửi async qua thread pool
+        self.executor.submit(
+            self._send_progress_internal, 
+            progress, 
+            point_name,
+            current_time
+        )
+
+    def _send_progress_internal(self, progress: float, point_name: str, timestamp: float):
+        """Internal method để gửi progress (chạy trong thread pool)"""
+        if self._shutdown:
+            return
+            
         text = f"{self.config.robot_code}|{progress:.1f}"
         if point_name:
             text += f"|{point_name}"
 
         payload = {"text": text}
 
-        try:
-            res = requests.post(
-                self.config.send_progress_url,
-                json=payload,
-                headers=self.config.headers,
-                timeout=5
-            )
-
-            if res.status_code != 200:
-                logger.warning(
-                    f"⚠️ API rejected progress ({res.status_code}): {res.text}"
+        # ⭐ Light retry (chỉ 2 lần, timeout ngắn)
+        for attempt in range(2):
+            try:
+                res = requests.post(
+                    self.config.send_progress_url,
+                    json=payload,
+                    headers=self.config.headers,
+                    timeout=3  # Timeout ngắn hơn
                 )
-                return
 
-            logger.info(f"📡 Progress text sent → {text}")
-
-        except Exception as e:
-            logger.warning(f"⚠️ Cannot send progress now → {e}")
-            time.sleep(1)
+                if res.status_code == 200:
+                    # ⭐ Update throttling state
+                    self.last_progress_time = timestamp
+                    self.last_progress_value = progress
+                    
+                    logger.info(f"📡 Progress: {progress:.1f}% {f'→ {point_name}' if point_name else ''}")
+                    return
+                    
+            except Exception as e:
+                if attempt == 0:
+                    time.sleep(0.5)  # Retry sau 0.5s
+                else:
+                    logger.debug(f"Progress update skipped: {e}")
 
 
 # ============================================================
@@ -132,224 +196,197 @@ class APIHandler:
 class TableNavigator(Node):
     def __init__(self, api_handler: APIHandler = None):
         super().__init__('table_navigator')
-        self.api_handler = api_handler
-
-        # Nav2 commander
         self.navigator = BasicNavigator()
-        self.navigator.initial_pose_received = True
-
-        # Publisher trạng thái điều hướng
-        self.status_publisher = self.create_publisher(
-            String, '/robot_navigation_status', 10
-        )
-        # ⭐ Publisher % hoàn thành
-        self.progress_publisher = self.create_publisher(
-            String, '/robot_navigation_progress', 10
-        )
-
+        self.api_handler = api_handler
+        
+        # ⭐ Navigation timeout config
+        self.navigation_timeout = 600.0  # 10 phút
+        
         try:
             self.navigator.waitUntilNav2Active()
             self.get_logger().info("✅ Nav2 active and ready")
         except Exception as e:
             self.get_logger().warn(f"⚠️ Nav2 not fully active: {e}")
 
-    # =========================
-    # TẠO POSE
-    # =========================
-    def create_pose(self, x, y):
-        pose = PoseStamped()
-        pose.header.frame_id = 'map'
-        pose.header.stamp = self.get_clock().now().to_msg()
-        pose.pose.position.x = x
-        pose.pose.position.y = y
-        pose.pose.orientation.w = 1.0
-        return pose
+    def wait_for_nav2_ready(self, max_retries=15, timeout_per_try=2.0):
+        """
+        ⭐ Chờ Nav2 sẵn sàng với retry logic
+        """
+        self.get_logger().info("⏳ Checking if Nav2 is ready...")
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                self.navigator.waitUntilNav2Active(timeout=timeout_per_try)
+                self.get_logger().info("✅ Nav2 ready for navigation!")
+                return True
+                
+            except Exception as e:
+                self.get_logger().warn(
+                    f"⏳ Nav2 not ready yet... (attempt {attempt}/{max_retries})"
+                )
+                time.sleep(1)
+        
+        self.get_logger().error("❌ Nav2 failed to become ready!")
+        return False
 
-    # =========================
-    # PUBLISH STATUS
-    # =========================
-    def publish_navigation_status(self, status, table_name=None):
-        msg = String()
-        msg.data = f"{status}|table:{table_name}" if table_name else status
-        self.status_publisher.publish(msg)
-
-        if self.api_handler:
-            # Thread an toàn – không crash chương trình
-            threading.Thread(
-                target=lambda: self.safe_send(status),
-                daemon=True
-            ).start()
-
-    def safe_send(self, status):
+    def parse_destination_route(self, data):
+        """Parse route data từ SignalR"""
+        waypoints = []
+        names = []
+        
         try:
-            self.api_handler.send_status_to_api(status)
+            points = data.get("destinationCoordinates", [])
+            
+            for idx, point in enumerate(points):
+                x = point.get("x")
+                y = point.get("y")
+                name = point.get("name", f"Point_{idx+1}")
+                
+                if x is None or y is None:
+                    continue
+                
+                pose = PoseStamped()
+                pose.header.frame_id = 'map'
+                pose.header.stamp = self.navigator.get_clock().now().to_msg()
+                pose.pose.position.x = float(x)
+                pose.pose.position.y = float(y)
+                pose.pose.position.z = 0.0
+                pose.pose.orientation.w = 1.0
+                
+                waypoints.append(pose)
+                names.append(name)
+            
+            return waypoints, names
+            
         except Exception as e:
-            logger.warning(f"⚠️ Safe send error: {e}")
+            self.get_logger().error(f"❌ Parse error: {e}")
+            return [], []
 
-    # =========================
-    # PUBLISH PROGRESS (%)
-    # =========================
-    def publish_progress(self, percent: float, current_name: str = None):
+    # ============================================================
+    # ⭐ MAIN NAVIGATION METHOD (với progress tracking)
+    # ============================================================
+    def navigate_to_tables(self, pos_array):
         """
-        percent: 0..100 (float)
-        current_name: tên điểm hiện tại (nếu có)
+        ⭐ Navigate với real-time progress tracking
         """
-        # 1) Publish lên ROS topic
-        msg = String()
-        if current_name:
-            msg.data = f"{percent:.1f}|point:{current_name}"
-        else:
-            msg.data = f"{percent:.1f}"
-        self.progress_publisher.publish(msg)
-
-        # 2) Gửi text lên API (nếu có handler)
-        if self.api_handler:
-            threading.Thread(
-                target=lambda: self.safe_send_progress(percent, current_name),
-                daemon=True
-            ).start()
-
-        # 3) Log
-        self.get_logger().info(
-            f"📊 Progress: {percent:.1f}% (at {current_name})"
-        )
-
-    def safe_send_progress(self, percent: float, point_name: str = None):
-        try:
-            self.api_handler.send_progress_to_api(percent, point_name)
-        except Exception as e:
-            logger.warning(f"⚠️ Safe send progress error: {e}")
-
-    # =========================
-    # PARSE ROUTE
-    # =========================
-    def parse_destination_route(self, route_data):
-        """Nhận payload từ SignalR và chuyển thành danh sách PoseStamped"""
-        waypoints, names = [], []
-        try:
-            destinations = route_data.get("destinations", [])
-            if not destinations:
-                self.get_logger().warn("⚠️ Route rỗng từ backend")
-                return [], []
-
-            self.get_logger().info(f"📍 Nhận route gồm {len(destinations)} điểm")
-            for dest in destinations:
-                try:
-                    x, y = float(dest["x"]), float(dest["y"])
-                    name = dest.get("name", f"Point_{dest.get('id', '?')}")
-                    pose = self.create_pose(x, y)
-                    waypoints.append(pose)
-                    names.append(name)
-                    self.get_logger().info(
-                        f"✅ Added: {name} (x={x:.2f}, y={y:.2f})"
-                    )
-                except Exception as e:
-                    self.get_logger().error(
-                        f"❌ Invalid destination: {dest} ({e})"
-                    )
-        except Exception as e:
-            self.get_logger().error(f"❌ Error parsing route: {e}")
-        return waypoints, names
-
-    # =========================
-    # ĐI THEO ROUTE + TÍNH % HOÀN THÀNH
-    # =========================
-    def navigate_to_tables(self, positions_data):
-        """
-        positions_data: list dict {x, y, name}
-        Tính % hoàn thành toàn route dựa trên:
-          - index điểm (i)
-          - feedback distance_remaining của Nav2
-        """
-        total = len(positions_data)
-        if total == 0:
-            self.get_logger().warn("⚠️ Không có điểm để di chuyển")
+        if not pos_array:
+            self.get_logger().warn("⚠️ Empty waypoint list")
             return
 
-        self.get_logger().info(f"🚀 Bắt đầu di chuyển qua {total} điểm")
+        self.get_logger().info(f"🚀 Starting navigation to {len(pos_array)} waypoints")
+        
+        # Send status: bắt đầu
+        if self.api_handler:
+            self.api_handler.send_status_to_api('NAVIGATION_STARTED')
 
-        last_global_progress = -1.0  # để tránh spam
+        # Chuẩn bị waypoints
+        waypoints = []
+        names = []
+        
+        for idx, pos in enumerate(pos_array):
+            pose = PoseStamped()
+            pose.header.frame_id = 'map'
+            pose.header.stamp = self.navigator.get_clock().now().to_msg()
+            pose.pose.position.x = pos['x']
+            pose.pose.position.y = pos['y']
+            pose.pose.position.z = 0.0
+            pose.pose.orientation.w = 1.0
+            
+            waypoints.append(pose)
+            names.append(pos.get('name', f'Waypoint_{idx+1}'))
 
-        for i, pos in enumerate(positions_data, 1):
-            x, y, name = pos["x"], pos["y"], pos["name"]
-            pose = self.create_pose(x, y)
-            self.get_logger().info(
-                f"🎯 Đi tới điểm {i}/{total}: {name} (x={x:.2f}, y={y:.2f})"
-            )
+        total_waypoints = len(waypoints)
+        
+        # Bắt đầu navigation
+        nav_start = self.navigator.get_clock().now()
+        self.navigator.followWaypoints(waypoints)
+        
+        self.get_logger().info(f"📍 Following {total_waypoints} waypoints...")
+        if self.api_handler:
+            self.api_handler.send_status_to_api('IN_PROGRESS')
 
-            # Gửi goal
-            self.navigator.goToPose(pose)
-            time.sleep(0.5)
-
-            initial_distance = None
-
-            # Vòng lặp theo dõi tiến độ tới goal
-            while not self.navigator.isTaskComplete():
-                if shutdown_requested:
-                    self.get_logger().warn(
-                        "🛑 Shutdown requested, canceling nav2..."
+        # ============================================================
+        # ⭐ VÒNG LẶP TRACKING PROGRESS
+        # ============================================================
+        last_waypoint_idx = -1
+        
+        while not self.navigator.isTaskComplete():
+            # ⭐ Lấy feedback từ Nav2
+            feedback = self.navigator.getFeedback()
+            
+            if feedback:
+                current_wp_idx = feedback.current_waypoint
+                
+                # ⭐ Tính % progress
+                # Formula: (current + 1) / total * 100
+                # Ví dụ: waypoint 0/3 → 33%, waypoint 1/3 → 66%, waypoint 2/3 → 100%
+                progress = ((current_wp_idx + 1) / total_waypoints) * 100.0
+                point_name = names[current_wp_idx] if current_wp_idx < len(names) else None
+                
+                # ⭐ Gửi progress lên API (throttled)
+                if self.api_handler:
+                    self.api_handler.send_progress_to_api(progress, point_name)
+                
+                # Log khi đổi waypoint
+                if current_wp_idx != last_waypoint_idx:
+                    self.get_logger().info(
+                        f"📍 Waypoint {current_wp_idx + 1}/{total_waypoints}: {point_name}"
                     )
-                    self.navigator.cancelTask()
-                    return
+                    last_waypoint_idx = current_wp_idx
 
-                # Lấy feedback để tính % tiến độ
-                fb = self.navigator.getFeedback()
-                if fb is not None:
-                    dist_rem = getattr(fb, "distance_remaining", None)
-                    if dist_rem is not None and dist_rem > 0.0:
-                        if initial_distance is None:
-                            initial_distance = dist_rem
+            # ⭐ Kiểm tra timeout
+            now = self.navigator.get_clock().now()
+            if (now - nav_start) > Duration(seconds=self.navigation_timeout):
+                self.get_logger().error(
+                    f"⏰ Navigation timeout ({self.navigation_timeout}s)"
+                )
+                self.navigator.cancelTask()
+                
+                if self.api_handler:
+                    self.api_handler.send_status_to_api('TIMEOUT')
+                return
 
-                        if initial_distance and initial_distance > 0.0:
-                            progress_goal = 1.0 - (dist_rem / initial_distance)
-                            # Clamp
-                            progress_goal = max(0.0, min(1.0, progress_goal))
-                        else:
-                            progress_goal = 0.0
-                    else:
-                        progress_goal = 0.0
-                else:
-                    progress_goal = 0.0
+            # ⭐ Kiểm tra shutdown signal
+            if shutdown_requested:
+                self.get_logger().warn("🛑 Shutdown requested, canceling navigation")
+                self.navigator.cancelTask()
+                return
 
-                # % toàn route = các điểm đã xong + tiến độ điểm hiện tại
-                global_progress = ((i - 1) + progress_goal) / total * 100.0
+            time.sleep(0.1)  # Tránh busy loop
 
-                # Chỉ publish nếu thay đổi >= 1%
-                if (
-                    last_global_progress < 0
-                    or abs(global_progress - last_global_progress) >= 1.0
-                ):
-                    self.publish_progress(global_progress, name)
-                    last_global_progress = global_progress
-
-                time.sleep(0.2)
-
-            # Task đã complete, kiểm tra kết quả
-            result = self.navigator.getResult()
-            if result == TaskResult.SUCCEEDED:
-                self.get_logger().info(f"✅ Arrived at {name}")
-            elif result == TaskResult.CANCELED:
-                self.get_logger().warn(f"⚠️ Canceled at {name}")
-            else:
-                self.get_logger().error(f"❌ Failed at {name}")
-
-            # Sau mỗi điểm, đảm bảo % nhảy đúng vạch i/total
-            global_progress = (i / total) * 100.0
-            if abs(global_progress - last_global_progress) >= 0.5:
-                self.publish_progress(global_progress, name)
-                last_global_progress = global_progress
-
-        # Kết thúc route, set 100% chắc chắn
-        if last_global_progress < 99.9:
-            self.publish_progress(100.0, "DONE")
-        self.get_logger().info("🎉 Completed route navigation!")
+        # ============================================================
+        # ⭐ XỬ LÝ KẾT QUẢ
+        # ============================================================
+        result = self.navigator.getResult()
+        
+        if result == TaskResult.SUCCEEDED:
+            self.get_logger().info("🎉 Navigation completed successfully!")
+            
+            # ⭐ Gửi progress 100%
+            if self.api_handler:
+                self.api_handler.send_progress_to_api(100.0, "Completed")
+                self.api_handler.send_status_to_api('NAVIGATION_COMPLETED')
+                
+        elif result == TaskResult.CANCELED:
+            self.get_logger().warn("🛑 Navigation was canceled")
+            if self.api_handler:
+                self.api_handler.send_status_to_api('NAVIGATION_CANCELED')
+                
+        elif result == TaskResult.FAILED:
+            self.get_logger().error("❌ Navigation failed")
+            if self.api_handler:
+                self.api_handler.send_status_to_api('NAVIGATION_FAILED')
+        else:
+            self.get_logger().warn(f"⚠️ Unknown result: {result}")
+            if self.api_handler:
+                self.api_handler.send_status_to_api('NAVIGATION_ERROR')
 
 
 # ============================================================
 # 🔗 SIGNALR LISTENER
 # ============================================================
 class RouteListener:
-    """📡 Lắng nghe route từ SignalR Hub và gọi TableNavigator"""
+    """📡 Lắng nghe route từ SignalR Hub"""
 
     def __init__(self, navigator: TableNavigator):
         self.navigator = navigator
@@ -374,15 +411,23 @@ class RouteListener:
                 .build()
             )
 
-            # ====================================================
-            # 🎧 Nhận route từ backend
-            # ====================================================
+            # ⭐ Callback nhận route
             def on_receive_destination_route(args):
                 try:
                     data = args[0] if args else {}
                     print("\n📦 Received Destination Route:")
                     print(json.dumps(data, indent=2, ensure_ascii=False))
+                    
+                    # ⭐ Chờ Nav2 sẵn sàng
+                    if not self.navigator.wait_for_nav2_ready():
+                        self.navigator.get_logger().error(
+                            "❌ Cannot navigate - Nav2 not ready!"
+                        )
+                        return
+                    
+                    # Parse và navigate
                     waypoints, names = self.navigator.parse_destination_route(data)
+                    
                     if waypoints:
                         pos_array = [
                             {
@@ -397,6 +442,7 @@ class RouteListener:
                         self.navigator.get_logger().warn(
                             "⚠️ Không có waypoint hợp lệ."
                         )
+                        
                 except Exception as e:
                     self.navigator.get_logger().error(
                         f"❌ Lỗi xử lý route: {e}"
@@ -406,10 +452,12 @@ class RouteListener:
             self.hub.on_open(lambda: print("✅ Connected to Hub"))
             self.hub.on_close(lambda: print("❌ Hub connection closed"))
             self.hub.on_error(lambda e: print(f"⚠️ Hub error: {e}"))
+            
             self.hub.start()
             self.navigator.get_logger().info(
                 "✅ SignalR listener đang lắng nghe route..."
             )
+            
         except Exception as e:
             self.navigator.get_logger().error(
                 f"❌ Không thể kết nối Hub: {e}"
@@ -418,6 +466,15 @@ class RouteListener:
     def start(self):
         asyncio.run_coroutine_threadsafe(self.connect_hub(), self.loop)
 
+    def stop(self):
+        """Cleanup SignalR connection"""
+        if self.hub:
+            try:
+                self.hub.stop()
+                logger.info("🧹 SignalR hub closed")
+            except Exception as e:
+                logger.warning(f"⚠️ Error closing hub: {e}")
+
 
 # ============================================================
 # 🧠 MAIN ENTRYPOINT
@@ -425,24 +482,29 @@ class RouteListener:
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    
     rclpy.init()
 
-    api_handler = APIHandler(APIConfig())
+    api_config = APIConfig()
+    api_handler = APIHandler(api_config)
     navigator = TableNavigator(api_handler=api_handler)
     listener = RouteListener(navigator)
+    
     listener.start()
 
     print("=" * 60)
     print(f"📡 Listening for route updates from: {HUB_URL}")
+    print(f"🤖 Robot Code: {api_config.robot_code}")
+    print(f"⏱️  Progress throttle: {api_config.progress_interval}s or {api_config.progress_threshold}% change")
     print("=" * 60)
 
     try:
-        # SAFE SPIN LOOP — prevents crash from WaitSet errors
+        # ⭐ SAFE SPIN LOOP
         while rclpy.ok() and not shutdown_requested:
             try:
                 rclpy.spin_once(navigator, timeout_sec=0.1)
             except Exception as spin_err:
-                print(f"⚠️ Spin error (ignored): {spin_err}")
+                logger.debug(f"Spin error (ignored): {spin_err}")
                 time.sleep(0.1)
                 continue
 
@@ -452,25 +514,26 @@ def main():
     finally:
         print("🧹 Cleaning up resources...")
 
-        # Stop SignalR cleanly
-        if 'listener' in locals() and listener.hub is not None:
-            try:
-                listener.hub.stop()
-            except Exception:
-                pass
+        # ⭐ Stop SignalR
+        listener.stop()
 
-        # Destroy ROS node safely
+        # ⭐ Shutdown API handler (đợi pending requests)
+        api_handler.shutdown()
+
+        # ⭐ Destroy ROS node
         try:
             navigator.destroy_node()
         except Exception:
             pass
 
-        # Shutdown ROS
+        # ⭐ Shutdown ROS
         if rclpy.ok():
             try:
                 rclpy.shutdown()
             except Exception:
                 pass
+
+        print("✅ Shutdown complete!")
 
 
 if __name__ == "__main__":

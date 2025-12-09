@@ -1,42 +1,91 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+// Giải quyết trùng tên:
+using Task = System.Threading.Tasks.Task;
+// using RobotTaskEntity = API_Powered_Hospital_Delivery_Robot.Models.Entities.Task;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
-    /// <summary>
-    /// Hub quản lý kết nối robot
-    /// </summary>
     public class RobotHub : Hub
     {
         private readonly ILogger<RobotHub> _logger;
+        private readonly RobotManagerContext _db;
+        private readonly IConfiguration _config;
 
-        public RobotHub(ILogger<RobotHub> logger)
+        private const string GroupPrefix = "robot:";
+        private string AllowedRobotCode => _config["Robots:AllowedCode"] ?? "RBT001";
+
+        public RobotHub(ILogger<RobotHub> logger, RobotManagerContext db, IConfiguration config)
         {
             _logger = logger;
+            _db = db;
+            _config = config;
+        }
+
+        public override Task OnConnectedAsync()
+        {
+            _logger.LogInformation("[RobotHub] Connected | ConnId={ConnId}", Context.ConnectionId);
+            return base.OnConnectedAsync();
+        }
+
+        public override Task OnDisconnectedAsync(Exception? ex)
+        {
+            _logger.LogWarning("[RobotHub] Disconnected | ConnId={ConnId} | Error={Error}", Context.ConnectionId, ex?.Message);
+            return base.OnDisconnectedAsync(ex);
         }
 
         /// <summary>
-        /// Khi robot kết nối
+        /// Robot gọi sau khi kết nối: đăng ký robotCode và join group riêng.
+        /// Server phản hồi trạng thái hiện tại từ DB.
         /// </summary>
-        public override async Task OnConnectedAsync()
+        public async Task RegisterRobot(string robotCode)
         {
-            _logger.LogInformation("[RobotHub] Thiết bị kết nối thành công | ID: {ConnectionId}", Context.ConnectionId);
+            if (string.IsNullOrWhiteSpace(robotCode))
+            {
+                await Clients.Caller.SendAsync("RobotRegistrationFailed", new { error = "robotCode is required" });
+                Context.Abort();
+                return;
+            }
 
-            // Gửi thông báo trạng thái nguồn về robot vừa kết nối
+            if (!string.Equals(robotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("[RobotHub] Reject robotCode={RobotCode}", robotCode);
+                await Clients.Caller.SendAsync("RobotRegistrationFailed", new { error = "robotCode not allowed" });
+                Context.Abort();
+                return;
+            }
+
+            var group = GroupPrefix + robotCode;
+            await Groups.AddToGroupAsync(Context.ConnectionId, group);
+
+            var robot = await _db.Robots.AsNoTracking().FirstOrDefaultAsync(r => r.Code == robotCode);
+            var status = robot?.Status ?? "offline";
+            var power = string.Equals(status, "at_station", StringComparison.OrdinalIgnoreCase);
+
             await Clients.Caller.SendAsync("RobotPowerStatus", new
             {
-                power = false,
-                message = "Đã kết nối tới server thành công"
+                robotCode,
+                power,
+                status,
+                message = "registered"
             });
-            await base.OnConnectedAsync();
         }
 
         /// <summary>
-        /// Khi robot ngắt kết nối
+        /// Heartbeat định kỳ (không đổi status; chỉ lưu thời gian)
         /// </summary>
-        public override async Task OnDisconnectedAsync(Exception? ex)
+        public async Task Heartbeat(string robotCode)
         {
-            _logger.LogWarning("⚡ [HUB] Máy khách đã ngắt kết nối: {ConnId}, Lỗi: {Error}", Context.ConnectionId, ex?.Message);
-            await base.OnDisconnectedAsync(ex);
+            if (!string.Equals(robotCode, AllowedRobotCode, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var robot = await _db.Robots.FirstOrDefaultAsync(r => r.Code == robotCode);
+            if (robot == null) return;
+
+            robot.LastHeartbeatAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
         }
     }
 }

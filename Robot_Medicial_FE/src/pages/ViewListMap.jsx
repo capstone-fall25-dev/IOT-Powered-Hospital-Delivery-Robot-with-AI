@@ -38,6 +38,11 @@ export default function ProjectMapListView() {
   const [newMarker, setNewMarker] = useState(null);
   const [pointName, setPointName] = useState("");
 
+  // 🔹 Chọn robot khi tạo map
+  const [availableRobots, setAvailableRobots] = useState([]);
+  const [isRobotModalOpen, setIsRobotModalOpen] = useState(false);
+  const [selectedRobotId, setSelectedRobotId] = useState(null);
+
   const navigate = useNavigate();
 
   // ==========================================================
@@ -198,7 +203,7 @@ export default function ProjectMapListView() {
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
     };
-    
+
     /* ========================= XỬ LÝ LỖI KHI TẢI ẢNH ========================= */
     img.onerror = () => {
       console.error("❌ Lỗi tải ảnh bản đồ:", imageUrl);
@@ -238,18 +243,14 @@ export default function ProjectMapListView() {
       const latlng = map.containerPointToLatLng(containerPoint);
       if (!latlng || !mapInfo) return null;
 
-      const res = mapInfo.resolution;
       const originX = mapInfo.originX;
       const originY = mapInfo.originY;
 
       const localX = latlng.lng;
       const localY = latlng.lat;
 
-      const offsetX = 0;
-      const offsetY = 0;
-
-      const worldX = originX + localX + offsetX;
-      const worldY = originY + localY + offsetY;
+      const worldX = originX + localX;
+      const worldY = originY + localY;
 
       return { x: worldX, y: worldY, localX, localY };
     }
@@ -394,7 +395,10 @@ export default function ProjectMapListView() {
     setIsSelecting(next);
 
     if (next) {
-      showToast("info", "🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!");
+      showToast(
+        "info",
+        "🖱️ Chế độ chọn tọa độ đang bật — Click lên bản đồ để chọn điểm đến!"
+      );
     } else {
       showToast("info", "❌ Đã tắt chế độ chọn tọa độ");
     }
@@ -407,7 +411,10 @@ export default function ProjectMapListView() {
     const world = worldPosRef.current;
 
     if (!selectedMap || !newMarker || !pointName.trim() || !world) {
-      showToast("warning", "⚠️ Nhập tên điểm và click chọn vị trí trên bản đồ!");
+      showToast(
+        "warning",
+        "⚠️ Nhập tên điểm và click chọn vị trí trên bản đồ!"
+      );
       return;
     }
 
@@ -443,26 +450,72 @@ export default function ProjectMapListView() {
         worldPosRef.current = null;
       }
     } catch (err) {
-      showToast("error", "❌ Lỗi: " + err.message);
+      showToast("error", "❌ Lỗi: " + (err?.message || "Không xác định"));
     }
   }
 
   // ==========================================================
-  // 🧩 Gửi lệnh mapping
+  // 🔹 MỞ FORM CHỌN ROBOT KHI ẤN "TẠO BẢN ĐỒ MỚI"
   // ==========================================================
-  async function handleCreateMap() {
+  async function handleOpenRobotModal() {
+    setIsRobotModalOpen(true);
+    setSelectedRobotId(null);
+
+    try {
+      const res = await fetch(API_CONFIG.API_BASE1 + "/api/Robots/available");
+      const data = await res.json();
+      const robots = data.data || data || [];
+      setAvailableRobots(robots);
+
+      if (!robots || robots.length === 0) {
+        showToast(
+          "warning",
+          "Hiện không có robot nào đang ở trạm (at_station)."
+        );
+      }
+    } catch (err) {
+      showToast(
+        "error",
+        "❌ Lỗi tải danh sách robot: " + (err?.message || "Không xác định")
+      );
+    }
+  }
+
+  // ==========================================================
+  // 🧩 XÁC NHẬN TẠO MAP SAU KHI ĐÃ CHỌN ROBOT
+  // ==========================================================
+  async function handleConfirmCreateMap() {
+    if (!selectedRobotId) {
+      showToast(
+        "warning",
+        "⚠️ Vui lòng chọn một robot đang ở trạm trước khi tạo bản đồ!"
+      );
+      return;
+    }
+
     try {
       await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "mapping" }),
+        body: JSON.stringify({
+          mode: "mapping",
+          robotId: Number(selectedRobotId),
+        }),
       });
 
       showToast("success", "🚀 Robot bắt đầu mapping!");
-      navigate("/create-map");
+
+      setIsRobotModalOpen(false);
+      // truyền robotId sang trang create-map (nếu cần dùng)
+      navigate(`/create-map?robotId=${selectedRobotId}`);
     } catch (err) {
-      showToast("error", "❌ Lỗi mapping: " + err.message);
+      showToast("error", "❌ Lỗi mapping: " + (err?.message || "Không xác định"));
     }
+  }
+
+  function handleCloseRobotModal() {
+    setIsRobotModalOpen(false);
+    setSelectedRobotId(null);
   }
 
   // ==========================================================
@@ -497,7 +550,7 @@ export default function ProjectMapListView() {
                 {isSelecting ? "Đang chọn điểm..." : "Chọn điểm đến"}
               </button>
 
-              <button className={styles.btnTeal} onClick={handleCreateMap}>
+              <button className={styles.btnTeal} onClick={handleOpenRobotModal}>
                 <i className="bi bi-plus-circle me-1"></i>
                 Tạo bản đồ mới
               </button>
@@ -556,7 +609,7 @@ export default function ProjectMapListView() {
                 World: (...)
               </div>
 
-              {/* =================== TOOLBAR =================== */}
+              {/* =================== TOOLBAR CHỌN ĐIỂM =================== */}
               {isSelecting && (
                 <div className={styles.mapToolbar}>
                   <div className={styles.toolbarTitle}>
@@ -602,6 +655,189 @@ export default function ProjectMapListView() {
           </div>
         </div>
       </div>
+
+      {/* ================ MODAL CHỌN ROBOT ================ */}
+      {isRobotModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1050,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "0.75rem",
+              padding: "1.25rem 1.5rem",
+              width: "100%",
+              maxWidth: "520px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.75rem",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <i className="bi bi-robot" />
+                Chọn robot để tạo bản đồ
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={handleCloseRobotModal}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            <div
+              style={{
+                fontSize: "0.85rem",
+                marginBottom: "0.5rem",
+                color: "#4b5563",
+              }}
+            >
+            Các robot sẵn sàng chạy
+            </div>
+
+            <div
+              style={{
+                maxHeight: "260px",
+                overflowY: "auto",
+                marginBottom: "0.75rem",
+              }}
+            >
+              {availableRobots.length === 0 ? (
+                <div
+                  style={{
+                    fontSize: "0.9rem",
+                    padding: "0.75rem",
+                    borderRadius: "0.5rem",
+                    background: "rgba(248,250,252,1)",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  Không có robot nào đang ở trạm. Hãy kiểm tra lại trạng thái
+                  robot.
+                </div>
+              ) : (
+                availableRobots.map((r) => {
+                  const isActive = selectedRobotId === r.id;
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => setSelectedRobotId(r.id)}
+                      style={{
+                        padding: "0.55rem 0.75rem",
+                        borderRadius: "0.5rem",
+                        border: isActive
+                          ? "2px solid var(--teal-dark)"
+                          : "1px solid #e5e7eb",
+                        background: isActive
+                          ? "rgba(13,148,136,0.06)"
+                          : "#fff",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: "0.4rem",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "0.95rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                          }}
+                        >
+                          <span>{r.name || r.code || "Robot"}</span>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "0.1rem 0.4rem",
+                              borderRadius: "999px",
+                              background: "#ecfdf5",
+                              color: "#15803d",
+                            }}
+                          >
+                            #{r.id}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "#6b7280",
+                            marginTop: "0.1rem",
+                          }}
+                        >
+                          Code: {r.code} • Trạng thái: {r.status} • Pin:{" "}
+                          {r.battery_percent ?? r.batteryPercen ?? "--"}%
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="radio"
+                          checked={isActive}
+                          onChange={() => setSelectedRobotId(r.id)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.5rem",
+                marginTop: "0.5rem",
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={handleCloseRobotModal}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="btn btn-success btn-sm"
+                onClick={handleConfirmCreateMap}
+                disabled={!selectedRobotId || availableRobots.length === 0}
+              >
+                <i className="bi bi-play-fill me-1"></i>
+                Bắt đầu mapping
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} showToast={showToast} />
     </div>
   );

@@ -1088,109 +1088,90 @@ function handleSelectDestinationRow(dest) {
                       />
                     </div>
 
-                    <div className="mb-2">
-                      <label
-                        style={{
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                          marginBottom: "0.25rem",
-                        }}
-                      >
-                        Tọa độ (World / Lat-Long)
-                      </label>
-                      <div className="row g-2">
-                        <div className="col-6">
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={roomForm.latitude}
-                            onChange={(e) =>
-                              setRoomForm((prev) => ({
-                                ...prev,
-                                latitude: e.target.value,
-                              }))
-                            }
-                            placeholder="Latitude / Y"
-                          />
-                        </div>
-                        <div className="col-6">
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={roomForm.longitude}
-                            onChange={(e) =>
-                              setRoomForm((prev) => ({
-                                ...prev,
-                                longitude: e.target.value,
-                              }))
-                            }
-                            placeholder="Longitude / X"
-                          />
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "0.8rem",
-                          opacity: 0.7,
-                          marginTop: "0.25rem",
-                        }}
-                      >
-                        Có thể nhập tay hoặc bấm{" "}
-                        <strong>"Chọn vị trí trên bản đồ"</strong> rồi click
-                        lên bản đồ.
-                      </div>
-                    </div>
+                   <div className="mb-2">
+              <label
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Tọa độ (World / Lat-Long)
+              </label>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        marginTop: "0.5rem",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className={styles.btnTeal}
-                        style={{ flex: 1 }}
-                        onClick={handleRoomPickOnMap}
-                        disabled={roomIsPicking}
-                      >
-                        <i className="bi bi-cursor-fill me-1"></i>
-                        {roomIsPicking
-                          ? "Đang chọn..."
-                          : "Chọn vị trí trên bản đồ"}
-                      </button>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        marginTop: "0.5rem",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className={styles.btnTeal}
-                        style={{ flex: 1 }}
-                        onClick={handleSaveRoom}
-                      >
-                        <i className="bi bi-save me-1"></i>
-                        {roomMode === "edit" ? "Lưu phòng" : "Tạo phòng"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.btnDanger}
-                        style={{ flex: 1 }}
-                        onClick={handleCancelRoomEdit}
-                      >
-                        <i className="bi bi-x-circle me-1"></i>
-                        Hủy
-                      </button>
-                    </div>
-                  </div>
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  marginTop: "0.25rem",
+                  opacity: 0.8,
+                  padding: "0.4rem 0.6rem",
+                  borderRadius: "0.4rem",
+                  background: "rgba(0,0,0,0.02)",
+                  border: "1px dashed rgba(0,0,0,0.06)",
+                }}
+              >
+                {roomForm.latitude && roomForm.longitude ? (
+                  <>
+                    X = {parseFloat(roomForm.longitude).toFixed(2)}, Y ={" "}
+                    {parseFloat(roomForm.latitude).toFixed(2)}
+                  </>
+                ) : (
+                  <>Chưa chọn (bấm <strong>"Chọn vị trí trên bản đồ"</strong> rồi click lên bản đồ)</>
                 )}
               </div>
+            </div>
+
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "0.5rem",
+                                    marginTop: "0.5rem",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    className={styles.btnTeal}
+                                    style={{ flex: 1 }}
+                                    onClick={handleRoomPickOnMap}
+                                    disabled={roomIsPicking}
+                                  >
+                                    <i className="bi bi-cursor-fill me-1"></i>
+                                    {roomIsPicking
+                                      ? "Đang chọn..."
+                                      : "Chọn vị trí trên bản đồ"}
+                                  </button>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "0.5rem",
+                                    marginTop: "0.5rem",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    className={styles.btnTeal}
+                                    style={{ flex: 1 }}
+                                    onClick={handleSaveRoom}
+                                  >
+                                    <i className="bi bi-save me-1"></i>
+                                    {roomMode === "edit" ? "Lưu phòng" : "Tạo phòng"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.btnDanger}
+                                    style={{ flex: 1 }}
+                                    onClick={handleCancelRoomEdit}
+                                  >
+                                    <i className="bi bi-x-circle me-1"></i>
+                                    Hủy
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
             </div>
 
             {/* ============== MAP + TOOLBAR ============== */}

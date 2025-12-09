@@ -102,6 +102,7 @@ export default function CreateRobot() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (form.name.trim().length > 255) return showToast("error", "Tên robot không được vượt quá 255 kí tự!");
         setLoading(true);
 
         const payload = {
@@ -146,7 +147,7 @@ export default function CreateRobot() {
                         <i className="bi bi-robot me-2" style={{ color: 'var(--teal-dark)' }}></i>
                         Tạo Robot mới
                     </h4>
-                    <button 
+                    <button
                         className={styles.btnSecondary}
                         onClick={() => navigate("/team")}
                     >

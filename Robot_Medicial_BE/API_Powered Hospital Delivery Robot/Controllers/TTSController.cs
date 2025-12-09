@@ -5,9 +5,6 @@ using System.Threading.Tasks;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
-    /// <summary>
-    /// Xử lý Text-to-Speech (chuyển văn bản thành giọng nói) cho robot
-    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class TTSController : ControllerBase
@@ -24,19 +21,33 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             public string Text { get; set; } = string.Empty;
         }
 
-        /// <summary>
-        /// Gửi lệnh đọc văn bản xuống robot qua SignalR
-        /// </summary>
+        public class VoiceRequest
+        {
+            public int Voice { get; set; } = 1; // 1=VITS (nam), 2=Piper (nữ)
+            public string RobotCode { get; set; } // optional: khoanh đúng robot
+        }
+
         [HttpPost]
         public async Task<IActionResult> Speak([FromBody] TTSRequest request)
         {
-            if (string.IsNullOrEmpty(request.Text))
+            if (string.IsNullOrWhiteSpace(request.Text))
                 return BadRequest("Văn bản là bắt buộc");
 
-            // Gửi tín hiệu xuống tất cả robot đang kết nối
             await _hubContext.Clients.All.SendAsync("ReceiveTTS", request.Text);
-
             return Ok(new { message = "Đã gửi lệnh đọc xuống Robot", text = request.Text });
+        }
+
+        /// <summary>
+        /// Đổi giọng (FE gọi). FE sẽ chờ "VoiceStatus" từ robot để cập nhật UI.
+        /// </summary>
+        [HttpPost("voice")]
+        public async Task<IActionResult> SetVoice([FromBody] VoiceRequest req)
+        {
+            if (req.Voice != 1 && req.Voice != 2)
+                return BadRequest(new { error = "Voice phải là 1 (VITS) hoặc 2 (Piper)" });
+
+            await _hubContext.Clients.All.SendAsync("SetVoice", new { voice = req.Voice, robotCode = req.RobotCode });
+            return Ok(new { message = "Đã phát sự kiện đổi giọng", voice = req.Voice, robotCode = req.RobotCode });
         }
     }
 }

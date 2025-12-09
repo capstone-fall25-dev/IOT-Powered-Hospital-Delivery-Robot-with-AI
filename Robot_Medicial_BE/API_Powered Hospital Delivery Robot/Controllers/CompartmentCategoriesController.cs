@@ -136,13 +136,43 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Manual validation for unit tests (ModelState might not work in all test scenarios)
+            if (dto == null)
+                return BadRequest(new { message = "Dữ liệu không hợp lệ." });
+
+            // Check for null name
+            if (dto.Name == null)
+                return BadRequest(new { message = "Tên danh mục là bắt buộc" });
+
+            // Check for empty string
+            if (dto.Name == "")
+                return BadRequest(new { message = "Tên danh mục là bắt buộc" });
+
+            // Trim the name
+            var trimmedName = dto.Name.Trim();
+
+            // Check if trimmed name is empty (spaces-only case)
+            if (string.IsNullOrEmpty(trimmedName))
+                return BadRequest(new { message = "Tên danh mục không được chỉ chứa khoảng trắng" });
+
             var category = await _context.CompartmentCategories.FindAsync(id);
             if (category == null)
                 return NotFound(new { message = $"Không tìm thấy danh mục ngăn chứa có Id = {id}" });
 
-            var trimmedName = dto.Name.Trim();
+            // Validate length (2-100 characters)
+            if (trimmedName.Length < 2)
+                return BadRequest(new { message = "Tên phải từ 2-100 ký tự" });
+
+            if (trimmedName.Length > 100)
+                return BadRequest(new { message = "Tên phải từ 2-100 ký tự" });
+
+            // Check for duplicate name
             if (await _context.CompartmentCategories.AnyAsync(c => c.Name == trimmedName && c.Id != id))
                 return Conflict(new { message = $"Danh mục '{trimmedName}' đã tồn tại." });
+
+            // Validate description length
+            if (dto.Description != null && dto.Description.Length > 500)
+                return BadRequest(new { message = "Mô tả không được quá 500 ký tự" });
 
             category.Name = trimmedName;
             category.Description = dto.Description?.Trim();
