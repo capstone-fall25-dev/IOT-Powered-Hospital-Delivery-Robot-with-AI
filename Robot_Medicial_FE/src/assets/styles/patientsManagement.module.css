@@ -9,8 +9,8 @@
     font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: #0b1324;
     background: radial-gradient(1200px 600px at 15% 10%, rgba(76, 225, 198, .18), transparent 60%),
-                radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
-                linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
+        radial-gradient(900px 500px at 90% 5%, rgba(76, 225, 198, .12), transparent 60%),
+        linear-gradient(180deg, #f6faf9 0%, #eef6f5 20%, #e9f3f1 60%, #e8f0ee 100%);
     min-height: 100vh;
 }
 
@@ -183,7 +183,7 @@
     color: #15803d;
     border: 1px solid rgba(34, 197, 94, 0.2);
     font-weight: 600;
-    padding: 0.4rem 0.8rem;
+    /* padding: 0.4rem 0.8rem; */
     border-radius: 5px;
     font-size: 0.85rem;
 }
