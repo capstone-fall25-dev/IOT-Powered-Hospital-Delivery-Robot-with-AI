@@ -13,21 +13,17 @@ import time
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from get_api_url import get_api
 
+
 BASE_URL = get_api()
-# 🌐 Hub backend ASP.NET
 HUB_URL = f"{BASE_URL}/hubs/robotposition"
-
-# 🌐 REST API upload map
 MAP_API_URL = f"{BASE_URL}/api/MapsUpload/json"
-
-# 🗺️ Map folder path
 MAP_FOLDER = os.path.expanduser(
     "~/IOT-Powered-Hospital-Delivery-Robot-with-AI/Robot_Medicial_IOT/robot_ws/src/robot_navigation/map"
 )
 
 
 # ==========================================================
-# 🔧 Helper function: Upload map to backend
+# 🔧 Helper: Upload map to backend
 # ==========================================================
 def upload_map_to_api(yaml_path, pgm_path):
     try:
@@ -51,7 +47,7 @@ def upload_map_to_api(yaml_path, pgm_path):
             "ImageBase64": encoded_image,
         }
 
-        print(f"📡 Uploading map '{map_json['MapName']}' to API: {MAP_API_URL}")
+        print(f"📡 Uploading map '{map_json['MapName']}' to API...")
         response = requests.post(MAP_API_URL, json=map_json)
 
         if response.status_code in [200, 201]:
@@ -69,7 +65,10 @@ def upload_map_to_api(yaml_path, pgm_path):
 def restart_stm32():
     try:
         print("🔄 Restarting robot_driver.service (STM32)...")
-        subprocess.run(["bash", "-c", "sudo systemctl restart robot_driver.service"], check=False)
+        subprocess.run(
+            ["bash", "-c", "sudo systemctl restart robot_driver.service"], 
+            check=False
+        )
         time.sleep(2)
     except Exception as e:
         print(f"⚠️ Error restarting stm32: {e}")
@@ -78,20 +77,60 @@ def restart_stm32():
 def stop_slam():
     try:
         print("🔄 Stopping slam_launch.service...")
-        subprocess.run(["bash", "-c", "sudo systemctl stop slam_launch.service"], check=False)
+        subprocess.run(
+            ["bash", "-c", "sudo systemctl stop slam_launch.service"], 
+            check=False
+        )
         time.sleep(2)
     except Exception as e:
         print(f"⚠️ Error stopping slam: {e}")
 
 
 # ==========================================================
-# 🔧 Helper: Restart navigation service
+# 🔧 Helper: Restart navigation với initial pose
 # ==========================================================
 def restart_navigation(map_name):
     try:
         print(f"🚀 Restarting navigation with map '{map_name}'...")
-        # nav-restart là script/binary do bạn định nghĩa sẵn
         subprocess.run(["bash", "-c", f"nav-restart {map_name}"], check=False)
+        
+        # ⭐ ĐỢI NAVIGATION KHỞI ĐỘNG (15 giây)
+        print("⏳ Waiting for navigation to initialize (15s)...")
+        time.sleep(15)
+        
+        # ⭐ KIỂM TRA NODES TRƯỚC KHI PUBLISH INITIAL POSE
+        print("🔍 Checking if Nav2 nodes are running...")
+        result = subprocess.run(
+            ["bash", "-c", "ros2 node list | grep -E 'amcl|bt_navigator|controller|planner' | wc -l"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        node_count = int(result.stdout.strip() or "0")
+        print(f"📊 Found {node_count} Nav2 nodes running")
+        
+        if node_count < 2:
+            print("⚠️ Warning: Not enough Nav2 nodes detected!")
+        
+        # ⭐ PUBLISH INITIAL POSE
+        print("📍 Setting initial pose at origin (0, 0)...")
+        subprocess.run([
+            "bash", "-c",
+            "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped "
+            "'{header: {frame_id: \"map\"}, "
+            "pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, "
+            "orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}, "
+            "covariance: [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, "
+            "0.0, 0.25, 0.0, 0.0, 0.0, 0.0, "
+            "0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "
+            "0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "
+            "0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "
+            "0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]}}'"
+        ], check=False)
+        
+        print("✅ Navigation restarted with initial pose!")
+        
     except Exception as e:
         print(f"⚠️ Error restarting navigation: {e}")
 
@@ -104,17 +143,12 @@ class MapSignalSubscriber(Node):
         super().__init__("map_signal_subscriber")
         self.get_logger().info("🚀 ROS2 Node - Map SignalR Listener started")
 
-        # Event loop riêng cho SignalR
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.loop.create_task(self.start_signalr_listener())
 
-        # Chạy song song với ROS2 spin
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
-    # ======================================================
-    # 🔔 SignalR listener setup
-    # ======================================================
     async def start_signalr_listener(self):
         try:
             self.get_logger().info(f"🔗 Connecting to SignalR Hub at {HUB_URL}...")
@@ -128,14 +162,10 @@ class MapSignalSubscriber(Node):
                 .build()
             )
 
-            # ======================================================
-            # 🎧 Event handler: ReceiveRobotCommand
-            # ======================================================
             def on_receive_robot_command(args):
                 try:
                     data = args[0] if args else {}
 
-                    # Hỗ trợ nhiều kiểu key từ backend
                     mode_raw = data.get("mode") or data.get("Mode") or ""
                     mode = str(mode_raw).lower()
 
@@ -145,13 +175,14 @@ class MapSignalSubscriber(Node):
                         or data.get("MapName")
                         or "map_default"
                     )
+                    # ⭐ LOẠI BỎ KHOẢNG TRẮNG
+                    map_name = map_name.strip()
 
                     print(f"\n🤖 Received Robot Command → mode={mode}, map={map_name}")
 
                     # ========== MAPPING MODE ==========
                     if mode == "mapping":
                         print("🧭 Starting SLAM (Mapping mode)")
-                        # Tùy nhu cầu, bạn có thể restart stm32 trước khi chạy SLAM
                         restart_stm32()
                         subprocess.run(
                             [
@@ -169,23 +200,24 @@ class MapSignalSubscriber(Node):
                         yaml_path = os.path.join(MAP_FOLDER, f"{map_name}.yaml")
                         pgm_path = os.path.join(MAP_FOLDER, f"{map_name}.pgm")
 
-                        # ❗ Không restart_stm32 hoặc stop SLAM trước khi save map
-                        # vì sẽ làm mất publisher /map
-
-                        # Xóa map cũ nếu tồn tại
+                        # Xóa map cũ
                         for f in [yaml_path, pgm_path]:
                             if os.path.exists(f):
                                 print(f"🧹 Removing old map file: {f}")
                                 os.remove(f)
 
-                        # Gọi map_saver với topic + timeout rõ ràng
-                        cmd = (
-                            "ros2 run nav2_map_server map_saver_cli "
-                            f"-f {MAP_FOLDER}/{map_name} "
-                            "--ros-args -p topic:=/map -p save_map_timeout:=10.0"
-                        )
-                        print(f"🧭 Running: {cmd}")
-                        subprocess.run(["bash", "-c", cmd], check=False)
+                        # ⭐ SỬ DỤNG LIST FORMAT
+                        map_path = os.path.join(MAP_FOLDER, map_name)
+                        cmd = [
+                            "ros2", "run", "nav2_map_server", "map_saver_cli",
+                            "-f", map_path,
+                            "--ros-args",
+                            "-p", "topic:=/map",
+                            "-p", "save_map_timeout:=10.0"
+                        ]
+                        
+                        print(f"🧭 Running: {' '.join(cmd)}")
+                        subprocess.run(cmd, check=False)
 
                         # Chờ file xuất hiện
                         timeout = 30
@@ -202,9 +234,6 @@ class MapSignalSubscriber(Node):
                         print("✅ Map saved successfully. Uploading to API...")
                         upload_map_to_api(yaml_path, pgm_path)
 
-                        # Sau khi save & upload xong, tuỳ luồng công việc mà:
-                        # 1. Dừng SLAM
-                        # 2. Khởi động lại navigation với map vừa lưu
                         print("🛑 Stopping SLAM and restarting navigation...")
                         subprocess.run(
                             ["bash", "-c", "sudo systemctl stop slam_launch.service"],
@@ -216,7 +245,6 @@ class MapSignalSubscriber(Node):
                     # ========== RUN MAP MODE ==========
                     elif mode == "run_map":
                         print(f"🗺️ Running navigation on map '{map_name}'...")
-                        # Tùy nhu cầu: có thể restart stm32 trước khi chạy navigation
                         restart_stm32()
                         stop_slam()
                         restart_navigation(map_name)
@@ -227,16 +255,12 @@ class MapSignalSubscriber(Node):
                 except Exception as e:
                     print(f"⚠️ Error processing command: {e}")
 
-            # ======================================================
-            # 🔔 Register SignalR event
-            # ======================================================
             self.hub_connection.on("ReceiveRobotCommand", on_receive_robot_command)
 
             self.hub_connection.on_open(lambda: print("✅ Connected to SignalR Hub!"))
             self.hub_connection.on_close(lambda: print("❌ Connection closed"))
             self.hub_connection.on_error(lambda err: print(f"⚠️ SignalR Error: {err}"))
 
-            # Start connection
             self.hub_connection.start()
 
         except Exception as e:

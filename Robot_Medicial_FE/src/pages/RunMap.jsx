@@ -717,6 +717,51 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
     }
   }
 
+  async function sendReturnToStation() {
+  const payload = {
+    type: "destination_route",
+    returnToStation: true,  // ⭐ Flag đặc biệt
+    resetMap: false,  // Giữ nguyên pose hiện tại
+    timestamp: new Date().toISOString(),
+    destinationCoordinates: [
+      {
+        order: 1,
+        name: "Station",  // ⭐ Tên quan trọng
+        x: 0.0,  // Tọa độ home position
+        y: 0.0,
+        longitude: 0.0,
+        latitude: 0.0
+      }
+    ]
+  };
+
+  try {
+    await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    
+    // Gửi TTS cho robot thông báo
+    try {
+      await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          text: "Robot đang quay về trạm sạc" 
+        }),
+      });
+    } catch (ttsErr) {
+      console.error("Gửi TTS lỗi:", ttsErr);
+    }
+    
+    showToast("success", "🏠 Robot đang quay về trạm!");
+  } catch (err) {
+    showToast("error", err.message || "Không thể gửi lệnh về trạm!");
+  }
+}
+
+
   function handleSelectDestination(e) {
     const id = e.target.value;
     const dest = destinations.find((d) => String(d.id) === id);
@@ -1298,6 +1343,21 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
                     <i className="bi bi-play-circle me-1"></i>
                     Bắt đầu chạy
                   </button>
+
+                    <button
+                    className={`${styles.btnWarning} mt-2`}
+                    onClick={sendReturnToStation}
+                    style={{
+                      background: "linear-gradient(135deg, #ff9800, #ff5722)",
+                      border: "none",
+                      width: "100%",
+                      display: "block"  // ⭐ Đảm bảo full width
+                    }}
+                  >
+                    <i className="bi bi-house-fill me-1"></i>
+                    Về trạm
+                  </button>
+
 
                   <button
                     className={`${styles.btnOutlinePrimary} mt-2`}
