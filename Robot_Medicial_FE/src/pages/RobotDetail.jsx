@@ -381,59 +381,7 @@ export default function RobotDetail() {
               </h6>
 
 
-              <div className={styles.infoGrid}>
-                <div className={styles.infoLabel}>
-                  <i className="bi bi-tag me-1"></i>
-                  Loại robot
-                </div>
-                <div className={styles.infoValue}>Xe chở thuốc</div>
-
-
-                <div className={styles.infoLabel}>
-                  <i className="bi bi-geo-alt me-1"></i>
-                  Vị trí hiện tại
-                </div>
-                <div className={styles.infoValue}>
-                  {robot.latitude && robot.longitude
-                    ? `(${Number(robot.latitude).toFixed(4)}, ${Number(robot.longitude).toFixed(4)})`
-                    : "Tại trạm sạc"}
-                </div>
-
-
-                <div className={styles.infoLabel}>
-                  <i className="bi bi-wifi me-1"></i>
-                  Kết nối
-                </div>
-                <div className={styles.infoValue}>
-                  {robot.power ? (
-                    <span className="text-success">
-                      <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
-                      Online
-                    </span>
-                  ) : (
-                    <span className="text-danger">
-                      <i className="bi bi-circle-fill me-1" style={{ fontSize: "0.5rem" }}></i>
-                      Offline
-                    </span>
-                  )}
-                </div>
-
-
-                <div className={styles.infoLabel}>
-                  <i className="bi bi-battery-charging me-1"></i>
-                  Pin
-                </div>
-                <div className={styles.infoValue}>
-                  <div className={styles.progressContainer}>
-                    <div
-                      className={`${styles.progressBar} ${getBatteryClass(robot.batteryPercent)}`}
-                      style={{ width: `${Number(robot.batteryPercent)}%` }}
-                    />
-                  </div>
-                  <small>{Number(robot.batteryPercent)}%</small>
-                </div>
-              </div>
-
+              
 
               <button className={styles.btnPrimary + " mt-4"}>
                 <i className="bi bi-geo-alt-fill me-1"></i>
@@ -500,20 +448,7 @@ export default function RobotDetail() {
 
           {/* =================== GALLERY =================== */}
           <div className="mt-4">
-            <h6 className={styles.sectionTitle}>
-              <i className="bi bi-images"></i>
-              Hình ảnh hoạt động
-            </h6>
-            <div className={styles.galleryGrid}>
-              {[1, 2, 3, 4].map((i) => (
-                <img
-                  key={i}
-                  className={styles.galleryThumb}
-                  src={`https://picsum.photos/400/300?random=${Number(robot.id) + i}`}
-                  alt={`Hoạt động ${i}`}
-                />
-              ))}
-            </div>
+
           </div>
         </div>
       </div>

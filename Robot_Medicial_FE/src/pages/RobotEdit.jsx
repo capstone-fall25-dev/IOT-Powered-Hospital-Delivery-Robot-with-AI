@@ -227,7 +227,7 @@ export default function RobotEdit() {
                                                     className={styles.formSelect}
                                                     required
                                                 >
-                                                    <option value="">— Chọn loại ngăn —</option>
+                                                   
                                                     {categories.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
                                                             {cat.name}
