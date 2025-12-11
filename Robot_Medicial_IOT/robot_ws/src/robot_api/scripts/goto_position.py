@@ -177,7 +177,7 @@ class TableNavigator(Node):
         super().__init__('table_navigator')
         self.navigator = BasicNavigator()
         self.api_handler = api_handler
-        self.navigation_timeout = 600.0
+        self.navigation_timeout = 3600.0
         
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -324,18 +324,27 @@ class TableNavigator(Node):
             self.get_logger().info(f"📍 Found {len(points)} destination point(s)")
             
             for idx, point in enumerate(points):
-                x = (
-                    point.get("x") or 
-                    point.get("X") or 
-                    point.get("longitude") or
-                    point.get("Longitude")
-                )
-                y = (
-                    point.get("y") or 
-                    point.get("Y") or 
-                    point.get("latitude") or
-                    point.get("Latitude")
-                )
+                # ✅ FIX: Dùng 'in' operator thay vì 'or' để tránh falsy với 0.0
+                x = None
+                if "x" in point:
+                    x = point["x"]
+                elif "X" in point:
+                    x = point["X"]
+                elif "longitude" in point:
+                    x = point["longitude"]
+                elif "Longitude" in point:
+                    x = point["Longitude"]
+                
+                y = None
+                if "y" in point:
+                    y = point["y"]
+                elif "Y" in point:
+                    y = point["Y"]
+                elif "latitude" in point:
+                    y = point["latitude"]
+                elif "Latitude" in point:
+                    y = point["Latitude"]
+                
                 name = (
                     point.get("name") or 
                     point.get("Name") or 
@@ -604,32 +613,6 @@ class RouteListener:
                 self.navigator.get_logger().error("❌ Received empty data!")
                 return
 
-            # ⭐ Kiểm tra nếu là lệnh về trạm
-            is_return_to_station = bool(data.get("returnToStation", False))
-            
-            if is_return_to_station:
-                self.navigator.get_logger().info("🏠 Nhận lệnh quay về trạm!")
-                
-                waypoints, names = self.navigator.parse_destination_route(data)
-                
-                if not waypoints:
-                    self.navigator.get_logger().error("❌ Không có waypoint về trạm!")
-                    return
-                
-                # ✅ Fixed indentation
-                pos_array = [
-                    {
-                        "x": w.pose.position.x,
-                        "y": w.pose.position.y,
-                        "name": "Station",
-                    }
-                    for w, n in zip(waypoints, names)
-                ]
-                
-                # ✅ Chỉ navigate, status sẽ được gửi trong navigate_to_tables()
-                self.navigator.navigate_to_tables(pos_array, skip_nav2_check=True)
-                return
-
             # ====== CHỈ RESET MAP KHI CÓ FLAG ======
             reset_map = bool(
                 data.get("resetMap") or data.get("isModelRunMap") or False
@@ -721,7 +704,7 @@ def main():
     print(f"⏱️  Nav2 wait timeout: 10 seconds with fallback")
     print(f"🗺️  Supported keys: destinationCoordinates, destinations")
     print(f"📊 Progress calculation: TF-based distance tracking")
-    print(f"🏠 Return to station: Send returnToStation=true flag")
+    print(f"🏠 Return to station: name=Station at (0, 0)")
     print("=" * 60)
 
     spin_thread = threading.Thread(target=executor.spin, daemon=True)

@@ -717,49 +717,48 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
     }
   }
 
-  async function sendReturnToStation() {
+async function sendReturnToStation() {
   const payload = {
-    type: "destination_route",
-    returnToStation: true,  // ⭐ Flag đặc biệt
-    resetMap: false,  // Giữ nguyên pose hiện tại
-    timestamp: new Date().toISOString(),
-    destinationCoordinates: [
+    mapId: 1,  // ⭐ Hoặc lấy từ selectedDestination?.mapId
+    destinations: [
       {
-        order: 1,
-        name: "Station",  // ⭐ Tên quan trọng
-        x: 0.0,  // Tọa độ home position
-        y: 0.0,
-        longitude: 0.0,
-        latitude: 0.0
+        id: 0,
+        name: "Station",  // ⭐ Python sẽ check name này
+        x: 0.0,
+        y: 0.0
       }
     ]
   };
 
   try {
-    await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
+    const response = await fetch(API_CONFIG.API_BASE1 + "/api/Destinations/send-route", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     
-    // Gửi TTS cho robot thông báo
+    if (!response.ok) {
+      throw new Error("API error");
+    }
+    
+    // TTS
     try {
       await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          text: "Robot đang quay về trạm sạc" 
-        }),
+        body: JSON.stringify({ text: "Robot đang quay về trạm sạc" }),
       });
     } catch (ttsErr) {
-      console.error("Gửi TTS lỗi:", ttsErr);
+      console.error("TTS error:", ttsErr);
     }
     
     showToast("success", "🏠 Robot đang quay về trạm!");
   } catch (err) {
-    showToast("error", err.message || "Không thể gửi lệnh về trạm!");
+    console.error(err);
+    showToast("error", "Không thể gửi lệnh về trạm!");
   }
 }
+
 
 
   function handleSelectDestination(e) {
