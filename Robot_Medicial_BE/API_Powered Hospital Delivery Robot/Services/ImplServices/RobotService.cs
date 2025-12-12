@@ -107,7 +107,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // Ánh xạ robot từ DTO
             var robot = _mapper.Map<Robot>(robotDto);
 
-            robot.Status = "at_station";
+            robot.Status = "offline";
             robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.Now;
 
             // Lưu robot trước
@@ -154,7 +154,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<RobotResponseDto> UpdateAsync(ulong robotId, UpdateRobotDto updateDto)
         {
             // Lấy robot hiện tại
-            var existingRobot = await _robotRepository.GetByIdAsync(robotId, includeCompartments: true, includeTasks: true);
+            var existingRobot = await _robotRepository.GetByIdAsync(
+                robotId,
+                includeCompartments: true,
+                includeTasks: true);   
+
             if (existingRobot == null)
                 throw new InvalidOperationException("Robot không tồn tại");
 
@@ -162,6 +166,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (existingRobot.Tasks.Any(t => t.Status is "in_progress" or "transporting"))
                 throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
 
+            if(existingRobot.Status == "transporting" || existingRobot.Status == "in_progress")
+                throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
             // Cập nhật tên (nếu có)
             if (!string.IsNullOrWhiteSpace(updateDto.Name))
                 existingRobot.Name = updateDto.Name.Trim();

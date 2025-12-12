@@ -108,7 +108,7 @@ export default function CreateRobot() {
         const payload = {
             name: form.name.trim(),
             code: form.code.trim(),
-            mapId: form.mapId,
+            mapId: form.mapId ? Number(form.mapId) : null,
             batteryPercent: 100,
             status: "active",
             latitude: 0,
@@ -208,21 +208,20 @@ export default function CreateRobot() {
                             </div>
 
                             {/* Chọn Map */}
-                            <div className="col-md-6">
+                           <div className="col-md-6">
                                 <label className={styles.formLabel}>
                                     <i className="bi bi-map me-1"></i>
-                                    Bản đồ <span className="text-danger">*</span>
+                                    Bản đồ
                                 </label>
                                 <select
                                     name="mapId"
                                     value={form.mapId}
                                     onChange={handleChange}
                                     className={styles.formSelect}
-                                    required
                                 >
-                                    <option value="">— Chọn bản đồ —</option>
+                                    <option value="null">— Không gán bản đồ —</option>
                                     {maps.map(m => (
-                                        <option key={m.id} value={m.id}>
+                                        <option key={m.id} value={String(m.id)}>
                                             #{m.id} • {m.mapName}
                                         </option>
                                     ))}
@@ -253,7 +252,7 @@ export default function CreateRobot() {
                                                     className={styles.formSelect}
                                                     required
                                                 >
-                                                    <option value="">— Chọn loại ngăn —</option>
+                                                   
                                                     {categories.map(cat => (
                                                         <option key={cat.id} value={cat.id}>
                                                             {cat.name}

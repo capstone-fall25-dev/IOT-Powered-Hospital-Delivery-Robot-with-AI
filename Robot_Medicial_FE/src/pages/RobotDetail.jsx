@@ -369,81 +369,155 @@ export default function RobotDetail() {
             <i className="bi bi-pencil-square me-1"></i>
             Cấu Hình
           </button>
+        {/* =================== DETAIL + TASKS =================== */}
+<div className="row g-4 mt-3">
+  {/* Thông tin chi tiết (giữ nguyên phần bên trái nếu bạn có nội dung ở đây) */}
 
 
-          {/* =================== DETAIL + TASKS =================== */}
-          <div className="row g-4 mt-3">
-            {/* Thông tin chi tiết */}
-            <div className="col-lg-7">
-              <h6 className={styles.sectionTitle}>
-                <i className="bi bi-info-circle-fill"></i>
-                Thông tin chi tiết
-              </h6>
+  {/* =================== 3 CỘT NHIỆM VỤ =================== */}
+  <div className="col-lg-12">
+    <div className="row g-3">
 
-
-              
-
-              <button className={styles.btnPrimary + " mt-4"}>
-                <i className="bi bi-geo-alt-fill me-1"></i>
-                Định vị nhanh
-              </button>
-            </div>
-
-
-            {/* Danh sách nhiệm vụ hiện tại */}
-            <div className="col-lg-5">
-              <h6 className={styles.sectionTitle}>
-                <i className="bi bi-list-task"></i>
-                Nhiệm vụ hiện tại
-              </h6>
-
-
-              {robot.tasks && robot.tasks.length > 0 ? (
-                robot.tasks
-                  .filter((t) => t.status === "in_progress" || t.status === "pending")
-                  .slice(0, 5)
-                  .map((task) => (
-                    <div key={task.id} className={styles.taskCard}>
-                      <div className={styles.taskHeader}>
-                        <div className={styles.taskTitle}>
-                          <i className="bi bi-clipboard-check me-1"></i>
-                          Nhiệm vụ #{task.id}
-                        </div>
-                        {getStatusBadge(task.status)}
-                      </div>
-
-
-                      <div className={styles.taskMeta}>
-                        <i className="bi bi-geo me-1"></i>
-                        {task.stops && task.stops.length > 0
-                          ? `${task.stops.length} điểm dừng`
-                          : "Chưa có điểm dừng"}
-                      </div>
-
-
-                      {task.stops && task.stops.length > 0 && (
-                        <ol className={styles.taskStops}>
-                          {task.stops.map((stop) => (
-                            <li key={stop.seqNo}>
-                              <strong>{stop.destinationName}</strong>
-                              {stop.patientName && <> - {stop.patientName}</>}
-                            </li>
-                          ))}
-                        </ol>
-                      )}
+      {/* Cột 1: Nhiệm vụ đang chạy */}
+      <div className="col-12 col-md-4">
+        <h6 className={styles.sectionTitle}>
+          <i className="bi bi-play-circle-fill text-primary"></i>
+          Đang chạy
+        </h6>
+        <div className={styles.taskColumn}>
+          {robot.tasks?.filter(t => t.status === "in_progress" || t.status === "pending").length > 0 ? (
+            robot.tasks
+              .filter(t => t.status === "in_progress" || t.status === "pending")
+              .slice(0, 5)
+              .map(task => (
+                <div key={task.id} className={styles.taskCard}>
+                  <div className={styles.taskHeader}>
+                    <div className={styles.taskTitle}>
+                      <i className="bi bi-clipboard-check me-1"></i>
+                      Nhiệm vụ #{task.id}
                     </div>
-                  ))
-              ) : (
-                <div className={styles.emptyState}>
-                  <i
-                    className="bi bi-inbox"
-                    style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}
-                  ></i>
-                  Chưa có nhiệm vụ nào
+                    {getStatusBadge(task.status)}
+                  </div>
+                  <div className={styles.taskMeta}>
+                    <i className="bi bi-geo me-1"></i>
+                    {task.stops?.length > 0 ? `${task.stops.length} điểm dừng` : "Chưa có điểm dừng"}
+                  </div>
+                  {task.stops?.length > 0 && (
+                    <ol className={styles.taskStops}>
+                      {task.stops.map(stop => (
+                        <li key={stop.seqNo}>
+                          <strong>{stop.destinationName}</strong>
+                          {stop.patientName && <> - {stop.patientName}</>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </div>
-              )}
+              ))
+          ) : (
+            <div className={styles.emptyStateSmall}>
+              <i className="bi bi-inbox"></i>
+              Không có nhiệm vụ
             </div>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {/* Cột 2: Đã hoàn thành */}
+      <div className="col-12 col-md-4">
+        <h6 className={styles.sectionTitle}>
+          <i className="bi bi-check-circle-fill text-success"></i>
+          Đã hoàn thành
+        </h6>
+        <div className={styles.taskColumn}>
+          {robot.tasks?.filter(t => t.status === "completed").length > 0 ? (
+            robot.tasks
+              .filter(t => t.status === "completed")
+              .slice(0, 5)
+              .map(task => (
+                <div key={task.id} className={styles.taskCard}>
+                  <div className={styles.taskHeader}>
+                    <div className={styles.taskTitle}>
+                      <i className="bi bi-clipboard-check me-1"></i>
+                      Nhiệm vụ #{task.id}
+                    </div>
+                    {getStatusBadge(task.status)}
+                  </div>
+                  <div className={styles.taskMeta}>
+                    <i className="bi bi-geo me-1"></i>
+                    {task.stops?.length > 0 ? `${task.stops.length} điểm dừng` : "Chưa có điểm dừng"}
+                  </div>
+                  {task.stops?.length > 0 && (
+                    <ol className={styles.taskStops}>
+                      {task.stops.map(stop => (
+                        <li key={stop.seqNo}>
+                          <strong>{stop.destinationName}</strong>
+                          {stop.patientName && <> - {stop.patientName}</>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))
+          ) : (
+            <div className={styles.emptyStateSmall}>
+              <i className="bi bi-inbox"></i>
+              Không có nhiệm vụ
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Cột 3: Đã hủy */}
+      <div className="col-12 col-md-4">
+        <h6 className={styles.sectionTitle}>
+          <i className="bi bi-x-circle-fill text-danger"></i>
+          Đã hủy
+        </h6>
+        <div className={styles.taskColumn}>
+          {robot.tasks?.filter(t => t.status === "canceled").length > 0 ? (
+            robot.tasks
+              .filter(t => t.status === "canceled")
+              .slice(0, 5)
+              .map(task => (
+                <div key={task.id} className={styles.taskCard}>
+                  <div className={styles.taskHeader}>
+                    <div className={styles.taskTitle}>
+                      <i className="bi bi-clipboard-check me-1"></i>
+                      Nhiệm vụ #{task.id}
+                    </div>
+                    {getStatusBadge(task.status)}
+                  </div>
+                  <div className={styles.taskMeta}>
+                    <i className="bi bi-geo me-1"></i>
+                    {task.stops?.length > 0 ? `${task.stops.length} điểm dừng` : "Chưa có điểm dừng"}
+                  </div>
+                  {task.stops?.length > 0 && (
+                    <ol className={styles.taskStops}>
+                      {task.stops.map(stop => (
+                        <li key={stop.seqNo}>
+                          <strong>{stop.destinationName}</strong>
+                          {stop.patientName && <> - {stop.patientName}</>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))
+          ) : (
+            <div className={styles.emptyStateSmall}>
+              <i className="bi bi-inbox"></i>
+              Không có nhiệm vụ
+            </div>
+          )}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+ 
 
 
           {/* =================== GALLERY =================== */}
