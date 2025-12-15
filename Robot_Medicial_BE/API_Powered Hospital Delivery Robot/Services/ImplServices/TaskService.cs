@@ -15,6 +15,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IPatientRepository _repoPatient;
         private readonly IHubContext<TaskHub> _taskHub;
         private readonly ITaskHistoryService _taskHistoryService;
+        private readonly ILogRepository _logRepository;
 
         public TaskService(
             ITaskRepository repo,
@@ -22,7 +23,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             IRobotCompartmentRepository repoRobotCom,
             IPatientRepository repoPatient,
             IHubContext<TaskHub> taskHub,
-            ITaskHistoryService taskHistoryService)
+            ITaskHistoryService taskHistoryService,
+            ILogRepository logRepository)
         {
             _repo = repo;
             _repoRobot = repoRobot;
@@ -30,6 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _repoPatient = repoPatient;
             _taskHub = taskHub;
             _taskHistoryService = taskHistoryService;
+            _logRepository = logRepository;
         }
 
         // ======================================================================
@@ -228,6 +231,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 var result = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(result!);
+
+                // Log task creation
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = "info",
+                    Message = $"Nhiệm vụ #{task.Id} đã được tạo thành công. Robot: {robot.Name ?? robot.Code}, Ưu tiên: {task.Priority}, Số điểm dừng: {dto.Stops.Count}",
+                    CreatedAt = DateTime.Now
+                });
 
                 await _taskHub.Clients.All.SendAsync("TaskCreated", response);
 
@@ -441,6 +454,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     if (newStatus is "completed" or "failed" or "canceled")
                     {
                         await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                        // Log task status change
+                        var robot = await _repo.GetRobotAsync(task.RobotId);
+                        var logType = newStatus == "completed" ? "success" : newStatus == "failed" ? "error" : "warning";
+                        var statusText = newStatus == "completed" ? "hoàn thành" : newStatus == "failed" ? "thất bại" : "đã hủy";
+                        
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            LogType = logType,
+                            Message = $"Nhiệm vụ #{task.Id} đã {statusText}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
                     }
                 }
 
@@ -626,6 +653,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     task.UpdatedAt = DateTime.Now;
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                    // Log task auto-completed
+                    var robot = await _repo.GetRobotAsync(task.RobotId);
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        LogType = "success",
+                        Message = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                        CreatedAt = DateTime.Now
+                    });
                 }
 
                 // ==================================================================
@@ -976,6 +1014,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
                     }
                 }
+
+                // Log task auto-completed from stop status update
+                var robot = await _repo.GetRobotAsync(task.RobotId);
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = "success",
+                    Message = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                    CreatedAt = DateTime.Now
+                });
             }
 
             // Lưu DB
@@ -1022,6 +1071,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             await _repo.SaveChangesAsync();
             await RecordTaskHistory(task);
+
+            // Log task completed
+            var robot = await _repo.GetRobotAsync(task.RobotId);
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = task.RobotId,
+                TaskId = task.Id,
+                LogType = "success",
+                Message = $"Nhiệm vụ #{task.Id} đã hoàn thành thành công. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}, Số điểm dừng: {task.TaskStops.Count}",
+                CreatedAt = DateTime.Now
+            });
+
             return new StopUpdateResultDto
             {
                 Success = true,
@@ -1124,6 +1185,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var fullTask = await _repo.GetByIdAsync(task.Id);
                 await RecordTaskHistory(fullTask!, startedEarlyMinutes);
 
+                // Log task started
+                var logMessage = startedEarlyMinutes.HasValue && startedEarlyMinutes > 0
+                    ? $"Nhiệm vụ #{task.Id} đã được bắt đầu sớm {startedEarlyMinutes:F1} phút. Robot: {robot.Name ?? robot.Code}"
+                    : $"Nhiệm vụ #{task.Id} đã được bắt đầu. Robot: {robot.Name ?? robot.Code}";
+                
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = "info",
+                    Message = logMessage,
+                    CreatedAt = DateTime.Now
+                });
+
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(updatedTask!);
 
@@ -1190,6 +1265,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     await RecordTaskHistory(task, cancelNote: cancelNote);
 
+                    // Log task auto-canceled
+                    var robot = await _repo.GetRobotAsync(task.RobotId);
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        LogType = "warning",
+                        Message = $"Nhiệm vụ #{task.Id} đã bị hủy tự động do quá giờ khởi hành {overdueMinutes:F1} phút. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                        CreatedAt = DateTime.Now
+                    });
+
                     // 4. Gửi SignalR thông báo
                     var canceledTaskResponse = MapToResponse(task);
 
@@ -1202,7 +1288,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     });
 
                     // Gửi riêng cho robot liên quan (nếu cần)
-                    var robot = await _repo.GetRobotAsync(task.RobotId);
                     if (robot?.Code != null)
                     {
                         await _taskHub.Clients.Group($"Robot_{robot.Code}").SendAsync("TaskCanceled", new
@@ -1299,11 +1384,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     : $"Nhiệm vụ đã bị hủy: {reason}";
                 await RecordTaskHistory(task, cancelNote: cancelNote);
 
-                // 7. Lấy task đã cập nhật và trả về
+                // 7. Log task canceled
+                var robot = await _repo.GetRobotAsync(task.RobotId);
+                var cancelReason = string.IsNullOrWhiteSpace(reason) ? "Hủy thủ công" : reason;
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = "warning",
+                    Message = $"Nhiệm vụ #{task.Id} đã bị hủy. Lý do: {cancelReason}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                    CreatedAt = DateTime.Now
+                });
+
+                // 8. Lấy task đã cập nhật và trả về
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(updatedTask!);
 
-                // 8. Gửi SignalR thông báo
+                // 9. Gửi SignalR thông báo
                 await _taskHub.Clients.All.SendAsync("TaskCanceled", new
                 {
                     taskId = task.Id,

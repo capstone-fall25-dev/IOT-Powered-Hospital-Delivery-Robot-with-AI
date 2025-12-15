@@ -30,8 +30,8 @@ builder.Services.AddSwaggerGen();
 
 // 2. DATABASE CONFIGURATION
 builder.Services.AddDbContext<RobotManagerContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
+    options.UseMySql(builder.Configuration.GetConnectionString("ServerConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("ServerConnection"))));
 
 // 3. SWAGGER WITH JWT BEARER CONFIGURATION
 builder.Services.AddSwaggerGen(options =>
