@@ -16,9 +16,9 @@ BASE_URL = get_api()
 HUB_URL = f"{BASE_URL}/hubs/robotposition"  # ✅ Đúng Hub backend
 
 MAX_LINEAR_VEL = 0.22
-MAX_ANGULAR_VEL = 2.84
+MAX_ANGULAR_VEL = 1.57
 LIN_VEL_STEP = 0.05
-ANG_VEL_STEP = 0.1
+ANG_VEL_STEP = 0.05
 
 class RobotMotorControl(Node):
     def __init__(self):

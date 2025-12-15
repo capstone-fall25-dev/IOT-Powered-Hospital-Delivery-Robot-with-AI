@@ -113,7 +113,7 @@ class STM32Driver(Node):
         
         # Robot Physical Parameters (Critical for accurate kinematics)
         self.declare_parameter('wheel_radius', 0.045)                # Wheel radius in meters (measure from wheel center to ground contact)
-        self.declare_parameter('wheel_base', 0.28)                   # Distance between wheel centers in meters (left to right)
+        self.declare_parameter('wheel_base', 0.29)                   # Distance between wheel centers in meters (left to right)
         
         # System Configuration Parameters  
         self.declare_parameter('debug_mode', True)                  # Enable verbose logging and debug output

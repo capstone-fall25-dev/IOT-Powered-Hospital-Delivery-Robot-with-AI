@@ -549,6 +549,46 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
   img.src = primaryImgUrl;
 }
 
+// Thêm hàm xử lý dừng khẩn cấp
+async function sendEmergencyStop() {
+  try {
+    const response = await fetch(
+      API_CONFIG.API_BASE1 + "/api/Destinations/emergency-stop",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("API error");
+    }
+
+    // TTS thông báo
+    try {
+      await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Dừng khẩn cấp đã được kích hoạt" }),
+      });
+    } catch (ttsErr) {
+      console.error("TTS error:", ttsErr);
+    }
+
+    showToast("success", "🛑 Đã gửi lệnh dừng khẩn cấp!");
+    
+    // Reset tiến độ về 0
+    setNavProgress({
+      percent: 0,
+      robotCode: "",
+      pointName: "Đã dừng",
+    });
+  } catch (err) {
+    console.error(err);
+    showToast("error", "Không thể gửi lệnh dừng khẩn cấp!");
+  }
+}
+
 
 
   // ===================================
@@ -719,7 +759,7 @@ const navRoomsLayerRef = useRef(null); // ⭐ NEW: layer chứa marker phòng tr
 
 async function sendReturnToStation() {
   const payload = {
-    mapId: 1,  // ⭐ Hoặc lấy từ selectedDestination?.mapId
+    mapId: selectedDestination.mapId,  // ⭐ Hoặc lấy từ selectedDestination?.mapId
     destinations: [
       {
         id: 0,
@@ -1365,6 +1405,20 @@ async function sendReturnToStation() {
                   >
                     <i className="bi bi-send me-1"></i>
                     Gửi vị trí muốn đến
+                  </button>
+
+                                    {/* ⭐ NÚT DỪNG KHẨN CẤP MỚI */}
+                  <button
+                    className={`${styles.btnDanger} mt-2`}
+                    onClick={sendEmergencyStop}
+                    style={{
+                      background: "linear-gradient(135deg, #dc3545, #c82333)",
+                      border: "none",
+                      width: "100%",
+                    }}
+                  >
+                    <i className="bi bi-stop-circle-fill me-1"></i>
+                    Dừng khẩn cấp
                   </button>
 
                   {selectedDestination && (

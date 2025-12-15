@@ -166,6 +166,35 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return StatusCode(500, new { message = "Lỗi khi cập nhật địa điểm.", error = ex.Message });
             }
         }
+
+
+                    /// <summary>
+            /// Dừng khẩn cấp - hủy nhiệm vụ robot đang chạy
+            /// </summary>
+            [HttpPost("emergency-stop")]
+            public async Task<IActionResult> EmergencyStop()
+            {
+                try
+                {
+                    var payload = new
+                    {
+                        type = "emergency_stop",
+                        timestamp = DateTime.Now,
+                        command = "cancel_navigation"
+                    };
+
+                    await _hubContext.Clients.All.SendAsync("ReceiveEmergencyStop", payload);
+                    Console.WriteLine($"[SignalR] 🛑 Đã gửi lệnh dừng khẩn cấp xuống ROS2");
+
+                    return Ok(new { message = "Đã gửi lệnh dừng khẩn cấp thành công.", payload });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] {ex.Message}");
+                    return StatusCode(500, new { message = "Lỗi khi gửi lệnh dừng khẩn cấp.", error = ex.Message });
+                }
+            }
+
     }
 
     // ============================================================

@@ -584,8 +584,16 @@ class RouteListener:
                     args=(args,),
                     daemon=True
                 ).start()
+            # ⭐ NEW: Handler cho lệnh dừng khẩn cấp
+            def on_receive_emergency_stop(args):
+                threading.Thread(
+                    target=self._process_emergency_stop,
+                    args=(args,),
+                    daemon=True
+                ).start()    
 
             self.hub.on("ReceiveDestinationRoute", on_receive_destination_route)
+            self.hub.on("ReceiveEmergencyStop", on_receive_emergency_stop)
             self.hub.on_open(lambda: print("✅ Connected to Hub"))
             self.hub.on_close(lambda: print("❌ Hub connection closed"))
             self.hub.on_error(lambda e: print(f"⚠️ Hub error: {e}"))
@@ -599,6 +607,35 @@ class RouteListener:
             self.navigator.get_logger().error(
                 f"❌ Không thể kết nối Hub: {e}"
             )
+
+    # ⭐ NEW: Xử lý lệnh dừng khẩn cấp
+    def _process_emergency_stop(self, args):
+        try:
+            data = args[0] if args else {}
+            
+            print("\n" + "="*60)
+            print("🛑 EMERGENCY STOP RECEIVED:")
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+            print("="*60 + "\n")
+            
+            self.navigator.get_logger().warn("🛑 Dừng khẩn cấp! Hủy nhiệm vụ điều hướng...")
+            
+            # Hủy nhiệm vụ điều hướng hiện tại
+            self.navigator.navigator.cancelTask()
+            
+            # Gửi trạng thái về API
+            if self.navigator.api_handler:
+                self.navigator.api_handler.send_status_to_api('NAVIGATION_CANCELED')
+                self.navigator.api_handler.send_progress_to_api(0.0, "Đã dừng khẩn cấp")
+            
+            self.navigator.get_logger().info("✅ Đã hủy nhiệm vụ thành công. Robot đứng yên.")
+            
+        except Exception as e:
+            import traceback
+            self.navigator.get_logger().error(f"❌ Lỗi xử lý dừng khẩn cấp: {e}")
+            self.navigator.get_logger().error(
+                f"Stack trace:\n{traceback.format_exc()}"
+            )        
 
     def _process_route_sync(self, args):
         try:

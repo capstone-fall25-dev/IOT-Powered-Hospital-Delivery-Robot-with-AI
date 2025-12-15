@@ -20,7 +20,7 @@ def generate_launch_description():
     goto_pose_node = Node(
         package="robot_api",
         executable="goto_position.py",
-        name="goto_pose_node_",
+        name="goto_pose_node",
         output="screen"
     )
 
