@@ -244,8 +244,10 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
         public async System.Threading.Tasks.Task GetById_TC13_ReturnsExactlyFourProperties()
         {
             var result = await _controller.GetById(10);
-            dynamic data = ToExpando(((OkObjectResult)result.Result!).Value);
-            var properties = ((object)data).GetType().GetProperties();
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            // Lấy properties từ object gốc (anonymous type) trước khi convert sang ExpandoObject
+            var originalObject = okResult.Value;
+            var properties = originalObject?.GetType().GetProperties() ?? Array.Empty<System.Reflection.PropertyInfo>();
             Assert.Equal(4, properties.Length);
         }
 

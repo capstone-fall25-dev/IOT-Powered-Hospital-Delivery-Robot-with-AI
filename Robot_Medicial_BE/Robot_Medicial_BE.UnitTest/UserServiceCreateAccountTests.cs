@@ -194,7 +194,7 @@ namespace Robot_Medicial_BE.UnitTest
                 await _userService.CreateAsync(userDto));
 
             // Log "Tạo tài khoản thất bại. Vui lòng tạo lại" - Verified by exception
-            Assert.Contains("Role phải là 'doctor' hoặc 'pharmacist'", exception.Message);
+            Assert.Contains("Vai trò phải là 'doctor' hoặc 'pharmacist'", exception.Message);
         }
 
         // Test Case 4: Password = "NewPass123@", Role = "Bác sĩ", Status = "Tạm dừng"
@@ -281,7 +281,7 @@ namespace Robot_Medicial_BE.UnitTest
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await _userService.CreateAsync(userDto));
 
-            Assert.Contains("Role phải là 'doctor' hoặc 'pharmacist'", exception.Message);
+            Assert.Contains("Vai trò phải là 'doctor' hoặc 'pharmacist'", exception.Message);
         }
 
         // Test Case 7: Password = "NewPass123@", Role = "Bác sĩ", Status = "Tạm dừng"

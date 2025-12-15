@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -153,6 +155,24 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
         // ====================================================================
 
         /// <summary>
+        /// Chuyển anonymous object thành ExpandoObject để dynamic hoạt động
+        /// </summary>
+        private dynamic ToExpando(object? obj)
+        {
+            if (obj == null) return null!;
+
+            var expando = new ExpandoObject();
+            var dictionary = (IDictionary<string, object?>)expando;
+
+            foreach (var property in obj.GetType().GetProperties())
+            {
+                dictionary.Add(property.Name, property.GetValue(obj));
+            }
+
+            return expando;
+        }
+
+        /// <summary>
         /// Hàm này thay thế cho việc gọi trực tiếp controller.GetAll()
         /// Vì InMemory không hỗ trợ .Count() trong projection → phải tách riêng
         /// Hàm này trả về kết quả CHÍNH XÁC 100% như controller thật sẽ trả về nếu không có bug
@@ -227,19 +247,24 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
         [Fact]
         public async System.Threading.Tasks.Task GetAll_TC04_KiemTraThuTuSapXepTheoTenTangDanChinhXac()
         {
-            var expectedData = await GetAllExpectedResult();
+            // Act - Gọi controller thực tế để lấy kết quả với Vietnamese culture-aware sorting
+            var result = await _controller.GetAll();
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var actualData = (IEnumerable<object>)okResult.Value!;
 
-            var actualNames = expectedData
-                .Cast<dynamic>()
-                .Select(x => (string)x.Name)
+            // Sử dụng reflection để truy cập property Name
+            var actualNames = actualData
+                .Select(obj => obj.GetType().GetProperty("Name")?.GetValue(obj)?.ToString() ?? "")
                 .ToArray();
 
+            // Expected order theo Vietnamese culture-aware sorting:
+            // "Bơm kim tiêm" (B) -> "Ống truyền dịch" (Ố) -> "Thuốc nước" (T) -> "Thuốc viên" (T)
             var expectedNames = new string[]
             {
                 "Bơm kim tiêm",
+                "Ống truyền dịch",
                 "Thuốc nước",
-                "Thuốc viên",
-                "Ống truyền dịch"
+                "Thuốc viên"
             };
 
             Assert.Equal(expectedNames, actualNames);

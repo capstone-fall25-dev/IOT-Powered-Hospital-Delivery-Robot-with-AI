@@ -13,7 +13,7 @@ using System.Text;
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     /// <summary>
-    /// Quản lý tài khoản nhân viên
+    /// Quản lý tài khoản User
     /// </summary>
     public class UserService : IUserService
     {
@@ -43,7 +43,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Tạo tài khoản nhân viên mới
+        /// Tạo tài khoản User mới
         /// </summary>
         public async Task<UserResponseDto> CreateAsync(UserDto userDto)
         {
@@ -53,7 +53,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var role = userDto.Role?.Trim().ToLowerInvariant();
             if (role is null || (role != "doctor" && role != "pharmacist"))
-                throw new InvalidOperationException("Vai trò phải là 'doctor' hoặc 'pharmacist' khi tạo nhân viên.");
+                throw new InvalidOperationException("Vai trò phải là 'doctor' hoặc 'pharmacist' khi tạo User.");
 
             var user = _mapper.Map<User>(userDto);
 
@@ -71,7 +71,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _emailHelper.SendEmailAsync(
                 user.Email,
                 "Xác minh tài khoản",
-                $"<h3>Chào mừng, {userDto.FullName ?? "Nhân viên"}!</h3>" +
+                $"<h3>Chào mừng, {userDto.FullName ?? "User"}!</h3>" +
                 $"<p>Mã xác minh của bạn là: <b>{otp}</b></p>" +
                 $"<p>Mã có hiệu lực trong 5 phút.</p>"
             );
@@ -80,7 +80,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Lấy danh sách tất cả nhân viên (có thể lọc theo trạng thái active)
+        /// Lấy danh sách tất cả User (có thể lọc theo trạng thái active)
         /// </summary>
         public async Task<IEnumerable<UserResponseDto>> GetAllAsync(bool? isActive = null)
         {
@@ -89,7 +89,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Lấy chi tiết nhân viên theo ID
+        /// Lấy chi tiết User theo ID
         /// </summary>
         public async Task<UserResponseDto?> GetByIdAsync(ulong id)
         {
@@ -110,14 +110,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Lấy trạng thái nhân viên (real-time status)
+        /// Lấy trạng thái User (real-time status)
         /// </summary>
         public async Task<UserStatusDto> GetUserStatusAsync(ulong id)
         {
             var user = await _repository.GetByIdAsync(id, includeTasks: false, includeSessions: true);
             if (user == null)
             {
-                throw new InvalidOperationException("Không tìm thấy nhân viên");
+                throw new InvalidOperationException("Không tìm thấy User");
             }
 
             var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.Now).ToList();
@@ -132,7 +132,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Bật/tắt trạng thái active của nhân viên
+        /// Bật/tắt trạng thái active của User
         /// </summary>
         public async Task<bool> ToggleActiveAsync(ulong id, bool isActive)
         {
@@ -154,14 +154,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Cập nhật thông tin nhân viên
+        /// Cập nhật thông tin User
         /// </summary>
         public async Task<UserResponseDto?> UpdateAsync(ulong id, UserDto userDto)
         {
             var existing = await _repository.GetByIdAsync(id);
             if (existing == null)
             {
-                throw new InvalidOperationException("Nhân viên không tồn tại");
+                throw new InvalidOperationException("User không tồn tại");
             }
 
             if (userDto.Email != existing.Email)
@@ -203,13 +203,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Thêm nhân viên mới
+        /// Thêm User mới
         /// </summary>
         public async System.Threading.Tasks.Task AddUserAsync(User user)
             => await _repository.AddUserAsync(user);
 
         /// <summary>
-        /// Lấy nhân viên theo email
+        /// Lấy User theo email
         /// </summary>
         public async Task<User?> GetByEmailAsync(string email)
         {
@@ -217,7 +217,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Cập nhật thông tin nhân viên
+        /// Cập nhật thông tin User
         /// </summary>
         public async System.Threading.Tasks.Task UpdateUserAsync(User user)
             => await _repository.UpdateUserAsync(user);
@@ -233,11 +233,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             if (existingUser != null)
             {
-                // Nếu nhân viên đã kích hoạt rồi → báo lỗi
+                // Nếu User đã kích hoạt rồi → báo lỗi
                 if (existingUser.IsActive == true)
                     return "Email đã tồn tại.";
 
-                // Nếu nhân viên chưa active → gửi lại OTP
+                // Nếu User chưa active → gửi lại OTP
                 string otp = new Random().Next(100000, 999999).ToString();
                 _cache.Set($"OTP_{request.Email}", otp, TimeSpan.FromMinutes(5));
 
@@ -250,7 +250,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 return "Tài khoản của bạn chưa được kích hoạt. Một mã OTP mới đã được gửi đến email của bạn.";
             }
 
-            // Nếu nhân viên chưa tồn tại → tạo mới
+            // Nếu User chưa tồn tại → tạo mới
             var user = _mapper.Map<User>(request);
             user.PasswordHash = HashPassword(request.Password);
             user.IsActive = false;
@@ -356,7 +356,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Reload user để có session mới nhất
             await _context.Entry(user).Collection(u => u.Sessions).LoadAsync();
-            // Báo realtime toàn hệ thống: nhân viên này đang online
+            // Báo realtime toàn hệ thống: User này đang online
             if (_hubContext != null)
                 await _hubContext.Clients.All.SendAsync("UserOnline", user.Id.ToString());
 
@@ -396,7 +396,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         /// </summary>
         public async Task<string> RequestForgotPasswordAsync(ForgotPasswordRequest request)
         {
-            // Tìm nhân viên theo email
+            // Tìm User theo email
             var allUsers = await _repository.GetAllAsync();
             var user = allUsers.FirstOrDefault(u => u.Email == request.Email);
 
@@ -409,7 +409,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             // Lưu OTP trong cache (5 phút)
             _cache.Set($"FORGOT_{user.Email}", otp, TimeSpan.FromMinutes(5));
 
-            // Gửi OTP đến email nhân viên
+            // Gửi OTP đến email User
             await _emailHelper.SendEmailAsync(
                 user.Email,
                 "Xác minh đặt lại mật khẩu",
@@ -431,7 +431,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (storedOtp != request.Otp)
                 return "Mã OTP không hợp lệ.";
 
-            // Lấy nhân viên theo email
+            // Lấy User theo email
             var allUsers = await _repository.GetAllAsync();
             var user = allUsers.FirstOrDefault(u => u.Email == request.Email);
 
@@ -450,7 +450,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Admin đặt lại mật khẩu cho nhân viên
+        /// Admin đặt lại mật khẩu cho User
         /// </summary>
         public async Task<string> AdminResetPasswordAsync(string email)
         {
@@ -558,7 +558,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
-        /// Buộc đăng xuất tất cả session của nhân viên
+        /// Buộc đăng xuất tất cả session của User
         /// </summary>
         public async Task<object> ForceLogoutAllSessionsAsync(ulong userId)
         {
@@ -573,7 +573,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 }
                 await UpdateUserAsync(user);
 
-                // Báo realtime: báo nhân viên bị đá ra
+                // Báo realtime: báo User bị đá ra
                 if (_hubContext != null)
                     await _hubContext.Clients.All.SendAsync("UserOffline", userId.ToString());
             }

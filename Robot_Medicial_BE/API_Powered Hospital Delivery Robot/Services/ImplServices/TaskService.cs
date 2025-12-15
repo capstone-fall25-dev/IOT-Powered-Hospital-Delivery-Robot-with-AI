@@ -140,6 +140,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 task = await _repo.CreateAsync(task);
 
+                // Lưu stopId đầu tiên để dùng cho log
+                ulong? firstStopId = null;
+
                 // Create task stops
                 foreach (var s in dto.Stops.OrderBy(s => s.SeqNo))
                 {
@@ -210,6 +213,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     stop = await _repo.CreateStopAsync(stop);
 
+                    // Lưu stopId đầu tiên
+                    if (firstStopId == null)
+                    {
+                        firstStopId = stop.Id;
+                    }
+
                     await _repo.CreateAssignmentAsync(new CompartmentAssignment
                     {
                         TaskId = task.Id,
@@ -220,6 +229,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         Status = "pending",
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
+                    });
+
+                    // Log stop creation
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        StopId = stop.Id,
+                        LogType = "info",
+                        Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được tạo cho nhiệm vụ #{task.Id}. Bệnh nhân: {patient.FullName} ({patient.PatientCode})",
+                        CreatedAt = DateTime.Now
                     });
                 }
 
@@ -232,11 +252,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var result = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(result!);
 
-                // Log task creation
+                // Log task creation - không cần stopId vì đây là log tổng quát về task
                 await _logRepository.CreateAsync(new Log
                 {
                     RobotId = task.RobotId,
                     TaskId = task.Id,
+                    StopId = null, // Log tổng quát về task, không cần stopId
                     LogType = "info",
                     Message = $"Nhiệm vụ #{task.Id} đã được tạo thành công. Robot: {robot.Name ?? robot.Code}, Ưu tiên: {task.Priority}, Số điểm dừng: {dto.Stops.Count}",
                     CreatedAt = DateTime.Now
@@ -435,6 +456,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     foreach (var stop in task.TaskStops)
                     {
                         // FIX: Không ghi đè delivered
+                        var oldStopStatus = stop.Status;
                         if (!string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
                         {
                             stop.Status = stopStatus;
@@ -448,6 +470,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             assign.UpdatedAt = DateTime.Now;
                         }
 
+                        // Log stop status change when task status changes
+                        if (!string.Equals(oldStopStatus, stopStatus, StringComparison.OrdinalIgnoreCase))
+                        {
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                StopId = stop.Id,
+                                LogType = stopStatus == "delivered" ? "success" : stopStatus == "failed" ? "error" : "info",
+                                Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật từ '{oldStopStatus}' sang '{stopStatus}' do thay đổi trạng thái nhiệm vụ",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
                     }
 
                     // Robot về trạm khi task kết thúc
@@ -455,19 +490,39 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     {
                         await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
-                        // Log task status change
+                        // Log task status change cho tất cả stops
                         var robot = await _repo.GetRobotAsync(task.RobotId);
                         var logType = newStatus == "completed" ? "success" : newStatus == "failed" ? "error" : "warning";
                         var statusText = newStatus == "completed" ? "hoàn thành" : newStatus == "failed" ? "thất bại" : "đã hủy";
+                        var taskMessage = $"Nhiệm vụ #{task.Id} đã {statusText}";
                         
-                        await _logRepository.CreateAsync(new Log
+                        if (task.TaskStops != null && task.TaskStops.Any())
                         {
-                            RobotId = task.RobotId,
-                            TaskId = task.Id,
-                            LogType = logType,
-                            Message = $"Nhiệm vụ #{task.Id} đã {statusText}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
-                        });
+                            foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                            {
+                                await _logRepository.CreateAsync(new Log
+                                {
+                                    RobotId = task.RobotId,
+                                    TaskId = task.Id,
+                                    StopId = stop.Id,
+                                    LogType = logType,
+                                    Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                    CreatedAt = DateTime.Now
+                                });
+                            }
+                        }
+                        else
+                        {
+                            // Fallback nếu không có stops
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                LogType = logType,
+                                Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
                     }
                 }
 
@@ -480,22 +535,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     var stopIdsInDto = dto.Stops.Where(s => s.StopId > 0).Select(s => s.StopId).ToList();
 
                     // Xóa các stop không có trong dto (đã bị xóa ở frontend)
-                    var stopsToDelete = task.TaskStops.Where(s => !stopIdsInDto.Contains(s.Id)).ToList();
-                    foreach (var stopToDelete in stopsToDelete)
+                    if (task.TaskStops != null)
                     {
-                        // Release compartments trước khi xóa
-                        foreach (var assign in stopToDelete.CompartmentAssignments)
+                        var stopsToDelete = task.TaskStops.Where(s => !stopIdsInDto.Contains(s.Id)).ToList();
+                        foreach (var stopToDelete in stopsToDelete)
                         {
-                            await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                            // Release compartments trước khi xóa
+                            foreach (var assign in stopToDelete.CompartmentAssignments)
+                            {
+                                await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                            }
+                            // Xóa stop
+                            await _repo.DeleteStopAsync(stopToDelete.Id);
+                            task.TaskStops.Remove(stopToDelete);
                         }
-                        // Xóa stop
-                        await _repo.DeleteStopAsync(stopToDelete.Id);
-                        task.TaskStops.Remove(stopToDelete);
                     }
 
                     foreach (var sDto in dto.Stops)
                     {
                         TaskStop stop;
+                        bool isNewStop = false;
 
                         // Nếu stopId = 0 → tạo stop mới
                         if (sDto.StopId == 0)
@@ -513,42 +572,163 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             };
 
                             stop = await _repo.CreateStopAsync(stop);
+                            if (task.TaskStops == null)
+                                throw new InvalidOperationException("TaskStops collection is null. Cannot add new stop.");
                             task.TaskStops.Add(stop);
+                            isNewStop = true;
                         }
                         else
                         {
                             // Tìm stop hiện có
+                            if (task.TaskStops == null)
+                                throw new InvalidOperationException($"Không tìm thấy Stop {sDto.StopId} - TaskStops collection is null.");
                             stop = task.TaskStops.FirstOrDefault(x => x.Id == sDto.StopId)
                                 ?? throw new InvalidOperationException($"Không tìm thấy Stop {sDto.StopId}");
                         }
 
-                        // 4.1 Update Stop Status
-                        if (!string.IsNullOrWhiteSpace(sDto.Status))
+                        // Lưu giá trị cũ để so sánh (chỉ khi edit stop cũ, không phải tạo mới)
+                        if (!isNewStop)
                         {
-                            var newStopStatus = sDto.Status.Trim().ToLower();
+                            var oldSeqNo = stop.SeqNo;
+                            var oldDestinationId = stop.DestinationId;
+                            var oldPatientId = stop.PatientId;
+                            var oldCustomName = stop.CustomName;
+                            var oldAssignment = stop.CompartmentAssignments.FirstOrDefault();
+                            var oldCompartmentId = oldAssignment?.CompartmentId ?? 0;
+                            var oldItemDesc = oldAssignment?.ItemDesc ?? "";
 
-                            if (!ValidStopStatuses.Contains(newStopStatus))
-                                throw new InvalidOperationException($"Stop status '{newStopStatus}' không hợp lệ.");
+                            // Load thông tin cũ để có tên trong log
+                            var oldDestination = stop.Destination;
+                            var oldPatient = stop.Patient;
+                            var oldComp = oldAssignment?.Compartment;
 
-                            // FIX: Không cho đổi trạng thái delivered
-                            if (stop.Status == "delivered")
-                                continue;
-
-                            stop.Status = newStopStatus;
-
-                            stop.UpdatedAt = DateTime.Now;
-
-                            foreach (var assign in stop.CompartmentAssignments)
+                            // 4.1 Update Stop Status
+                            if (!string.IsNullOrWhiteSpace(sDto.Status))
                             {
-                                assign.Status = newStopStatus;
-                                assign.UpdatedAt = DateTime.Now;
+                                var newStopStatus = sDto.Status.Trim().ToLower();
+
+                                if (!ValidStopStatuses.Contains(newStopStatus))
+                                    throw new InvalidOperationException($"Stop status '{newStopStatus}' không hợp lệ.");
+
+                                // FIX: Không cho đổi trạng thái delivered
+                                if (stop.Status == "delivered")
+                                    continue;
+
+                                var oldStatus = stop.Status;
+                                
+                                // Chỉ log và update nếu status thực sự thay đổi
+                                if (!string.Equals(oldStatus, newStopStatus, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    stop.Status = newStopStatus;
+                                    stop.UpdatedAt = DateTime.Now;
+
+                                    foreach (var assign in stop.CompartmentAssignments)
+                                    {
+                                        assign.Status = newStopStatus;
+                                        assign.UpdatedAt = DateTime.Now;
+                                    }
+
+                                    // Log stop status change - chỉ khi có thay đổi
+                                    await _logRepository.CreateAsync(new Log
+                                    {
+                                        RobotId = task.RobotId,
+                                        TaskId = task.Id,
+                                        StopId = stop.Id,
+                                        LogType = newStopStatus == "delivered" ? "success" : newStopStatus == "failed" ? "error" : "info",
+                                        Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật trạng thái từ '{oldStatus}' sang '{newStopStatus}'",
+                                        CreatedAt = DateTime.Now
+                                    });
+                                }
+                            }
+
+                            // 4.2 Update stop info - Log từng thay đổi riêng biệt
+                            var changes = new List<string>();
+
+                            // Check SeqNo change
+                            if (oldSeqNo != sDto.SeqNo)
+                            {
+                                changes.Add($"Thứ tự: {oldSeqNo} → {sDto.SeqNo}");
+                                stop.SeqNo = sDto.SeqNo;
+                            }
+
+                            // Check DestinationId change
+                            if (oldDestinationId != sDto.DestinationId)
+                            {
+                                var oldDestName = oldDestination?.Name ?? $"ID {oldDestinationId}";
+                                // Load destination mới để lấy tên (nếu cần)
+                                // Tạm thời dùng ID, có thể cải thiện sau bằng cách inject IDestinationRepository
+                                var newDestName = $"ID {sDto.DestinationId}";
+                                changes.Add($"Điểm dừng: {oldDestName} → {newDestName}");
+                                stop.DestinationId = sDto.DestinationId;
+                            }
+
+                            // Check PatientId change
+                            if (oldPatientId != sDto.PatientId)
+                            {
+                                var oldPatName = oldPatient != null ? $"{oldPatient.FullName} ({oldPatient.PatientCode})" : $"ID {oldPatientId}";
+                                var newPatient = await _repoPatient.GetByIdAsync(sDto.PatientId);
+                                var newPatName = newPatient != null ? $"{newPatient.FullName} ({newPatient.PatientCode})" : $"ID {sDto.PatientId}";
+                                changes.Add($"Bệnh nhân: {oldPatName} → {newPatName}");
+                                stop.PatientId = sDto.PatientId;
+                            }
+
+                            // Check CompartmentId change
+                            if (oldCompartmentId != sDto.CompartmentId)
+                            {
+                                var oldCompCode = oldComp?.CompartmentCode ?? $"ID {oldCompartmentId}";
+                                var newComp = await _repo.GetCompartmentAsync(sDto.CompartmentId);
+                                var newCompCode = newComp?.CompartmentCode ?? $"ID {sDto.CompartmentId}";
+                                changes.Add($"Ngăn chứa: {oldCompCode} → {newCompCode}");
+                            }
+
+                            // Check CustomName change
+                            var newCustomName = !string.IsNullOrWhiteSpace(sDto.CustomName) ? sDto.CustomName.Trim() : null;
+                            if (oldCustomName != newCustomName)
+                            {
+                                var oldNameDisplay = string.IsNullOrWhiteSpace(oldCustomName) ? "(trống)" : oldCustomName;
+                                var newNameDisplay = string.IsNullOrWhiteSpace(newCustomName) ? "(trống)" : newCustomName;
+                                changes.Add($"Tên tùy chỉnh: {oldNameDisplay} → {newNameDisplay}");
+                            }
+
+                            // Check ItemDesc change
+                            var newItemDesc = !string.IsNullOrWhiteSpace(sDto.ItemDesc) ? sDto.ItemDesc.Trim() : "";
+                            if (oldItemDesc != newItemDesc)
+                            {
+                                var oldDescDisplay = string.IsNullOrWhiteSpace(oldItemDesc) ? "(trống)" : oldItemDesc;
+                                var newDescDisplay = string.IsNullOrWhiteSpace(newItemDesc) ? "(trống)" : newItemDesc;
+                                changes.Add($"Mô tả vật phẩm: {oldDescDisplay} → {newDescDisplay}");
+                            }
+
+                            // Log tất cả thay đổi (trừ status - đã log riêng ở trên)
+                            if (changes.Any())
+                            {
+                                var changeMessage = string.Join(", ", changes);
+                                await _logRepository.CreateAsync(new Log
+                                {
+                                    RobotId = task.RobotId,
+                                    TaskId = task.Id,
+                                    StopId = stop.Id,
+                                    LogType = "info",
+                                    Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật: {changeMessage}",
+                                    CreatedAt = DateTime.Now
+                                });
                             }
                         }
 
-                        // 4.2 Update stop info
-                        stop.SeqNo = sDto.SeqNo;
-                        stop.DestinationId = sDto.DestinationId;
-                        stop.PatientId = sDto.PatientId;
+                        // Update các trường (nếu là stop mới hoặc đã có thay đổi ở trên)
+                        if (isNewStop)
+                        {
+                            stop.SeqNo = sDto.SeqNo;
+                            stop.DestinationId = sDto.DestinationId;
+                            stop.PatientId = sDto.PatientId;
+                        }
+                        else
+                        {
+                            // Chỉ update nếu chưa update ở trên
+                            if (stop.SeqNo != sDto.SeqNo) stop.SeqNo = sDto.SeqNo;
+                            if (stop.DestinationId != sDto.DestinationId) stop.DestinationId = sDto.DestinationId;
+                            if (stop.PatientId != sDto.PatientId) stop.PatientId = sDto.PatientId;
+                        }
                         stop.UpdatedAt = DateTime.Now;
 
                         var assignment = stop.CompartmentAssignments.FirstOrDefault();
@@ -643,7 +823,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // ==================================================================
                 // 5. AUTO-COMPLETE IF ALL STOPS DELIVERED
                 // ==================================================================
-                bool allDelivered = task.TaskStops.Any() &&
+                bool allDelivered = task.TaskStops != null && 
+                    task.TaskStops.Any() &&
                     task.TaskStops.All(s =>
                         string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
 
@@ -654,16 +835,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
-                    // Log task auto-completed
+                    // Log task auto-completed cho tất cả stops
                     var robot = await _repo.GetRobotAsync(task.RobotId);
-                    await _logRepository.CreateAsync(new Log
+                    var taskMessage = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao)";
+                    
+                    if (task.TaskStops != null && task.TaskStops.Any())
                     {
-                        RobotId = task.RobotId,
-                        TaskId = task.Id,
-                        LogType = "success",
-                        Message = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTime.Now
-                    });
+                        foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                        {
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                StopId = stop.Id,
+                                LogType = "success",
+                                Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Fallback nếu không có stops
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            LogType = "success",
+                            Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
                 }
 
                 // ==================================================================
@@ -673,11 +875,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     task.Status == "failed" ||
                     task.Status == "canceled")
                 {
-                    foreach (var stop in task.TaskStops)
+                    if (task.TaskStops != null)
                     {
-                        foreach (var assign in stop.CompartmentAssignments)
+                        foreach (var stop in task.TaskStops)
                         {
-                            await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                            foreach (var assign in stop.CompartmentAssignments)
+                            {
+                                await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                            }
                         }
                     }
                 }
@@ -993,6 +1198,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             stop.Status = newStatus;
             stop.UpdatedAt = DateTime.Now;
 
+            // Log stop status update
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = task.RobotId,
+                TaskId = task.Id,
+                StopId = stop.Id,
+                LogType = newStatus == "delivered" ? "success" : newStatus == "failed" ? "error" : "info",
+                Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật trạng thái thành: {newStatus}",
+                CreatedAt = DateTime.Now
+            });
+
             // ============================================================
             // AUTO COMPLETE TASK NẾU TẤT CẢ STOP = delivered
             // ============================================================
@@ -1015,16 +1231,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     }
                 }
 
-                // Log task auto-completed from stop status update
+                // Log task auto-completed from stop status update cho tất cả stops
                 var robot = await _repo.GetRobotAsync(task.RobotId);
-                await _logRepository.CreateAsync(new Log
+                var taskMessage = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao)";
+                
+                if (task.TaskStops != null && task.TaskStops.Any())
                 {
-                    RobotId = task.RobotId,
-                    TaskId = task.Id,
-                    LogType = "success",
-                    Message = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                    CreatedAt = DateTime.Now
-                });
+                    foreach (var stopItem in task.TaskStops.OrderBy(s => s.SeqNo))
+                    {
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            StopId = stopItem.Id,
+                            LogType = "success",
+                            Message = $"{taskMessage}. Điểm dừng #{stopItem.SeqNo} (Stop ID: {stopItem.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+                else
+                {
+                    // Fallback nếu không có stops
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        LogType = "success",
+                        Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                        CreatedAt = DateTime.Now
+                    });
+                }
             }
 
             // Lưu DB
@@ -1054,6 +1291,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     assign.Status = "delivered";
                     assign.UpdatedAt = DateTime.Now;
                 }
+
+                // Log each stop delivered
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    StopId = stop.Id,
+                    LogType = "success",
+                    Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được giao thành công",
+                    CreatedAt = DateTime.Now
+                });
             }
 
             // Task
@@ -1072,16 +1320,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _repo.SaveChangesAsync();
             await RecordTaskHistory(task);
 
-            // Log task completed
+            // Log task completed cho tất cả stops (đã có log riêng cho từng stop ở trên, nhưng thêm log tổng quát cho mỗi stop)
             var robot = await _repo.GetRobotAsync(task.RobotId);
-            await _logRepository.CreateAsync(new Log
+            var taskMessage = $"Nhiệm vụ #{task.Id} đã hoàn thành thành công. Số điểm dừng: {task.TaskStops.Count}";
+            
+            if (task.TaskStops != null && task.TaskStops.Any())
             {
-                RobotId = task.RobotId,
-                TaskId = task.Id,
-                LogType = "success",
-                Message = $"Nhiệm vụ #{task.Id} đã hoàn thành thành công. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}, Số điểm dừng: {task.TaskStops.Count}",
-                CreatedAt = DateTime.Now
-            });
+                foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                {
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        StopId = stop.Id,
+                        LogType = "success",
+                        Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                        CreatedAt = DateTime.Now
+                    });
+                }
+            }
+            else
+            {
+                // Fallback nếu không có stops
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = "success",
+                    Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                    CreatedAt = DateTime.Now
+                });
+            }
 
             return new StopUpdateResultDto
             {
@@ -1131,6 +1400,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 await _taskHistoryService.CreateHistoryFromTaskAsync(fullTask!, note);
             }
+        }
+
+        // Helper: Lấy stopId đầu tiên của task
+        private async Task<ulong?> GetFirstStopIdAsync(ulong taskId, Models.Entities.Task? task = null)
+        {
+            // Nếu task đã được load và có TaskStops, lấy từ đó
+            if (task != null && task.TaskStops != null && task.TaskStops.Any())
+            {
+                return task.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Id;
+            }
+
+            // Nếu không, query trực tiếp từ database
+            var firstStop = await _repo.GetTaskWithStopsAsync(taskId);
+            return firstStop?.TaskStops?.OrderBy(s => s.SeqNo).FirstOrDefault()?.Id;
         }
 
         // Helper: tạo ghi chú tiếng Việt 
@@ -1185,19 +1468,38 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var fullTask = await _repo.GetByIdAsync(task.Id);
                 await RecordTaskHistory(fullTask!, startedEarlyMinutes);
 
-                // Log task started
-                var logMessage = startedEarlyMinutes.HasValue && startedEarlyMinutes > 0
-                    ? $"Nhiệm vụ #{task.Id} đã được bắt đầu sớm {startedEarlyMinutes:F1} phút. Robot: {robot.Name ?? robot.Code}"
-                    : $"Nhiệm vụ #{task.Id} đã được bắt đầu. Robot: {robot.Name ?? robot.Code}";
+                // Log task started cho tất cả stops
+                var logMessagePrefix = startedEarlyMinutes.HasValue && startedEarlyMinutes > 0
+                    ? $"Nhiệm vụ #{task.Id} đã được bắt đầu sớm {startedEarlyMinutes:F1} phút"
+                    : $"Nhiệm vụ #{task.Id} đã được bắt đầu";
                 
-                await _logRepository.CreateAsync(new Log
+                if (fullTask?.TaskStops != null && fullTask.TaskStops.Any())
                 {
-                    RobotId = task.RobotId,
-                    TaskId = task.Id,
-                    LogType = "info",
-                    Message = logMessage,
-                    CreatedAt = DateTime.Now
-                });
+                    foreach (var stop in fullTask.TaskStops.OrderBy(s => s.SeqNo))
+                    {
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            StopId = stop.Id,
+                            LogType = "info",
+                            Message = $"{logMessagePrefix}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) sẵn sàng. Robot: {robot.Name ?? robot.Code}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+                else
+                {
+                    // Fallback nếu không có stops
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        LogType = "info",
+                        Message = $"{logMessagePrefix}. Robot: {robot.Name ?? robot.Code}",
+                        CreatedAt = DateTime.Now
+                    });
+                }
 
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
                 var response = MapToResponse(updatedTask!);
@@ -1245,11 +1547,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
                     // 3. Giải phóng tất cả khoang chứa
-                    foreach (var stop in task.TaskStops)
+                    if (task.TaskStops != null)
                     {
-                        foreach (var assignment in stop.CompartmentAssignments)
+                        foreach (var stop in task.TaskStops)
                         {
-                            await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
+                            foreach (var assignment in stop.CompartmentAssignments)
+                            {
+                                await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
+                            }
                         }
                     }
 
@@ -1265,16 +1570,37 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     await RecordTaskHistory(task, cancelNote: cancelNote);
 
-                    // Log task auto-canceled
+                    // Log task auto-canceled cho tất cả stops
                     var robot = await _repo.GetRobotAsync(task.RobotId);
-                    await _logRepository.CreateAsync(new Log
+                    var taskMessage = $"Nhiệm vụ #{task.Id} đã bị hủy tự động do quá giờ khởi hành {overdueMinutes:F1} phút";
+                    
+                    if (task.TaskStops != null && task.TaskStops.Any())
                     {
-                        RobotId = task.RobotId,
-                        TaskId = task.Id,
-                        LogType = "warning",
-                        Message = $"Nhiệm vụ #{task.Id} đã bị hủy tự động do quá giờ khởi hành {overdueMinutes:F1} phút. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTime.Now
-                    });
+                        foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                        {
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                StopId = stop.Id,
+                                LogType = "warning",
+                                Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã bị hủy. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Fallback nếu không có stops
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            LogType = "warning",
+                            Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
 
                     // 4. Gửi SignalR thông báo
                     var canceledTaskResponse = MapToResponse(task);
@@ -1344,6 +1670,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // 2. Đổi status của tất cả stops thành "canceled" hoặc "skipped"
                 foreach (var stop in task.TaskStops)
                 {
+                    var oldStopStatus = stop.Status;
                     // Chỉ đổi status nếu chưa delivered
                     if (stop.Status != "delivered")
                     {
@@ -1359,6 +1686,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             assignment.Status = "canceled";
                             assignment.UpdatedAt = DateTime.Now;
                         }
+                    }
+
+                    // Log stop canceled
+                    if (oldStopStatus != "delivered" && stop.Status == "skipped")
+                    {
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            StopId = stop.Id,
+                            LogType = "warning",
+                            Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã bị hủy do nhiệm vụ bị hủy",
+                            CreatedAt = DateTime.Now
+                        });
                     }
                 }
 
@@ -1384,17 +1725,39 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     : $"Nhiệm vụ đã bị hủy: {reason}";
                 await RecordTaskHistory(task, cancelNote: cancelNote);
 
-                // 7. Log task canceled
+                // 7. Log task canceled cho tất cả stops (đã có log riêng cho từng stop ở trên, nhưng thêm log tổng quát cho mỗi stop)
                 var robot = await _repo.GetRobotAsync(task.RobotId);
                 var cancelReason = string.IsNullOrWhiteSpace(reason) ? "Hủy thủ công" : reason;
-                await _logRepository.CreateAsync(new Log
+                var taskMessage = $"Nhiệm vụ #{task.Id} đã bị hủy. Lý do: {cancelReason}";
+                
+                // Log tổng quát cho từng stop (ngoài log riêng đã có ở trên)
+                if (task.TaskStops != null && task.TaskStops.Any())
                 {
-                    RobotId = task.RobotId,
-                    TaskId = task.Id,
-                    LogType = "warning",
-                    Message = $"Nhiệm vụ #{task.Id} đã bị hủy. Lý do: {cancelReason}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                    CreatedAt = DateTime.Now
-                });
+                    foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                    {
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            StopId = stop.Id,
+                            LogType = "warning",
+                            Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+                else
+                {
+                    // Fallback nếu không có stops
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = task.RobotId,
+                        TaskId = task.Id,
+                        LogType = "warning",
+                        Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                        CreatedAt = DateTime.Now
+                    });
+                }
 
                 // 8. Lấy task đã cập nhật và trả về
                 var updatedTask = await _repo.GetByIdAsync(task.Id);
