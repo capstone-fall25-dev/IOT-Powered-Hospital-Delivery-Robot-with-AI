@@ -477,7 +477,7 @@ export default function RobotTaskDashboard() {
                       <td>
                         <div className="d-flex gap-1 justify-content-end">
                           {/* Nút hủy - chỉ hiển thị khi task chưa bắt đầu (pending) */}
-                          {t.statusRaw === "pending" && (
+                          {t.statusRaw && (
                             <button
                               className="btn btn-sm btn-danger"
                               onClick={() => setCancelModal({ show: true, taskId: t.id, reason: "", loading: false })}

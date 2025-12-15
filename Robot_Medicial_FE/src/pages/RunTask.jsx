@@ -736,9 +736,24 @@ async function sendEmergencyStop() {
             });
 
             if (!startRes.ok) {
-                const errorData = await startRes.json().catch(() => ({}));
-                throw new Error(errorData.message || "Không thể bắt đầu nhiệm vụ");
-            }
+              const text = await startRes.text();
+              let message = "Không thể bắt đầu nhiệm vụ";
+
+              try {
+                  const json = JSON.parse(text);
+                  message =
+                      json.message ||
+                      json.Message ||
+                      json.error ||
+                      json.Error ||
+                      json.title ||
+                      message;
+              } catch {
+                  if (text) message = text;
+              }
+
+              throw new Error(message);
+          }
 
             // 1️⃣ Gửi mode run_map cho robot
             await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {

@@ -1,4 +1,5 @@
 ﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using AutoMapper;
@@ -12,11 +13,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
     {
         private readonly IRobotCompartmentRepository _repository;
         private readonly IMapper _mapper;
+        private readonly ILogRepository _logRepository;
 
-        public RobotCompartmentService(IRobotCompartmentRepository repository, IMapper mapper)
+        public RobotCompartmentService(IRobotCompartmentRepository repository, IMapper mapper, ILogRepository logRepository)
         {
             _repository = repository;
             _mapper = mapper;
+            _logRepository = logRepository;
         }
 
         /// <summary>
@@ -24,7 +27,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         /// </summary>
         public async Task<RobotCompartmentResponseDto?> OpenCompartmentAsync(ulong id)
         {
+            var compartment = await _repository.GetByIdAsync(id);
+            if (compartment == null) return null;
+            
             var updated = await _repository.UpdateStatusAsync(id, "unlocked");
+            
+            if (updated != null)
+            {
+                // Log compartment opened
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = updated.RobotId,
+                    LogType = "info",
+                    Message = $"Ngăn chứa {updated.CompartmentCode} đã được mở (Robot ID: {updated.RobotId})",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            
             return updated != null ? _mapper.Map<RobotCompartmentResponseDto>(updated) : null;
         }
 
@@ -33,7 +52,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         /// </summary>
         public async Task<RobotCompartmentResponseDto?> CloseCompartmentAsync(ulong id)
         {
+            var compartment = await _repository.GetByIdAsync(id);
+            if (compartment == null) return null;
+            
             var updated = await _repository.UpdateStatusAsync(id, "locked");
+            
+            if (updated != null)
+            {
+                // Log compartment closed
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = updated.RobotId,
+                    LogType = "info",
+                    Message = $"Ngăn chứa {updated.CompartmentCode} đã được khóa (Robot ID: {updated.RobotId})",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            
             return updated != null ? _mapper.Map<RobotCompartmentResponseDto>(updated) : null;
         }
 

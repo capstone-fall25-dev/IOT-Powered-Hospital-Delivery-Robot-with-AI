@@ -19,18 +19,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IAlertService _alertService;
         private readonly IRobotRepository _robotRepository;
         private readonly IHubContext<AlertHub> _alertHub;
+        private readonly ILogRepository _logRepository;
 
         public MapService(IMapRepository repository, 
             IMapper mapper, 
             IAlertService alertService, 
             IRobotRepository robotRepository,
-            IHubContext<AlertHub> alertHub)
+            IHubContext<AlertHub> alertHub,
+            ILogRepository logRepository)
         {
             _repository = repository;
             _mapper = mapper;
             _alertService = alertService;
             _robotRepository = robotRepository;
             _alertHub = alertHub;
+            _logRepository = logRepository;
         }
 
         /// <summary>
@@ -70,6 +73,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 map.ImageName = imageFile.FileName;
             }
             var created = await _repository.CreateAsync(map);
+            
+            // Log map creation - lấy robot đầu tiên từ map nếu có
+            var robots = await _robotRepository.GetAllByMapWithCompartmentsAsync(created.Id);
+            var firstRobot = robots.FirstOrDefault();
+            
+            if (firstRobot != null)
+            {
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = firstRobot.Id,
+                    LogType = "info",
+                    Message = $"Bản đồ mới đã được tạo: {created.MapName} (ID: {created.Id})",
+                    CreatedAt = DateTime.Now
+                });
+            }
+            
             return _mapper.Map<MapResponseDto>(created);
         }
 
@@ -196,6 +215,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _mapper.Map(mapDto, existing);
 
             var updated = await _repository.UpdateAsync(id, existing);
+            
+            if (updated != null)
+            {
+                // Log map update - lấy robot đầu tiên từ map nếu có
+                var robots = await _robotRepository.GetAllByMapWithCompartmentsAsync(updated.Id);
+                var firstRobot = robots.FirstOrDefault();
+                
+                if (firstRobot != null)
+                {
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = firstRobot.Id,
+                        LogType = "info",
+                        Message = $"Bản đồ đã được cập nhật: {updated.MapName} (ID: {updated.Id})",
+                        CreatedAt = DateTime.Now
+                    });
+                }
+            }
+            
             return updated != null ? _mapper.Map<MapResponseDto>(updated) : null;
         }
 

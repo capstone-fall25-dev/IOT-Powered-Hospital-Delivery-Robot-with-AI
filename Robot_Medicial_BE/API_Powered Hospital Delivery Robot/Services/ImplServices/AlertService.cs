@@ -21,13 +21,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         private readonly IMedicineRepository _medicineRepository;
         private readonly ITaskRepository _taskRepository;
         private readonly IHubContext<AlertHub> _alertHub;
+        private readonly ILogRepository _logRepository;
 
         public AlertService(IAlertRepository repository, 
             IMapper mapper, 
             IPrescriptionItemRepository itemRepository, 
             IMedicineRepository medicineRepository, 
             ITaskRepository taskRepository,
-            IHubContext<AlertHub> alertHub)
+            IHubContext<AlertHub> alertHub,
+            ILogRepository logRepository)
         {
             _repository = repository;
             _mapper = mapper;
@@ -35,6 +37,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _medicineRepository = medicineRepository;
             _taskRepository = taskRepository;
             _alertHub = alertHub;
+            _logRepository = logRepository;
         }
 
         /// <summary>
@@ -46,6 +49,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             alert.CreatedAt = DateTime.Now;
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
+
+            // Log alert creation
+            var logType = alertDto.Severity?.ToLower() == "high" ? "error" : 
+                         alertDto.Severity?.ToLower() == "medium" ? "warning" : "info";
+            
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = alertDto.RobotId,
+                TaskId = null, // AlertDto không có TaskId
+                LogType = logType,
+                Message = $"Cảnh báo mới: {alertDto.Message} (Mức độ: {alertDto.Severity}, Loại: {alertDto.Category})",
+                CreatedAt = DateTime.Now
+            });
 
             // Gửi cảnh báo real-time qua SignalR
             await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
@@ -102,6 +118,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
 
+            // Log medicine alert creation
+            await _logRepository.CreateAsync(new Log
+            {
+                RobotId = task.RobotId,
+                TaskId = taskId,
+                LogType = "error",
+                Message = $"Cảnh báo thuốc: {medicine.Name} bị {reason} - {description} (Đơn thuốc: {prescriptionItemId})",
+                CreatedAt = DateTime.Now
+            });
+
             // Gửi cảnh báo real-time qua SignalR
             await _alertHub.Clients.All.SendAsync("ReceiveAlert", response);
 
@@ -131,8 +157,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         /// </summary>
         public async Task<AlertResponseDto?> UpdateAsync(ulong id, AlertDto alertDto)
         {
+            var existing = await _repository.GetByIdAsync(id);
+            if (existing == null) return null;
+
             var alert = _mapper.Map<Alert>(alertDto);
             var updated = await _repository.UpdateAsync(id, alert);
+            
+            if (updated != null)
+            {
+                // Log alert status change (especially when closed/resolved)
+                if (existing.Status != updated.Status && (updated.Status?.ToLower() == "closed" || updated.Status?.ToLower() == "resolved"))
+                {
+                    await _logRepository.CreateAsync(new Log
+                    {
+                        RobotId = updated.RobotId,
+                        TaskId = null, // Alert entity không có TaskId
+                        LogType = "success",
+                        Message = $"Cảnh báo #{id} đã được xử lý/đóng: {updated.Message}",
+                        CreatedAt = DateTime.Now
+                    });
+                }
+            }
+            
             return updated != null ? _mapper.Map<AlertResponseDto>(updated) : null;
         }
     }
