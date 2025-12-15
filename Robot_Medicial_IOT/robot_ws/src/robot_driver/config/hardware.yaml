@@ -9,4 +9,4 @@ rplidar_node:
     auto_standby: false
     max_distance: 12.0
     scan_frequency: 10.0
-    timeout: 2.0
+    timeout: 3.0

@@ -113,11 +113,11 @@ class STM32Driver(Node):
         
         # Robot Physical Parameters (Critical for accurate kinematics)
         self.declare_parameter('wheel_radius', 0.045)                # Wheel radius in meters (measure from wheel center to ground contact)
-        self.declare_parameter('wheel_base', 0.26)                   # Distance between wheel centers in meters (left to right)
+        self.declare_parameter('wheel_base', 0.29)                   # Distance between wheel centers in meters (left to right)
         
         # System Configuration Parameters  
         self.declare_parameter('debug_mode', True)                  # Enable verbose logging and debug output
-        self.declare_parameter('data_rate_hz', 25.0)                # Serial data processing frequency (Hz) - affects responsiveness vs CPU load
+        self.declare_parameter('data_rate_hz', 25.0)                # Serial dayta processing frequency (Hz) - affects responsiveness vs CPU load
         
         # Sensor Fusion Parameters
         self.declare_parameter('use_sensor_fusion', False)           # Enable Kalman filter fusion of IMU + encoder data
@@ -412,8 +412,8 @@ class STM32Driver(Node):
             data_parts = line.split()
             # self.get_logger().info(f"Data values: {data_parts}")
             # Validate we have enough data values (9 expected)
-            if len(data_parts) >= 12:
-                data_values = [float(part) for part in data_parts[:12]]
+            if len(data_parts) >= 13:
+                data_values = [float(part) for part in data_parts[:13]]
 
                 # Process the data
                 self.process_combined_data(
@@ -425,11 +425,11 @@ class STM32Driver(Node):
                     data_values[5],   # gx
                     data_values[6],   # gy
                     data_values[7],   # gz
-                    0.0, # yaw
-                    data_values[8],   # vl05_1
-                    data_values[9],  # vl05_2
-                    data_values[10],  # vl05_3
-                    data_values[11]   # vl05_4
+                    data_values[8], # yaw
+                    data_values[9],   # vl05_1
+                    data_values[10],  # vl05_2
+                    data_values[11],  # vl05_3
+                    data_values[12]   # vl05_4
                 )
                 
                 self.count += 1

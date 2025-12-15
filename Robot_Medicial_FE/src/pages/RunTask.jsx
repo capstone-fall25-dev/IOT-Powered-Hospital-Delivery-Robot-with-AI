@@ -68,8 +68,8 @@ export default function RunTask() {
     const [remoteMode, setRemoteMode] = useState(false);
 
     const [compartments, setCompartments] = useState([
-        { id: 64, label: "Hộp 1", state: "closed" },
-        { id: 65, label: "Hộp 2", state: "closed" },
+        { id: 93, label: "Hộp 1", state: "closed" },
+        { id: 94, label: "Hộp 2", state: "closed" },
     ]);
 
     // Task data
@@ -551,6 +551,93 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
     liveMapLayer.current = L.imageOverlay(imgSrc, bounds).addTo(liveMapRef.current);
     liveMapRef.current.fitBounds(bounds);
   }
+
+  // ⭐ NÚT VỀ TRẠM
+async function sendReturnToStation() {
+    const payload = {
+        mapId: taskInfo?.mapId || selectedStop?.mapId || 0,
+        destinations: [
+            {
+                id: 0,
+                name: "Station",
+                x: 0.0,
+                y: 0.0
+            }
+        ]
+    };
+
+    try {
+        const response = await fetch(
+            `${API_CONFIG.API_BASE}/Destinations/send-route`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("API error");
+        }
+
+        // TTS thông báo
+        try {
+            await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: "Robot đang quay về trạm sạc" }),
+            });
+        } catch (ttsErr) {
+            console.error("TTS error:", ttsErr);
+        }
+
+        showToast("success", "🏠 Robot đang quay về trạm!");
+    } catch (err) {
+        console.error("Lỗi gửi lệnh về trạm:", err);
+        showToast("error", "Không thể gửi lệnh về trạm!");
+    }
+}
+
+// ⭐ NÚT DỪNG KHẨN CẤP
+async function sendEmergencyStop() {
+    try {
+        const response = await fetch(
+            `${API_CONFIG.API_BASE}/Destinations/emergency-stop`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("API error");
+        }
+
+        // TTS thông báo
+        try {
+            await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: "Dừng khẩn cấp đã được kích hoạt" }),
+            });
+        } catch (ttsErr) {
+            console.error("TTS error:", ttsErr);
+        }
+
+        showToast("success", "🛑 Đã gửi lệnh dừng khẩn cấp!");
+
+        // Reset tiến độ về 0
+        setNavProgress({
+            percent: 0,
+            robotCode: "",
+            pointName: "Đã dừng",
+        });
+    } catch (err) {
+        console.error("Lỗi gửi lệnh dừng khẩn cấp:", err);
+        showToast("error", "Không thể gửi lệnh dừng khẩn cấp!");
+    }
+}
+
 
   function updateRobotPosition(pos) {
     if (!window.L || !liveMapRef.current) return;
@@ -1337,6 +1424,36 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
                         style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
                     >
                         Gửi vị trí muốn đến
+                    </button>
+
+                    {/* ⭐ NÚT VỀ TRẠM */}
+                    <button
+                        className={`${styles.btnSuccess} mt-1 w-100`}
+                        onClick={sendReturnToStation}
+                        style={{
+                            fontSize: "0.85rem",
+                            padding: "0.5rem 0.75rem",
+                            background: "linear-gradient(135deg, #28a745, #20c997)",
+                            border: "none",
+                        }}
+                    >
+                        <i className="bi bi-house-fill me-1"></i>
+                        Về trạm
+                    </button>
+
+                    {/* ⭐ NÚT DỪNG KHẨN CẤP */}
+                    <button
+                        className={`${styles.btnDanger} mt-1 w-100`}
+                        onClick={sendEmergencyStop}
+                        style={{
+                            fontSize: "0.85rem",
+                            padding: "0.5rem 0.75rem",
+                            background: "linear-gradient(135deg, #dc3545, #c82333)",
+                            border: "none",
+                        }}
+                    >
+                        <i className="bi bi-stop-circle-fill me-1"></i>
+                        Dừng khẩn cấp
                     </button>
 
                     {selectedStop && (

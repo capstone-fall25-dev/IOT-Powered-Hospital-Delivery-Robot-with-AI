@@ -28,7 +28,7 @@ class CompartmentSignalSubscriber(Node):
         threading.Thread(target=self.loop.run_forever, daemon=True).start()
 
         # Trạng thái ngăn hiện tại
-        self.state = {"A1": 0, "A2": 0}
+        self.state = {"C001": 0, "C002": 0}
 
     async def start_signalr_listener(self):
         try:
@@ -63,7 +63,7 @@ class CompartmentSignalSubscriber(Node):
 
                     # Xuất ra topic ROS2
                     msg = String()
-                    msg.data = f"{self.state['A1']} {self.state['A2']}"
+                    msg.data = f"{self.state['C001']} {self.state['C002']}"
                     self.publisher_.publish(msg)
 
                     state_text = "🟢 OPEN" if state == 1 else "🔴 CLOSE"

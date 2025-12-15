@@ -5,7 +5,14 @@ import vehicle2 from "../assets/image/vehicle-2.jpg";
 import logoMain from "../assets/image/logo-main.png";
 import styles from "../assets/styles/landing.module.css";
 import video from "../assets/video/video_beta_demo.mp4";
-
+import demoImage from '../assets/image/demo.jpg';
+import runmap from '../assets/image/runmap.jpg';
+import gps from '../assets/image/gps.jpg';
+import cuonglm from '../assets/image/cuonglm.png';
+import duongla from '../assets/image/duongla.png';
+import namnv from '../assets/image/namnv.png';
+import duonglt from '../assets/image/duonglt.png';
+import vulq from '../assets/image/vulq.png';
 export default function MedFleetLanding() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -74,10 +81,10 @@ export default function MedFleetLanding() {
                         className={`navbar-brand d-flex align-items-center gap-2 ${styles.navbarBrand}`}
                         href="/dashboard"
                     >
-                        <img 
-                            src={logoMain} 
-                            alt="MediGo Logo" 
-                            style={{ height: '60px', width: 'auto' }} 
+                        <img
+                            src={logoMain}
+                            alt="MediGo Logo"
+                            style={{ height: '60px', width: 'auto' }}
                         />
                         <span>MediGo</span>
                     </a>
@@ -95,7 +102,7 @@ export default function MedFleetLanding() {
                     <div className="collapse navbar-collapse" id="nav">
                         <ul className="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center gap-lg-3">
                             <li className="nav-item">
-                                <a 
+                                <a
                                     className={`nav-link ${activeSection === 'features' ? 'active' : ''}`}
                                     href="#features"
                                     onClick={(e) => {
@@ -107,7 +114,7 @@ export default function MedFleetLanding() {
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a 
+                                <a
                                     className={`nav-link ${activeSection === 'about' ? 'active' : ''}`}
                                     href="#about"
                                     onClick={(e) => {
@@ -119,7 +126,7 @@ export default function MedFleetLanding() {
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a 
+                                <a
                                     className={`nav-link ${activeSection === 'contact' ? 'active' : ''}`}
                                     href="#contact"
                                     onClick={(e) => {
@@ -163,7 +170,7 @@ export default function MedFleetLanding() {
                                 &amp; <span className="accent">an toàn</span>
                             </h1>
                             <p className="sub fs-5 pe-lg-5">
-                                Quản lý lịch trình xe y tế, phân công giao hàng đồ ăn & thuốc men và theo dõi vị trí thời gian thực với định vị GPS trên bản đồ.
+                                Quản lý lịch trình xe y tế, phân công giao hàng đồ ăn & thuốc men và theo dõi vị trí thời gian thực với định vị trên bản đồ.
                             </p>
                             <div className="d-flex gap-3 mt-4 justify-content-center justify-content-lg-start">
                                 <a
@@ -201,65 +208,53 @@ export default function MedFleetLanding() {
                 <div className="container-lg">
                     <div className="text-center mb-4">
                         <h2 className="section-heading">Tính năng nổi bật</h2>
-                        <p className="section-subheading fs-5">Giao hàng y tế thông minh với định vị GPS và bản đồ thời gian thực</p>
+                        <p className="section-subheading fs-5">Giao hàng y tế thông minh với bản đồ thời gian thực và phòng ngừa lây nhiễm dịch bệnh.</p>
                     </div>
                     <div className="row g-4">
                         <div className="col-md-6">
                             <div className={`${styles.glass} p-4 p-md-5 ${styles.vehicleCard} ${styles.rounded2xl} h-100`}>
-                                <h3 className="card-heading mb-1">Lập kế hoạch lộ trình</h3>
-                                <div className="text-muted">
-                                    Vẽ bản đồ tùy chỉnh &nbsp;•&nbsp; Tối ưu hóa đường đi
-                                </div>
+                                <h3 className="card-heading mb-1">Robot vận chuyển</h3>
                                 <div className="my-4">
                                     <img
                                         className="w-100 rounded-3"
                                         src={vehicle1}
-                                        alt="Lập kế hoạch lộ trình"
+                                        alt="Robot vận chuyển"
                                     />
                                 </div>
-                                <a href="#" className="link-dark fw-semibold">
-                                    Xem chi tiết
-                                </a>
                             </div>
                         </div>
 
                         <div className="col-md-6">
                             <div className={`${styles.glass} p-4 p-md-5 ${styles.vehicleCard} ${styles.rounded2xl} h-100`}>
-                                <h3 className="card-heading mb-1">Theo dõi di chuyển</h3>
+                                <h3 className="card-heading mb-1">Tạo lộ trình di chuyển</h3>
                                 <div className="text-muted">Thời gian thực | Theo bản đồ</div>
                                 <div className="my-4">
                                     <img
                                         className="w-100 rounded-3"
                                         alt="Theo dõi di chuyển"
-                                        src="https://vov.vn/sites/default/files/styles/large/public/2022-10/z3819504049937_f97025099a0f867e6a259ce0c9f814c7.jpg"
+                                        src={runmap}
                                     />
                                 </div>
-                                <a href="#" className="link-dark fw-semibold">
-                                    Xem chi tiết
-                                </a>
                             </div>
                         </div>
 
                         <div className="col-md-6">
                             <div className={`${styles.glass} p-4 p-md-5 ${styles.vehicleCard} ${styles.rounded2xl} h-100`}>
-                                <h3 className="card-heading mb-1">Định vị GPS</h3>
-                                <div className="text-muted">Di chuyển theo vị trí • Cập nhật liên tục</div>
+                                <h3 className="card-heading mb-1">Định vị trên bản đồ</h3>
+                                <div className="text-muted">Di chuyển theo vị trí • Cập nhật liên tục • AI cảnh báo</div>
                                 <div className="my-4">
                                     <img
                                         className="w-100 rounded-3"
                                         alt="Định vị GPS"
-                                        src={vehicle2}
+                                        src={gps}
                                     />
                                 </div>
-                                <a href="#" className="link-dark fw-semibold">
-                                    Xem chi tiết
-                                </a>
                             </div>
                         </div>
 
                         <div className="col-md-6">
                             <div className={`${styles.glass} p-4 p-md-5 ${styles.vehicleCard} ${styles.rounded2xl} h-100`}>
-                                <h3 className="card-heading mb-1">Giao hàng y tế</h3>
+                                <h3 className="card-heading mb-1">Giá trị thực tế</h3>
                                 <p className="text-muted mb-4">
                                     Phân công giao thuốc, thiết bị & mẫu bệnh phẩm an toàn, nhanh chóng.
                                 </p>
@@ -267,7 +262,7 @@ export default function MedFleetLanding() {
                                     <img
                                         className="w-100 rounded-3"
                                         alt="Giao hàng y tế"
-                                        src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+                                        src={demoImage}
                                     />
                                 </div>
                                 <ul className="mb-4">
@@ -275,9 +270,6 @@ export default function MedFleetLanding() {
                                     <li>Theo dõi tình trạng hàng hóa</li>
                                     <li>Báo cáo giao hàng đầy đủ</li>
                                 </ul>
-                                <a href="#" className="link-dark fw-semibold">
-                                    Khám phá giao hàng
-                                </a>
                             </div>
                         </div>
                     </div>
@@ -297,7 +289,7 @@ export default function MedFleetLanding() {
                             <div className="col-lg-4">
                                 <div className={`${styles.glass} p-4 ${styles.rounded2xl} member h-100`}>
                                     <div className="d-flex align-items-center gap-3">
-                                        <img className="avatar" src="https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=400&auto=format&fit=crop" alt="Lê Mạnh Cường" />
+                                        <img className="avatar" src={cuonglm} alt="Lê Mạnh Cường" />
                                         <div>
                                             <h6 className="mb-1">Lê Mạnh Cường</h6>
                                             <div className="text-muted">Trưởng nhóm - Kiểm thử & Đảm bảo chất lượng</div>
@@ -308,7 +300,7 @@ export default function MedFleetLanding() {
                             <div className="col-lg-4">
                                 <div className={`${styles.glass} p-4 ${styles.rounded2xl} member h-100`}>
                                     <div className="d-flex align-items-center gap-3">
-                                        <img className="avatar" src="https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=400&auto=format&fit=crop" alt="Lê Ánh Dương" />
+                                        <img className="avatar" src={duongla} alt="Lê Ánh Dương" />
                                         <div>
                                             <h6 className="mb-1">Lê Ánh Dương</h6>
                                             <div className="text-muted">Front-end & AI</div>
@@ -322,7 +314,7 @@ export default function MedFleetLanding() {
                             <div className="col-lg-4">
                                 <div className={`${styles.glass} p-4 ${styles.rounded2xl} member h-100`}>
                                     <div className="d-flex align-items-center gap-3">
-                                        <img className="avatar" src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=400&auto=format&fit=crop" alt="Nguyễn Viết Nam" />
+                                        <img className="avatar" src={namnv} alt="Nguyễn Viết Nam" />
                                         <div>
                                             <h6 className="mb-1">Nguyễn Viết Nam</h6>
                                             <div className="text-muted">Back-end & IoT</div>
@@ -333,7 +325,7 @@ export default function MedFleetLanding() {
                             <div className="col-lg-4">
                                 <div className={`${styles.glass} p-4 ${styles.rounded2xl} member h-100`}>
                                     <div className="d-flex align-items-center gap-3">
-                                        <img className="avatar" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop" alt="Lã Tùng Dương" />
+                                        <img className="avatar" src={duonglt} alt="Lã Tùng Dương" />
                                         <div>
                                             <h6 className="mb-1">Lã Tùng Dương</h6>
                                             <div className="text-muted">Back-end & IoT</div>
@@ -344,7 +336,7 @@ export default function MedFleetLanding() {
                             <div className="col-lg-4">
                                 <div className={`${styles.glass} p-4 ${styles.rounded2xl} member h-100`}>
                                     <div className="d-flex align-items-center gap-3">
-                                        <img className="avatar" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=400&auto=format&fit=crop" alt="Lương Quang Vũ" />
+                                        <img className="avatar" src={vulq} alt="Lương Quang Vũ" />
                                         <div>
                                             <h6 className="mb-1">Lương Quang Vũ</h6>
                                             <div className="text-muted">Back-end & IoT</div>
@@ -367,13 +359,13 @@ export default function MedFleetLanding() {
                                 <div className="text-muted">
                                     Email:{" "}
                                     <a href="mailto:demo@medfleet.example">
-                                        demo@medfleet.example
+                                        cuonglmhe172701@fpt.edu.vn
                                     </a>{" "}
-                                    — Hotline: 0123 456 789
+                                    — Hotline: 0865906672
                                 </div>
                             </div>
                             <div className="col-lg-4 text-lg-end">
-                                <a href="#signup" className="btn btn-dark rounded-pill px-4">
+                                <a href="#" className="btn btn-dark rounded-pill px-4">
                                     Đặt lịch demo
                                 </a>
                             </div>
@@ -386,7 +378,7 @@ export default function MedFleetLanding() {
             <footer className="py-4">
                 <div className="container-lg d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 text-center text-md-start">
                     <div className="small">
-                        © <span>{year}</span> MediGo. Tất cả quyền được bảo lưu.
+                        © <span>{year}</span>. Thuộc bản quyền của MediGo.
                     </div>
                     <div className={`small text-muted ${styles.muted}`}>Điều khoản • Bảo mật</div>
                 </div>

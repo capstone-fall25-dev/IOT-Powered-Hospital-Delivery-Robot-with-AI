@@ -30,7 +30,7 @@ export async function apiFetch(url, options = {}) {
   // TỰ ĐỘNG LOGOUT KHI 401
   if (response.status === 401) {
     localStorage.removeItem("token");
-    window.location.href = "/login";
+    window.location.href = "/";
     return;
   }
 
@@ -39,7 +39,7 @@ export async function apiFetch(url, options = {}) {
 
   if (!response.ok) {
     let message = "Đã có lỗi xảy ra";
-    
+
     if (!text || text.trim() === "") {
       // Response rỗng
       message = `Lỗi ${response.status}: ${response.statusText || "Không có thông tin"}`;
@@ -47,7 +47,7 @@ export async function apiFetch(url, options = {}) {
       try {
         // Thử parse JSON
         const json = JSON.parse(text);
-        
+
         // Backend có thể trả về:
         // 1. { message: "..." } 
         // 2. { error: "..." }
@@ -55,7 +55,7 @@ export async function apiFetch(url, options = {}) {
         // 4. { errors: { field: ["error1", "error2"] } } (ASP.NET Core validation errors)
         // 5. { Errors: [...] } (ModelState errors)
         // 6. String trực tiếp
-        
+
         if (typeof json === "string") {
           // Nếu parse ra là string (hiếm khi xảy ra)
           message = json;
@@ -110,7 +110,7 @@ export async function apiFetch(url, options = {}) {
         message = text;
       }
     }
-    
+
     const error = new Error(message);
     error.status = response.status;
     throw error;

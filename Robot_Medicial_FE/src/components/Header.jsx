@@ -18,7 +18,7 @@ const Header = () => {
 
     // Map role sang tiếng Việt
     const getRoleDisplay = (role) => {
-        switch(role) {
+        switch (role) {
             case "admin":
                 return "Quản trị viên";
             case "doctor":
@@ -32,7 +32,7 @@ const Header = () => {
 
     // Get role color for badge
     const getRoleColor = (role) => {
-        switch(role) {
+        switch (role) {
             case "admin":
                 return "#dc2626"; // Red
             case "doctor":
@@ -74,8 +74,8 @@ const Header = () => {
     }
 
     return (
-        <Navbar 
-            expand="lg" 
+        <Navbar
+            expand="lg"
             className="shadow-sm fixed-top"
             style={{
                 background: "linear-gradient(135deg, #0d9488 0%, #0891b2 100%)",
@@ -83,9 +83,9 @@ const Header = () => {
         >
             <Container fluid>
                 <Navbar.Brand
-                    style={{ 
-                        cursor: "pointer", 
-                        display: "flex", 
+                    style={{
+                        cursor: "pointer",
+                        display: "flex",
                         alignItems: "center",
                         color: "white"
                     }}
@@ -113,31 +113,27 @@ const Header = () => {
                     </div>
                 </Navbar.Brand>
 
-                <Navbar.Toggle 
-                    aria-controls="basic-navbar-nav" 
-                    style={{ 
+                <Navbar.Toggle
+                    aria-controls="basic-navbar-nav"
+                    style={{
                         backgroundColor: "white",
-                        border: "none" 
+                        border: "none"
                     }}
                 />
-                
+
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="ms-auto d-flex align-items-center gap-3">
                         <Nav.Link
                             onClick={() => handleNavigate("")}
-                            className={isActive("/") ? "active" : ""}
                             style={{
                                 color: "white",
-                                fontWeight: isActive("/") ? "bold" : "normal",
-                                borderBottom: isActive("/") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
                                 transition: "all 0.3s"
                             }}
                             onMouseEnter={(e) => {
-                                if (!isActive("/")) {
-                                    e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
-                                }
+                                e.currentTarget.style.backgroundColor =
+                                    "rgba(255, 255, 255, 0.15)";
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = "transparent";
@@ -194,7 +190,7 @@ const Header = () => {
                             <i className="bi bi-cpu me-2"></i>
                             Robot
                         </Nav.Link>
-                                                {/* ⭐ NÚT ĐIỂM ĐẾN MỚI THÊM Ở ĐÂY ⭐ */}
+                        {/* ⭐ NÚT ĐIỂM ĐẾN MỚI THÊM Ở ĐÂY ⭐ */}
                         <Nav.Link
                             onClick={() => handleNavigate("destinationlist")}
                             className={isActive("/destinationlist") ? "active" : ""}
@@ -220,16 +216,16 @@ const Header = () => {
                             Điểm đến
                         </Nav.Link>
 
-                        <Dropdown 
-                            align="end" 
-                            show={showMenu} 
+                        <Dropdown
+                            align="end"
+                            show={showMenu}
                             onToggle={(isOpen) => setShowMenu(isOpen)}
                         >
                             <Dropdown.Toggle
                                 as="div"
                                 id="user-menu"
                                 className="d-flex align-items-center gap-2"
-                                style={{ 
+                                style={{
                                     cursor: "pointer",
                                     backgroundColor: "rgba(255, 255, 255, 0.15)",
                                     padding: "6px 12px",
@@ -248,15 +244,15 @@ const Header = () => {
                                     src="https://cdn-icons-png.flaticon.com/512/847/847969.png"
                                     alt="avatar"
                                     roundedCircle
-                                    style={{ 
-                                        width: "32px", 
-                                        height: "32px", 
+                                    style={{
+                                        width: "32px",
+                                        height: "32px",
                                         objectFit: "cover",
                                         border: "2px solid white"
                                     }}
                                 />
-                                <div 
-                                    className="d-none d-lg-block text-start" 
+                                <div
+                                    className="d-none d-lg-block text-start"
                                     style={{ color: "white" }}
                                 >
                                     <div style={{ fontSize: "13px", fontWeight: "600" }}>
@@ -268,7 +264,7 @@ const Header = () => {
                                 </div>
                             </Dropdown.Toggle>
 
-                            <Dropdown.Menu 
+                            <Dropdown.Menu
                                 className="shadow-lg border-0"
                                 style={{
                                     minWidth: "240px",
@@ -289,7 +285,7 @@ const Header = () => {
                                         <small style={{ opacity: 0.9 }}>
                                             {getRoleDisplay(userRole)}
                                         </small>
-                                        <span 
+                                        <span
                                             style={{
                                                 fontSize: "9px",
                                                 padding: "2px 8px",
@@ -304,10 +300,10 @@ const Header = () => {
                                     </div>
                                 </div>
 
-                                <Dropdown.Item 
+                                <Dropdown.Item
                                     onClick={() => handleNavigate("user-profile")}
                                     className="rounded my-1 d-flex align-items-center"
-                                    style={{ 
+                                    style={{
                                         transition: "all 0.2s",
                                         padding: "10px 12px"
                                     }}
@@ -320,17 +316,17 @@ const Header = () => {
                                         e.currentTarget.style.transform = "translateX(0)";
                                     }}
                                 >
-                                    <i className="bi bi-person-circle me-2" style={{ 
-                                        fontSize: "18px", 
-                                        color: "#0d9488" 
-                                    }}></i> 
+                                    <i className="bi bi-person-circle me-2" style={{
+                                        fontSize: "18px",
+                                        color: "#0d9488"
+                                    }}></i>
                                     <span>Thông tin cá nhân</span>
                                 </Dropdown.Item>
 
-                                <Dropdown.Item 
+                                <Dropdown.Item
                                     onClick={() => handleNavigate("change-password")}
                                     className="rounded my-1 d-flex align-items-center"
-                                    style={{ 
+                                    style={{
                                         transition: "all 0.2s",
                                         padding: "10px 12px"
                                     }}
@@ -343,10 +339,10 @@ const Header = () => {
                                         e.currentTarget.style.transform = "translateX(0)";
                                     }}
                                 >
-                                    <i className="bi bi-key me-2" style={{ 
-                                        fontSize: "18px", 
-                                        color: "#64748b" 
-                                    }}></i> 
+                                    <i className="bi bi-key me-2" style={{
+                                        fontSize: "18px",
+                                        color: "#64748b"
+                                    }}></i>
                                     <span>Đổi mật khẩu</span>
                                 </Dropdown.Item>
 
@@ -355,7 +351,7 @@ const Header = () => {
                                 <Dropdown.Item
                                     onClick={() => handleNavigate("logout")}
                                     className="rounded my-1 d-flex align-items-center"
-                                    style={{ 
+                                    style={{
                                         transition: "all 0.2s",
                                         padding: "10px 12px",
                                         color: "#dc2626",
@@ -370,7 +366,7 @@ const Header = () => {
                                         e.currentTarget.style.transform = "translateX(0)";
                                     }}
                                 >
-                                    <i className="bi bi-box-arrow-right me-2" style={{ fontSize: "18px" }}></i> 
+                                    <i className="bi bi-box-arrow-right me-2" style={{ fontSize: "18px" }}></i>
                                     <span>Đăng xuất</span>
                                 </Dropdown.Item>
                             </Dropdown.Menu>

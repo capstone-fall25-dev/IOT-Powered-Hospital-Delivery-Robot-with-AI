@@ -20,18 +20,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public string? Status { get; set; } 
 
         [Range(0, 100)]
-        public decimal BatteryPercent { get; set; } = 100;
+        public decimal? BatteryPercent { get; set; } = 100;
 
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
 
         [Range(0, 100)]
-        public decimal ProgressOverallPct { get; set; } = 0;
+        public decimal? ProgressOverallPct { get; set; } = 0;
 
         [Range(0, 100)]
-        public decimal ProgressLegPct { get; set; } = 0;
+        public decimal? ProgressLegPct { get; set; } = 0;
 
-        public bool IsMicOn { get; set; } = false;
+        public bool? IsMicOn { get; set; } = false;
 
         public DateTime? EtaDeliveryAt { get; set; }
         public DateTime? EtaReturnAt { get; set; }
