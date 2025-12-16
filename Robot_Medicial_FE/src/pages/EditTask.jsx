@@ -39,7 +39,6 @@ const TASK_STATUS_OPTIONS = [
 // Các trạng thái nhiệm vụ cho phép EDIT (đồng bộ với AllowedStatusForEdit bên BE)
 const EDITABLE_TASK_STATUSES = [
     "pending",
-    "canceled", // Cho phép edit task đã cancel để có thể restore
 ];
 
 // Các trạng thái cho Stop
@@ -83,6 +82,9 @@ export default function EditTask() {
 
     const [initLoaded, setInitLoaded] = useState(false);
 
+    // Cache: Set chứa các category IDs là medicine (O(1) lookup)
+    const [medicineCategoryIds, setMedicineCategoryIds] = useState(new Set());
+
 
     // ===================== LOAD INITIAL BASE DATA =====================
     useEffect(() => {
@@ -102,6 +104,21 @@ export default function EditTask() {
                 setRobots(robotsData?.data || robotsData || []);
                 setPatients(patientsData);
                 setCategories(categoriesData);
+
+                // Tạo Set chứa các medicine category IDs để lookup nhanh (O(1))
+                const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
+                const medicineIds = new Set();
+                if (Array.isArray(categoriesData)) {
+                    categoriesData.forEach((cat) => {
+                        if (cat.name) {
+                            const categoryNameLower = cat.name.toLowerCase().trim();
+                            if (medicineKeywords.some((keyword) => categoryNameLower.includes(keyword))) {
+                                medicineIds.add(Number(cat.id));
+                            }
+                        }
+                    });
+                }
+                setMedicineCategoryIds(medicineIds);
             } catch (err) {
                 console.error(err);
                 showToast("error", err.message);
@@ -148,135 +165,190 @@ export default function EditTask() {
                     });
                 }
 
-                // Convert stops BE -> structure FE
-                const editedStops = await Promise.all(
-                    data.stops.map(async (s) => {
-                        let filtered = [];
-                        let resolvedCategoryId = (s.categoryId && s.categoryId > 0) ? s.categoryId : null;
-                        let compDetail = null; // Khai báo ở scope cao hơn để có thể sử dụng sau
-                        let foundComp = null;  // Khai báo ở scope cao hơn để có thể sử dụng sau
-                        
-                        // Nếu có categoryId từ BE → load compartments theo category
-                        if (s.categoryId && s.categoryId > 0) {
-                            filtered = await getCompartmentsByRobotAndCategory(
-                                data.robotId,
-                                s.categoryId
-                            );
-                        }
-                        // Nếu không có categoryId nhưng có compartmentId → cần tìm categoryId từ compartment
-                        else if (s.compartmentId && s.compartmentId > 0) {
-                            
-                            try {
-                                // Thử load compartment detail trực tiếp theo ID để lấy categoryId và compartmentCode
-                                compDetail = await getCompartmentById(s.compartmentId);
-                                
-                                if (compDetail && compDetail.categoryId) {
-                                    // Tìm thấy compartment và có categoryId → load compartments theo category
-                                    resolvedCategoryId = compDetail.categoryId;
-                                    filtered = await getCompartmentsByRobotAndCategory(
-                                        data.robotId,
-                                        resolvedCategoryId
-                                    );
-                                }
-                            } catch (err) {
-                                // Compartment có thể không tồn tại (404) hoặc đã bị xóa/release
-                                // Không cần log error vì đây là trường hợp có thể xảy ra khi restore task canceled
-                                // Tiếp tục thử tìm trong unlocked compartments
-                            }
-                            
-                            // Nếu vẫn chưa có categoryId, thử tìm trong unlocked compartments
-                            if (!resolvedCategoryId) {
-                                try {
-                                    const allCompartments = await getUnlockedCompartments(data.robotId);
-                                    foundComp = allCompartments.find((c) => Number(c.id) === Number(s.compartmentId));
-                                    
-                                    if (foundComp && foundComp.categoryId) {
-                                        resolvedCategoryId = foundComp.categoryId;
-                                        filtered = await getCompartmentsByRobotAndCategory(
-                                            data.robotId,
-                                            resolvedCategoryId
-                                        );
-                                    }
-                                } catch (err2) {
-                                    // Không cần log error, chỉ cần tiếp tục với fallback
-                                }
-                            }
-                            
-                        }
+                // ========== OPTIMIZATION: Pre-load dữ liệu cần thiết song song ==========
+                // Load tất cả dữ liệu cần thiết song song để giảm thời gian chờ
+                const [mapDetail, allUnlockedCompartments] = await Promise.all([
+                    getMapById(data.mapId),
+                    getUnlockedCompartments(data.robotId),
+                ]);
 
-                        // Nếu compartmentId BE trả về không có trong filtered → thêm fallback với compartmentCode đúng
-                        // So sánh với cả number và string để tránh type mismatch
-                        const hasCompartment = s.compartmentId && s.compartmentId > 0 && filtered.some((c) => {
-                            const compId = Number(c.id);
-                            const stopCompId = Number(s.compartmentId);
-                            return compId === stopCompId;
-                        });
-                        
-                        if (s.compartmentId && s.compartmentId > 0 && !hasCompartment) {
-                            // Ưu tiên lấy compartmentCode từ BE response (đã có sẵn và đáng tin cậy nhất)
-                            let compartmentCode = s.compartmentCode || null;
-                            
-                            // Nếu BE không trả về compartmentCode, thử từ foundComp (nếu đã load - nhanh hơn)
-                            if (!compartmentCode && foundComp && foundComp.compartmentCode) {
-                                compartmentCode = foundComp.compartmentCode;
+                setDestinations(mapDetail.destinations || []);
+                setBaseCompartments(allUnlockedCompartments);
+
+                // ========== OPTIMIZATION: Batch load compartment details ==========
+                // Thu thập tất cả compartmentId cần load (loại bỏ duplicate)
+                const uniqueCompartmentIds = [
+                    ...new Set(
+                        data.stops
+                            .filter((s) => s.compartmentId && s.compartmentId > 0)
+                            .map((s) => s.compartmentId)
+                    ),
+                ];
+
+                // Load tất cả compartment details song song
+                const compartmentDetailsMap = new Map();
+                await Promise.all(
+                    uniqueCompartmentIds.map(async (compId) => {
+                        try {
+                            const compDetail = await getCompartmentById(compId);
+                            if (compDetail) {
+                                compartmentDetailsMap.set(compId, compDetail);
                             }
-                            // Thử từ compDetail (nếu đã load)
-                            else if (!compartmentCode && compDetail && compDetail.compartmentCode) {
-                                compartmentCode = compDetail.compartmentCode;
-                            }
-                            // Chỉ thử load lại compartment detail nếu thực sự cần và chưa load trước đó
-                            else if (!compartmentCode && !compDetail) {
-                                try {
-                                    const compDetailRetry = await getCompartmentById(s.compartmentId);
-                                    if (compDetailRetry && compDetailRetry.compartmentCode) {
-                                        compartmentCode = compDetailRetry.compartmentCode;
-                                        compDetail = compDetailRetry; // Lưu lại để dùng sau
-                                    }
-                                } catch (err) {
-                                    // Compartment không tồn tại (404) - có thể đã bị xóa hoặc không tồn tại
-                                }
-                            }
-                            
-                            // Thêm vào filtered với compartmentCode đúng (hoặc fallback nếu không tìm thấy)
-                            filtered = [
-                                ...filtered,
-                                {
-                                    id: s.compartmentId,
-                                    compartmentCode: compartmentCode || `#${s.compartmentId} (không khả dụng)`,
-                                },
-                            ];
+                        } catch (err) {
+                            // Compartment có thể không tồn tại (404) - bỏ qua
                         }
-
-                        // Kiểm tra category có phải thuốc không để set confirmedCustomName
-                        const finalCategoryId = resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null);
-                        const category = finalCategoryId && finalCategoryId > 0 
-                            ? categories.find((c) => Number(c.id) === Number(finalCategoryId))
-                            : null;
-                        const isMedicine = category && category.name && 
-                            ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"]
-                                .some((keyword) => category.name.toLowerCase().includes(keyword));
-                        
-                        // Nếu có customName và category là thuốc → tự động confirm
-                        const confirmedCustomName = isMedicine && s.customName && s.customName.trim() !== "";
-
-                        return {
-                            stopId: s.stopId,
-                            seqNo: s.seqNo,
-                            destinationId: s.destinationId ? String(s.destinationId) : "",
-                            patientId: s.patientId ? String(s.patientId) : "",
-                            // Sử dụng resolvedCategoryId nếu có, nếu không dùng categoryId từ BE (chỉ dùng nếu > 0)
-                            categoryId: (resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null)) 
-                                ? String(resolvedCategoryId || s.categoryId) 
-                                : "",
-                            compartmentId: s.compartmentId ? String(s.compartmentId) : "",
-                            customName: s.customName ?? "",
-                            itemDesc: s.itemDesc ?? "",
-                            confirmedCustomName: confirmedCustomName, // Đã tick xác nhận customName chưa
-                            status: s.status, // giữ status hiện tại của stop
-                            filteredCompartments: filtered,
-                        };
                     })
                 );
+
+                // ========== OPTIMIZATION: Batch load compartments by category ==========
+                // Thu thập tất cả categoryId cần load (loại bỏ duplicate)
+                const categoryIdsToLoad = new Set();
+                data.stops.forEach((s) => {
+                    if (s.categoryId && s.categoryId > 0) {
+                        categoryIdsToLoad.add(s.categoryId);
+                    }
+                    // Nếu không có categoryId nhưng có compartmentId, thử lấy từ compartment detail
+                    if (!s.categoryId && s.compartmentId && s.compartmentId > 0) {
+                        const compDetail = compartmentDetailsMap.get(s.compartmentId);
+                        if (compDetail && compDetail.categoryId) {
+                            categoryIdsToLoad.add(compDetail.categoryId);
+                        }
+                    }
+                });
+
+                // Load tất cả compartments by category song song
+                const compartmentsByCategoryMap = new Map();
+                await Promise.all(
+                    Array.from(categoryIdsToLoad).map(async (categoryId) => {
+                        try {
+                            const comps = await getCompartmentsByRobotAndCategory(
+                                data.robotId,
+                                categoryId
+                            );
+                            compartmentsByCategoryMap.set(categoryId, comps || []);
+                        } catch (err) {
+                            compartmentsByCategoryMap.set(categoryId, []);
+                        }
+                    })
+                );
+
+                // ========== OPTIMIZATION: Tạo lookup maps để tăng tốc độ xử lý ==========
+                // Tạo Map cho allUnlockedCompartments (O(1) lookup thay vì O(n) find)
+                const unlockedCompartmentsMap = new Map();
+                allUnlockedCompartments.forEach((c) => {
+                    unlockedCompartmentsMap.set(Number(c.id), c);
+                });
+
+                // Tạo Map cho categories (O(1) lookup thay vì O(n) find)
+                const categoriesMap = new Map();
+                categories.forEach((c) => {
+                    categoriesMap.set(Number(c.id), c);
+                });
+
+                // Cache medicine keywords để check nhanh hơn
+                const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
+                const isMedicineCategoryCache = new Map(); // Cache kết quả check medicine category
+
+                // ========== Convert stops BE -> structure FE (sử dụng cache và Map lookup) ==========
+                const editedStops = data.stops.map((s) => {
+                    let filtered = [];
+                    let resolvedCategoryId = (s.categoryId && s.categoryId > 0) ? s.categoryId : null;
+                    let compDetail = compartmentDetailsMap.get(s.compartmentId) || null;
+                    let foundComp = null;
+
+                    // Nếu có categoryId từ BE → lấy từ cache
+                    if (s.categoryId && s.categoryId > 0) {
+                        filtered = compartmentsByCategoryMap.get(s.categoryId) || [];
+                    }
+                    // Nếu không có categoryId nhưng có compartmentId → tìm categoryId từ compartment detail đã load
+                    else if (s.compartmentId && s.compartmentId > 0) {
+                        // Sử dụng compartment detail đã load từ cache
+                        if (compDetail && compDetail.categoryId) {
+                            resolvedCategoryId = compDetail.categoryId;
+                            filtered = compartmentsByCategoryMap.get(resolvedCategoryId) || [];
+                        }
+                        
+                        // Nếu vẫn chưa có categoryId, thử tìm trong unlocked compartments đã load (O(1) lookup)
+                        if (!resolvedCategoryId) {
+                            foundComp = unlockedCompartmentsMap.get(Number(s.compartmentId));
+                            
+                            if (foundComp && foundComp.categoryId) {
+                                resolvedCategoryId = foundComp.categoryId;
+                                filtered = compartmentsByCategoryMap.get(resolvedCategoryId) || [];
+                            }
+                        }
+                    }
+
+                    // Nếu compartmentId BE trả về không có trong filtered → thêm fallback với compartmentCode đúng
+                    // Tối ưu: Tạo Set để check nhanh hơn (O(1) thay vì O(n) some)
+                    const filteredCompartmentIds = new Set(filtered.map((c) => Number(c.id)));
+                    const stopCompartmentId = s.compartmentId ? Number(s.compartmentId) : 0;
+                    const hasCompartment = stopCompartmentId > 0 && filteredCompartmentIds.has(stopCompartmentId);
+                    
+                    if (stopCompartmentId > 0 && !hasCompartment) {
+                        // Ưu tiên lấy compartmentCode từ BE response (đã có sẵn và đáng tin cậy nhất)
+                        let compartmentCode = s.compartmentCode || null;
+                        
+                        // Nếu BE không trả về compartmentCode, thử từ foundComp (nếu đã load)
+                        if (!compartmentCode && foundComp && foundComp.compartmentCode) {
+                            compartmentCode = foundComp.compartmentCode;
+                        }
+                        // Thử từ compDetail (đã load từ cache)
+                        else if (!compartmentCode && compDetail && compDetail.compartmentCode) {
+                            compartmentCode = compDetail.compartmentCode;
+                        }
+                        
+                        // Thêm vào filtered với compartmentCode đúng (hoặc fallback nếu không tìm thấy)
+                        filtered = [
+                            ...filtered,
+                            {
+                                id: s.compartmentId,
+                                compartmentCode: compartmentCode || `#${s.compartmentId} (không khả dụng)`,
+                            },
+                        ];
+                    }
+
+                    // Kiểm tra category có phải thuốc không để set confirmedCustomName
+                    // Tối ưu: Sử dụng Map lookup (O(1)) và cache kết quả
+                    const finalCategoryId = resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null);
+                    let isMedicine = false;
+                    
+                    if (finalCategoryId && finalCategoryId > 0) {
+                        // Check cache trước
+                        if (isMedicineCategoryCache.has(finalCategoryId)) {
+                            isMedicine = isMedicineCategoryCache.get(finalCategoryId);
+                        } else {
+                            // O(1) lookup thay vì O(n) find
+                            const category = categoriesMap.get(Number(finalCategoryId));
+                            if (category && category.name) {
+                                const categoryNameLower = category.name.toLowerCase();
+                                isMedicine = medicineKeywords.some((keyword) => categoryNameLower.includes(keyword));
+                            }
+                            // Cache kết quả
+                            isMedicineCategoryCache.set(finalCategoryId, isMedicine);
+                        }
+                    }
+                    
+                    // Nếu có customName và category là thuốc → tự động confirm
+                    const confirmedCustomName = isMedicine && s.customName && s.customName.trim() !== "";
+
+                    return {
+                        stopId: s.stopId,
+                        seqNo: s.seqNo,
+                        destinationId: s.destinationId ? String(s.destinationId) : "",
+                        patientId: s.patientId ? String(s.patientId) : "",
+                        // Sử dụng resolvedCategoryId nếu có, nếu không dùng categoryId từ BE (chỉ dùng nếu > 0)
+                        categoryId: (resolvedCategoryId || (s.categoryId && s.categoryId > 0 ? s.categoryId : null)) 
+                            ? String(resolvedCategoryId || s.categoryId) 
+                            : "",
+                        compartmentId: s.compartmentId ? String(s.compartmentId) : "",
+                        customName: s.customName ?? "",
+                        itemDesc: s.itemDesc ?? "",
+                        confirmedCustomName: confirmedCustomName, // Đã tick xác nhận customName chưa
+                        status: s.status, // giữ status hiện tại của stop
+                        filteredCompartments: filtered,
+                    };
+                });
 
                 const formData = {
                     mapId: data.mapId ? String(data.mapId) : "",
@@ -295,14 +367,6 @@ export default function EditTask() {
                 const taskStatusValue = (data.status || data.Status || "").trim().toLowerCase() || "pending";
                 setTaskStatus(taskStatusValue);
                 setInitialTaskStatus(taskStatusValue);
-
-                // load destinations theo map
-                const mapDetail = await getMapById(data.mapId);
-                setDestinations(mapDetail.destinations || []);
-
-                // load unlocked compartments cho robot
-                const comps = await getUnlockedCompartments(data.robotId);
-                setBaseCompartments(comps);
 
                 setLoading(false);
             } catch (err) {
@@ -388,15 +452,10 @@ export default function EditTask() {
     }
 
     // ===================== HELPER: Kiểm tra category có liên quan đến thuốc không =====================
+    // Tối ưu: Sử dụng Set lookup O(1) thay vì find O(n)
     function isMedicineCategory(categoryId) {
         if (!categoryId) return false;
-        const category = categories.find((c) => c.id === Number(categoryId));
-        if (!category || !category.name) return false;
-        
-        const categoryName = category.name.toLowerCase().trim();
-        const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
-        
-        return medicineKeywords.some((keyword) => categoryName.includes(keyword));
+        return medicineCategoryIds.has(Number(categoryId));
     }
 
     // ===================== CONFIRM CUSTOM NAME (Tick button) =====================
@@ -557,7 +616,7 @@ export default function EditTask() {
     async function handleUpdate() {
         // Validate task có thể edit
         if (!EDITABLE_TASK_STATUSES.includes(initialTaskStatus)) {
-            showToast("error", "Nhiệm vụ không thể chỉnh sửa ở trạng thái hiện tại. Chỉ có thể chỉnh sửa khi trạng thái là 'pending' hoặc 'canceled'.");
+            showToast("error", "Nhiệm vụ không thể chỉnh sửa ở trạng thái hiện tại. Chỉ có thể chỉnh sửa khi trạng thái là 'pending'.");
             return;
         }
 
@@ -588,16 +647,6 @@ export default function EditTask() {
                 if (selected <= now) {
                     showToast("warning", "Thời gian bắt đầu không được là quá khứ. Vui lòng chọn thời gian trong tương lai.");
                     return;
-                }
-                
-                // Nếu task đang canceled (để restore), cần thêm buffer ít nhất 2 phút
-                const isCanceledTask = initialTaskStatus === "canceled";
-                if (isCanceledTask) {
-                    const minRequiredTime = new Date(now.getTime() + 2 * 60 * 1000);
-                    if (selected <= minRequiredTime) {
-                        showToast("warning", "Thời gian bắt đầu phải lớn hơn thời gian hiện tại ít nhất 2 phút để restore nhiệm vụ.");
-                        return;
-                    }
                 }
             } catch (err) {
                 showToast("error", "Thời gian bắt đầu không hợp lệ.");
@@ -810,13 +859,6 @@ export default function EditTask() {
                                     ></i>
                                     Thông tin nhiệm vụ
                                 </h5>
-                                {initialTaskStatus === "canceled" && (
-                                    <div className="alert alert-info mb-0 py-2 px-3" style={{ fontSize: "0.85rem", maxWidth: "600px" }}>
-                                        <i className="bi bi-info-circle me-2"></i>
-                                        <strong>Nhiệm vụ đã bị hủy.</strong> Để restore, cập nhật "Thời gian bắt đầu" thành thời điểm trong tương lai.
-                                        Nhiệm vụ sẽ tự động chuyển về trạng thái "chờ xử lý" khi đủ điều kiện (robot ở trạm, ngăn chứa trống).
-                                    </div>
-                                )}
                             </div>
 
                             {/* MAP + TIME */}

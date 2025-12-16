@@ -116,11 +116,17 @@ export default function RobotTaskDashboard() {
           const firstPatientData = t.patients?.[0];
           const displayText = firstPatientData?.itemDesc || firstPatientData?.customName || "—";
 
+          // Hiển thị status với số lượng stops đã hoàn thành (nếu task đã completed)
+          let statusDisplay = statusMap[t.status] || "Không xác định";
+          if (t.status === "completed" && t.completedStops !== undefined && t.totalStops > 0) {
+            statusDisplay = `Hoàn thành (${t.completedStops}/${t.totalStops})`;
+          }
+
           return {
             id: t.id,
             robotName: t.robotName,
             assignedBy: t.assignedBy,
-            status: statusMap[t.status] || "Không xác định",
+            status: statusDisplay,
             statusRaw: t.status, // Giữ status gốc để kiểm tra
             createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
             scheduledStartAt: t.scheduledStartAt
@@ -129,6 +135,7 @@ export default function RobotTaskDashboard() {
             startedAt: t.startedAt,  
             scheduledStartAtRaw: t.scheduledStartAt,
             totalStops: t.totalStops,
+            completedStops: t.completedStops || 0, // Số stops đã delivered
             firstDestination: t.firstDestination || "—",
             patientCount,
             firstPatient,
@@ -162,6 +169,11 @@ export default function RobotTaskDashboard() {
   function getCountdownInfo(task) {
     if (!task.scheduledStartAtRaw) {
       return { text: "—", className: "", note: null };
+    }
+
+    // ❗ Nếu task đã hoàn thành (completed) → không hiển thị "Quá giờ"
+    if (task.statusRaw === "completed") {
+      return { text: "Đã hoàn thành", className: styles.countdownStarted, note: null };
     }
 
     const now = new Date();
@@ -221,11 +233,19 @@ export default function RobotTaskDashboard() {
   };
 
   /* ========================= LẤY CLASS CHO TRẠNG THÁI ========================= */
-  const getStatusBadgeClass = (status) => {
+  const getStatusBadgeClass = (status, statusRaw) => {
+    // Check statusRaw trước để chính xác hơn
+    if (statusRaw === "completed") return styles.badgeCompleted;
+    if (statusRaw === "canceled") return styles.badgeCanceled;
+    if (statusRaw === "in_progress") return styles.badgeInProgress;
+    if (statusRaw === "pending") return styles.badgePending;
+    
+    // Fallback: check status đã format (có thể có "Hoàn thành (1/1)")
+    if (status && status.startsWith("Hoàn thành")) return styles.badgeCompleted;
     if (status === "Đang chờ") return styles.badgePending;
     if (status === "Đang tiến hành") return styles.badgeInProgress;
-    if (status === "Hoàn thành") return styles.badgeCompleted;
     if (status === "Đã hủy") return styles.badgeCanceled;
+    
     return styles.badgePending;
   };
 
@@ -237,8 +257,13 @@ export default function RobotTaskDashboard() {
   };
 
   /* ========================= LẤY CLASS CHO THỜI GIAN HẸN ========================= */
-  const getScheduleClass = (scheduledStartAt) => {
+  const getScheduleClass = (scheduledStartAt, taskStatusRaw) => {
     if (!scheduledStartAt || scheduledStartAt === "—") return "";
+
+    // ❗ Nếu task đã hoàn thành (completed) → hiển thị màu xanh lá
+    if (taskStatusRaw === "completed") {
+      return styles.scheduleTimeCompleted; // Màu xanh lá cho task đã hoàn thành
+    }
 
     const now = new Date();
     const start = new Date(scheduledStartAt);
@@ -400,7 +425,7 @@ export default function RobotTaskDashboard() {
 
               <tbody>
                 {displayedTasks.map((t) => {
-                  const scheduleClass = getScheduleClass(t.scheduledStartAtRaw);
+                  const scheduleClass = getScheduleClass(t.scheduledStartAtRaw, t.statusRaw);
                   const countdownInfo = getCountdownInfo(t);
 
                   return (
@@ -440,7 +465,7 @@ export default function RobotTaskDashboard() {
 
                       {/* Cột trạng thái */}
                       <td>
-                        <span className={getStatusBadgeClass(t.status)}>
+                        <span className={getStatusBadgeClass(t.status, t.statusRaw)}>
                           {t.status}
                         </span>
                       </td>
@@ -476,8 +501,8 @@ export default function RobotTaskDashboard() {
                       {/* Cột thao tác */}
                       <td>
                         <div className="d-flex gap-1 justify-content-end">
-                          {/* Nút hủy - chỉ hiển thị khi task chưa bắt đầu (pending) */}
-                          {t.statusRaw && (
+                          {/* Nút hủy - chỉ hiển thị khi task chưa bắt đầu (pending) và chưa hoàn thành */}
+                          {t.statusRaw && t.statusRaw !== "completed" && (
                             <button
                               className="btn btn-sm btn-danger"
                               onClick={() => setCancelModal({ show: true, taskId: t.id, reason: "", loading: false })}
@@ -488,7 +513,8 @@ export default function RobotTaskDashboard() {
                             </button>
                           )}
                           
-                          {t.status !== "Đã hủy" && t.status !== "Hoàn thành" && (
+                          {/* Nút theo dõi - không hiển thị khi task đã hủy hoặc đã hoàn thành */}
+                          {t.statusRaw !== "canceled" && t.statusRaw !== "completed" && (
                             <button
                               className={styles.btnSecondary}
                               onClick={() => navigate(`/run-task/${t.id}`)}
