@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
@@ -37,13 +37,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         }
 
         /// <summary>
-        /// Lấy toàn bộ danh sách bệnh nhân
+        /// Lấy toàn bộ danh sách bệnh nhân (tối ưu - không load prescriptions)
         /// </summary>
         public async Task<IEnumerable<Patient>> GetAllAsync()
         {
             return await _context.Patients
+                .AsNoTracking() // Chỉ đọc, không track changes
                 .Include(p => p.Room)
-                .Include(p => p.Prescriptions)
+                // KHÔNG load Prescriptions để tối ưu performance cho dropdown
                 .ToListAsync();
         }
 

@@ -1,9 +1,12 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
     public interface IRobotCompartmentService
     {
+        // Lấy ngăn chứa theo ID
+        Task<RobotCompartmentResponseDto?> GetByIdAsync(ulong id);
+
         // Mở ngăn chứa (gọi ROS hoặc hardware để mở khóa)
         Task<RobotCompartmentResponseDto?> OpenCompartmentAsync(ulong id);
 

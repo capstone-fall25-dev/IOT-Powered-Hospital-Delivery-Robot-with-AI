@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
@@ -16,6 +16,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public RobotCompartmentsController(IRobotCompartmentService service)
         {
             _service = service;
+        }
+
+        /// <summary>
+        /// Lấy ngăn chứa theo ID
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById([FromRoute] ulong id)
+        {
+            var result = await _service.GetByIdAsync(id);
+            if (result == null)
+                return NotFound($"Không tìm thấy ngăn chứa với ID = {id}");
+
+            return Ok(result);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +81,38 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                         .ThenInclude(p => p.Prescriptions!)
                             .ThenInclude(rx => rx.PrescriptionItems!)
                                 .ThenInclude(i => i.Medicine)
+
+                .FirstOrDefaultAsync(t => t.Id == id);
+        }
+
+        /// <summary>
+        /// Lấy task theo ID cho trang edit (tối ưu - không load prescription data)
+        /// </summary>
+        public async Task<Models.Entities.Task?> GetByIdForEditAsync(ulong id)
+        {
+            return await _context.Tasks
+                .AsSplitQuery()
+                .AsNoTracking() // Chỉ đọc, không track changes
+
+                // Robot + Map + Người giao
+                .Include(t => t.Robot)
+                .Include(t => t.Map)
+                .Include(t => t.AssignedByNavigation)
+
+                // Stops
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Destination)
+
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.Patient)
+
+                // Assignment + Compartment
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.CompartmentAssignments)
+                        .ThenInclude(a => a.Compartment)
+                            .ThenInclude(c => c.Category)
+
+                // KHÔNG load Prescription data để tối ưu performance
 
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
