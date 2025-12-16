@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -20,6 +20,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             _repository = repository;
             _mapper = mapper;
             _logRepository = logRepository;
+        }
+
+        /// <summary>
+        /// Lấy ngăn chứa theo ID
+        /// </summary>
+        public async Task<RobotCompartmentResponseDto?> GetByIdAsync(ulong id)
+        {
+            var compartment = await _repository.GetByIdAsync(id);
+            return compartment != null ? _mapper.Map<RobotCompartmentResponseDto>(compartment) : null;
         }
 
         /// <summary>

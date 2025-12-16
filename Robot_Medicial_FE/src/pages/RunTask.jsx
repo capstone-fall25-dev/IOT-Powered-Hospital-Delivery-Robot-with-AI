@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import { updateStopStatus } from "@/services/taskService";
@@ -11,6 +11,7 @@ import mapErrorImage from "@/assets/image/map_error.jpg";
 
 export default function RunTask() {
     const { taskId } = useParams();
+    const navigate = useNavigate();
     const { toast, showToast } = useToast();
 
     // ===================================
@@ -81,6 +82,9 @@ export default function RunTask() {
 
     // Trạng thái điểm dừng đang chọn (để cập nhật status)
     const [selectedStopStatus, setSelectedStopStatus] = useState("");
+
+    // Modal xác nhận hoàn thành task
+    const [showCompleteModal, setShowCompleteModal] = useState(false);
 
     // Tiến độ nhiệm vụ robot
     const [navProgress, setNavProgress] = useState({
@@ -890,26 +894,77 @@ async function sendEmergencyStop() {
                 return;
             }
 
-            // === (3) Nếu là stop cuối và delivered → COMPLETE TASK
-            await completeTask();
-            showToast("success", "Tất cả điểm dừng đã giao — Nhiệm vụ hoàn thành!");
+            // === (3) Nếu là stop cuối và delivered → Hiển thị nút hoàn thành
+            // Không tự động complete, để user xác nhận
+            showToast("info", "Tất cả điểm dừng đã giao — Vui lòng xác nhận hoàn thành nhiệm vụ!");
         } catch (err) {
             console.error("Lỗi cập nhật trạng thái điểm dừng:", err);
             showToast("error", err.message || "Lỗi khi cập nhật điểm dừng");
         }
     }
 
-    async function completeTask() {
+    // Kiểm tra xem tất cả stops đã hoàn thành chưa (delivered, skipped, hoặc failed)
+    function areAllStopsFinished() {
+        if (!stops || stops.length === 0) return false;
+        return stops.every(stop => {
+            const status = stop.assignmentStatus?.toLowerCase();
+            return status === "delivered" || status === "skipped" || status === "failed";
+        });
+    }
+
+    // Hiển thị modal xác nhận hoàn thành
+    function handleShowCompleteModal() {
+        if (areAllStopsFinished()) {
+            setShowCompleteModal(true);
+        } else {
+            showToast("warning", "Vẫn còn điểm dừng chưa hoàn thành!");
+        }
+    }
+
+    // Xác nhận hoàn thành task
+    async function handleConfirmComplete() {
         try {
-            await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/complete`, {
-                method: "POST",
+            const response = await fetch(`${API_CONFIG.API_BASE}/tasks/${taskId}/complete`, {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" }
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || "Không thể hoàn thành nhiệm vụ!");
+            }
+
             showToast("success", "Nhiệm vụ đã hoàn thành!");
+            setShowCompleteModal(false);
+            
+            // Navigate về trang list task sau 1 giây
+            setTimeout(() => {
+                navigate("/dashboard");
+            }, 1000);
         } catch (err) {
             console.error("Lỗi hoàn thành nhiệm vụ:", err);
             showToast("error", err.message || "Không thể hoàn thành nhiệm vụ!");
         }
+    }
+
+    // Phân loại stops: đã hoàn thành và chưa hoàn thành
+    function getStopsByStatus() {
+        const completed = stops.filter(stop => {
+            const status = stop.assignmentStatus?.toLowerCase();
+            return status === "delivered";
+        });
+        
+        const notCompleted = stops.filter(stop => {
+            const status = stop.assignmentStatus?.toLowerCase();
+            return status !== "delivered" && status !== "skipped" && status !== "failed";
+        });
+
+        const skippedOrFailed = stops.filter(stop => {
+            const status = stop.assignmentStatus?.toLowerCase();
+            return status === "skipped" || status === "failed";
+        });
+
+        return { completed, notCompleted, skippedOrFailed };
     }
 
   // ===================================
@@ -1456,6 +1511,24 @@ async function sendEmergencyStop() {
                         Dừng khẩn cấp
                     </button>
 
+                    {/* ⭐ NÚT HOÀN THÀNH - Chỉ hiển thị khi tất cả stops đã finished */}
+                    {areAllStopsFinished() && (
+                        <button
+                            className={`${styles.btnSuccess} mt-2 w-100`}
+                            onClick={handleShowCompleteModal}
+                            style={{
+                                fontSize: "0.9rem",
+                                padding: "0.6rem 0.75rem",
+                                background: "linear-gradient(135deg, #28a745, #20c997)",
+                                border: "none",
+                                fontWeight: "bold",
+                            }}
+                        >
+                            <i className="bi bi-check-circle-fill me-1"></i>
+                            Hoàn thành
+                        </button>
+                    )}
+
                     {selectedStop && (
                         <div className={`${styles.destinationInfo} mt-1`} style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
                             <div><strong>{selectedStop.name}</strong></div>
@@ -1619,6 +1692,180 @@ async function sendEmergencyStop() {
           </div>
         </div>
       </div>
+
+      {/* MODAL XÁC NHẬN HOÀN THÀNH NHIỆM VỤ */}
+      {showCompleteModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setShowCompleteModal(false)}
+        >
+          <div
+            className={styles.glass}
+            style={{
+              width: "90%",
+              maxWidth: "600px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              padding: "2rem",
+              borderRadius: "10px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-4">
+              <h4 style={{ margin: 0, color: "var(--teal-dark)" }}>
+                <i className="bi bi-check-circle-fill me-2"></i>
+                Xác nhận hoàn thành nhiệm vụ
+              </h4>
+              <button
+                className="btn-close"
+                onClick={() => setShowCompleteModal(false)}
+                aria-label="Close"
+              ></button>
+            </div>
+
+            <p className="text-muted mb-4">
+              Vui lòng kiểm tra danh sách điểm dừng trước khi xác nhận hoàn thành:
+            </p>
+
+            {(() => {
+              const { completed, notCompleted, skippedOrFailed } = getStopsByStatus();
+              return (
+                <>
+                  {/* Điểm dừng đã hoàn thành */}
+                  {completed.length > 0 && (
+                    <div className="mb-4">
+                      <h6 className="text-success mb-2">
+                        <i className="bi bi-check-circle-fill me-1"></i>
+                        Đã hoàn thành ({completed.length})
+                      </h6>
+                      <div className="list-group">
+                        {completed.map((stop) => (
+                          <div
+                            key={stop.stopId}
+                            className="list-group-item d-flex align-items-center"
+                            style={{
+                              backgroundColor: "#d4edda",
+                              border: "1px solid #c3e6cb",
+                            }}
+                          >
+                            <i className="bi bi-check-circle-fill text-success me-2" style={{ fontSize: "1.2rem" }}></i>
+                            <div className="flex-grow-1">
+                              <strong>Điểm dừng #{stop.order}</strong>
+                              <div className="text-muted small">{stop.name}</div>
+                            </div>
+                            <span className="badge bg-success">Đã giao</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Điểm dừng bị bỏ qua hoặc thất bại */}
+                  {skippedOrFailed.length > 0 && (
+                    <div className="mb-4">
+                      <h6 className="text-warning mb-2">
+                        <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                        Bỏ qua / Thất bại ({skippedOrFailed.length})
+                      </h6>
+                      <div className="list-group">
+                        {skippedOrFailed.map((stop) => (
+                          <div
+                            key={stop.stopId}
+                            className="list-group-item d-flex align-items-center"
+                            style={{
+                              backgroundColor: "#fff3cd",
+                              border: "1px solid #ffeaa7",
+                            }}
+                          >
+                            <i className="bi bi-x-circle-fill text-warning me-2" style={{ fontSize: "1.2rem" }}></i>
+                            <div className="flex-grow-1">
+                              <strong>Điểm dừng #{stop.order}</strong>
+                              <div className="text-muted small">{stop.name}</div>
+                            </div>
+                            <span className="badge bg-warning text-dark">
+                              {getStatusText(stop.assignmentStatus)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Điểm dừng chưa hoàn thành */}
+                  {notCompleted.length > 0 && (
+                    <div className="mb-4">
+                      <h6 className="text-danger mb-2">
+                        <i className="bi bi-x-circle-fill me-1"></i>
+                        Chưa hoàn thành ({notCompleted.length})
+                      </h6>
+                      <div className="list-group">
+                        {notCompleted.map((stop) => (
+                          <div
+                            key={stop.stopId}
+                            className="list-group-item d-flex align-items-center"
+                            style={{
+                              backgroundColor: "#f8d7da",
+                              border: "1px solid #f5c6cb",
+                            }}
+                          >
+                            <i className="bi bi-x-circle-fill text-danger me-2" style={{ fontSize: "1.2rem" }}></i>
+                            <div className="flex-grow-1">
+                              <strong>Điểm dừng #{stop.order}</strong>
+                              <div className="text-muted small">{stop.name}</div>
+                            </div>
+                            <span className="badge bg-danger">
+                              {getStatusText(stop.assignmentStatus)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thông báo nếu có điểm dừng chưa hoàn thành */}
+                  {notCompleted.length > 0 && (
+                    <div className="alert alert-warning mb-4">
+                      <i className="bi bi-exclamation-triangle me-2"></i>
+                      <strong>Lưu ý:</strong> Vẫn còn {notCompleted.length} điểm dừng chưa hoàn thành. 
+                      Bạn có chắc muốn hoàn thành nhiệm vụ?
+                    </div>
+                  )}
+
+                  {/* Nút xác nhận */}
+                  <div className="d-flex gap-2 justify-content-end">
+                    <button
+                      className="btn btn-outline-secondary"
+                      onClick={() => setShowCompleteModal(false)}
+                      style={{ borderRadius: "5px" }}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      className="btn btn-success"
+                      onClick={handleConfirmComplete}
+                      style={{ borderRadius: "5px" }}
+                    >
+                      <i className="bi bi-check-circle me-1"></i>
+                      Xác nhận hoàn thành
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

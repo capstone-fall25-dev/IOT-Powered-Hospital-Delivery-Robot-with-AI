@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
@@ -164,6 +164,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 
         // Stop summary
         public int TotalStops { get; set; }
+        public int CompletedStops { get; set; } // Số stops đã delivered
         public string? FirstDestination { get; set; }
 
         // Patient + medicine summary (dạng list)

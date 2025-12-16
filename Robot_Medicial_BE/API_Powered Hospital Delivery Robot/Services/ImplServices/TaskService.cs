@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Hubs;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -55,6 +55,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     ScheduledStartAt = t.ScheduledStartAt,
                     StartedAt = t.StartedAt,
                     TotalStops = t.TaskStops.Count,
+                    CompletedStops = t.TaskStops.Count(s => string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase)),
                     FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
 
                     Patients = t.TaskStops
@@ -279,8 +280,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         public async Task<TaskEditDto?> GetEditDataAsync(ulong id)
         {
-            var task = await _repo.GetByIdAsync(id);
+            // Sử dụng GetByIdForEditAsync để tối ưu performance (không load prescription data)
+            var task = await _repo.GetByIdForEditAsync(id);
             if (task == null) return null;
+
+            // ❗ Không cho phép edit task đã completed hoặc canceled
+            string taskStatus = task.Status.ToLower();
+            if (!AllowedStatusForEdit.Contains(taskStatus))
+            {
+                throw new InvalidOperationException(
+                    $"Không thể chỉnh sửa nhiệm vụ ở trạng thái '{task.Status}'. Chỉ có thể chỉnh sửa khi trạng thái là 'pending'."
+                );
+            }
 
             // GetByIdAsync đã include Compartments với Category, không cần query lại (tránh N+1 query)
             // Chỉ cần đảm bảo CategoryId được set nếu có Category object
@@ -399,36 +410,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (dto.Priority.HasValue)
                     task.Priority = dto.Priority.Value.ToString();
 
-                // Nếu task đã cancel và user thay đổi scheduledStartAt → cho phép sử dụng lại task
-                bool isReactivatingCanceledTask = task.Status.ToLower() == "canceled" &&
-                                                   dto.ScheduledStartAt.HasValue &&
-                                                   dto.ScheduledStartAt.Value != task.ScheduledStartAt;
-
                 if (dto.ScheduledStartAt.HasValue)
                     task.ScheduledStartAt = dto.ScheduledStartAt.Value;
-
-                // Nếu đang reactivate task đã cancel → tự động chuyển về pending (nếu đủ điều kiện)
-                if (isReactivatingCanceledTask && (dto.Status == null || dto.Status.Trim().ToLower() == "pending"))
-                {
-                    // Validate robot phải ở trạm để restore
-                    if (currentRobot.Status != "at_station")
-                    {
-                        throw new InvalidOperationException(
-                            $"Không thể restore nhiệm vụ. Robot '{currentRobot.Name}' phải ở trạm (at_station) để sử dụng lại nhiệm vụ. " +
-                            $"Trạng thái hiện tại: {currentRobot.Status}. Vui lòng đợi robot về trạm hoặc chọn robot khác."
-                        );
-                    }
-
-                    // Validate scheduledStartAt phải lớn hơn giờ hiện tại
-                    if (dto.ScheduledStartAt.HasValue && dto.ScheduledStartAt.Value <= DateTime.Now.AddMinutes(1))
-                    {
-                        throw new InvalidOperationException(
-                            "Thời gian bắt đầu phải lớn hơn thời gian hiện tại ít nhất 1 phút để restore nhiệm vụ."
-                        );
-                    }
-
-                    task.Status = "pending";
-                }
 
                 bool taskStatusManuallyChanged =
                     dto.Status != null &&       // FE có gửi lên
@@ -471,11 +454,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                             stop.UpdatedAt = DateTime.Now;
 
+                            // Map stop status sang CompartmentAssignment status hợp lệ
+                            var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
+                            
                             if (stop.CompartmentAssignments != null)
                             {
                                 foreach (var assign in stop.CompartmentAssignments)
                                 {
-                                    assign.Status = stopStatus;
+                                    assign.Status = assignmentStatus;
                                     assign.UpdatedAt = DateTime.Now;
                                 }
                             }
@@ -636,11 +622,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     stop.Status = newStopStatus;
                                     stop.UpdatedAt = DateTime.Now;
 
+                                    // Map stop status sang CompartmentAssignment status hợp lệ
+                                    // CompartmentAssignment chỉ chấp nhận: pending, loaded, unlocked, delivered, locked, canceled
+                                    var assignmentStatus = MapStopStatusToAssignmentStatus(newStopStatus);
+                                    
                                     if (stop.CompartmentAssignments != null)
                                     {
                                         foreach (var assign in stop.CompartmentAssignments)
                                         {
-                                            assign.Status = newStopStatus;
+                                            assign.Status = assignmentStatus;
                                             assign.UpdatedAt = DateTime.Now;
                                         }
                                     }
@@ -1116,8 +1106,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         private static readonly HashSet<string> AllowedStatusForEdit = new()
         {
-            "pending",
-            "canceled" // Cho phép edit task đã cancel để có thể restore
+            "pending"
         };
 
         private static readonly HashSet<string> ValidTaskStatuses = new()
@@ -1149,6 +1138,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 "completed" => "delivered",
                 "failed" => "failed",
                 "canceled" => "skipped",
+                _ => "pending"
+            };
+        }
+
+        /// <summary>
+        /// Map TaskStop status sang CompartmentAssignment status hợp lệ
+        /// CompartmentAssignment chỉ có: pending, loaded, unlocked, delivered, locked, canceled
+        /// TaskStop có: pending, in_progress, awaiting_handover, delivered, skipped, failed
+        /// </summary>
+        private string MapStopStatusToAssignmentStatus(string stopStatus)
+        {
+            return stopStatus.ToLower() switch
+            {
+                "pending" => "pending",
+                "in_progress" => "loaded",      // Khi đang giao = đã load vào compartment
+                "awaiting_handover" => "unlocked", // Chờ bàn giao = đã unlock compartment
+                "delivered" => "delivered",
+                "skipped" => "canceled",         // Bỏ qua = canceled
+                "failed" => "canceled",         // Thất bại = canceled
                 _ => "pending"
             };
         }
@@ -1302,33 +1310,40 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (task == null)
                 return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
 
-            // Update all stops
+            // ❗ KHÔNG force tất cả stops thành delivered - giữ nguyên status của từng stop
+            // Chỉ update CompartmentAssignment status cho các stops đã delivered
+            int deliveredCount = 0;
             foreach (var stop in task.TaskStops)
             {
-                stop.Status = "delivered";
-                stop.UpdatedAt = DateTime.Now;
-
-                foreach (var assign in stop.CompartmentAssignments)
+                // Chỉ update CompartmentAssignment status nếu stop đã delivered
+                if (string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
                 {
-                    assign.Status = "delivered";
-                    assign.UpdatedAt = DateTime.Now;
+                    deliveredCount++;
+                    foreach (var assign in stop.CompartmentAssignments)
+                    {
+                        // Map stop status sang assignment status hợp lệ
+                        var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
+                        assign.Status = assignmentStatus;
+                        assign.UpdatedAt = DateTime.Now;
+                    }
                 }
-
-                // Log each stop delivered
-                await _logRepository.CreateAsync(new Log
+                else
                 {
-                    RobotId = task.RobotId,
-                    TaskId = task.Id,
-                    StopId = stop.Id,
-                    LogType = "success",
-                    Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được giao thành công",
-                    CreatedAt = DateTime.Now
-                });
+                    // Với stops chưa delivered (skipped, failed, pending, etc.)
+                    // Vẫn update CompartmentAssignment status để phản ánh đúng trạng thái
+                    foreach (var assign in stop.CompartmentAssignments)
+                    {
+                        var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
+                        assign.Status = assignmentStatus;
+                        assign.UpdatedAt = DateTime.Now;
+                    }
+                }
             }
 
-            // Task
+            // Task status = completed (nhưng giữ nguyên stop status)
             task.Status = "completed";
             task.UpdatedAt = DateTime.Now;
+            task.CompletedAt = DateTime.Now;
 
             await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -1342,37 +1357,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             await _repo.SaveChangesAsync();
             await RecordTaskHistory(task);
 
-            // Log task completed cho tất cả stops (đã có log riêng cho từng stop ở trên, nhưng thêm log tổng quát cho mỗi stop)
+            // Log task completed với thông tin số stops đã delivered
             var robot = await _repo.GetRobotAsync(task.RobotId);
-            var taskMessage = $"Nhiệm vụ #{task.Id} đã hoàn thành thành công. Số điểm dừng: {task.TaskStops.Count}";
+            var totalStops = task.TaskStops?.Count ?? 0;
+            var taskMessage = $"Nhiệm vụ #{task.Id} đã hoàn thành. Đã giao: {deliveredCount}/{totalStops} điểm dừng";
             
-            if (task.TaskStops != null && task.TaskStops.Any())
+            await _logRepository.CreateAsync(new Log
             {
-                foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
-                {
-                    await _logRepository.CreateAsync(new Log
-                    {
-                        RobotId = task.RobotId,
-                        TaskId = task.Id,
-                        StopId = stop.Id,
-                        LogType = "success",
-                        Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTime.Now
-                    });
-                }
-            }
-            else
-            {
-                // Fallback nếu không có stops
-                await _logRepository.CreateAsync(new Log
-                {
-                    RobotId = task.RobotId,
-                    TaskId = task.Id,
-                    LogType = "success",
-                    Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                    CreatedAt = DateTime.Now
-                });
-            }
+                RobotId = task.RobotId,
+                TaskId = task.Id,
+                LogType = "success",
+                Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                CreatedAt = DateTime.Now
+            });
 
             return new StopUpdateResultDto
             {

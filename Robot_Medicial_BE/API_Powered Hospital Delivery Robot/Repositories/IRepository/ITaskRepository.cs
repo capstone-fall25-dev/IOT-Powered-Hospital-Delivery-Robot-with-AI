@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -11,6 +11,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 
         // Lấy chi tiết một task theo ID
         Task<Models.Entities.Task?> GetByIdAsync(ulong id);
+
+        // Lấy task theo ID cho trang edit (không load prescription data để tối ưu performance)
+        Task<Models.Entities.Task?> GetByIdForEditAsync(ulong id);
 
         // Tạo task mới
         Task<Models.Entities.Task> CreateAsync(Models.Entities.Task task);

@@ -330,6 +330,12 @@
     border: 1px solid rgba(251, 191, 36, 0.2);
 }
 
+.scheduleTimeCompleted {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.12) 100%);
+    color: #15803d;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
 /* =================== PAGINATION =================== */
 .pagination {
     display: flex;
