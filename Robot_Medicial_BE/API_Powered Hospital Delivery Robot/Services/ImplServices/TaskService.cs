@@ -282,31 +282,34 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var task = await _repo.GetByIdAsync(id);
             if (task == null) return null;
 
-            // Đảm bảo Compartment được load cho mỗi assignment (với Category)
-            foreach (var stop in task.TaskStops)
+            // GetByIdAsync đã include Compartments với Category, không cần query lại (tránh N+1 query)
+            // Chỉ cần đảm bảo CategoryId được set nếu có Category object
+            // Batch update CategoryId nếu cần (tránh query nhiều lần)
+            var compartmentsToUpdate = new List<(ulong CompartmentId, ulong CategoryId)>();
+            
+            if (task.TaskStops != null)
             {
-                foreach (var assign in stop.CompartmentAssignments)
+                foreach (var stop in task.TaskStops)
                 {
-                    // Luôn load lại Compartment để đảm bảo có CategoryId đầy đủ
-                    if (assign.CompartmentId > 0)
+                    foreach (var assign in stop.CompartmentAssignments)
                     {
-                        var comp = await _repoRobotCom.GetByIdAsync(assign.CompartmentId);
-                        if (comp != null)
+                        // Compartment đã được include từ GetByIdAsync (với Category), không cần query lại
+                        var comp = assign.Compartment;
+                        if (comp != null && !comp.CategoryId.HasValue && comp.Category != null && comp.Category.Id > 0)
                         {
                             // Đảm bảo CategoryId được set nếu có Category object
-                            // Nếu CategoryId null nhưng có Category object → set CategoryId từ Category.Id
-                            if (!comp.CategoryId.HasValue && comp.Category != null && comp.Category.Id > 0)
-                            {
-                                comp.CategoryId = comp.Category.Id;
-                                // Cập nhật lại database để đảm bảo CategoryId được lưu
-                                await _repoRobotCom.AssignCategoryToCompartment(comp.Id, comp.Category.Id);
-                            }
-                            // Nếu cả CategoryId và Category đều null → có thể Compartment đã bị release
-                            // Trong trường hợp này, ta không thể lấy CategoryId, sẽ để frontend xử lý
-                            assign.Compartment = comp;
+                            comp.CategoryId = comp.Category.Id;
+                            // Lưu lại để update batch sau (tránh query nhiều lần)
+                            compartmentsToUpdate.Add((comp.Id, comp.Category.Id));
                         }
                     }
                 }
+            }
+
+            // Batch update CategoryId nếu cần (chỉ update một lần thay vì từng cái)
+            foreach (var (compartmentId, categoryId) in compartmentsToUpdate)
+            {
+                await _repoRobotCom.AssignCategoryToCompartment(compartmentId, categoryId);
             }
 
             return MapToEdit(task);
@@ -321,7 +324,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             try
             {
-                var task = await _repo.GetByIdAsync(id)
+                // Đảm bảo TaskStops được load để có thể update status
+                var task = await _repo.GetTaskWithStopsAsync(id)
                     ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
 
                 // ------------------------------
@@ -453,35 +457,42 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     string stopStatus = MapTaskStatusToTaskStopStatus(newStatus);
 
-                    foreach (var stop in task.TaskStops)
+                    // Update stop status tương ứng với task status
+                    if (task.TaskStops != null)
                     {
-                        // FIX: Không ghi đè delivered
-                        var oldStopStatus = stop.Status;
-                        if (!string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
+                        foreach (var stop in task.TaskStops)
                         {
-                            stop.Status = stopStatus;
-                        }
-
-                        stop.UpdatedAt = DateTime.Now;
-
-                        foreach (var assign in stop.CompartmentAssignments)
-                        {
-                            assign.Status = stopStatus;
-                            assign.UpdatedAt = DateTime.Now;
-                        }
-
-                        // Log stop status change when task status changes
-                        if (!string.Equals(oldStopStatus, stopStatus, StringComparison.OrdinalIgnoreCase))
-                        {
-                            await _logRepository.CreateAsync(new Log
+                            // FIX: Không ghi đè delivered
+                            var oldStopStatus = stop.Status;
+                            if (!string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
                             {
-                                RobotId = task.RobotId,
-                                TaskId = task.Id,
-                                StopId = stop.Id,
-                                LogType = stopStatus == "delivered" ? "success" : stopStatus == "failed" ? "error" : "info",
-                                Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật từ '{oldStopStatus}' sang '{stopStatus}' do thay đổi trạng thái nhiệm vụ",
-                                CreatedAt = DateTime.Now
-                            });
+                                stop.Status = stopStatus;
+                            }
+
+                            stop.UpdatedAt = DateTime.Now;
+
+                            if (stop.CompartmentAssignments != null)
+                            {
+                                foreach (var assign in stop.CompartmentAssignments)
+                                {
+                                    assign.Status = stopStatus;
+                                    assign.UpdatedAt = DateTime.Now;
+                                }
+                            }
+
+                            // Log stop status change when task status changes
+                            if (!string.Equals(oldStopStatus, stopStatus, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await _logRepository.CreateAsync(new Log
+                                {
+                                    RobotId = task.RobotId,
+                                    TaskId = task.Id,
+                                    StopId = stop.Id,
+                                    LogType = stopStatus == "delivered" ? "success" : stopStatus == "failed" ? "error" : "info",
+                                    Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật từ '{oldStopStatus}' sang '{stopStatus}' do thay đổi trạng thái nhiệm vụ",
+                                    CreatedAt = DateTime.Now
+                                });
+                            }
                         }
                     }
 
@@ -541,9 +552,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         foreach (var stopToDelete in stopsToDelete)
                         {
                             // Release compartments trước khi xóa
-                            foreach (var assign in stopToDelete.CompartmentAssignments)
+                            if (stopToDelete.CompartmentAssignments != null)
                             {
-                                await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                                foreach (var assign in stopToDelete.CompartmentAssignments)
+                                {
+                                    await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                                }
                             }
                             // Xóa stop
                             await _repo.DeleteStopAsync(stopToDelete.Id);
@@ -622,10 +636,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     stop.Status = newStopStatus;
                                     stop.UpdatedAt = DateTime.Now;
 
-                                    foreach (var assign in stop.CompartmentAssignments)
+                                    if (stop.CompartmentAssignments != null)
                                     {
-                                        assign.Status = newStopStatus;
-                                        assign.UpdatedAt = DateTime.Now;
+                                        foreach (var assign in stop.CompartmentAssignments)
+                                        {
+                                            assign.Status = newStopStatus;
+                                            assign.UpdatedAt = DateTime.Now;
+                                        }
                                     }
 
                                     // Log stop status change - chỉ khi có thay đổi
@@ -731,7 +748,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         }
                         stop.UpdatedAt = DateTime.Now;
 
-                        var assignment = stop.CompartmentAssignments.FirstOrDefault();
+                        var assignment = stop.CompartmentAssignments?.FirstOrDefault();
 
                         // Lấy compartment để kiểm tra category
                         var comp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
@@ -786,6 +803,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 };
 
                                 await _repo.CreateAssignmentAsync(assignment);
+                                if (stop.CompartmentAssignments == null)
+                                    throw new InvalidOperationException("CompartmentAssignments collection is null. Cannot add assignment.");
                                 stop.CompartmentAssignments.Add(assignment);
                             }
                             else
@@ -879,9 +898,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     {
                         foreach (var stop in task.TaskStops)
                         {
-                            foreach (var assign in stop.CompartmentAssignments)
+                            if (stop.CompartmentAssignments != null)
                             {
-                                await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                                foreach (var assign in stop.CompartmentAssignments)
+                                {
+                                    await _repoRobotCom.ReleaseCompartmentAsync(assign.CompartmentId);
+                                }
                             }
                         }
                     }
