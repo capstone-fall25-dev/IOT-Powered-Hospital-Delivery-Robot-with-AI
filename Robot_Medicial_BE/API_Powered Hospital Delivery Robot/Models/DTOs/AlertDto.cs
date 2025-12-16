@@ -56,6 +56,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [StringLength(500)]
         public string Message { get; set; } = null!;
         public ulong? PrescriptionItemId { get; set; }
+
+        public DateTime? ResolvedAt { get; set; }
     }
 
     /// <summary>

@@ -619,3 +619,331 @@
   background: transparent !important;
   border: none !important;
 }
+
+
+/* ... CSS hiện tại của bạn ở trên ... */
+
+/* ============================================
+   ⭐ ALERT SYSTEM - THÊM MỚI
+   ============================================ */
+
+/* Alert Floating Button */
+.alertFloatingBtn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alertFloatingBtn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.alertBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 2px solid white;
+  animation: alertPulse 2s infinite;
+}
+
+@keyframes alertPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Alert Panel Overlay */
+.alertOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: alertFadeIn 0.2s ease;
+}
+
+@keyframes alertFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Alert Panel */
+.alertPanel {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: alertSlideUp 0.3s ease;
+}
+
+@keyframes alertSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.alertHeader {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alertTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.alertCloseBtn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.alertCloseBtn:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+.alertList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.alertEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #6c757d;
+}
+
+.alertItem {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  gap: 1rem;
+  transition: all 0.2s;
+}
+
+.alertItem:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+/* .alertResolved {
+  opacity: 0.6;
+} */
+
+.alertIcon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.alertContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.alertCategory {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.alertTime {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.alertMessage {
+  margin: 0 0 0.5rem 0;
+  color: #212529;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.alertRobotInfo {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.alertSeverityBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: white;
+}
+
+/* .alertActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+} */
+
+/* .alertActionBtn,
+.alertActionBtnDanger {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+} */
+
+.alertActionBtn {
+  color: #28a745;
+}
+
+.alertActionBtn:hover {
+  background: #d4edda;
+}
+
+.alertActionBtnDanger {
+  color: #dc3545;
+}
+
+.alertActionBtnDanger:hover {
+  background: #f8d7da;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .alertPanel {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .alertFloatingBtn {
+    bottom: 1rem;
+    right: 1rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+}
+/* Custom Checkbox đẹp */
+.alertCheckbox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 0.5rem;
+}
+
+.alertCheckbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #28a745;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  background: white;
+  margin: 0;
+}
+
+.alertCheckbox input[type="checkbox"]:hover {
+  background: #e8f5e9;
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.alertCheckbox input[type="checkbox"]:checked {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.alertCheckbox input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Alert Item - điều chỉnh layout */
+.alertItem {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.alertItem:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
