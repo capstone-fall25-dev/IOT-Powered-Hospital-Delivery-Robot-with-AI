@@ -257,6 +257,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .Include(t => t.Robot)
                 .Include(t => t.TaskStops)
                     .ThenInclude(s => s.Destination)
+                .Include(t => t.TaskStops)
+                    .ThenInclude(s => s.CompartmentAssignments)
                 .FirstOrDefaultAsync(t => t.Id == taskId);
         }
 

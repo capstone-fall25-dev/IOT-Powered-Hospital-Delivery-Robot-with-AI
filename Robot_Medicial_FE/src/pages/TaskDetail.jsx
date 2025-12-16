@@ -375,6 +375,18 @@ export default function TaskDetail() {
                                     <i className="bi bi-pencil me-1"></i>Sửa
                                 </button>
 
+                                {/* Nút bắt đầu task - chỉ hiển thị khi task ở trạng thái pending */}
+                                {/* Chuyển sang trang RunTask để xử lý start task */}
+                                {task.status === "pending" && (
+                                    <button
+                                        className="btn btn-success"
+                                        onClick={() => navigate(`/run-task/${task.id}`)}
+                                        style={{ borderRadius: "5px" }}
+                                    >
+                                        <i className="bi bi-play-circle me-1"></i>Bắt đầu nhiệm vụ
+                                    </button>
+                                )}
+
                                 {/* Nút hủy task - chỉ hiển thị khi task chưa bắt đầu (pending) */}
                                 {task.status === "pending" && (
                                     <button
