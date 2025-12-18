@@ -151,7 +151,7 @@ export default function PatientsManagement() {
                                     <th>SĐT</th>
                                     <th>Trạng thái</th>
                                     <th>Đơn thuốc</th>
-                                   /* <th>Báo cáo</th> */
+                                    {/* <th>Báo cáo</th> */}
                                     <th className="text-end">Thao tác</th>
                                 </tr>
                             </thead>
