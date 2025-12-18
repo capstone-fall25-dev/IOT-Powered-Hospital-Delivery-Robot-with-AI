@@ -18,6 +18,7 @@ export default function TaskHistoryPage() {
     const [pageSize, setPageSize] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [allRobots, setAllRobots] = useState([]); // Danh sách tất cả robot codes
 
     // Filters
     const [robot, setRobot] = useState("all");
@@ -144,15 +145,21 @@ export default function TaskHistoryPage() {
         try {
             setLoading(true);
 
-            const res = await fetchTaskHistory({
-                robotId: robot !== "all" ? robot : "",
+            const params = {
                 status: status !== "all" ? status : "",
                 search: q,
                 fromDate: fromDate || "",
                 toDate: toDate || "",
                 page: currentPage,
                 pageSize: pageSize
-            });
+            };
+            
+            // Chỉ thêm robotCode nếu không phải "all"
+            if (robot !== "all") {
+                params.robotCode = robot;
+            }
+            
+            const res = await fetchTaskHistory(params);
 
             setRawData(res.data || []);
             setTotalCount(res.totalCount || 0);
@@ -165,6 +172,32 @@ export default function TaskHistoryPage() {
         }
     };
 
+    // Load danh sách tất cả robot codes một lần khi component mount
+    useEffect(() => {
+        const loadAllRobots = async () => {
+            try {
+                const res = await fetchTaskHistory({
+                    status: "",
+                    search: "",
+                    fromDate: "",
+                    toDate: "",
+                    page: 1,
+                    pageSize: 1000 // Lấy nhiều để có đủ robot codes
+                });
+                
+                const robotSet = new Set();
+                res.data?.forEach(x => {
+                    if (x.robotCode) robotSet.add(x.robotCode);
+                });
+                setAllRobots(Array.from(robotSet).sort());
+            } catch (err) {
+                console.error("Lỗi khi load danh sách robots:", err);
+            }
+        };
+        
+        loadAllRobots();
+    }, []); // Chỉ chạy một lần khi mount
+
     useEffect(() => {
         loadData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,13 +206,8 @@ export default function TaskHistoryPage() {
     // =========================
     // DERIVED DATA
     // =========================
-    const robots = useMemo(() => {
-        const setCodes = new Set();
-        rawData.forEach(x => {
-            if (x.robotCode) setCodes.add(x.robotCode);
-        });
-        return Array.from(setCodes);
-    }, [rawData]);
+    // Sử dụng allRobots thay vì tạo từ rawData
+    const robots = allRobots;
 
     const groupedByTask = useMemo(() => {
         const map = {};

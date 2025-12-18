@@ -36,7 +36,7 @@ const Header = () => {
             case "admin":
                 return "#dc2626"; // Red
             case "doctor":
-                return "#0891b2"; // Teal
+                return "#0ea5e9"; // Sky Blue
             case "pharmacist":
                 return "#16a34a"; // Green
             default:
@@ -290,7 +290,8 @@ const Header = () => {
                                                 fontSize: "9px",
                                                 padding: "2px 8px",
                                                 borderRadius: "10px",
-                                                backgroundColor: "rgba(255, 255, 255, 0.25)",
+                                                backgroundColor: getRoleColor(userRole),
+                                                color: "white",
                                                 textTransform: "uppercase",
                                                 fontWeight: "600"
                                             }}

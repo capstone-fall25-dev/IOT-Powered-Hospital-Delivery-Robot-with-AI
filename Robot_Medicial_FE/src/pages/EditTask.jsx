@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getTaskEditData, updateTask } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
+import { apiFetch } from "@/services/api";
 import { getAllPatients } from "@/services/patientService";
 import {
     getUnlockedCompartments,
@@ -98,12 +99,17 @@ export default function EditTask() {
                         getAllCategories(),
                     ]);
 
-                setMaps(mapsData);
+                setMaps(mapsData || []);
                 // getAvailableRobots() trả về {message, available_count, data: Array}
-                // Cần lấy data array
-                setRobots(robotsData?.data || robotsData || []);
-                setPatients(patientsData);
-                setCategories(categoriesData);
+                // Cần lấy data array, đảm bảo luôn là array
+                const robotsArray = Array.isArray(robotsData?.data) 
+                    ? robotsData.data 
+                    : Array.isArray(robotsData) 
+                        ? robotsData 
+                        : [];
+                setRobots(robotsArray);
+                setPatients(patientsData || []);
+                setCategories(categoriesData || []);
 
                 // Tạo Set chứa các medicine category IDs để lookup nhanh (O(1))
                 const medicineKeywords = ["thuốc", "medicine", "drug", "medication", "dược phẩm", "pharmaceutical"];
@@ -120,12 +126,20 @@ export default function EditTask() {
                 }
                 setMedicineCategoryIds(medicineIds);
             } catch (err) {
-                console.error(err);
-                showToast("error", err.message);
+                console.error("Lỗi khi load initial data:", err);
+                showToast("error", err.message || "Không thể tải dữ liệu ban đầu");
+                // Đảm bảo set default values để không block loading
+                setMaps([]);
+                setRobots([]);
+                setPatients([]);
+                setCategories([]);
+            } finally {
+                // Luôn set initLoaded = true ngay cả khi có lỗi, để không block loadTask
+                setInitLoaded(true);
             }
         }
 
-        loadInit().then(() => setInitLoaded(true));
+        loadInit();
     }, []);
 
     // ===================== LOAD TASK EDIT DTO =====================
@@ -136,9 +150,10 @@ export default function EditTask() {
         if (!categories || categories.length === 0) {
             return;
         }
-        // Đợi robots được load để có thể so sánh và thêm robot fallback nếu cần
-        if (!robots || robots.length === 0) {
-            return;
+        // Không cần đợi robots - có thể load task ngay cả khi không có robots available
+        // (task có thể được gán cho robot không available, và sẽ thêm robot vào list sau khi load task data)
+        if (!Array.isArray(robots)) {
+            return; // Chỉ check xem robots đã là array chưa (đã được set), không check length
         }
 
         async function loadTask() {
@@ -166,17 +181,7 @@ export default function EditTask() {
                 }
 
                 // ========== OPTIMIZATION: Pre-load dữ liệu cần thiết song song ==========
-                // Load tất cả dữ liệu cần thiết song song để giảm thời gian chờ
-                const [mapDetail, allUnlockedCompartments] = await Promise.all([
-                    getMapById(data.mapId),
-                    getUnlockedCompartments(data.robotId),
-                ]);
-
-                setDestinations(mapDetail.destinations || []);
-                setBaseCompartments(allUnlockedCompartments);
-
-                // ========== OPTIMIZATION: Batch load compartment details ==========
-                // Thu thập tất cả compartmentId cần load (loại bỏ duplicate)
+                // Thu thập tất cả IDs cần load TRƯỚC KHI gọi API
                 const uniqueCompartmentIds = [
                     ...new Set(
                         data.stops
@@ -185,52 +190,73 @@ export default function EditTask() {
                     ),
                 ];
 
-                // Load tất cả compartment details song song
-                const compartmentDetailsMap = new Map();
-                await Promise.all(
-                    uniqueCompartmentIds.map(async (compId) => {
-                        try {
-                            const compDetail = await getCompartmentById(compId);
-                            if (compDetail) {
-                                compartmentDetailsMap.set(compId, compDetail);
-                            }
-                        } catch (err) {
-                            // Compartment có thể không tồn tại (404) - bỏ qua
-                        }
-                    })
-                );
-
-                // ========== OPTIMIZATION: Batch load compartments by category ==========
-                // Thu thập tất cả categoryId cần load (loại bỏ duplicate)
-                const categoryIdsToLoad = new Set();
+                // Thu thập categoryIds từ stops (trước khi có compartment details)
+                const categoryIdsFromStops = new Set();
                 data.stops.forEach((s) => {
                     if (s.categoryId && s.categoryId > 0) {
-                        categoryIdsToLoad.add(s.categoryId);
-                    }
-                    // Nếu không có categoryId nhưng có compartmentId, thử lấy từ compartment detail
-                    if (!s.categoryId && s.compartmentId && s.compartmentId > 0) {
-                        const compDetail = compartmentDetailsMap.get(s.compartmentId);
-                        if (compDetail && compDetail.categoryId) {
-                            categoryIdsToLoad.add(compDetail.categoryId);
-                        }
+                        categoryIdsFromStops.add(s.categoryId);
                     }
                 });
 
-                // Load tất cả compartments by category song song
+                // Load destinations, unlockedCompartments và compartment details CÙNG LÚC (bước 1)
+                // TỐI ƯU: Sử dụng API destinations thay vì getMapById để nhanh hơn (chỉ cần destinations, không cần full map)
+                const destinationsPromise = apiFetch(`/destinations/by-map/${data.mapId}`)
+                    .then((result) => result || [])
+                    .catch((err) => {
+                        console.warn('Lỗi khi load destinations, fallback về getMapById:', err);
+                        // Fallback về getMapById nếu có lỗi (nhưng sẽ chậm)
+                        return getMapById(data.mapId).then((mapDetail) => mapDetail.destinations || []);
+                    });
+                
+                const unlockedPromise = getUnlockedCompartments(data.robotId);
+
+                // Thêm compartment detail promises (với mapping để biết compId tương ứng)
+                const compartmentDetailPromises = uniqueCompartmentIds.map(async (compId) => ({
+                    compId,
+                    detail: await getCompartmentById(compId).catch(() => null),
+                }));
+
+                const [destinationsList, allUnlockedCompartments, ...compartmentDetailResults] = await Promise.all([
+                    destinationsPromise,
+                    unlockedPromise,
+                    ...compartmentDetailPromises,
+                ]);
+
+                setDestinations(destinationsList || []);
+                setBaseCompartments(allUnlockedCompartments);
+
+                // Xây dựng compartment details map từ results (có compId để mapping đúng)
+                const compartmentDetailsMap = new Map();
+                compartmentDetailResults.forEach((result) => {
+                    if (result?.compId && result?.detail) {
+                        compartmentDetailsMap.set(result.compId, result.detail);
+                    }
+                });
+
+                // Thu thập categoryIds từ compartment details đã load
+                const categoryIdsFromCompartments = new Set();
+                compartmentDetailsMap.forEach((compDetail) => {
+                    if (compDetail?.categoryId) {
+                        categoryIdsFromCompartments.add(compDetail.categoryId);
+                    }
+                });
+
+                // Gộp tất cả categoryIds cần load
+                const allCategoryIdsToLoad = Array.from(new Set([...categoryIdsFromStops, ...categoryIdsFromCompartments]));
+
+                // Load compartments by category song song (bước 2 - chỉ đợi bước 1 xong)
                 const compartmentsByCategoryMap = new Map();
-                await Promise.all(
-                    Array.from(categoryIdsToLoad).map(async (categoryId) => {
-                        try {
-                            const comps = await getCompartmentsByRobotAndCategory(
-                                data.robotId,
-                                categoryId
-                            );
-                            compartmentsByCategoryMap.set(categoryId, comps || []);
-                        } catch (err) {
-                            compartmentsByCategoryMap.set(categoryId, []);
-                        }
-                    })
-                );
+                if (allCategoryIdsToLoad.length > 0) {
+                    const compartmentResults = await Promise.all(
+                        allCategoryIdsToLoad.map((categoryId) =>
+                            getCompartmentsByRobotAndCategory(data.robotId, categoryId).catch(() => [])
+                        )
+                    );
+                    
+                    allCategoryIdsToLoad.forEach((categoryId, index) => {
+                        compartmentsByCategoryMap.set(categoryId, compartmentResults[index] || []);
+                    });
+                }
 
                 // ========== OPTIMIZATION: Tạo lookup maps để tăng tốc độ xử lý ==========
                 // Tạo Map cho allUnlockedCompartments (O(1) lookup thay vì O(n) find)
@@ -359,7 +385,7 @@ export default function EditTask() {
                         : "",
                     stops: editedStops,
                 };
-                
+
                 setForm(formData);
 
                 // Lưu trạng thái nhiệm vụ ban đầu
@@ -370,7 +396,18 @@ export default function EditTask() {
 
                 setLoading(false);
             } catch (err) {
-                console.error(err);
+                console.error("Lỗi trong loadTask():", err);
+                
+                // Cố gắng extract status từ error message nếu có
+                // Backend error message format: "Không thể chỉnh sửa nhiệm vụ ở trạng thái '{task.Status}'..."
+                const errorMessage = err.message || "";
+                const statusMatch = errorMessage.match(/trạng thái\s+['"]([^'"]+)['"]/i);
+                if (statusMatch && statusMatch[1]) {
+                    const extractedStatus = statusMatch[1].toLowerCase().trim();
+                    setInitialTaskStatus(extractedStatus);
+                    setTaskStatus(extractedStatus);
+                }
+                
                 showToast("error", err.message);
                 setLoading(false);
             }
@@ -774,6 +811,11 @@ export default function EditTask() {
 
     // ===================== NOT EDITABLE UI =====================
     if (!canEditTask) {
+        // Lấy tên tiếng Việt của trạng thái
+        const statusOption = TASK_STATUS_OPTIONS.find(opt => opt.value === initialTaskStatus);
+        const statusVi = statusOption?.valueVi || initialTaskStatus;
+        const pendingStatusVi = TASK_STATUS_OPTIONS.find(opt => opt.value === "pending")?.valueVi || "pending";
+        
         return (
             <div className={styles.page}>
                 <div className="container-xl py-4">
@@ -785,9 +827,9 @@ export default function EditTask() {
                                 </div>
                                 <h4 className="mb-3">Không thể chỉnh sửa nhiệm vụ</h4>
                                 <p className="text-muted mb-4">
-                                    Nhiệm vụ đang ở trạng thái <strong>"{initialTaskStatus}"</strong>.
+                                    Nhiệm vụ đang ở trạng thái <strong>"{statusVi}"</strong>.
                                     <br />
-                                    Chỉ có thể chỉnh sửa nhiệm vụ khi trạng thái là <strong>"pending"</strong> hoặc <strong>"canceled"</strong>.
+                                    Chỉ có thể chỉnh sửa nhiệm vụ khi trạng thái là <strong>"{pendingStatusVi}"</strong>.
                                 </p>
                                 <button
                                     className="btn btn-primary"

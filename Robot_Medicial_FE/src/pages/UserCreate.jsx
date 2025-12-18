@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "@/services/userService";
 import styles from '@/assets/styles/userForm.module.css';
@@ -19,6 +19,60 @@ export default function UserCreate() {
 
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
+    // Hàm tạo mật khẩu tự động
+    function genPassword() {
+        const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const lowercase = "abcdefghijkmnpqrstuvwxyz";
+        const numbers = "23456789";
+        const special = "!@#$%";
+        const allChars = uppercase + lowercase + numbers + special;
+        
+        // Đảm bảo có ít nhất 1 ký tự từ mỗi loại
+        let password = 
+            uppercase[Math.floor(Math.random() * uppercase.length)] +
+            lowercase[Math.floor(Math.random() * lowercase.length)] +
+            numbers[Math.floor(Math.random() * numbers.length)] +
+            special[Math.floor(Math.random() * special.length)];
+        
+        // Thêm các ký tự ngẫu nhiên để đủ 12 ký tự
+        for (let i = password.length; i < 12; i++) {
+            password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+        
+        // Xáo trộn mật khẩu
+        return password.split('').sort(() => Math.random() - 0.5).join('');
+    }
+
+    // Tính độ mạnh mật khẩu
+    const strength = useMemo(() => {
+        const v = form.password || "";
+        let n = 0;
+        if (v.length >= 8) n++;
+        if (/[A-Z]/.test(v)) n++;
+        if (/[a-z]/.test(v)) n++;
+        if (/\d/.test(v)) n++;
+        if (/[^\w\s]/.test(v)) n++;
+        
+        let label = "Yếu";
+        let labelClass = styles.strengthLabelWeak;
+        let barClass = styles.strengthWeak;
+        let width = "25%";
+
+        if (n === 3) {
+            label = "Trung bình";
+            labelClass = styles.strengthLabelMedium;
+            barClass = styles.strengthMedium;
+            width = "60%";
+        } else if (n >= 4) {
+            label = "Mạnh";
+            labelClass = styles.strengthLabelStrong;
+            barClass = styles.strengthStrong;
+            width = "100%";
+        }
+
+        return { n, label, labelClass, barClass, width };
+    }, [form.password]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -162,9 +216,34 @@ export default function UserCreate() {
                                     >
                                         <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                     </button>
+                                    <button
+                                        type="button"
+                                        className={`btn ${styles.btnOutlinePrimary}`}
+                                        onClick={() => setForm(f => ({ ...f, password: genPassword() }))}
+                                        title="Tạo mật khẩu ngẫu nhiên mạnh"
+                                    >
+                                        <i className="bi bi-stars me-1"></i>
+                                        Tạo
+                                    </button>
                                 </div>
+
+                                {form.password && (
+                                    <div className="mt-2">
+                                        <div className={`${styles.strengthLabel} ${strength.labelClass}`}>
+                                            <small className="text-muted me-1">Độ mạnh:</small>
+                                            {strength.label}
+                                        </div>
+                                        <div className={styles.strengthMeter}>
+                                            <div 
+                                                className={`${styles.strengthBar} ${strength.barClass}`} 
+                                                style={{ width: strength.width }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className={styles.formText}>
-                                    Mật khẩu nên có ít nhất 8 ký tự, bao gồm chữ và số
+                                    Mật khẩu nên có ít nhất 8 ký tự, bao gồm chữ, số và ký tự đặc biệt
                                 </div>
                             </div>
                         </div>
