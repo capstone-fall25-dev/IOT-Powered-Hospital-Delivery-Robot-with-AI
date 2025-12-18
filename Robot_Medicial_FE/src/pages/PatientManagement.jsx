@@ -151,7 +151,7 @@ export default function PatientsManagement() {
                                     <th>SĐT</th>
                                     <th>Trạng thái</th>
                                     <th>Đơn thuốc</th>
-                                    <th>Báo cáo</th>
+                                   /* <th>Báo cáo</th> */
                                     <th className="text-end">Thao tác</th>
                                 </tr>
                             </thead>
@@ -189,7 +189,7 @@ export default function PatientsManagement() {
                                                 </span>
                                             </td>
 
-                                            <td>
+                                            <td> 
                                                 <button
                                                     className={styles.btnView}
                                                     onClick={() => handleViewMedicineHistory(p)}
@@ -199,7 +199,7 @@ export default function PatientsManagement() {
                                                 </button>
                                             </td>
 
-                                            <td>
+                                            <td hidden> 
                                                 <button
                                                     className={styles.btnView}
                                                     onClick={() => handleViewReport(p)}
