@@ -1797,7 +1797,7 @@ async function sendEmergencyStop() {
               <div className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}>
                 <div className={styles.headerBar}>
                   <div className={styles.sectionTitle}>Bản đồ điều hướng</div>
-                  <div className={styles.inputGroup} style={{ maxWidth: "280px" }}>
+                  {/* <div className={styles.inputGroup} style={{ maxWidth: "280px" }}>
                     <input
                       className={styles.formControl}
                       placeholder="Tên bản đồ..."
@@ -1805,7 +1805,7 @@ async function sendEmergencyStop() {
                       onChange={(e) => setMapNameInput(e.target.value)}
                     />
                     <button className={styles.btnSuccess} onClick={saveMap}>Lưu</button>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className={styles.dualMapContainer}>
