@@ -16,7 +16,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
             CreateMap<Log, LogResponseDto>();
 
-            // Mapping cảnh báo (gán giá trị mặc định nếu không có)
+            // Mapping cảnh báo
             CreateMap<AlertDto, Alert>()
                 .ForMember(dest => dest.Severity,
                     opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Severity) ? "low" : src.Severity))
@@ -24,7 +24,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Mapping
                     opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Category) ? "manual" : src.Category))
                 .ForMember(dest => dest.Status,
                     opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Status) ? "open" : src.Status))
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                // ⭐ THÊM MỚI: Map ResolvedAt từ DTO
+                .ForMember(dest => dest.ResolvedAt, 
+                    opt => opt.MapFrom(src => src.ResolvedAt));
+            
             CreateMap<Alert, AlertResponseDto>();
 
             // Mapping báo cáo thuốc hư hỏng
