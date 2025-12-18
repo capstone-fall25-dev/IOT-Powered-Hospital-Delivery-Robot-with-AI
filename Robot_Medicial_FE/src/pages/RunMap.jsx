@@ -819,7 +819,17 @@ export default function RobotRunMap() {
     const id = e.target.value;
     const dest = destinations.find((d) => String(d.id) === id);
     setSelectedDestination(dest || null);
-    if (dest) loadNavigationMapForDestination(dest);
+    if (dest) {
+      loadNavigationMapForDestination(dest);
+      // Lưu vào localStorage để sync với RunMapView
+      try {
+        localStorage.setItem('runMap_selectedDestinationId', String(dest.id));
+        // Dispatch event để sync cùng tab
+        window.dispatchEvent(new Event('runMap_destinationChanged'));
+      } catch (err) {
+        console.warn("Không lưu được localStorage:", err);
+      }
+    }
   }
 
   // ===================================
