@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllRobots } from "@/services/robotService";
-import { getAllTasks, cancelTask } from "@/services/taskService";
+import { getAllTasks, cancelTask, getTaskById } from "@/services/taskService";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import useToast from "@/hooks/useToast";
@@ -80,15 +80,150 @@ export default function RobotTaskDashboard() {
       fetchRobots(); // Refresh robots khi có task update
     };
 
+    // Helper function để format task data giống như trong fetchTasks
+    const formatTaskData = (t) => {
+      const patientCount = t.patients?.length || 0;
+      const firstPatient = t.patients?.[0]?.patientName || "—";
+      
+      // Lấy ItemDesc hoặc CustomName từ patient đầu tiên
+      const firstPatientData = t.patients?.[0];
+      const displayText = firstPatientData?.itemDesc || firstPatientData?.customName || "—";
+
+      // Hiển thị status với số lượng stops đã hoàn thành (nếu task đã completed)
+      let statusDisplay = statusMap[t.status] || "Không xác định";
+      if (t.status === "completed" && t.completedStops !== undefined && t.totalStops > 0) {
+        statusDisplay = `Hoàn thành (${t.completedStops}/${t.totalStops})`;
+      }
+
+      return {
+        id: t.id,
+        robotName: t.robotName || "",
+        assignedBy: t.assignedBy || "",
+        status: statusDisplay,
+        statusRaw: t.status,
+        createdAt: new Date(t.createdAt).toLocaleString("vi-VN"),
+        scheduledStartAt: t.scheduledStartAt
+          ? new Date(t.scheduledStartAt).toLocaleString("vi-VN")
+          : "—",
+        startedAt: t.startedAt ? new Date(t.startedAt).toISOString() : null,
+        scheduledStartAtRaw: t.scheduledStartAt,
+        completedAt: t.completedAt,
+        totalStops: t.totalStops || 0,
+        completedStops: t.completedStops || 0,
+        firstDestination: t.firstDestination || "—",
+        patientCount,
+        firstPatient,
+        displayText,
+        priority:
+          t.priority === 2
+            ? "Khẩn cấp"
+            : t.priority === 1
+            ? "Cao"
+            : "Thường",
+      };
+    };
+
     // Lắng nghe các sự kiện từ SignalR
     connection.on("ConnectedToTaskHub", (data) => {
       console.log("✅ TaskHub:", data.message);
     });
-    connection.on("TaskCreated", refresh);
-    connection.on("TaskUpdated", refresh);
-    connection.on("TaskStarted", () => {
-      showToast("success", "Có nhiệm vụ đã được kích hoạt!");
-      refresh();
+    connection.on("TaskCreated", async (taskData) => {
+      // Fetch lại task từ API để có đầy đủ thông tin (patients, stops, etc.)
+      if (taskData && taskData.id) {
+        try {
+          const fullTaskData = await getAllTasks();
+          const task = fullTaskData.find(t => t.id === taskData.id);
+          if (task) {
+            const formatted = formatTaskData(task);
+            setTasks((prevTasks) => {
+              // Kiểm tra xem task đã có trong list chưa
+              const exists = prevTasks.find(t => t.id === formatted.id);
+              if (!exists) {
+                // Thêm vào đầu danh sách
+                return [formatted, ...prevTasks];
+              }
+              return prevTasks;
+            });
+            showToast("success", `Nhiệm vụ #${taskData.id} đã được tạo!`);
+          } else {
+            refresh();
+          }
+        } catch (err) {
+          console.error("Error fetching task after creation:", err);
+          refresh();
+        }
+      } else {
+        refresh();
+      }
+    });
+    connection.on("TaskUpdated", async (taskData) => {
+      // Fetch lại task từ API để có đầy đủ thông tin và cập nhật real-time
+      if (taskData && taskData.id) {
+        try {
+          const fullTaskData = await getAllTasks();
+          const task = fullTaskData.find(t => t.id === taskData.id);
+          if (task) {
+            const formatted = formatTaskData(task);
+            setTasks((prevTasks) => {
+              const taskIndex = prevTasks.findIndex((t) => t.id === taskData.id);
+              
+              if (taskIndex >= 0) {
+                // Task đã tồn tại - cập nhật
+                const newTasks = [...prevTasks];
+                newTasks[taskIndex] = formatted;
+                return newTasks;
+              } else {
+                // Task chưa có trong list - thêm vào đầu
+                return [formatted, ...prevTasks];
+              }
+            });
+            
+            // Refresh robots nếu task hoàn thành (robot về at_station)
+            if (task.status === "completed") {
+              fetchRobots();
+              showToast("success", `Nhiệm vụ #${taskData.id} đã hoàn thành!`);
+            }
+          } else {
+            refresh();
+          }
+        } catch (err) {
+          console.error("Error fetching task after update:", err);
+          refresh();
+        }
+      } else {
+        refresh();
+      }
+    });
+    connection.on("TaskStarted", (taskData) => {
+      // Cập nhật real-time task status từ "pending" → "in_progress"
+      if (taskData && taskData.id) {
+        setTasks((prevTasks) => {
+          return prevTasks.map((t) => {
+            if (t.id === taskData.id) {
+              // Cập nhật status và các thông tin liên quan
+              const newStatus = taskData.status || "in_progress";
+              const statusDisplay = statusMap[newStatus] || "Đang tiến hành";
+              
+              const updatedTask = {
+                ...t,
+                statusRaw: newStatus,
+                status: statusDisplay,
+                startedAt: taskData.startedAt ? new Date(taskData.startedAt).toISOString() : t.startedAt,
+              };
+              return updatedTask;
+            }
+            return t;
+          });
+        });
+        
+        // Refresh robots vì robot status cũng thay đổi (at_station → transporting)
+        fetchRobots();
+        
+        showToast("success", `Nhiệm vụ #${taskData.id} đã được bắt đầu!`);
+      } else {
+        // Fallback: reload nếu không có data
+        refresh();
+      }
     });
     connection.on("TaskCanceled", (data) => {
       showToast("error", `Nhiệm vụ #${data.taskId} bị hủy!\nLý do: ${data.reason}`, 6000);
@@ -138,6 +273,7 @@ export default function RobotTaskDashboard() {
               : "—",
             startedAt: t.startedAt,  
             scheduledStartAtRaw: t.scheduledStartAt,
+            completedAt: t.completedAt,
             totalStops: t.totalStops,
             completedStops: t.completedStops || 0, // Số stops đã delivered
             firstDestination: t.firstDestination || "—",
@@ -175,40 +311,90 @@ export default function RobotTaskDashboard() {
       return { text: "—", className: "", note: null };
     }
 
-    // ❗ Nếu task đã hoàn thành (completed) → không hiển thị "Quá giờ"
-    if (task.statusRaw === "completed") {
-      return { text: "Đã hoàn thành", className: styles.countdownStarted, note: null };
-    }
-
     const now = new Date();
     const scheduled = new Date(task.scheduledStartAtRaw);
+    const BUFFER_MINUTES = 10; // Buffer 10 phút như BE
 
-    // Nếu task ĐÃ CHẠY (in_progress hoặc hơn) → kiểm tra có chạy sớm không
-    if ((task.status === "Đang tiến hành" || task.status === "Hoàn thành") && task.startedAt) {
-      const started = new Date(task.startedAt);
-      const diffMs = scheduled.getTime() - started.getTime();
-
-      if (diffMs > 1000) { // chạy sớm > 1 giây
-        const diffMin = Math.floor(diffMs / 60000);
-        const diffSec = Math.floor((diffMs % 60000) / 1000);
-
-        const note = diffMin >= 1
-          ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
-          : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
-
-        return {
-          text: "Đã khởi hành",
-          className: styles.countdownStarted,
-          note: note,
-        };
+    // ❗ Nếu task đã hoàn thành (completed) → hiển thị "Đã hoàn thành" với note nếu hoàn thành sớm
+    if (task.statusRaw === "completed") {
+      let note = null;
+      // Kiểm tra nếu hoàn thành sớm (dựa trên thời điểm bắt đầu so với scheduledStartAt)
+      if (task.startedAt && scheduled) {
+        const started = new Date(task.startedAt);
+        const diffMs = scheduled.getTime() - started.getTime();
+        if (diffMs > 1000) { // Hoàn thành sớm > 1 giây (dựa trên thời điểm khởi động sớm)
+          const diffMin = Math.floor(diffMs / 60000);
+          const diffSec = Math.floor((diffMs % 60000) / 1000);
+          note = diffMin >= 1
+            ? `Hoàn thành sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
+            : `Hoàn thành sớm ${diffSec} giây trước giờ dự kiến`;
+        }
       }
+      return { text: "Đã hoàn thành", className: styles.countdownStarted, note: note };
+    }
+
+    // ❗ Nếu task thất bại (failed) → không hiển thị thời gian đếm ngược
+    if (task.statusRaw === "failed") {
+      return { text: null, className: "", note: null };
+    }
+
+    // ❗ Nếu task bị hủy (canceled) → kiểm tra xem có phải do quá giờ không
+    if (task.statusRaw === "canceled") {
+      // Nếu hủy TRƯỚC scheduledStartAt → hủy có chủ đích, không hiển thị "Quá giờ"
+      if (now < scheduled) {
+        return { text: null, className: "", note: null };
+      }
+      // Nếu hủy SAU scheduledStartAt + 10 phút → hủy do quá giờ, hiển thị "Quá giờ"
+      const diffMs = scheduled.getTime() - now.getTime();
+      const overdueMin = Math.floor(Math.abs(diffMs) / 60000);
+      if (overdueMin >= BUFFER_MINUTES) {
+        return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
+      }
+      // Nếu hủy trong khoảng 0-10 phút sau scheduledStartAt → không hiển thị
+      return { text: null, className: "", note: null };
+    }
+
+    // ❗ Nếu task ĐANG CHẠY (in_progress hoặc awaiting_handover) → hiển thị "Đang chạy" với note nếu chạy sớm
+    if (task.statusRaw === "in_progress" || task.statusRaw === "awaiting_handover") {
+      let note = null;
+      // Kiểm tra nếu chạy sớm (có startedAt)
+      if (task.startedAt && scheduled) {
+        const started = new Date(task.startedAt);
+        const diffMs = scheduled.getTime() - started.getTime();
+        if (diffMs > 1000) { // Chạy sớm > 1 giây
+          const diffMin = Math.floor(diffMs / 60000);
+          const diffSec = Math.floor((diffMs % 60000) / 1000);
+          note = diffMin >= 1
+            ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
+            : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
+        }
+      }
+      return { text: "Đang chạy", className: styles.countdownStarted, note: note };
     }
 
     // Chưa chạy → đếm ngược bình thường
     const diffMs = scheduled.getTime() - now.getTime();
 
-    if (diffMs <= 0) {
-      return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
+    // Nếu đã qua thời gian bắt đầu
+    if (diffMs < 0) {
+      const overdueMs = Math.abs(diffMs); // Số ms đã qua
+      const overdueMin = Math.floor(overdueMs / 60000);
+      const overdueSec = Math.floor((overdueMs % 60000) / 1000);
+      const remainingMin = BUFFER_MINUTES - overdueMin; // Số phút còn lại trong buffer
+
+      // Nếu đã qua hơn 10 phút → quá giờ (chỉ hiển thị nếu task vẫn còn pending)
+      if (overdueMin >= BUFFER_MINUTES && task.statusRaw === "pending") {
+        return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
+      }
+
+      // Trong khoảng 0 đến 10 phút: vẫn còn hiệu lực, hiển thị số phút đã qua
+      if (task.statusRaw === "pending") {
+        return { 
+          text: `-${overdueMin}p ${overdueSec}s`, 
+          className: styles.countdownSoon, 
+          note: `Còn ${remainingMin} phút` 
+        };
+      }
     }
 
     const diffMin = Math.floor(diffMs / 60000);
@@ -261,7 +447,7 @@ export default function RobotTaskDashboard() {
   };
 
   /* ========================= LẤY CLASS CHO THỜI GIAN HẸN ========================= */
-  const getScheduleClass = (scheduledStartAt, taskStatusRaw) => {
+  const getScheduleClass = (scheduledStartAt, taskStatusRaw, isOverdue = false) => {
     if (!scheduledStartAt || scheduledStartAt === "—") return "";
 
     // ❗ Nếu task đã hoàn thành (completed) → hiển thị màu xanh lá
@@ -269,12 +455,28 @@ export default function RobotTaskDashboard() {
       return styles.scheduleTimeCompleted; // Màu xanh lá cho task đã hoàn thành
     }
 
+    // ❗ Nếu task "Quá giờ" → hiển thị background màu đỏ cho phần "Bắt đầu:"
+    if (isOverdue) {
+      return styles.scheduleTimeOverdue;
+    }
+
+    // ❗ Nếu task bị hủy (canceled) hoặc thất bại (failed) → không hiển thị màu "Quá giờ"
+    if (taskStatusRaw === "canceled" || taskStatusRaw === "failed") {
+      return ""; // Không có class đặc biệt
+    }
+
     const now = new Date();
     const start = new Date(scheduledStartAt);
     const diffMs = start - now;
     const diffMin = diffMs / 1000 / 60;
+    const BUFFER_MINUTES = 10; // Buffer 10 phút như BE
 
-    if (diffMin <= 0) return styles.scheduleTimeOverdue;
+    // Chỉ hiển thị "Quá giờ" sau khi đã qua thời gian bắt đầu + 10 phút (và task vẫn pending)
+    if (diffMin <= -BUFFER_MINUTES && taskStatusRaw === "pending") {
+      return styles.scheduleTimeOverdue;
+    }
+    // Trong khoảng 0 đến -10 phút: vẫn còn hiệu lực (chỉ khi pending)
+    if (diffMin <= 0 && taskStatusRaw === "pending") return styles.scheduleTimeSoon;
     if (diffMin <= 1) return styles.scheduleTimeSoon;
     return styles.scheduleTimeUpcoming;
   };
@@ -312,11 +514,6 @@ export default function RobotTaskDashboard() {
       label: statusMap.canceled,
       value: tasks.filter((t) => t.statusRaw === "canceled").length,
       icon: "x-circle",
-    },
-    {
-      label: statusMap.charging,
-      value: robots.filter((r) => r.status === statusMap.charging).length,
-      icon: "battery-half",
     },
     {
       label: statusMap.needs_attention,
@@ -428,8 +625,10 @@ export default function RobotTaskDashboard() {
 
               <tbody>
                 {displayedTasks.map((t) => {
-                  const scheduleClass = getScheduleClass(t.scheduledStartAtRaw, t.statusRaw);
                   const countdownInfo = getCountdownInfo(t);
+                  // Kiểm tra nếu task "Quá giờ" để áp dụng background đỏ cho phần "Bắt đầu:"
+                  const isOverdue = countdownInfo.text === "Quá giờ";
+                  const scheduleClass = getScheduleClass(t.scheduledStartAtRaw, t.statusRaw, isOverdue);
 
                   return (
                     <tr key={t.id}>
@@ -485,19 +684,23 @@ export default function RobotTaskDashboard() {
 
                       {/* Cột đếm ngược */}
                       <td className="fw-semibold">
-                        {countdownInfo.note ? (
-                          <div className={styles.tooltipWrapper}>
+                        {countdownInfo.text ? (
+                          countdownInfo.note ? (
+                            <div className={styles.tooltipWrapper}>
+                              <span className={countdownInfo.className}>
+                                {countdownInfo.text}
+                              </span>
+                              <div className={styles.tooltip}>
+                                {countdownInfo.note}
+                              </div>
+                            </div>
+                          ) : (
                             <span className={countdownInfo.className}>
                               {countdownInfo.text}
                             </span>
-                            <div className={styles.tooltip}>
-                              {countdownInfo.note}
-                            </div>
-                          </div>
+                          )
                         ) : (
-                          <span className={countdownInfo.className}>
-                            {countdownInfo.text}
-                          </span>
+                          <span>—</span>
                         )}
                       </td>
 

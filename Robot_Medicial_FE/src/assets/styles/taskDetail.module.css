@@ -438,3 +438,9 @@
         padding: 1rem !important;
     }
 }
+
+/* =================== COUNTDOWN =================== */
+.countdownOverdue {
+    color: #ef4444;
+    font-weight: bold;
+}

@@ -54,6 +54,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     CreatedAt = t.CreatedAt,
                     ScheduledStartAt = t.ScheduledStartAt,
                     StartedAt = t.StartedAt,
+                    CompletedAt = t.CompletedAt,
                     TotalStops = t.TaskStops.Count,
                     CompletedStops = t.TaskStops.Count(s => string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase)),
                     FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
@@ -878,7 +879,103 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 }
 
                 // ==================================================================
-                // 6. RELEASE COMPARTMENTS WHEN TASK FINISHES
+                // 6. AUTO-CANCEL IF ALL STOPS SKIPPED
+                // ==================================================================
+                bool allSkipped = task.TaskStops != null && 
+                    task.TaskStops.Any() &&
+                    task.TaskStops.All(s =>
+                        string.Equals(s.Status, "skipped", StringComparison.OrdinalIgnoreCase));
+
+                if (!taskStatusManuallyChanged && allSkipped)
+                {
+                    task.Status = "canceled";
+                    task.UpdatedAt = DateTime.Now;
+
+                    await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                    // Log task auto-canceled cho tất cả stops
+                    var robot = await _repo.GetRobotAsync(task.RobotId);
+                    var taskMessage = $"Nhiệm vụ #{task.Id} đã tự động hủy bỏ (tất cả điểm dừng đều bị bỏ qua)";
+                    
+                    if (task.TaskStops != null && task.TaskStops.Any())
+                    {
+                        foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                        {
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                StopId = stop.Id,
+                                LogType = "warning",
+                                Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Fallback nếu không có stops
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            LogType = "warning",
+                            Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+
+                // ==================================================================
+                // 7. AUTO-FAIL IF ALL STOPS FAILED
+                // ==================================================================
+                bool allFailed = task.TaskStops != null && 
+                    task.TaskStops.Any() &&
+                    task.TaskStops.All(s =>
+                        string.Equals(s.Status, "failed", StringComparison.OrdinalIgnoreCase));
+
+                if (!taskStatusManuallyChanged && allFailed)
+                {
+                    task.Status = "failed";
+                    task.UpdatedAt = DateTime.Now;
+
+                    await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                    // Log task auto-failed cho tất cả stops
+                    var robot = await _repo.GetRobotAsync(task.RobotId);
+                    var taskMessage = $"Nhiệm vụ #{task.Id} đã tự động thất bại (tất cả điểm dừng đều thất bại)";
+                    
+                    if (task.TaskStops != null && task.TaskStops.Any())
+                    {
+                        foreach (var stop in task.TaskStops.OrderBy(s => s.SeqNo))
+                        {
+                            await _logRepository.CreateAsync(new Log
+                            {
+                                RobotId = task.RobotId,
+                                TaskId = task.Id,
+                                StopId = stop.Id,
+                                LogType = "error",
+                                Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                                CreatedAt = DateTime.Now
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Fallback nếu không có stops
+                        await _logRepository.CreateAsync(new Log
+                        {
+                            RobotId = task.RobotId,
+                            TaskId = task.Id,
+                            LogType = "error",
+                            Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+
+                // ==================================================================
+                // 8. RELEASE COMPARTMENTS WHEN TASK FINISHES
                 // ==================================================================
                 if (task.Status == "completed" ||
                     task.Status == "failed" ||
@@ -981,6 +1078,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Priority = Enum.TryParse<TaskPriority>(task.Priority, out var p) ? p : TaskPriority.Normal,
                 CreatedAt = task.CreatedAt,
                 ScheduledStartAt = task.ScheduledStartAt,
+                StartedAt = task.StartedAt,
+                CompletedAt = task.CompletedAt,
                 AssignedByEmail = task.AssignedByNavigation?.Email,
                 AssignedByFullName = task.AssignedByNavigation?.FullName,
                 MapName = task.Map?.MapName,
@@ -1370,6 +1469,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
                 CreatedAt = DateTime.Now
             });
+
+            // Gửi SignalR event để cập nhật real-time cho frontend
+            var updatedTask = await _repo.GetByIdAsync(task.Id);
+            var response = MapToResponse(updatedTask!);
+            await _taskHub.Clients.All.SendAsync("TaskUpdated", response);
 
             return new StopUpdateResultDto
             {

@@ -103,8 +103,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     public class PatientMedicineHistoryDto
     {
         public string MedicineName { get; set; } = null!;
+        public string? PrescriptionCode { get; set; } // Mã đơn thuốc (customName)
         public int TotalPrescribedQuantity { get; set; }
         public DateTime? LastPrescribedAt { get; set; }
-        public string? Dosage { get; set; }
     }
 }

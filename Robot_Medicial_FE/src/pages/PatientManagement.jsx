@@ -151,7 +151,7 @@ export default function PatientsManagement() {
                                     <th>SĐT</th>
                                     <th>Trạng thái</th>
                                     <th>Đơn thuốc</th>
-                                   /* <th>Báo cáo</th> */
+                                    {/* <th>Báo cáo</th> */}
                                     <th className="text-end">Thao tác</th>
                                 </tr>
                             </thead>
@@ -265,7 +265,7 @@ export default function PatientsManagement() {
                                             <tr>
                                                 <th style={{ width: '50px' }}>#</th>
                                                 <th>Thuốc</th>
-                                                <th>Liều lượng</th>
+                                                <th>Mã đơn thuốc</th>
                                                 <th>Tổng SL</th>
                                                 <th>Ngày kê lần cuối</th>
                                             </tr>
@@ -275,7 +275,7 @@ export default function PatientsManagement() {
                                                 <tr key={i}>
                                                     <td>{i + 1}</td>
                                                     <td className="fw-semibold">{m.medicineName}</td>
-                                                    <td>{m.dosage}</td>
+                                                    <td className="fw-semibold text-primary">{m.prescriptionCode || "-"}</td>
                                                     <td>{m.totalPrescribedQuantity}</td>
                                                     <td>{new Date(m.lastPrescribedAt).toLocaleDateString("vi-VN")}</td>
                                                 </tr>
