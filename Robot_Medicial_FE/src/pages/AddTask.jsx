@@ -559,20 +559,10 @@ export default function AddTask() {
 
       showToast("success", "Tạo nhiệm vụ thành công!");
 
-      // RESET FORM & BẬT lại realtime clock
-      realtimeEnabled.current = true;
-
-      setForm({
-        mapId: "",
-        robotId: "",
-        priority: 1,
-        scheduledStartAt: getMinDateTime(),
-        taskStops: [],
-      });
-
-      setDestinations([]);
-      setBaseCompartments([]);
-      setRobots([]);
+      // Tự động chuyển về trang list task sau 1 giây để user thấy toast
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
     } catch (err) {
       console.error("Lỗi tạo nhiệm vụ:", err);
       showToast("error", err.message);

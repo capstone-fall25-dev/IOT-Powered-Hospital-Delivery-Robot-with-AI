@@ -42,10 +42,23 @@ export default function TaskDetail() {
 
     function getScheduleClass(startTime) {
         if (!startTime) return "";
+        
+        // ❗ Nếu task bị hủy (canceled) hoặc thất bại (failed) → không hiển thị màu "Quá giờ"
+        if (task?.status === "canceled" || task?.status === "failed") {
+            return ""; // Không có class đặc biệt
+        }
+        
         const now = new Date();
         const start = new Date(startTime);
         const diffMin = (start - now) / 1000 / 60;
-        if (diffMin <= 0) return styles.scheduleTimeOverdue;
+        const BUFFER_MINUTES = 10; // Buffer 10 phút như BE
+        
+        // Chỉ hiển thị "Quá giờ" sau khi đã qua thời gian bắt đầu + 10 phút (và task vẫn pending)
+        if (diffMin <= -BUFFER_MINUTES && task?.status === "pending") {
+            return styles.scheduleTimeOverdue;
+        }
+        // Trong khoảng 0 đến -10 phút: vẫn còn hiệu lực (chỉ khi pending)
+        if (diffMin <= 0 && task?.status === "pending") return styles.scheduleTimeSoon;
         if (diffMin <= 1) return styles.scheduleTimeSoon;
         return styles.scheduleTimeUpcoming;
     }
@@ -95,33 +108,88 @@ export default function TaskDetail() {
 
         const now = new Date();
         const scheduled = new Date(task.scheduledStartAt);
+        const BUFFER_MINUTES = 10; // Buffer 10 phút như BE
 
-        // Nếu task ĐÃ CHẠY (in_progress hoặc hơn) → kiểm tra có chạy sớm không
-        if ((task.status === "in_progress" || task.status === "completed") && task.startedAt) {
-            const started = new Date(task.startedAt);
-            const diffMs = scheduled.getTime() - started.getTime();
-
-            if (diffMs > 1000) { // chạy sớm > 1 giây
-                const diffMin = Math.floor(diffMs / 60000);
-                const diffSec = Math.floor((diffMs % 60000) / 1000);
-
-                const note = diffMin >= 1
-                    ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
-                    : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
-
-                return {
-                    text: "Đã khởi hành",
-                    className: styles.countdownStarted || "",
-                    note: note,
-                };
+        // ❗ Nếu task đã hoàn thành (completed) → hiển thị "Đã hoàn thành" với note nếu hoàn thành sớm
+        if (task.status === "completed") {
+            let note = null;
+            // Kiểm tra nếu hoàn thành sớm (dựa trên thời điểm bắt đầu so với scheduledStartAt)
+            if (task.startedAt && scheduled) {
+                const started = new Date(task.startedAt);
+                const diffMs = scheduled.getTime() - started.getTime();
+                if (diffMs > 1000) { // Hoàn thành sớm > 1 giây (dựa trên thời điểm khởi động sớm)
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const diffSec = Math.floor((diffMs % 60000) / 1000);
+                    note = diffMin >= 1
+                        ? `Hoàn thành sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
+                        : `Hoàn thành sớm ${diffSec} giây trước giờ dự kiến`;
+                }
             }
+            return { text: "Đã hoàn thành", className: styles.countdownStarted || "", note: note };
+        }
+
+        // ❗ Nếu task thất bại (failed) → không hiển thị thời gian đếm ngược
+        if (task.status === "failed") {
+            return { text: null, className: "", note: null };
+        }
+
+        // ❗ Nếu task bị hủy (canceled) → kiểm tra xem có phải do quá giờ không
+        if (task.status === "canceled") {
+            // Nếu hủy TRƯỚC scheduledStartAt → hủy có chủ đích, không hiển thị "Quá giờ"
+            if (now < scheduled) {
+                return { text: null, className: "", note: null };
+            }
+            // Nếu hủy SAU scheduledStartAt + 10 phút → hủy do quá giờ, hiển thị "Quá giờ"
+            const diffMs = scheduled.getTime() - now.getTime();
+            const overdueMin = Math.floor(Math.abs(diffMs) / 60000);
+            if (overdueMin >= BUFFER_MINUTES) {
+                return { text: "Quá giờ", className: styles.countdownOverdue || "", note: null };
+            }
+            // Nếu hủy trong khoảng 0-10 phút sau scheduledStartAt → không hiển thị
+            return { text: null, className: "", note: null };
+        }
+
+        // ❗ Nếu task ĐANG CHẠY (in_progress hoặc awaiting_handover) → hiển thị "Đang chạy" với note nếu chạy sớm
+        if (task.status === "in_progress" || task.status === "awaiting_handover") {
+            let note = null;
+            // Kiểm tra nếu chạy sớm (có startedAt)
+            if (task.startedAt && scheduled) {
+                const started = new Date(task.startedAt);
+                const diffMs = scheduled.getTime() - started.getTime();
+                if (diffMs > 1000) { // Chạy sớm > 1 giây
+                    const diffMin = Math.floor(diffMs / 60000);
+                    const diffSec = Math.floor((diffMs % 60000) / 1000);
+                    note = diffMin >= 1
+                        ? `Khởi động sớm ${diffMin} phút ${diffSec} giây trước giờ dự kiến`
+                        : `Khởi động sớm ${diffSec} giây trước giờ dự kiến`;
+                }
+            }
+            return { text: "Đang chạy", className: styles.countdownStarted || "", note: note };
         }
 
         // Chưa chạy → đếm ngược bình thường
         const diffMs = scheduled.getTime() - now.getTime();
 
-        if (diffMs <= 0) {
-            return { text: "Quá giờ", className: styles.countdownOverdue || "", note: null };
+        // Nếu đã qua thời gian bắt đầu
+        if (diffMs < 0) {
+            const overdueMs = Math.abs(diffMs); // Số ms đã qua
+            const overdueMin = Math.floor(overdueMs / 60000);
+            const overdueSec = Math.floor((overdueMs % 60000) / 1000);
+            const remainingMin = BUFFER_MINUTES - overdueMin; // Số phút còn lại trong buffer
+
+            // Nếu đã qua hơn 10 phút → quá giờ (chỉ hiển thị nếu task vẫn còn pending)
+            if (overdueMin >= BUFFER_MINUTES && task.status === "pending") {
+                return { text: "Quá giờ", className: styles.countdownOverdue || "", note: null };
+            }
+
+            // Trong khoảng 0 đến 10 phút: vẫn còn hiệu lực, hiển thị số phút đã qua
+            if (task.status === "pending") {
+                return { 
+                    text: `-${overdueMin}p ${overdueSec}s`, 
+                    className: styles.countdownSoon || "", 
+                    note: `Còn ${remainingMin} phút` 
+                };
+            }
         }
 
         const diffMin = Math.floor(diffMs / 60000);
@@ -441,7 +509,7 @@ export default function TaskDetail() {
                                                     {formatVNDateTime(task.scheduledStartAt)}
                                                 </span>
                                             </div>
-                                            {countdownInfo.text !== "—" && (
+                                            {countdownInfo.text && countdownInfo.text !== "—" && (
                                                 <div style={{ flex: "1", minWidth: "200px" }}>
                                                     <div className={styles.infoLabel}>Đếm ngược</div>
                                                     {countdownInfo.note ? (
