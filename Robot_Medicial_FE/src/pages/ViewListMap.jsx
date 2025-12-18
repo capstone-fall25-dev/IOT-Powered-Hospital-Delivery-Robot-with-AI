@@ -792,8 +792,7 @@ export default function ProjectMapListView() {
                             marginTop: "0.1rem",
                           }}
                         >
-                          Code: {r.code} • Trạng thái: {r.status} • Pin:{" "}
-                          {r.battery_percent ?? r.batteryPercen ?? "--"}%
+                          Code: {r.code} • Trạng thái: {r.status}
                         </div>
                       </div>
                       <div>
