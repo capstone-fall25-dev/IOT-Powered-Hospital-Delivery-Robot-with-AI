@@ -1643,7 +1643,7 @@ export default function RobotRunMap() {
                     Bản đồ điều hướng
                   </div>
 
-                  <div className={styles.inputGroup} style={{ maxWidth: "280px" }}>
+                  {/* <div className={styles.inputGroup} style={{ maxWidth: "280px" }}>
                     <input
                       className={styles.formControl}
                       placeholder="Tên bản đồ..."
@@ -1653,7 +1653,7 @@ export default function RobotRunMap() {
                     <button className={styles.btnSuccess} onClick={saveMap}>
                       <i className="bi bi-save"></i>
                     </button>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className={styles.dualMapContainer}>
