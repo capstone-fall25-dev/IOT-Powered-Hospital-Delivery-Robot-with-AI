@@ -9,6 +9,7 @@ import {
   getTaskTimelineReport,
   exportReportExcel
 } from "../services/reportService";
+import { getAllTasks } from "../services/taskService";
 
 import styles from "@/assets/styles/reportDashboard.module.css";
 
@@ -76,13 +77,13 @@ const ExcelIcon = () => (
         .st7{fill:#33C481;}`}
     </style>
 
-    <path class="st0" d="M321.49,244.09l-202.42-35.72v263.94c0,12.05,9.77,21.83,21.83,21.83l0,0h349.28 c12.05,0,21.83-9.77,21.83-21.83l0,0v-97.24L321.49,244.09z"/>
-    <path class="st1" d="M321.49,17.86H140.9c-12.05,0-21.83,9.77-21.83,21.83l0,0v97.24L321.49,256l107.16,35.72L512,256V136.93 L321.49,17.86z"/>
-    <path class="st2" d="M119.07,136.93h202.42V256H119.07V136.93z"/>
-    <path class="st3" d="M263.94,113.12H119.07v297.67h144.87c12.04-0.04,21.79-9.79,21.83-21.83V134.94 C285.73,122.9,275.98,113.16,263.94,113.12z"/>
-    <path class="st4" d="M252.04,125.02H119.07V422.7h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
-    <path class="st4" d="M252.04,125.02H119.07v273.86h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
-    <path class="st4" d="M240.13,125.02H119.07v273.86h121.06c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C261.91,134.81,252.17,125.06,240.13,125.02z"/>
+    <path className="st0" d="M321.49,244.09l-202.42-35.72v263.94c0,12.05,9.77,21.83,21.83,21.83l0,0h349.28 c12.05,0,21.83-9.77,21.83-21.83l0,0v-97.24L321.49,244.09z"/>
+    <path className="st1" d="M321.49,17.86H140.9c-12.05,0-21.83,9.77-21.83,21.83l0,0v97.24L321.49,256l107.16,35.72L512,256V136.93 L321.49,17.86z"/>
+    <path className="st2" d="M119.07,136.93h202.42V256H119.07V136.93z"/>
+    <path className="st3" d="M263.94,113.12H119.07v297.67h144.87c12.04-0.04,21.79-9.79,21.83-21.83V134.94 C285.73,122.9,275.98,113.16,263.94,113.12z"/>
+    <path className="st4" d="M252.04,125.02H119.07V422.7h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
+    <path className="st4" d="M252.04,125.02H119.07v273.86h132.97c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C273.82,134.81,264.07,125.06,252.04,125.02z"/>
+    <path className="st4" d="M240.13,125.02H119.07v273.86h121.06c12.04-0.04,21.79-9.79,21.83-21.83V146.85 C261.91,134.81,252.17,125.06,240.13,125.02z"/>
 
     <linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="45.5065" y1="-1464.0308" x2="216.4467" y2="-1167.9695" gradientTransform="matrix(1 0 0 1 0 1572)">
       <stop offset="0" style={{ stopColor: "#18884F" }} />
@@ -90,10 +91,10 @@ const ExcelIcon = () => (
       <stop offset="1" style={{ stopColor: "#0B6631" }} />
     </linearGradient>
 
-    <path class="st5" d="M21.83,125.02h218.3c12.05,0,21.83,9.77,21.83,21.83v218.3c0,12.05-9.77,21.83-21.83,21.83H21.83 C9.77,386.98,0,377.21,0,365.15v-218.3C0,134.79,9.77,125.02,21.83,125.02z"/>
-    <path class="st6" d="M67.6,326.94l45.91-71.14l-42.07-70.75h33.84l22.96,45.25c2.12,4.3,3.57,7.49,4.36,9.6h0.3 c1.51-3.43,3.1-6.76,4.76-9.99l24.54-44.83h31.07l-43.14,70.33l44.23,71.54H161.3l-26.52-49.66c-1.25-2.11-2.31-4.33-3.17-6.63 h-0.39c-0.78,2.25-1.81,4.41-3.07,6.43l-27.3,49.87L67.6,326.94L67.6,326.94z"/>
-    <path class="st7" d="M490.17,17.86H321.49v119.07H512V39.69C512,27.63,502.23,17.86,490.17,17.86L490.17,17.86z"/>
-    <path class="st2" d="M321.49,256H512v119.07H321.49V256z"/>
+    <path className="st5" d="M21.83,125.02h218.3c12.05,0,21.83,9.77,21.83,21.83v218.3c0,12.05-9.77,21.83-21.83,21.83H21.83 C9.77,386.98,0,377.21,0,365.15v-218.3C0,134.79,9.77,125.02,21.83,125.02z"/>
+    <path className="st6" d="M67.6,326.94l45.91-71.14l-42.07-70.75h33.84l22.96,45.25c2.12,4.3,3.57,7.49,4.36,9.6h0.3 c1.51-3.43,3.1-6.76,4.76-9.99l24.54-44.83h31.07l-43.14,70.33l44.23,71.54H161.3l-26.52-49.66c-1.25-2.11-2.31-4.33-3.17-6.63 h-0.39c-0.78,2.25-1.81,4.41-3.07,6.43l-27.3,49.87L67.6,326.94L67.6,326.94z"/>
+    <path className="st7" d="M490.17,17.86H321.49v119.07H512V39.69C512,27.63,502.23,17.86,490.17,17.86L490.17,17.86z"/>
+    <path className="st2" d="M321.49,256H512v119.07H321.49V256z"/>
   </svg>
 );
 
@@ -102,6 +103,7 @@ export default function ReportDashboard() {
   const [timelineData, setTimelineData] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [loadingTimeline, setLoadingTimeline] = useState(true);
+  const [tasks, setTasks] = useState([]);
 
   const [statusFrom, setStatusFrom] = useState("");
   const [statusTo, setStatusTo] = useState("");
@@ -135,9 +137,22 @@ export default function ReportDashboard() {
     }
   };
 
+  /* ============================
+      LOAD TASKS FOR STATS
+  ============================ */
+  const loadTasks = async () => {
+    try {
+      const data = await getAllTasks();
+      setTasks(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
     loadTimeline();
+    loadTasks();
   }, []);
 
   /* ============================
@@ -233,6 +248,30 @@ export default function ReportDashboard() {
     );
   };
 
+  /* ============================
+      TASK STATISTICS DATA
+  ============================ */
+  const taskStatsData = [
+    {
+      label: "Hoàn thành",
+      value: tasks.filter((t) => t.status === "completed").length,
+      icon: "check-circle-fill",
+      color: "#16a34a", // Green
+    },
+    {
+      label: "Bị hủy",
+      value: tasks.filter((t) => t.status === "canceled").length,
+      icon: "x-circle-fill",
+      color: "#dc2626", // Red
+    },
+    {
+      label: "Đang chạy",
+      value: tasks.filter((t) => t.status === "in_progress").length,
+      icon: "play-circle-fill",
+      color: "#0891b2", // Teal
+    },
+  ];
+
   /* ========================================================
       FULL UI
   ======================================================== */
@@ -246,6 +285,49 @@ export default function ReportDashboard() {
           <p className={styles.pageSubtitle}>
             Thống kê số lượng task theo trạng thái và theo ngày.
           </p>
+        </div>
+
+        {/* ========================= THỐNG KÊ NHIỆM VỤ ========================= */}
+        <div className="mb-8">
+          <h5 className="mb-4" style={{ fontSize: "1.25rem", fontWeight: "600"}}>
+            <i className="bi bi-bar-chart-line me-2"></i>
+            Thống Kê Nhiệm Vụ
+          </h5>
+
+          <div className="row g-3 mb-4">
+            {taskStatsData.map((stat, i) => (
+              <div className="col-12 col-md-4" key={i}>
+                <div className={styles.glass} style={{ padding: "1.5rem", borderRadius: "12px" }}>
+                  <div className="d-flex align-items-center">
+                    <div style={{ 
+                      fontSize: "2.5rem", 
+                      color: stat.color,
+                      marginRight: "1rem"
+                    }}>
+                      <i className={`bi bi-${stat.icon}`}></i>
+                    </div>
+                    <div>
+                      <div style={{ 
+                        fontSize: "0.875rem", 
+                        color: "#64748b",
+                        marginBottom: "0.25rem"
+                      }}>
+                        {stat.label}
+                      </div>
+                      <h3 style={{ 
+                        fontSize: "2rem", 
+                        fontWeight: "700",
+                        margin: 0,
+                        color: "#0f172a"
+                      }}>
+                        {stat.value}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* LAYOUT 2 CỘT */}

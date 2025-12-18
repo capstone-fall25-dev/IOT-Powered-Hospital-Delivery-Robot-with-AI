@@ -21,7 +21,48 @@ export default function Sidebar() {
   };
 
   const isActive = (path) => {
-    return location.pathname === path;
+    // Exact match
+    if (location.pathname === path) {
+      return true;
+    }
+    
+    // Check if pathname starts with the path (for sub-routes)
+    // Ví dụ: "/users" sẽ active cho "/users/create", "/users/edit/123"
+    if (location.pathname.startsWith(path + "/")) {
+      return true;
+    }
+    
+    // Special cases for routes with different patterns
+    // "/user-detail/:id" should be active when path is "/users"
+    if (path === "/users" && location.pathname.startsWith("/user-detail/")) {
+      return true;
+    }
+    
+    // "/patient/:id" should be active when path is "/patients"
+    // Chú ý: cần kiểm tra không phải "/patients/" để tránh match "/patients/add"
+    if (path === "/patients" && location.pathname.startsWith("/patient/") && !location.pathname.startsWith("/patients/")) {
+      return true;
+    }
+    
+    // Task-related routes should be active when path is "/dashboard"
+    if (path === "/dashboard") {
+      const taskRoutes = ["/task-detail/", "/task-edit/", "/run-task/", "/addtasks", "/history-mission", "/tasks/history/"];
+      return taskRoutes.some(route => location.pathname.startsWith(route));
+    }
+    
+    // Robot-related routes should be active when path is "/team"
+    if (path === "/team") {
+      const robotRoutes = ["/robot-detail/", "/robot-edit/", "/createRobot"];
+      return robotRoutes.some(route => location.pathname.startsWith(route));
+    }
+    
+    // Map-related routes should be active when path is "/viewlistmap"
+    if (path === "/viewlistmap") {
+      const mapRoutes = ["/maps/", "/create-map", "/run-map"];
+      return mapRoutes.some(route => location.pathname.startsWith(route));
+    }
+    
+    return false;
   };
 
   // Kiểm tra quyền truy cập menu

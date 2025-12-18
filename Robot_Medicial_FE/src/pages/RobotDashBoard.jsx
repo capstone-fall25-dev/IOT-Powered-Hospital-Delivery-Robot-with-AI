@@ -30,7 +30,7 @@ export default function RobotTaskDashboard() {
 
   /* ========================= MAPPING TRẠNG THÁI ========================= */
   const statusMap = {
-    transporting: "Đang vận chuyển",
+    transporting: "Đang chạy",
     awaiting_handover: "Chờ bàn giao",
     returning_to_station: "Trở về trạm",
     at_station: "Tại trạm",
@@ -44,6 +44,27 @@ export default function RobotTaskDashboard() {
     in_progress: "Đang tiến hành",
   };
 
+  /* ========================= TẢI DANH SÁCH ROBOT ========================= */
+  const fetchRobots = async () => {
+    try {
+      const data = await getAllRobots();
+      const formatted = data.map((r) => ({
+        id: r.code,
+        name: r.name,
+        dest: r.tasks?.[0]?.destination || "Không có",
+        progress: r.progressOverallPct,
+        status: statusMap[r.status] || "Không xác định",
+      }));
+      setRobots(formatted);
+    } catch (err) {
+      console.error("Lỗi khi load robots:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRobots();
+  }, []);
+
   /* ========================= KẾT NỐI SIGNALR REALTIME ========================= */
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
@@ -54,7 +75,10 @@ export default function RobotTaskDashboard() {
       .withAutomaticReconnect()
       .build();
 
-    const refresh = () => fetchTasks();
+    const refresh = () => {
+      fetchTasks();
+      fetchRobots(); // Refresh robots khi có task update
+    };
 
     // Lắng nghe các sự kiện từ SignalR
     connection.on("ConnectedToTaskHub", (data) => {
@@ -79,26 +103,6 @@ export default function RobotTaskDashboard() {
 
     // Cleanup khi component unmount
     return () => connection.stop();
-  }, []);
-
-  /* ========================= TẢI DANH SÁCH ROBOT ========================= */
-  useEffect(() => {
-    async function fetchRobots() {
-      try {
-        const data = await getAllRobots();
-        const formatted = data.map((r) => ({
-          id: r.code,
-          name: r.name,
-          dest: r.tasks?.[0]?.destination || "Không có",
-          progress: r.progressOverallPct,
-          status: statusMap[r.status] || "Không xác định",
-        }));
-        setRobots(formatted);
-      } catch (err) {
-        console.error("Lỗi khi load robots:", err);
-      }
-    }
-    fetchRobots();
   }, []);
 
   /* ========================= TẢI DANH SÁCH NHIỆM VỤ ========================= */
@@ -277,16 +281,15 @@ export default function RobotTaskDashboard() {
 
   /* ========================= DỮ LIỆU KPI ========================= */
   const kpiData = [
-    { label: "Tổng số robot", value: robots.length, icon: "robot" },
+    { label: "Tổng số Robot", value: robots.length, icon: "robot" },
     {
-      label: statusMap.transporting,
-      value: robots.filter((r) => r.status === statusMap.transporting).length,
+      label: statusMap.in_progress,
+      value: tasks.filter((t) => t.statusRaw === "in_progress").length,
       icon: "truck",
     },
     {
       label: statusMap.awaiting_handover,
-      value: robots.filter((r) => r.status === statusMap.awaiting_handover)
-        .length,
+      value: tasks.filter((t) => t.statusRaw === "in_progress").length,
       icon: "hourglass-split",
     },
     {
@@ -302,8 +305,13 @@ export default function RobotTaskDashboard() {
     },
     {
       label: statusMap.completed,
-      value: robots.filter((r) => r.status === statusMap.completed).length,
+      value: tasks.filter((t) => t.statusRaw === "completed").length,
       icon: "check2-circle",
+    },
+    {
+      label: statusMap.canceled,
+      value: tasks.filter((t) => t.statusRaw === "canceled").length,
+      icon: "x-circle",
     },
     {
       label: statusMap.charging,
@@ -315,16 +323,6 @@ export default function RobotTaskDashboard() {
       value: robots.filter((r) => r.status === statusMap.needs_attention)
         .length,
       icon: "exclamation-triangle",
-    },
-    {
-      label: statusMap.manual_control,
-      value: robots.filter((r) => r.status === statusMap.manual_control).length,
-      icon: "hand-index",
-    },
-    {
-      label: statusMap.offline,
-      value: robots.filter((r) => r.status === statusMap.offline).length,
-      icon: "slash-circle",
     },
   ];
 

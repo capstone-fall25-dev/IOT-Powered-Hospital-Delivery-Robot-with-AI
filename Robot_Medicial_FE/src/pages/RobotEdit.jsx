@@ -40,17 +40,19 @@ export default function RobotEdit() {
                     code: robotRes.code || "",
                     mapId: robotRes.mapId || "",
                     compartments: (robotRes.compartments || []).map(c => ({
-                        categoryId: c.categoryId.toString(),
+                        categoryId: c.categoryId != null ? c.categoryId.toString() : "",
                         isLocked: false // backend không trả về isLocked → mặc định false
                     }))
                 });
 
-                setMaps(mapsRes);
-                setCategories(catsRes);
-                setLoading(false);
+                setMaps(mapsRes || []);
+                setCategories(catsRes || []);
             } catch (err) {
+                console.error("Lỗi khi load robot data:", err);
                 showToast("error", err.message || "Không thể tải dữ liệu robot!");
-                console.error(err);
+            } finally {
+                // Luôn set loading = false để không bị stuck
+                setLoading(false);
             }
         }
         loadData();

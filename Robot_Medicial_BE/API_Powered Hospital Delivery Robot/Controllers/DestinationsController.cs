@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -16,7 +16,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         private readonly IDestinationService _service;
         private readonly IHubContext<RobotPositionHub> _hubContext;
 
-        public DestinationsController(IDestinationService service, IHubContext<RobotPositionHub> hubContext)
+        public DestinationsController(
+            IDestinationService service,
+            IHubContext<RobotPositionHub> hubContext)
         {
             _service = service;
             _hubContext = hubContext;
@@ -167,33 +169,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             }
         }
 
-
-                    /// <summary>
-            /// Dừng khẩn cấp - hủy nhiệm vụ robot đang chạy
-            /// </summary>
-            [HttpPost("emergency-stop")]
-            public async Task<IActionResult> EmergencyStop()
+        /// <summary>
+        /// Dừng khẩn cấp - hủy nhiệm vụ robot đang chạy
+        /// </summary>
+        [HttpPost("emergency-stop")]
+        public async Task<IActionResult> EmergencyStop()
+        {
+            try
             {
-                try
+                var payload = new
                 {
-                    var payload = new
-                    {
-                        type = "emergency_stop",
-                        timestamp = DateTime.Now,
-                        command = "cancel_navigation"
-                    };
+                    type = "emergency_stop",
+                    timestamp = DateTime.Now,
+                    command = "cancel_navigation"
+                };
 
-                    await _hubContext.Clients.All.SendAsync("ReceiveEmergencyStop", payload);
-                    Console.WriteLine($"[SignalR] 🛑 Đã gửi lệnh dừng khẩn cấp xuống ROS2");
+                await _hubContext.Clients.All.SendAsync("ReceiveEmergencyStop", payload);
+                Console.WriteLine($"[SignalR] 🛑 Đã gửi lệnh dừng khẩn cấp xuống ROS2");
 
-                    return Ok(new { message = "Đã gửi lệnh dừng khẩn cấp thành công.", payload });
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[ERROR] {ex.Message}");
-                    return StatusCode(500, new { message = "Lỗi khi gửi lệnh dừng khẩn cấp.", error = ex.Message });
-                }
+                return Ok(new { message = "Đã gửi lệnh dừng khẩn cấp thành công.", payload });
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi khi gửi lệnh dừng khẩn cấp.", error = ex.Message });
+            }
+        }
 
     }
 

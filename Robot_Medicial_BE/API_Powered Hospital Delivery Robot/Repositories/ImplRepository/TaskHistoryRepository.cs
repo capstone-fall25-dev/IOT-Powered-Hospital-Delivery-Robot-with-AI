@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +38,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             // === ÁP DỤNG FILTER ===
             if (filter.RobotId.HasValue)
                 query = query.Where(h => h.RobotId == filter.RobotId);
+
+            if (!string.IsNullOrEmpty(filter.RobotCode))
+                query = query.Where(h => h.RobotCode == filter.RobotCode);
 
             if (!string.IsNullOrEmpty(filter.Status))
                 query = query.Where(h => h.FinalStatus == filter.Status);
@@ -87,6 +90,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             // Áp dụng cùng filter như trên (copy-paste phần filter)
             if (filter.RobotId.HasValue) query = query.Where(h => h.RobotId == filter.RobotId);
+            if (!string.IsNullOrEmpty(filter.RobotCode)) query = query.Where(h => h.RobotCode == filter.RobotCode);
             if (!string.IsNullOrEmpty(filter.Status)) query = query.Where(h => h.FinalStatus == filter.Status);
             if (!string.IsNullOrEmpty(filter.Priority)) query = query.Where(h => h.Priority == filter.Priority);
             if (filter.FromDate.HasValue) query = query.Where(h => h.CompletedAt >= filter.FromDate || h.CreatedAt >= filter.FromDate);

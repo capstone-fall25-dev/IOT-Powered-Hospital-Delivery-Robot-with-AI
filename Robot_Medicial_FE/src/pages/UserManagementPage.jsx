@@ -4,6 +4,8 @@ import { getAllUsers, toggleActive, kickAllSessions } from '@/services/userServi
 import styles from '@/assets/styles/userManagement.module.css';
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
+import * as signalR from "@microsoft/signalr";
+import { API_CONFIG } from "@/utils/apiConfig";
 
 export default function UserManagementPage() {
     const navigate = useNavigate();
@@ -18,6 +20,48 @@ export default function UserManagementPage() {
 
     useEffect(() => {
         loadUsers();
+    }, []);
+
+    // Kết nối SignalR để nhận realtime updates về trạng thái online/offline
+    useEffect(() => {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl(`${API_CONFIG.API_BASE1}/hubs/userstatus`)
+            .withAutomaticReconnect()
+            .build();
+
+        // Lắng nghe khi user login (online)
+        connection.on("UserOnline", (userId) => {
+            const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+            setRows(prevRows => 
+                prevRows.map(row => 
+                    row.id === userIdNum 
+                        ? { ...row, isOnline: true }
+                        : row
+                )
+            );
+        });
+
+        // Lắng nghe khi user logout hoặc disconnect (offline)
+        connection.on("UserOffline", (userId) => {
+            const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+            setRows(prevRows => 
+                prevRows.map(row => 
+                    row.id === userIdNum 
+                        ? { ...row, isOnline: false }
+                        : row
+                )
+            );
+        });
+
+        // Kết nối SignalR
+        connection.start()
+            .then(() => console.log("✅ UserStatusHub connected!"))
+            .catch((err) => console.error("❌ UserStatusHub connection error:", err));
+
+        // Cleanup khi component unmount
+        return () => {
+            connection.stop().catch(err => console.error("Error stopping SignalR:", err));
+        };
     }, []);
 
     const loadUsers = async () => {

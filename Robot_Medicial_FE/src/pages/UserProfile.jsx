@@ -9,7 +9,7 @@ import styles from "@/assets/styles/userProfile.module.css";
 
 export default function UserProfile() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const { toast, showToast } = useToast();
     
     const [profile, setProfile] = useState(null);
@@ -143,6 +143,13 @@ export default function UserProfile() {
             
             setProfile(updated);
             setOriginalModel(deepCopyModel(model));
+            
+            // Cập nhật user trong authContext để header tự động update
+            if (updated && updateUser) {
+                updateUser({
+                    fullName: updated.fullName || model.fullName
+                });
+            }
             
             const successMessage = updated?.message || "Đã lưu thông tin thành công!";
             showToast("success", successMessage);
