@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using Task = System.Threading.Tasks.Task;
 
@@ -52,8 +52,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<string> RequestForgotPasswordAsync(ForgotPasswordRequest request);
 
         // Xác thực OTP quên mật khẩu
-        Task<string> VerifyForgotPasswordAsync(VerifyForgotPasswordRequest request);
 
+        // Xác thực OTP quên mật khẩu (bước 1: verify OTP → trả về reset token nếu hợp lệ)
+        Task<(bool Success, string Message, string? Token)> VerifyForgotPasswordOtpAsync(VerifyForgotPasswordOtpRequest request);
+
+        // Đặt lại mật khẩu bằng token tạm thời (bước 2: dùng token để đổi mật khẩu mới)
+        Task<(bool Success, string Message)> ResetPasswordAsync(ResetPasswordRequest request);
         // Admin reset mật khẩu người dùng (gửi mật khẩu mới qua email)
         Task<string> AdminResetPasswordAsync(string email);
 

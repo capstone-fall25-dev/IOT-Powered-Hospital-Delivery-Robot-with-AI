@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -73,12 +73,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// <summary>
         /// Xác nhận OTP và đặt lại mật khẩu
         /// </summary>
-        [HttpPost("verify-forgot-password")]
+        [HttpPost("verify-otp-forgotPassword")]
         [AllowAnonymous]
-        public async Task<IActionResult> VerifyForgotPassword([FromBody] VerifyForgotPasswordRequest request)
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyForgotPasswordOtpRequest request)
         {
-            var result = await _userService.VerifyForgotPasswordAsync(request);
-            return Ok(new { message = result });
+            var (success, message, token) = await _userService.VerifyForgotPasswordOtpAsync(request);
+
+            if (success)
+            {
+                return Ok(new { message, token });
+            }
+
+            return BadRequest(new { message });
+        }
+
+        [HttpPost("reset-password-byForgot")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var (success, message) = await _userService.ResetPasswordAsync(request);
+
+            if (success)
+            {
+                return Ok(new { message });
+            }
+
+            return BadRequest(new { message });
         }
 
         /// <summary>

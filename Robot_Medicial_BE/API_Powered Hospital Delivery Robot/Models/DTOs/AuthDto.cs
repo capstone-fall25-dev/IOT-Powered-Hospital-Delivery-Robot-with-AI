@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
@@ -43,10 +43,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     /// <summary>
     /// DTO cho xác thực quên mật khẩu
     /// </summary>
-    public class VerifyForgotPasswordRequest
+    public class VerifyForgotPasswordOtpRequest
     {
         public string Email { get; set; } = string.Empty;
         public string Otp { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordRequest
+    {
+        public string Token { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
     }
 
@@ -57,6 +62,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     {
         public string Email { get; set; } = string.Empty;
         public string Otp { get; set; } = string.Empty;
+    }
+
+    public class ApiResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     /// <summary>
