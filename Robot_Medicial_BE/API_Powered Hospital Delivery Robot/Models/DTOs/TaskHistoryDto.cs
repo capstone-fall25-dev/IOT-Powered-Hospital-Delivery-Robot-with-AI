@@ -1,4 +1,4 @@
-﻿namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 
 /// <summary>
 /// DTO phản hồi lịch sử task
@@ -61,6 +61,7 @@ public class TaskStopHistoryDto
 public class TaskHistoryFilterDto
 {
     public ulong? RobotId { get; set; }
+    public string? RobotCode { get; set; }
     public string? Status { get; set; }
     public string? Priority { get; set; }
     public DateTime? FromDate { get; set; }

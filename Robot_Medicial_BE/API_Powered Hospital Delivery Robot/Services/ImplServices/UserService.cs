@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
@@ -62,18 +62,25 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             user.PasswordHash = HashPassword(userDto.Password);
             user.CreatedAt = DateTime.Now;
             user.UpdatedAt = DateTime.Now;
-            user.IsActive = false; // Kích hoạt sau khi xác minh OTP
+            user.IsActive = userDto.IsActive;
 
             var created = await _repository.CreateAsync(user);
 
-            string otp = new Random().Next(100000, 999999).ToString();
-            _cache.Set($"OTP_{user.Email}", otp, TimeSpan.FromMinutes(5));
+            // Gửi email thông báo tài khoản đã được tạo thành công
             await _emailHelper.SendEmailAsync(
                 user.Email,
-                "Xác minh tài khoản",
-                $"<h3>Chào mừng, {userDto.FullName ?? "User"}!</h3>" +
-                $"<p>Mã xác minh của bạn là: <b>{otp}</b></p>" +
-                $"<p>Mã có hiệu lực trong 5 phút.</p>"
+                "Tài khoản đã được tạo thành công",
+                $"<h3>Xin chào, {userDto.FullName ?? "User"}!</h3>" +
+                $"<p>Tài khoản của bạn đã được tạo thành công trên hệ thống Robot Quản lý Bệnh viện.</p>" +
+                $"<p><strong>Thông tin tài khoản:</strong></p>" +
+                $"<ul>" +
+                $"<li>Email đăng nhập: <b>{user.Email}</b></li>" +
+                $"<li>Mật khẩu: <b>{userDto.Password}</b></li>" +
+                $"<li>Vai trò: <b>{(role == "doctor" ? "Bác sĩ" : "Dược sĩ")}</b></li>" +
+                $"<li>Trạng thái: <b>{(user.IsActive == true ? "Đã kích hoạt" : "Chờ kích hoạt")}</b></li>" +
+                $"</ul>" +
+                $"<p>Bạn có thể đăng nhập vào hệ thống bằng email và mật khẩu đã được cung cấp.</p>" +
+                $"<p>Trân trọng,<br/>Đội ngũ Quản lý Bệnh viện</p>"
             );
 
             return _mapper.Map<UserResponseDto>(created);
@@ -85,7 +92,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<IEnumerable<UserResponseDto>> GetAllAsync(bool? isActive = null)
         {
             var users = await _repository.GetAllAsync(isActive);
-            return _mapper.Map<IEnumerable<UserResponseDto>>(users);
+            var userDtos = new List<UserResponseDto>();
+            
+            foreach (var user in users)
+            {
+                // Load sessions để tính IsOnline
+                await _context.Entry(user).Collection(u => u.Sessions).LoadAsync();
+                var responseDto = _mapper.Map<UserResponseDto>(user);
+                
+                // Tính IsOnline: Có session active (expires_at > now)
+                var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.Now).ToList();
+                responseDto.IsOnline = activeSessions.Any();
+                responseDto.ActiveSessions = _mapper.Map<IEnumerable<SessionResponseDto>>(activeSessions);
+                
+                userDtos.Add(responseDto);
+            }
+            
+            return userDtos;
         }
 
         /// <summary>
@@ -377,8 +400,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var session = await _repository.GetSessionByTokenHashAsync(tokenHash);
             if (session != null)
             {
+                var userId = session.UserId;
                 session.ExpiresAt = DateTime.Now.AddMinutes(-1);
                 await _repository.UpdateSessionAsync(session);
+
+                // Kiểm tra xem user còn session active nào không
+                var user = await _repository.GetByIdAsync(userId, includeSessions: true);
+                if (user != null)
+                {
+                    await _context.Entry(user).Collection(u => u.Sessions).LoadAsync();
+                    var activeSessions = user.Sessions.Where(s => s.ExpiresAt > DateTime.Now).ToList();
+                    
+                    // Nếu không còn session nào active, báo UserOffline
+                    if (!activeSessions.Any() && _hubContext != null)
+                    {
+                        await _hubContext.Clients.All.SendAsync("UserOffline", userId.ToString());
+                    }
+                }
             }
         }
 
