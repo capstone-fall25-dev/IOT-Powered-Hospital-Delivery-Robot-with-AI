@@ -129,7 +129,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             return patient;
         }
 
-        /// <summary>
+        /*/// <summary>
         /// Lấy lịch sử nhận thuốc của bệnh nhân
         /// </summary>
         public async Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong id)
@@ -147,6 +147,53 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 })
                 .OrderByDescending(x => x.LastPrescribedAt)
                 .ToListAsync();
+        }*/
+
+        /// <summary>
+        /// Lấy lịch sử nhận thuốc của bệnh nhân từ task stops (customName = prescription code)
+        /// Lấy từ bảng task với customName có giá trị (mã đơn thuốc)
+        /// </summary>
+        public async Task<IEnumerable<PatientMedicineHistoryDto>> GetMedicineHistoryAsync(ulong id)
+        {
+            // Lấy tất cả task stops có patientId = id và customName không rỗng (có mã đơn thuốc)
+            var taskStops = await _context.TaskStops
+                .Include(ts => ts.CompartmentAssignments)
+                    .ThenInclude(ca => ca.Compartment)
+                        .ThenInclude(c => c.Category)
+                .Where(ts => ts.PatientId == id && !string.IsNullOrWhiteSpace(ts.CustomName))
+                .ToListAsync();
+
+            // Lấy thông tin từ CompartmentAssignment, MedicineName lấy từ Category.Name
+            var medicineHistory = taskStops
+                .SelectMany(ts => ts.CompartmentAssignments
+                    .Where(ca => 
+                        ca.CategoryId != null
+                        && ca.Compartment != null 
+                        && ca.Compartment.Category != null
+                        && !string.IsNullOrWhiteSpace(ca.Compartment.Category.Name))
+                    .Select(ca => new
+                    {
+                        MedicineName = ca.Compartment!.Category!.Name!.Trim(),
+                        CreatedAt = ts.CreatedAt,
+                        CustomName = ts.CustomName
+                    }))
+                .GroupBy(x => x.MedicineName)
+                .Select(g => 
+                {
+                    var latest = g.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+                    return new PatientMedicineHistoryDto
+                    {
+                        MedicineName = g.Key,
+                        // Lấy mã đơn thuốc của lần kê mới nhất (cùng với LastPrescribedAt)
+                        PrescriptionCode = latest?.CustomName?.Trim(),
+                        LastPrescribedAt = g.Max(x => x.CreatedAt),
+                        TotalPrescribedQuantity = g.Count() // Số lần được kê (mỗi task stop = 1 lần)
+                    };
+                })
+                .OrderByDescending(x => x.LastPrescribedAt)
+                .ToList();
+
+            return medicineHistory;
         }
     }
 }
