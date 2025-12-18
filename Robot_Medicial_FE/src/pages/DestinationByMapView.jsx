@@ -324,6 +324,29 @@ useEffect(() => {
       // Đang chọn vị trí cho ĐIỂM ĐẾN
       if (isPickingRef.current) {
         setFormPos({ x: world.x, y: world.y });
+
+         // ✅ Thêm marker cho điểm đến đang pick
+    const redDotIcon = L.divIcon({
+      html: `<div style="
+        width: 20px;
+        height: 20px;
+        background-color: #e74c3c;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px #e74c3c, 0 4px 8px rgba(0,0,0,0.4);
+        animation: pulse 1.5s ease-in-out infinite;
+      "></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      className: "",
+    });
+
+     if (!markerRef.current) {
+      markerRef.current = L.marker(e.latlng, { icon: redDotIcon }).addTo(mapRef.current);
+    } else {
+      markerRef.current.setLatLng(e.latlng);
+      markerRef.current.setIcon(redDotIcon);
+    }
         isPickingRef.current = false;
         setIsPicking(false);
         return;
@@ -336,6 +359,39 @@ useEffect(() => {
           longitude: world.x.toFixed(6),
           latitude: world.y.toFixed(6),
         }));
+         // ✅ Thêm marker cho phòng đang pick
+    const bluePinIcon = L.divIcon({
+      html: `<div style="position: relative;">
+        <div style="
+          width: 0;
+          height: 0;
+          border-left: 15px solid transparent;
+          border-right: 15px solid transparent;
+          border-top: 24px solid #2980b9;
+          filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+          animation: pulse 1.5s ease-in-out infinite;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 3px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 10px;
+          height: 10px;
+          background: #fff;
+          border-radius: 50%;
+        "></div>
+      </div>`,
+      iconSize: [30, 24],
+      iconAnchor: [15, 24],
+      className: "",
+    });
+    if (!markerRef.current) {
+      markerRef.current = L.marker(e.latlng, { icon: bluePinIcon }).addTo(mapRef.current);
+    } else {
+      markerRef.current.setLatLng(e.latlng);
+      markerRef.current.setIcon(bluePinIcon);
+    }
         roomPickingRef.current = false;
         setRoomIsPicking(false);
       }
@@ -362,12 +418,102 @@ useEffect(() => {
   }, [mapInfo, selectedMap]);
 
   // khi formPos (điểm đến) thay đổi -> cập nhật marker
-  useEffect(() => {
-    if (!mapRef.current || !mapInfo) return;
-    if (formPos.x == null || formPos.y == null) return;
-    placeMarkerAtWorld(formPos.x, formPos.y);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formPos.x, formPos.y, mapInfo]);
+ // useEffect cho điểm đến - cập nhật marker khi formPos thay đổi
+useEffect(() => {
+  if (!mapRef.current || !mapInfo) return;
+  if (formPos.x == null || formPos.y == null) {
+    // Xóa marker nếu không có tọa độ
+    if (markerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(markerRef.current);
+      markerRef.current = null;
+    }
+    return;
+  }
+  
+  const latlng = worldToLatLng(formPos.x, formPos.y);
+  if (!latlng) return;
+
+  const redDotIcon = L.divIcon({
+    html: `<div style="
+      width: 20px;
+      height: 20px;
+      background-color: #e74c3c;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px #e74c3c, 0 4px 8px rgba(0,0,0,0.4);
+      animation: pulse 1.5s ease-in-out infinite;
+    "></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    className: "",
+  });
+
+  if (!markerRef.current) {
+    markerRef.current = L.marker(latlng, { icon: redDotIcon }).addTo(mapRef.current);
+  } else {
+    markerRef.current.setLatLng(latlng);
+    markerRef.current.setIcon(redDotIcon);
+  }
+
+  mapRef.current.panTo(latlng);
+}, [formPos.x, formPos.y, mapInfo]);
+
+// ✅ Thêm useEffect mới cho phòng - hiển thị marker khi roomForm thay đổi
+useEffect(() => {
+  if (!mapRef.current || !mapInfo || roomMode === "view") return;
+  if (!roomForm.latitude || !roomForm.longitude) {
+    // Xóa marker nếu không có tọa độ
+    if (markerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(markerRef.current);
+      markerRef.current = null;
+    }
+    return;
+  }
+
+  const worldX = parseFloat(roomForm.longitude);
+  const worldY = parseFloat(roomForm.latitude);
+  
+  if (isNaN(worldX) || isNaN(worldY)) return;
+  
+  const latlng = worldToLatLng(worldX, worldY);
+  if (!latlng) return;
+
+  const bluePinIcon = L.divIcon({
+    html: `<div style="position: relative;">
+      <div style="
+        width: 0;
+        height: 0;
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-top: 24px solid #2980b9;
+        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+        animation: pulse 1.5s ease-in-out infinite;
+      "></div>
+      <div style="
+        position: absolute;
+        top: 3px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        background: #fff;
+        border-radius: 50%;
+      "></div>
+    </div>`,
+    iconSize: [30, 24],
+    iconAnchor: [15, 24],
+    className: "",
+  });
+
+  if (!markerRef.current) {
+    markerRef.current = L.marker(latlng, { icon: bluePinIcon }).addTo(mapRef.current);
+  } else {
+    markerRef.current.setLatLng(latlng);
+    markerRef.current.setIcon(bluePinIcon);
+  }
+
+  mapRef.current.panTo(latlng);
+}, [roomForm.latitude, roomForm.longitude, mapInfo, roomMode]);
 
  // Khi danh sách phòng thay đổi -> vẽ lại toàn bộ marker phòng
 useEffect(() => {
