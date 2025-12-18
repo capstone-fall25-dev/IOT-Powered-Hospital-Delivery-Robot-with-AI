@@ -47,9 +47,11 @@ import AddTask from "@/pages/AddTask";
 import TaskDetail from "@/pages/TaskDetail";
 import EditTask from "../pages/EditTask";
 import RunTask from "@/pages/RunTask";
+import RunTaskView from "@/pages/RunTaskView";
 
 import ProjectMapListView from "@/pages/ViewListMap";
 import RunMap from "@/pages/RunMap";
+import RunMapView from "@/pages/RunMapView";
 import CreateMap from "@/pages/CreateMap";
 import DestinationByMapView from "@/pages/DestinationByMapView";
 import MapDetailView from "@/pages/MapDetailView";
@@ -363,6 +365,13 @@ const routes = [
       </ProtectedRoute>
     )
   },
+  {
+    path: "/run-task/:taskId/view", element: (
+      <ProtectedRoute>
+        <RunTaskView />
+      </ProtectedRoute>
+    )
+  },
 
   {
     path: "/viewlistmap", element: (
@@ -404,6 +413,13 @@ const routes = [
     path: "/run-map", element: (
       <ProtectedRoute>
         <MainLayout><RunMap /></MainLayout>
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: "/run-map/view", element: (
+      <ProtectedRoute>
+        <RunMapView />
       </ProtectedRoute>
     )
   },

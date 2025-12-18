@@ -230,7 +230,7 @@
 
 /* =================== CAMERA BOX - RECTANGLE HORIZONTAL =================== */
 .cameraBox {
-    height: 280px;
+    height: 300px;
     border-radius: 5px;
     background: #e8f3f1;
     display: flex;
@@ -512,7 +512,7 @@
 /* =================== RESPONSIVE (SINGLE BLOCK - NO DUPLICATE) =================== */
 @media (max-width: 1400px) {
     .cameraBox {
-        height: 180px;
+        height: 200px;
     }
 
     .mapBoxWrapper .mapBox {
@@ -522,7 +522,7 @@
 
 @media (max-width: 1200px) {
     .cameraBox {
-        height: 160px;
+        height: 180px;
     }
 
     .mapBox {
@@ -550,7 +550,7 @@
 
 @media (max-width: 992px) {
     .cameraBox {
-        height: 200px;
+        height: 220px;
     }
 
     .mapBox {
@@ -578,7 +578,7 @@
 
 @media (max-width: 768px) {
     .cameraBox {
-        height: 180px;
+        height: 280px;
     }
 
     .mapBox {

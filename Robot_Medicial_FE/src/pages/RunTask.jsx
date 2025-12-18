@@ -96,6 +96,11 @@ export default function RunTask() {
     // Text tiếng Việt để robot đọc
     const [ttsTextCustom, setTtsTextCustom] = useState("");
 
+    // ⭐ Alert states
+    const [alerts, setAlerts] = useState([]);
+    const [unreadAlertCount, setUnreadAlertCount] = useState(0);
+    const [showAlertPanel, setShowAlertPanel] = useState(false);
+
     // ===================================
     // AUDIO – WebRTC
     // ===================================
@@ -527,6 +532,49 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
         };
     }, []);
 
+    // ===================================
+    // ⭐ SIGNALR (AlertHub - MỚI)
+    // ===================================
+    useEffect(() => {
+        const alertConn = new signalR.HubConnectionBuilder()
+            .withUrl(API_CONFIG.API_BASE1 + "/hubs/alert")
+            .withAutomaticReconnect()
+            .build();
+
+        alertConn.on("ReceiveAlert", (alert) => {
+            console.log("🚨 New alert received:", alert);
+            
+            setAlerts((prev) => [alert, ...prev]);
+            setUnreadAlertCount((prev) => prev + 1);
+            
+            const severity = alert.severity?.toLowerCase() || "medium";
+            const toastType = 
+                severity === "high" ? "error" : 
+                severity === "medium" ? "warning" : 
+                "info";
+            
+            showToast(toastType, `🚨 ${alert.message}`);
+            
+            if (severity === "high") {
+                setShowAlertPanel(true);
+            }
+        });
+
+        alertConn
+            .start()
+            .then(() => {
+                console.log("✅ AlertHub connected");
+                loadExistingAlerts();
+            })
+            .catch((err) => {
+                console.error("❌ AlertHub connection error:", err);
+            });
+
+        return () => {
+            alertConn.stop();
+        };
+    }, []);
+
   // ===================================
   // LIVE MAP
   // ===================================
@@ -556,7 +604,95 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
     liveMapRef.current.fitBounds(bounds);
   }
 
-  // ⭐ NÚT VỀ TRẠM
+  // ⭐ ALERT FUNCTIONS
+// ===================================
+async function loadExistingAlerts() {
+    try {
+        const res = await fetch(API_CONFIG.API_BASE1 + "/api/Alerts");
+        const data = await res.json();
+        
+        // Chỉ lấy alerts có status = "open"
+        const activeAlerts = (data || [])
+            .filter((a) => a.status?.toLowerCase() === "open")
+            .slice(0, 20);
+        
+        setAlerts(activeAlerts);
+        setUnreadAlertCount(activeAlerts.length);
+    } catch (err) {
+        console.error("Failed to load alerts:", err);
+    }
+}
+
+async function markAlertAsResolved(alertId) {
+    try {
+        const alertToResolve = alerts.find((a) => a.id === alertId);
+        if (!alertToResolve) {
+            console.error("Alert không tồn tại:", alertId);
+            return;
+        }
+        const resolvedAt = new Date().toISOString();
+
+        const response = await fetch(
+            API_CONFIG.API_BASE1 + `/api/Alerts/${alertId}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    robotId: alertToResolve.robotId,
+                    message: alertToResolve.message,
+                    status: "resolved",
+                    severity: alertToResolve.severity,
+                    category: alertToResolve.category,
+                    prescriptionItemId: alertToResolve.prescriptionItemId || null,
+                    resolvedAt: resolvedAt,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to update alert");
+        }
+
+        // Cập nhật local state
+        setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+        setUnreadAlertCount((prev) => Math.max(0, prev - 1));
+
+        showToast("success", "✅ Đã đánh dấu đã xử lý");
+    } catch (err) {
+        console.error("❌ Failed to update alert:", err);
+        showToast("error", "Không thể cập nhật alert: " + err.message);
+    }
+}
+
+function getSeverityIcon(severity) {
+    switch (severity?.toLowerCase()) {
+        case "high":
+            return { icon: "bi-exclamation-triangle-fill", color: "#dc3545" };
+        case "medium":
+            return { icon: "bi-exclamation-circle-fill", color: "#ffc107" };
+        case "low":
+            return { icon: "bi-info-circle-fill", color: "#0dcaf0" };
+        default:
+            return { icon: "bi-bell-fill", color: "#6c757d" };
+    }
+}
+
+function formatTime(dateString) {
+    if (!dateString) return "";
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+        });
+    } catch {
+        return "";
+    }
+}
+
+// ⭐ NÚT VỀ TRẠM
 async function sendReturnToStation() {
     const payload = {
         mapId: taskInfo?.mapId || selectedStop?.mapId || 0,
@@ -1866,6 +2002,101 @@ async function sendEmergencyStop() {
           </div>
         </div>
       )}
+
+      {/* ⭐ Alert Floating Button */}
+      <button 
+        className={styles.alertFloatingBtn} 
+        onClick={() => setShowAlertPanel(!showAlertPanel)}
+      >
+        <i className="bi bi-bell-fill"></i>
+        {unreadAlertCount > 0 && (
+          <span className={styles.alertBadge}>{unreadAlertCount}</span>
+        )}
+      </button>
+
+      {/* ⭐ Alert Panel */}
+      {showAlertPanel && (
+        <div className={styles.alertOverlay}>
+          <div className={styles.alertPanel}>
+            {/* Header */}
+            <div className={styles.alertHeader}>
+              <h5 className={styles.alertTitle}>
+                <i className="bi bi-bell-fill me-2"></i>
+                Cảnh báo hệ thống
+              </h5>
+              <button 
+                className={styles.alertCloseBtn} 
+                onClick={() => setShowAlertPanel(false)}
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            {/* Alert List */}
+            <div className={styles.alertList}>
+              {alerts.length === 0 ? (
+                <div className={styles.alertEmpty}>
+                  <i className="bi bi-inbox" style={{ fontSize: "3rem", opacity: 0.3 }}></i>
+                  <p>Không có cảnh báo</p>
+                </div>
+              ) : (
+                alerts.map((alert) => {
+                  const { icon, color } = getSeverityIcon(alert.severity);
+
+                  return (
+                    <div key={alert.id} className={styles.alertItem}>
+                      {/* Checkbox để đánh dấu resolved */}
+                      <div className={styles.alertCheckbox}>
+                        <input
+                          type="checkbox"
+                          id={`alert-${alert.id}`}
+                          onChange={() => markAlertAsResolved(alert.id)}
+                          title="Đánh dấu đã xử lý"
+                        />
+                      </div>
+
+                      {/* Icon severity */}
+                      <div className={styles.alertIcon} style={{ color }}>
+                        <i className={`bi ${icon}`}></i>
+                      </div>
+
+                      {/* Nội dung alert */}
+                      <div className={styles.alertContent}>
+                        <div className={styles.alertItemHeader}>
+                          <span className={styles.alertCategory}>
+                            {alert.category || "Hệ thống"}
+                          </span>
+                          <span className={styles.alertTime}>
+                            {formatTime(alert.createdAt)}
+                          </span>
+                        </div>
+                        
+                        <p className={styles.alertMessage}>{alert.message}</p>
+
+                        {alert.robotId && (
+                          <div className={styles.alertRobotInfo}>
+                            <i className="bi bi-robot me-1"></i>
+                            Robot #{alert.robotId}
+                          </div>
+                        )}
+
+                        <span
+                          className={styles.alertSeverityBadge}
+                          style={{ backgroundColor: color }}
+                        >
+                          {alert.severity || "medium"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

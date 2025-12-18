@@ -198,7 +198,7 @@
     color: #d97706;
     border: 1px solid rgba(251, 191, 36, 0.2);
     font-weight: 600;
-    /* padding: 0.4rem 0.8rem; */
+    padding: 0.4rem 0.8rem;
     border-radius: 5px;
     font-size: 0.85rem;
     display: inline-flex;
