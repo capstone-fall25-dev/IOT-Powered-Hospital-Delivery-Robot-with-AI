@@ -324,6 +324,11 @@ export default function RobotTaskDashboard() {
         .length,
       icon: "exclamation-triangle",
     },
+    {
+      label: statusMap.offline,
+      value: robots.filter((r) => r.status === statusMap.offline).length,
+      icon: "slash-circle",
+    },
   ];
 
   /* ========================= RENDER GIAO DIỆN ========================= */
