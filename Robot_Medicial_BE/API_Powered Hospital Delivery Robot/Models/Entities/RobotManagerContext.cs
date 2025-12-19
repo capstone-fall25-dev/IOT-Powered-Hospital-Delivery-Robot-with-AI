@@ -151,8 +151,8 @@ public partial class RobotManagerContext : DbContext
 
             entity.Property(e => e.Status)
                 .HasConversion(
-                    v => v.ToString().ToLower(),
-                    v => (MedicineStatus)Enum.Parse(typeof(MedicineStatus), v, true)
+                    v => v.HasValue ? v.Value.ToString().ToLower() : null!,
+                    v => string.IsNullOrEmpty(v) ? null : (MedicineStatus)Enum.Parse(typeof(MedicineStatus), v, true)
                 );
 
             entity.HasOne(d => d.Category).WithMany(p => p.Medicines)
