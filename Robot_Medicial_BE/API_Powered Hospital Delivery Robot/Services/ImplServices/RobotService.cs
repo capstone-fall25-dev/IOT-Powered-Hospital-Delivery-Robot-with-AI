@@ -418,7 +418,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotCode = req.RobotCode,
                 Power = _desiredOn,
                 Status = _desiredOn ? "at_station" : "offline",
-                Time = DateTime.UtcNow,
+                Time = DateTime.Now,
                 Message = "sent"
             };
         }
@@ -453,7 +453,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotCode = report.RobotCode,
                 Power = report.Power,
                 Status = newStatus,
-                Time = DateTime.UtcNow,
+                Time = DateTime.Now,
                 Message = "ok"
             };
 

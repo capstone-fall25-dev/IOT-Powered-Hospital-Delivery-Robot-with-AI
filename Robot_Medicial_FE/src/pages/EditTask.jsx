@@ -1,7 +1,7 @@
 // src/pages/EditTask.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTaskEditData, updateTask } from "@/services/taskService";
+import { getTaskEditData, updateTask, getTaskById } from "@/services/taskService";
 import { getAllMaps, getMapById } from "@/services/mapService";
 import { apiFetch } from "@/services/api";
 import { getAllPatients } from "@/services/patientService";
@@ -80,6 +80,7 @@ export default function EditTask() {
     // Trạng thái nhiệm vụ (task.status)
     const [taskStatus, setTaskStatus] = useState("");               // status đang hiển thị / chọn trên UI
     const [initialTaskStatus, setInitialTaskStatus] = useState(""); // status ban đầu trả về từ BE
+    const [initialScheduledStartAt, setInitialScheduledStartAt] = useState(""); // scheduledStartAt ban đầu để so sánh
 
     const [initLoaded, setInitLoaded] = useState(false);
 
@@ -376,23 +377,52 @@ export default function EditTask() {
                     };
                 });
 
+                // Kiểm tra và tự động update scheduledStartAt nếu task vẫn trong buffer 10 phút
+                let scheduledStartAtValue = data.scheduledStartAt
+                    ? formatDateTimeLocal(data.scheduledStartAt)
+                    : "";
+                
+                const taskStatusValue = (data.status || data.Status || "").trim().toLowerCase() || "pending";
+                const BUFFER_MINUTES = 10;
+                
+                // Nếu task chưa bắt đầu (pending) và đã qua scheduledStartAt nhưng vẫn trong buffer 10 phút
+                if (taskStatusValue === "pending" && data.scheduledStartAt) {
+                    const now = new Date();
+                    const scheduled = new Date(data.scheduledStartAt);
+                    const diffMs = scheduled.getTime() - now.getTime();
+                    const overdueMin = Math.floor(Math.abs(diffMs) / 60000);
+                    
+                    // Nếu đã qua scheduledStartAt nhưng vẫn trong buffer 10 phút (0-10 phút)
+                    if (diffMs < 0 && overdueMin < BUFFER_MINUTES) {
+                        // Tự động update scheduledStartAt thêm 10 phút từ thời điểm hiện tại
+                        // Để đảm bảo validation pass (ít nhất 2 phút trong tương lai)
+                        const newScheduled = new Date(now.getTime() + BUFFER_MINUTES * 60 * 1000);
+                        // Format cho input datetime-local (YYYY-MM-DDTHH:mm)
+                        const year = newScheduled.getFullYear();
+                        const month = String(newScheduled.getMonth() + 1).padStart(2, "0");
+                        const day = String(newScheduled.getDate()).padStart(2, "0");
+                        const hours = String(newScheduled.getHours()).padStart(2, "0");
+                        const minutes = String(newScheduled.getMinutes()).padStart(2, "0");
+                        scheduledStartAtValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+                        showToast("info", `Đã tự động cập nhật thời gian bắt đầu thêm ${BUFFER_MINUTES} phút để khớp với logic đếm ngược.`);
+                    }
+                }
+
                 const formData = {
                     mapId: data.mapId ? String(data.mapId) : "",
                     robotId: data.robotId ? String(data.robotId) : "",
                     priority: data.priority, // BE đang trả 0/1/2
-                    scheduledStartAt: data.scheduledStartAt
-                        ? formatDateTimeLocal(data.scheduledStartAt)
-                        : "",
+                    scheduledStartAt: scheduledStartAtValue,
                     stops: editedStops,
                 };
 
                 setForm(formData);
 
                 // Lưu trạng thái nhiệm vụ ban đầu
-                // Đảm bảo status không null/undefined, nếu không có thì mặc định là "pending"
-                const taskStatusValue = (data.status || data.Status || "").trim().toLowerCase() || "pending";
                 setTaskStatus(taskStatusValue);
                 setInitialTaskStatus(taskStatusValue);
+                // Lưu scheduledStartAt ban đầu để so sánh khi user thay đổi
+                setInitialScheduledStartAt(scheduledStartAtValue);
 
                 setLoading(false);
             } catch (err) {
@@ -401,11 +431,47 @@ export default function EditTask() {
                 // Cố gắng extract status từ error message nếu có
                 // Backend error message format: "Không thể chỉnh sửa nhiệm vụ ở trạng thái '{task.Status}'..."
                 const errorMessage = err.message || "";
-                const statusMatch = errorMessage.match(/trạng thái\s+['"]([^'"]+)['"]/i);
-                if (statusMatch && statusMatch[1]) {
-                    const extractedStatus = statusMatch[1].toLowerCase().trim();
+                let extractedStatus = null;
+                
+                // Thử nhiều pattern để extract status
+                const patterns = [
+                    /trạng thái\s+['"]([^'"]+)['"]/i,
+                    /trạng thái\s+([^\s.,!?]+)/i,
+                    /status\s+['"]([^'"]+)['"]/i,
+                    /status\s+([^\s.,!?]+)/i,
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = errorMessage.match(pattern);
+                    if (match && match[1]) {
+                        extractedStatus = match[1].toLowerCase().trim();
+                        break;
+                    }
+                }
+                
+                // Nếu extract được status, set vào state
+                if (extractedStatus) {
                     setInitialTaskStatus(extractedStatus);
                     setTaskStatus(extractedStatus);
+                } else {
+                    // Nếu không extract được, thử fetch lại task để lấy status thực tế
+                    try {
+                        const taskDetail = await getTaskById(id);
+                        if (taskDetail && taskDetail.status) {
+                            const taskStatusValue = taskDetail.status.toLowerCase().trim() || "unknown";
+                            setInitialTaskStatus(taskStatusValue);
+                            setTaskStatus(taskStatusValue);
+                        } else {
+                            // Fallback: set "unknown" nếu không lấy được status
+                            setInitialTaskStatus("unknown");
+                            setTaskStatus("unknown");
+                        }
+                    } catch (fetchErr) {
+                        // Nếu fetch lại cũng lỗi, set "unknown"
+                        console.error("Lỗi khi fetch lại task:", fetchErr);
+                        setInitialTaskStatus("unknown");
+                        setTaskStatus("unknown");
+                    }
                 }
                 
                 showToast("error", err.message);
@@ -430,43 +496,17 @@ export default function EditTask() {
 
     // ===================== HELPER: Format datetime cho input datetime-local =====================
     // Input datetime-local cần format: YYYY-MM-DDTHH:mm (local time, không có timezone)
-    // Vấn đề: Database lưu local time (UTC+7), nhưng backend có thể serialize thành UTC (có Z)
-    // → Khi frontend parse UTC, JavaScript tự động convert về local time của browser
-    // → Nếu browser không ở UTC+7 → lệch giờ
-    // Giải pháp: Nếu backend trả về UTC (có Z), cần điều chỉnh về UTC+7 (giờ Việt Nam)
+    // Backend giờ serialize datetime với timezone offset +07:00 (Vietnam)
+    // JavaScript sẽ tự động parse và convert về local time của browser
+    // Nếu browser ở UTC+7 → hiển thị đúng
+    // Nếu browser ở timezone khác → JavaScript tự động convert
     function formatDateTimeLocal(dateTimeString) {
         if (!dateTimeString) return "";
         
         try {
-            let date;
-            
-            // Kiểm tra xem string có Z (UTC) hay không
-            if (typeof dateTimeString === 'string' && dateTimeString.endsWith('Z')) {
-                // Backend trả về UTC (có Z)
-                // Database lưu local time (UTC+7), nhưng backend serialize thành UTC
-                // → Cần parse UTC và điều chỉnh về UTC+7
-                date = new Date(dateTimeString);
-                
-                // Lấy UTC components và tạo date mới với UTC+7
-                // Vì database lưu local time (UTC+7), cần hiển thị đúng giờ đó
-                const utcYear = date.getUTCFullYear();
-                const utcMonth = date.getUTCMonth();
-                const utcDay = date.getUTCDate();
-                const utcHours = date.getUTCHours();
-                const utcMinutes = date.getUTCMinutes();
-                const utcSeconds = date.getUTCSeconds();
-                
-                // Tạo date mới với UTC+7 (giờ Việt Nam)
-                // Sử dụng Date.UTC và thêm 7 giờ
-                date = new Date(Date.UTC(utcYear, utcMonth, utcDay, utcHours + 7, utcMinutes, utcSeconds));
-            } else if (typeof dateTimeString === 'string' && dateTimeString.includes('+')) {
-                // Có timezone offset → parse bình thường, JavaScript sẽ tự động convert
-                date = new Date(dateTimeString);
-            } else {
-                // Không có timezone info → giả định là local time (giờ Việt Nam UTC+7)
-                // JavaScript sẽ hiểu là local time của browser
-                date = new Date(dateTimeString);
-            }
+            // Parse datetime string (backend đã serialize với +07:00)
+            // JavaScript sẽ tự động parse và convert về local time của browser
+            const date = new Date(dateTimeString);
             
             // Kiểm tra nếu date không hợp lệ
             if (isNaN(date.getTime())) {
@@ -474,7 +514,7 @@ export default function EditTask() {
                 return "";
             }
             
-            // Lấy local time components (sau khi đã điều chỉnh timezone nếu cần)
+            // Lấy local time components (JavaScript đã convert về local time của browser)
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, "0");
             const day = String(date.getDate()).padStart(2, "0");
@@ -675,15 +715,34 @@ export default function EditTask() {
             return;
         }
 
-        // Validate scheduledStartAt không được là quá khứ
+        // Validate scheduledStartAt phải ít nhất 2 phút trong tương lai
+        // Nếu không đủ, tự động điều chỉnh thêm 2 phút
         if (form.scheduledStartAt) {
             try {
                 const now = new Date();
                 const selected = new Date(form.scheduledStartAt);
+                const diffMs = selected.getTime() - now.getTime();
+                const diffMinutes = diffMs / (1000 * 60);
+                const MIN_MINUTES = 2;
                 
-                if (selected <= now) {
-                    showToast("warning", "Thời gian bắt đầu không được là quá khứ. Vui lòng chọn thời gian trong tương lai.");
-                    return;
+                if (diffMinutes < MIN_MINUTES) {
+                    // Tự động điều chỉnh thêm 2 phút từ thời điểm hiện tại
+                    const adjustedTime = new Date(now.getTime() + MIN_MINUTES * 60 * 1000);
+                    const year = adjustedTime.getFullYear();
+                    const month = String(adjustedTime.getMonth() + 1).padStart(2, "0");
+                    const day = String(adjustedTime.getDate()).padStart(2, "0");
+                    const hours = String(adjustedTime.getHours()).padStart(2, "0");
+                    const minutes = String(adjustedTime.getMinutes()).padStart(2, "0");
+                    const adjustedValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    
+                    // Cập nhật form với thời gian đã điều chỉnh
+                    setForm((f) => ({
+                        ...f,
+                        scheduledStartAt: adjustedValue,
+                    }));
+                    
+                    showToast("info", `Thời gian bắt đầu đã được tự động điều chỉnh thêm ${MIN_MINUTES} phút để đảm bảo hợp lệ.`);
+                    // Tiếp tục submit với thời gian đã điều chỉnh
                 }
             } catch (err) {
                 showToast("error", "Thời gian bắt đầu không hợp lệ.");
@@ -739,7 +798,25 @@ export default function EditTask() {
                     ? form.priority
                     : Number(form.priority),
                 scheduledStartAt: form.scheduledStartAt
-                    ? new Date(form.scheduledStartAt).toISOString()
+                    ? (() => {
+                        // Parse datetime từ input (local time)
+                        const selected = new Date(form.scheduledStartAt);
+                        // Lấy timezone offset (phút), Vietnam là UTC+7 = -420 phút
+                        const timezoneOffset = selected.getTimezoneOffset();
+                        const offsetHours = Math.floor(Math.abs(timezoneOffset) / 60);
+                        const offsetMinutes = Math.abs(timezoneOffset) % 60;
+                        const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+                        const offsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+                        
+                        // Format datetime với timezone offset
+                        const year = selected.getFullYear();
+                        const month = String(selected.getMonth() + 1).padStart(2, "0");
+                        const day = String(selected.getDate()).padStart(2, "0");
+                        const hours = String(selected.getHours()).padStart(2, "0");
+                        const minutes = String(selected.getMinutes()).padStart(2, "0");
+                        const seconds = String(selected.getSeconds()).padStart(2, "0");
+                        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetString}`;
+                    })()
                     : null,
                 stops: form.stops.map((s) => {
                     const stopPayload = {
@@ -812,9 +889,13 @@ export default function EditTask() {
     // ===================== NOT EDITABLE UI =====================
     if (!canEditTask) {
         // Lấy tên tiếng Việt của trạng thái
-        const statusOption = TASK_STATUS_OPTIONS.find(opt => opt.value === initialTaskStatus);
-        const statusVi = statusOption?.valueVi || initialTaskStatus;
-        const pendingStatusVi = TASK_STATUS_OPTIONS.find(opt => opt.value === "pending")?.valueVi || "pending";
+        // Nếu initialTaskStatus rỗng hoặc "unknown", hiển thị "Không xác định"
+        const effectiveStatus = initialTaskStatus && initialTaskStatus.trim() !== "" && initialTaskStatus !== "unknown" 
+            ? initialTaskStatus 
+            : "unknown";
+        const statusOption = TASK_STATUS_OPTIONS.find(opt => opt.value === effectiveStatus);
+        const statusVi = statusOption?.valueVi || (effectiveStatus === "unknown" ? "Không xác định" : effectiveStatus);
+        const pendingStatusVi = TASK_STATUS_OPTIONS.find(opt => opt.value === "pending")?.valueVi || "Đang chờ";
         
         return (
             <div className={styles.page}>
@@ -945,10 +1026,27 @@ export default function EditTask() {
                                             const selectedValue = e.target.value;
                                             const selected = new Date(selectedValue);
                                             const now = new Date();
+                                            const diffMs = selected.getTime() - now.getTime();
+                                            const diffMinutes = diffMs / (1000 * 60);
+                                            const MIN_MINUTES = 2; // Tối thiểu 2 phút
                                             
-                                            // Kiểm tra nếu chọn thời gian quá khứ
-                                            if (selected <= now) {
-                                                showToast("warning", "Thời gian bắt đầu không được là quá khứ. Vui lòng chọn thời gian trong tương lai.");
+                                            // Nếu chọn thời gian quá khứ hoặc quá gần (< 2 phút)
+                                            if (diffMinutes < MIN_MINUTES) {
+                                                // Tự động điều chỉnh thêm 2 phút từ thời điểm hiện tại
+                                                const adjustedTime = new Date(now.getTime() + MIN_MINUTES * 60 * 1000);
+                                                const year = adjustedTime.getFullYear();
+                                                const month = String(adjustedTime.getMonth() + 1).padStart(2, "0");
+                                                const day = String(adjustedTime.getDate()).padStart(2, "0");
+                                                const hours = String(adjustedTime.getHours()).padStart(2, "0");
+                                                const minutes = String(adjustedTime.getMinutes()).padStart(2, "0");
+                                                const adjustedValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+                                                
+                                                showToast("info", `Thời gian bắt đầu phải ít nhất ${MIN_MINUTES} phút trong tương lai. Đã tự động điều chỉnh.`);
+                                                
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    scheduledStartAt: adjustedValue,
+                                                }));
                                                 return;
                                             }
                                             
@@ -956,6 +1054,23 @@ export default function EditTask() {
                                                 ...f,
                                                 scheduledStartAt: selectedValue,
                                             }));
+                                            
+                                            // Thông báo nếu user chọn thời gian mới khác với thời gian ban đầu
+                                            // (để user biết thời gian đếm ngược sẽ được reset)
+                                            if (initialScheduledStartAt) {
+                                                const originalScheduled = new Date(initialScheduledStartAt);
+                                                const timeDiff = Math.abs(selected.getTime() - originalScheduled.getTime());
+                                                
+                                                // Chênh lệch > 1 phút → user đã chọn thời gian mới
+                                                if (timeDiff > 60000) {
+                                                    const diffHours = Math.floor(diffMinutes / 60);
+                                                    const diffMins = Math.floor(diffMinutes % 60);
+                                                    const timeText = diffHours > 0 
+                                                        ? `${diffHours} giờ ${diffMins} phút`
+                                                        : `${diffMins} phút`;
+                                                    showToast("success", `Đã cập nhật thời gian bắt đầu mới (${timeText} nữa). Thời gian đếm ngược sẽ được reset lại sau khi lưu.`);
+                                                }
+                                            }
                                         }}
                                     />
                                 </div>

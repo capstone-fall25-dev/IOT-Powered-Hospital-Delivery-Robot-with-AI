@@ -515,15 +515,22 @@ export default function AddTask() {
 
     // Tất cả validation đã pass → tạo task
     try {
-      // Format local time string (không có timezone) để backend parse như local time
-      // Backend dùng DateTime.Now (local time UTC+7), nên cần gửi local time string
+      // Format datetime với timezone offset để backend parse đúng
+      // Lấy timezone offset (phút), Vietnam là UTC+7 = -420 phút
+      const timezoneOffset = selected.getTimezoneOffset();
+      const offsetHours = Math.floor(Math.abs(timezoneOffset) / 60);
+      const offsetMinutes = Math.abs(timezoneOffset) % 60;
+      const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+      const offsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+      
+      // Format datetime với timezone offset
       const year = selected.getFullYear();
       const month = String(selected.getMonth() + 1).padStart(2, "0");
       const day = String(selected.getDate()).padStart(2, "0");
       const hours = String(selected.getHours()).padStart(2, "0");
       const minutes = String(selected.getMinutes()).padStart(2, "0");
       const seconds = String(selected.getSeconds()).padStart(2, "0");
-      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetString}`;
       
       const payload = {
         mapId: Number(form.mapId),

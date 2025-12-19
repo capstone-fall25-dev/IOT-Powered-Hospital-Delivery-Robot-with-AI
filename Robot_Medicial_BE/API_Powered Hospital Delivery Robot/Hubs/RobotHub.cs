@@ -84,7 +84,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             var robot = await _db.Robots.FirstOrDefaultAsync(r => r.Code == robotCode);
             if (robot == null) return;
 
-            robot.LastHeartbeatAt = DateTime.UtcNow;
+            robot.LastHeartbeatAt = DateTime.Now;
             await _db.SaveChangesAsync();
         }
     }

@@ -74,20 +74,31 @@ const Header = () => {
     }
 
     return (
-        <Navbar
-            expand="lg"
-            className="shadow-sm fixed-top"
-            style={{
-                background: "linear-gradient(135deg, #0d9488 0%, #0891b2 100%)",
-            }}
-        >
-            <Container fluid>
+        <>
+            <style>{`
+                @media (max-width: 768px) {
+                    .navbar-nav .nav-link {
+                        font-size: 14px !important;
+                    }
+                }
+            `}</style>
+            <Navbar
+                expand="lg"
+                className="shadow-sm fixed-top"
+                style={{
+                    background: "linear-gradient(135deg, #0d9488 0%, #0891b2 100%)",
+                    zIndex: 1000,
+                }}
+            >
+            <Container fluid className="px-3 px-md-4">
                 <Navbar.Brand
+                    onClick={() => navigate("/dashboard")}
                     style={{
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        color: "white"
+                        color: "white",
+                        flex: "0 0 auto"
                     }}
                 >
                     <img
@@ -103,7 +114,7 @@ const Header = () => {
                             padding: "4px"
                         }}
                     />
-                    <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ display: "flex", flexDirection: "column" }} className="d-none d-md-flex">
                         <span className="fw-bold" style={{ fontSize: "18px" }}>
                             Robot Y Tế Thông Minh
                         </span>
@@ -111,25 +122,30 @@ const Header = () => {
                             Giải pháp vận chuyển tự động
                         </span>
                     </div>
+                    <div className="d-md-none fw-bold" style={{ fontSize: "16px" }}>
+                        Robot Y Tế
+                    </div>
                 </Navbar.Brand>
 
                 <Navbar.Toggle
                     aria-controls="basic-navbar-nav"
                     style={{
                         backgroundColor: "white",
-                        border: "none"
+                        border: "none",
+                        padding: "6px 10px"
                     }}
                 />
 
                 <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="ms-auto d-flex align-items-center gap-3">
+                    <Nav className="ms-auto d-flex align-items-center gap-2 gap-md-3 flex-wrap">
                         <Nav.Link
                             onClick={() => handleNavigate("")}
                             style={{
                                 color: "white",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
-                                transition: "all 0.3s"
+                                transition: "all 0.3s",
+                                fontSize: "16px"
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.backgroundColor =
@@ -139,8 +155,8 @@ const Header = () => {
                                 e.currentTarget.style.backgroundColor = "transparent";
                             }}
                         >
-                            <i className="bi bi-house-door me-2"></i>
-                            Trang chủ
+                            <i className="bi bi-house-door me-1 me-md-2"></i>
+                            <span>Trang chủ</span>
                         </Nav.Link>
 
                         <Nav.Link
@@ -152,7 +168,8 @@ const Header = () => {
                                 borderBottom: isActive("/dashboard") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
-                                transition: "all 0.3s"
+                                transition: "all 0.3s",
+                                fontSize: "16px"
                             }}
                             onMouseEnter={(e) => {
                                 if (!isActive("/dashboard")) {
@@ -163,8 +180,8 @@ const Header = () => {
                                 e.currentTarget.style.backgroundColor = "transparent";
                             }}
                         >
-                            <i className="bi bi-clipboard-check me-2"></i>
-                            Nhiệm vụ
+                            <i className="bi bi-clipboard-check me-1 me-md-2"></i>
+                            <span>Nhiệm vụ</span>
                         </Nav.Link>
 
                         <Nav.Link
@@ -176,7 +193,8 @@ const Header = () => {
                                 borderBottom: isActive("/team") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
-                                transition: "all 0.3s"
+                                transition: "all 0.3s",
+                                fontSize: "16px"
                             }}
                             onMouseEnter={(e) => {
                                 if (!isActive("/team")) {
@@ -187,8 +205,8 @@ const Header = () => {
                                 e.currentTarget.style.backgroundColor = "transparent";
                             }}
                         >
-                            <i className="bi bi-cpu me-2"></i>
-                            Robot
+                            <i className="bi bi-cpu me-1 me-md-2"></i>
+                            <span>Robot</span>
                         </Nav.Link>
                         {/* ⭐ NÚT ĐIỂM ĐẾN MỚI THÊM Ở ĐÂY ⭐ */}
                         <Nav.Link
@@ -200,7 +218,8 @@ const Header = () => {
                                 borderBottom: isActive("/destinationlist") ? "2px solid white" : "none",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
-                                transition: "all 0.3s"
+                                transition: "all 0.3s",
+                                fontSize: "16px"
                             }}
                             onMouseEnter={(e) => {
                                 if (!isActive("/destinationlist")) {
@@ -212,8 +231,8 @@ const Header = () => {
                                 e.currentTarget.style.backgroundColor = "transparent";
                             }}
                         >
-                            <i className="bi bi-geo-alt-fill me-2"></i>
-                            Điểm đến
+                            <i className="bi bi-geo-alt-fill me-1 me-md-2"></i>
+                            <span>Điểm đến</span>
                         </Nav.Link>
 
                         <Dropdown
@@ -252,7 +271,7 @@ const Header = () => {
                                     }}
                                 />
                                 <div
-                                    className="d-none d-lg-block text-start"
+                                    className="d-none d-md-block text-start"
                                     style={{ color: "white" }}
                                 >
                                     <div style={{ fontSize: "13px", fontWeight: "600" }}>
@@ -376,6 +395,7 @@ const Header = () => {
                 </Navbar.Collapse>
             </Container>
         </Navbar>
+        </>
     );
 };
 

@@ -83,13 +83,23 @@ export default function TaskHistoryPage() {
             canceled: "secondary",
             in_progress: "primary",
             awaiting_handover: "warning",
+            pending: "info",
+            returning: "info",
+            returning_to_station: "info",
+            at_station: "secondary",
+            transporting: "primary",
         };
         const textMap = {
             completed: "Hoàn thành",
             failed: "Thất bại",
-            canceled: "Hủy",
+            canceled: "Đã hủy",
             in_progress: "Đang chạy",
             awaiting_handover: "Chờ bàn giao",
+            pending: "Đang chờ",
+            returning: "Đang quay về",
+            returning_to_station: "Đang quay về trạm",
+            at_station: "Tại trạm",
+            transporting: "Đang vận chuyển",
         };
 
         const cls = map[s] || "secondary";

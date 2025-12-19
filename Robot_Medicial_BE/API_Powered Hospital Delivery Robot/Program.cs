@@ -22,8 +22,11 @@ builder.Services.AddControllers()
         // Cấu hình DateTime serialization: trả về local time (giờ Việt Nam UTC+7) thay vì UTC
         // Điều này đảm bảo frontend nhận đúng giờ đã lưu trong database
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        // DateTime sẽ được serialize theo format ISO 8601 với local time (không có Z)
-        // Frontend sẽ parse đúng như local time
+        // Custom DateTime converter để xử lý timezone đúng cách
+        options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new DateTimeNonNullableConverter());
+        // DateTime sẽ được serialize theo format ISO 8601 với local time và timezone offset +07:00
+        // Frontend sẽ parse đúng như local time (Vietnam UTC+7)
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
