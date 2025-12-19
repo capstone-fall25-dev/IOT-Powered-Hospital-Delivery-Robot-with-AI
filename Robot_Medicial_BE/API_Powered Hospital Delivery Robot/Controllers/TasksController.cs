@@ -1,6 +1,7 @@
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Controllers
 {
@@ -224,8 +225,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// </summary>
         private ulong GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            return ulong.TryParse(userIdClaim, out var id) ? id : 1;
+            var userIdClaim = User.FindFirst(claim =>
+                claim.Type == ClaimTypes.NameIdentifier ||
+                claim.Type == "userId" ||
+                claim.Type == "sub" ||
+                claim.Type == "id");
+
+            if (userIdClaim == null || !ulong.TryParse(userIdClaim.Value, out ulong userId))
+                return 1;
+
+            return userId;
         }
     }
 }

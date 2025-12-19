@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
 {
@@ -8,11 +9,27 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
     public class UserStatusHub : Hub
     {
         /// <summary>
+        /// Lấy userId từ claims
+        /// </summary>
+        private string? GetUserId()
+        {
+            var userIdClaim = Context.User?.FindFirst(claim =>
+                claim.Type == ClaimTypes.NameIdentifier ||
+                claim.Type == "userId" ||
+                claim.Type == "sub" ||
+                claim.Type == "id");
+
+            return userIdClaim?.Value;
+        }
+
+        /// <summary>
         /// Khi nhân viên kết nối
         /// </summary>
         public override async Task OnConnectedAsync()
         {
-            await Clients.All.SendAsync("UserOnline", Context.User?.FindFirst("userId")?.Value);
+            var userId = GetUserId();
+            if (!string.IsNullOrEmpty(userId))
+                await Clients.All.SendAsync("UserOnline", userId);
         }
 
         /// <summary>
@@ -20,7 +37,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         /// </summary>
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var userId = Context.User?.FindFirst("userId")?.Value;
+            var userId = GetUserId();
             if (!string.IsNullOrEmpty(userId))
                 await Clients.All.SendAsync("UserOffline", userId);
 
