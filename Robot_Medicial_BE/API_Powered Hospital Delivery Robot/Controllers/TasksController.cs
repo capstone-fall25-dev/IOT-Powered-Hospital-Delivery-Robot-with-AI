@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -207,6 +207,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Kiểm tra robot có task pending không
+        /// </summary>
+        [HttpGet("check-robot-pending/{robotId}")]
+        public async Task<ActionResult<bool>> CheckRobotPendingTask(ulong robotId)
+        {
+            var hasPending = await _service.HasRobotPendingTaskAsync(robotId);
+            return Ok(hasPending);
         }
 
         /// <summary>

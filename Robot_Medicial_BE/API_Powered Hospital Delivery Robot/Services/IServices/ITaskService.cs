@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 
 namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 {
@@ -39,5 +39,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
 
         // Hủy nhiệm vụ (giải phóng compartments, đưa robot về trạm, lưu vào DB)
         Task<TaskResponseDto?> CancelTaskAsync(ulong taskId, string? reason = null);
+
+        // Kiểm tra robot có task pending không
+        Task<bool> HasRobotPendingTaskAsync(ulong robotId);
     }
 }

@@ -78,3 +78,9 @@ export const cancelTask = (taskId, reason = null) =>
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+
+/**
+ * Kiểm tra robot có task pending không
+ */
+export const checkRobotPendingTask = (robotId) =>
+  apiFetch(`/tasks/check-robot-pending/${robotId}`);

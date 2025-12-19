@@ -1,7 +1,7 @@
 // src/pages/AddTask.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTask } from "@/services/taskService";
+import { createTask, checkRobotPendingTask } from "@/services/taskService";
 import { getAllMaps } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import { getDestinationsByMap } from "@/services/destinationService";
@@ -259,6 +259,7 @@ export default function AddTask() {
   // ============================================================
   // ROBOT SELECTION
   //  - Reset stops
+  //  - Kiểm tra robot có task pending không
   //  - Load danh sách ngăn khoang base cho robot
   // ============================================================
   async function handleSelectRobot(robotId) {
@@ -274,11 +275,40 @@ export default function AddTask() {
     }
 
     try {
+      // Kiểm tra robot có task pending không
+      const hasPending = await checkRobotPendingTask(robotId);
+      if (hasPending) {
+        // Tìm tên robot để hiển thị trong thông báo
+        const selectedRobot = robots.find(r => r.id === Number(robotId));
+        const robotName = selectedRobot ? `${selectedRobot.name} (${selectedRobot.code})` : `Robot ID ${robotId}`;
+        
+        showToast("error", 
+          `Robot ${robotName} đã được assign cho một nhiệm vụ khác đang ở trạng thái pending. ` +
+          "Vui lòng chọn robot khác hoặc đợi nhiệm vụ hiện tại hoàn thành/hủy."
+        );
+        
+        // Reset robot selection
+        setForm((f) => ({
+          ...f,
+          robotId: "",
+        }));
+        setBaseCompartments([]);
+        return;
+      }
+
+      // Nếu robot không có task pending, load compartments
       const data = await getUnlockedCompartments(robotId);
       setBaseCompartments(data || []);
     } catch (err) {
-      console.error("Lỗi tải ngăn chứa mở khóa:", err);
+      console.error("Lỗi khi chọn robot:", err);
       showToast("error", err.message);
+      
+      // Reset robot selection nếu có lỗi
+      setForm((f) => ({
+        ...f,
+        robotId: "",
+      }));
+      setBaseCompartments([]);
     }
   }
 

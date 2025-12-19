@@ -117,7 +117,7 @@ export default function ForgotPassword() {
                                     href="#"
                                     onClick={handleBackToLogin}
                                 >
-                                    <i className="bi bi-arrow-left"></i>
+                                    <i className="bi bi-arrow-left me-1"></i>
                                     Quay lại đăng nhập
                                 </a>
                             </div>
@@ -169,10 +169,15 @@ export default function ForgotPassword() {
 
                             <div className="text-center mt-3">
                                 <button
-                                    className={styles.backLink}
-                                    onClick={() => setDone(false)}
+                                    type="button"
+                                    className={styles.btnSecondary}
+                                    onClick={() => {
+                                        setDone(false);
+                                        setOtp("");
+                                        setError("");
+                                    }}
                                 >
-                                    <i className="bi bi-arrow-repeat"></i>
+                                    <i className="bi bi-arrow-repeat me-1"></i>
                                     Gửi email khác
                                 </button>
                             </div>

@@ -108,6 +108,7 @@ export default function RobotTaskDashboard() {
         startedAt: t.startedAt ? new Date(t.startedAt).toISOString() : null,
         scheduledStartAtRaw: t.scheduledStartAt,
         completedAt: t.completedAt,
+        updatedAt: t.updatedAt, // Thời điểm cập nhật cuối cùng (để biết khi nào task bị hủy)
         totalStops: t.totalStops || 0,
         completedStops: t.completedStops || 0,
         firstDestination: t.firstDestination || "—",
@@ -274,6 +275,7 @@ export default function RobotTaskDashboard() {
             startedAt: t.startedAt,  
             scheduledStartAtRaw: t.scheduledStartAt,
             completedAt: t.completedAt,
+            updatedAt: t.updatedAt, // Thời điểm cập nhật cuối cùng (để biết khi nào task bị hủy)
             totalStops: t.totalStops,
             completedStops: t.completedStops || 0, // Số stops đã delivered
             firstDestination: t.firstDestination || "—",
@@ -340,17 +342,27 @@ export default function RobotTaskDashboard() {
 
     // ❗ Nếu task bị hủy (canceled) → kiểm tra xem có phải do quá giờ không
     if (task.statusRaw === "canceled") {
-      // Nếu hủy TRƯỚC scheduledStartAt → hủy có chủ đích, không hiển thị "Quá giờ"
-      if (now < scheduled) {
-        return { text: null, className: "", note: null };
+      // Nếu có updatedAt (thời điểm hủy), so sánh với scheduledStartAt + 10 phút
+      if (task.updatedAt && scheduled) {
+        const canceledAt = new Date(task.updatedAt);
+        const overdueThreshold = new Date(scheduled.getTime() + BUFFER_MINUTES * 60000);
+        
+        // Nếu hủy TRƯỚC scheduledStartAt + 10 phút → hủy thủ công → không hiển thị "Quá giờ"
+        if (canceledAt < overdueThreshold) {
+          return { text: null, className: "", note: null };
+        }
+        // Nếu hủy SAU scheduledStartAt + 10 phút → hủy tự động do quá giờ → hiển thị "Quá giờ"
+        return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
       }
-      // Nếu hủy SAU scheduledStartAt + 10 phút → hủy do quá giờ, hiển thị "Quá giờ"
+      
+      // Fallback: Nếu không có updatedAt, kiểm tra thời gian hiện tại
+      // Nếu hiện tại đã quá scheduledStartAt + 10 phút → có thể là hủy tự động
       const diffMs = scheduled.getTime() - now.getTime();
       const overdueMin = Math.floor(Math.abs(diffMs) / 60000);
       if (overdueMin >= BUFFER_MINUTES) {
         return { text: "Quá giờ", className: styles.countdownOverdue, note: null };
       }
-      // Nếu hủy trong khoảng 0-10 phút sau scheduledStartAt → không hiển thị
+      // Nếu chưa quá giờ → hủy thủ công
       return { text: null, className: "", note: null };
     }
 
