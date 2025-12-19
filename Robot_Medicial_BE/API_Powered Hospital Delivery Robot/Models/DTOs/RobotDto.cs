@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
@@ -142,6 +142,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     /// </summary>
     public class UpdateCompartmentDto
     {
+        public ulong? Id { get; set; } // ID của compartment (null nếu là compartment mới)
         public ulong CategoryId { get; set; }
         public bool IsLocked { get; set; } = false;
     }

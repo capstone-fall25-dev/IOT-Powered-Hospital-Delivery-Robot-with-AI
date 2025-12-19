@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
 namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 {
@@ -12,6 +12,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 
         // Cập nhật trạng thái của ngăn chứa (ví dụ: Locked, Available...)
         Task<RobotCompartment?> UpdateStatusAsync(ulong id, string status);
+
+        // Cập nhật thông tin ngăn chứa
+        Task<RobotCompartment?> UpdateAsync(ulong id, RobotCompartment compartment);
 
         // Lấy các ngăn chứa theo danh mục và robot
         Task<IEnumerable<RobotCompartment>> GetByCategoryAndRobotAsync(ulong categoryId, ulong robotId);
@@ -33,5 +36,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
 
         // Xóa tất cả ngăn chứa của một robot (khi xóa robot)
         System.Threading.Tasks.Task DeleteByRobotIdAsync(ulong robotId);
+
+        // Xóa một ngăn chứa theo ID
+        System.Threading.Tasks.Task<bool> DeleteAsync(ulong id);
     }
 }

@@ -40,6 +40,7 @@ export default function RobotEdit() {
           code: robotRes.code || "",
           mapId: robotRes.mapId || "",
           compartments: (robotRes.compartments || []).map((c) => ({
+            id: c.id, // Lưu ID để giữ nguyên khi update
             categoryId: c.categoryId != null ? c.categoryId.toString() : "",
             isLocked: false, // backend không trả về isLocked → mặc định false
           })),
@@ -75,7 +76,7 @@ export default function RobotEdit() {
   const addCompartment = () => {
     setForm((prev) => ({
       ...prev,
-      compartments: [...prev.compartments, { categoryId: "" }],
+      compartments: [...prev.compartments, { id: null, categoryId: "" }],
     }));
   };
 
@@ -105,6 +106,7 @@ export default function RobotEdit() {
       name: form.name.trim(),
       mapId: form.mapId ? Number(form.mapId) : null,
       compartments: form.compartments.map((c) => ({
+        id: c.id || null, // Gửi ID nếu có (null nếu là compartment mới)
         categoryId: Number(c.categoryId),
         isLocked: c.isLocked || false,
       })),

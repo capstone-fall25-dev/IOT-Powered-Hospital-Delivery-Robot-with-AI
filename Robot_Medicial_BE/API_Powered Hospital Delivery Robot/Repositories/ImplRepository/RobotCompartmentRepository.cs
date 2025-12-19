@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +45,26 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             compartment.Status = status;
             await _context.SaveChangesAsync();
             return compartment;
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin ngăn chứa
+        /// </summary>
+        public async Task<RobotCompartment?> UpdateAsync(ulong id, RobotCompartment compartment)
+        {
+            var existing = await _context.RobotCompartments.FindAsync(id);
+            if (existing == null)
+                return null;
+
+            existing.CategoryId = compartment.CategoryId;
+            existing.Status = compartment.Status;
+            existing.IsActive = compartment.IsActive;
+            // Giữ nguyên CompartmentCode và RobotId
+            // existing.CompartmentCode = compartment.CompartmentCode; // Không đổi code
+            // existing.RobotId = compartment.RobotId; // Không đổi robot
+
+            await _context.SaveChangesAsync();
+            return existing;
         }
 
         /// <summary>
@@ -182,6 +202,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 _context.RobotCompartments.RemoveRange(compartments);
                 await _context.SaveChangesAsync();
             }
+        }
+
+        /// <summary>
+        /// Xóa một ngăn chứa theo ID
+        /// </summary>
+        public async System.Threading.Tasks.Task<bool> DeleteAsync(ulong id)
+        {
+            var compartment = await _context.RobotCompartments.FindAsync(id);
+            if (compartment == null)
+                return false;
+
+            _context.RobotCompartments.Remove(compartment);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }
