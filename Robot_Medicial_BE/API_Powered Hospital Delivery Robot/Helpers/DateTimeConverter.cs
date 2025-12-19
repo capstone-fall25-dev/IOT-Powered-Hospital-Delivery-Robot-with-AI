@@ -23,9 +23,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 // Thử parse với timezone offset trước
                 if (DateTimeOffset.TryParse(dateString, out var dateTimeOffset))
                 {
-                    // Lấy DateTime từ DateTimeOffset (đã là local time theo timezone offset)
-                    // Ví dụ: "2024-12-19T09:55:00+07:00" -> DateTime sẽ là 09:55 (local time)
-                    return dateTimeOffset.DateTime;
+                    // Frontend gửi datetime với timezone offset (ví dụ: "2024-12-19T11:03:00+07:00")
+                    // DateTimeOffset đã parse đúng timezone, nhưng .DateTime sẽ trả về theo server timezone
+                    // Để đảm bảo lưu đúng Vietnam time, ta lấy UTC time và convert sang Vietnam time
+                    var utcDateTime = dateTimeOffset.UtcDateTime;
+                    return DateTimeHelper.FromUtc(utcDateTime);
                 }
 
                 // Nếu không có timezone offset, parse như local time
@@ -91,9 +93,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 // Thử parse với timezone offset trước
                 if (DateTimeOffset.TryParse(dateString, out var dateTimeOffset))
                 {
-                    // Lấy DateTime từ DateTimeOffset (đã là local time theo timezone offset)
-                    // Ví dụ: "2024-12-19T09:55:00+07:00" -> DateTime sẽ là 09:55 (local time)
-                    return dateTimeOffset.DateTime;
+                    // Frontend gửi datetime với timezone offset (ví dụ: "2024-12-19T11:03:00+07:00")
+                    // DateTimeOffset đã parse đúng timezone, nhưng .DateTime sẽ trả về theo server timezone
+                    // Để đảm bảo lưu đúng Vietnam time, ta lấy UTC time và convert sang Vietnam time
+                    var utcDateTime = dateTimeOffset.UtcDateTime;
+                    return DateTimeHelper.FromUtc(utcDateTime);
                 }
 
                 // Nếu không có timezone offset, parse như local time
