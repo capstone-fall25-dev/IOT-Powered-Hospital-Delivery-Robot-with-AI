@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
-import { updateStopStatus } from "@/services/taskService";
+import { updateStopStatus, updateTask, getTaskById } from "@/services/taskService";
 import { getAllRooms } from "@/services/roomService";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
@@ -79,12 +79,23 @@ export default function RunTask() {
     const [selectedStop, setSelectedStop] = useState(null);
     const [selectedMapName, setSelectedMapName] = useState("");
     const [rooms, setRooms] = useState([]); // Danh sách rooms trên bản đồ
+    
+    // Task status check
+    const [taskStatus, setTaskStatus] = useState(null); // Status của task để kiểm tra
+    const [loadingTaskStatus, setLoadingTaskStatus] = useState(true); // Loading state để check status
 
     // Trạng thái điểm dừng đang chọn (để cập nhật status)
     const [selectedStopStatus, setSelectedStopStatus] = useState("");
 
     // Modal xác nhận hoàn thành task
     const [showCompleteModal, setShowCompleteModal] = useState(false);
+    
+    // Modal xác nhận hủy/thất bại task
+    const [confirmTaskStatusModal, setConfirmTaskStatusModal] = useState({
+        show: false,
+        type: null, // "canceled" hoặc "failed"
+        loading: false,
+    });
 
     // Tiến độ nhiệm vụ robot
     const [navProgress, setNavProgress] = useState({
@@ -128,11 +139,24 @@ export default function RunTask() {
     const robotGainNodeRef = useRef(null);
 
     // ===================================
-    // LOAD TASK INFO
+    // LOAD TASK INFO & CHECK STATUS
     // ===================================
     useEffect(() => {
         async function loadTask() {
             try {
+                // Kiểm tra task status trước
+                const taskDetail = await getTaskById(taskId);
+                const currentStatus = taskDetail?.status?.toLowerCase()?.trim() || "";
+                setTaskStatus(currentStatus);
+                
+                // Các status không cho phép vào run task
+                const blockedStatuses = ["canceled", "failed", "completed"];
+                if (blockedStatuses.includes(currentStatus)) {
+                    setLoadingTaskStatus(false);
+                    return; // Không load tiếp, sẽ hiển thị UI chặn
+                }
+                
+                // Nếu status hợp lệ, tiếp tục load task info
                 const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
                 const data = await res.json();
                 setTaskInfo(data);
@@ -160,10 +184,13 @@ export default function RunTask() {
                     setSelectedStopStatus(first.assignmentStatus || "");
                     loadNavigationMap(data.mapId, data.stops, first, filteredRooms);
                 }
+                
+                setLoadingTaskStatus(false);
             } catch (err) {
                 console.error("Lỗi load task:", err);
                 setStatus("Không tải được nhiệm vụ");
                 showToast("error", err.message || "Không thể tải thông tin nhiệm vụ!");
+                setLoadingTaskStatus(false);
             }
         }
         loadTask();
@@ -1015,6 +1042,19 @@ async function sendEmergencyStop() {
             if (updated.assignmentStatus !== "delivered") {
                 setSelectedStop(updated);
                 setSelectedStopStatus(updated.assignmentStatus || "");
+                
+                // Kiểm tra nếu tất cả stops đều "skipped" hoặc "failed" → hiển thị modal xác nhận
+                const allSkipped = data.stops && data.stops.length > 0 && 
+                    data.stops.every(s => s.assignmentStatus?.toLowerCase() === "skipped");
+                const allFailed = data.stops && data.stops.length > 0 && 
+                    data.stops.every(s => s.assignmentStatus?.toLowerCase() === "failed");
+                
+                if (allSkipped) {
+                    setConfirmTaskStatusModal({ show: true, type: "canceled", loading: false });
+                } else if (allFailed) {
+                    setConfirmTaskStatusModal({ show: true, type: "failed", loading: false });
+                }
+                
                 return;
             }
 
@@ -1080,6 +1120,31 @@ async function sendEmergencyStop() {
         } catch (err) {
             console.error("Lỗi hoàn thành nhiệm vụ:", err);
             showToast("error", err.message || "Không thể hoàn thành nhiệm vụ!");
+        }
+    }
+
+    // Xác nhận hủy/thất bại task
+    async function handleConfirmTaskStatus() {
+        if (!confirmTaskStatusModal.type) return;
+
+        setConfirmTaskStatusModal(prev => ({ ...prev, loading: true }));
+
+        try {
+            await updateTask(taskId, {
+                status: confirmTaskStatusModal.type,
+            });
+
+            showToast("success", `Nhiệm vụ đã được đánh dấu là ${confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"}!`);
+            setConfirmTaskStatusModal({ show: false, type: null, loading: false });
+            
+            // Navigate về trang list task sau 1 giây
+            setTimeout(() => {
+                navigate("/dashboard");
+            }, 1000);
+        } catch (err) {
+            console.error("Lỗi cập nhật trạng thái nhiệm vụ:", err);
+            showToast("error", err.message || "Không thể cập nhật trạng thái nhiệm vụ!");
+            setConfirmTaskStatusModal(prev => ({ ...prev, loading: false }));
         }
     }
 
@@ -1385,8 +1450,69 @@ async function sendEmergencyStop() {
   }, []);
 
     // ===================================
+    // STATUS MAPPING (Tiếng Việt) cho UI chặn
+    // ===================================
+    const taskStatusMap = {
+        pending: "Đang chờ",
+        in_progress: "Đang thực hiện",
+        awaiting_handover: "Chờ bàn giao",
+        returning: "Đang quay về",
+        at_station: "Đang ở trạm",
+        completed: "Hoàn tất",
+        failed: "Thất bại",
+        canceled: "Hủy bỏ",
+    };
+
+    // ===================================
     // RENDER
     // ===================================
+    // Loading state
+    if (loadingTaskStatus) {
+        return (
+            <div className={styles.page}>
+                <div className="p-4 text-center">
+                    <div className="spinner-border text-primary mb-3"></div>
+                    <p className="text-muted">Đang kiểm tra trạng thái nhiệm vụ...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Chặn truy cập nếu task đã hủy, thất bại hoặc hoàn thành
+    const blockedStatuses = ["canceled", "failed", "completed"];
+    if (taskStatus && blockedStatuses.includes(taskStatus)) {
+        const statusVi = taskStatusMap[taskStatus] || taskStatus;
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className="row justify-content-center">
+                        <div className="col-lg-11 col-xl-10">
+                            <div className={`${styles.glass} p-5 text-center`}>
+                                <div className="mb-4">
+                                    <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: "4rem" }}></i>
+                                </div>
+                                <h4 className="mb-3">Không thể vào trang chạy nhiệm vụ</h4>
+                                <p className="text-muted mb-4">
+                                    Nhiệm vụ đang ở trạng thái <strong>"{statusVi}"</strong>.
+                                    <br />
+                                    Chỉ có thể vào trang chạy nhiệm vụ khi trạng thái là <strong>"Đang chờ"</strong>, <strong>"Đang thực hiện"</strong>, <strong>"Chờ bàn giao"</strong>, <strong>"Đang quay về"</strong> hoặc <strong>"Đang ở trạm"</strong>.
+                                </p>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => navigate(`/dashboard`)}
+                                    style={{ borderRadius: "5px" }}
+                                >
+                                    <i className="bi bi-arrow-left me-2"></i>
+                                    Quay lại danh sách nhiệm vụ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!taskInfo || stops.length === 0) {
         return (
             <div className={styles.page}>
@@ -1855,6 +1981,7 @@ async function sendEmergencyStop() {
               overflowY: "auto",
               padding: "2rem",
               borderRadius: "10px",
+              background: "white"
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1999,6 +2126,86 @@ async function sendEmergencyStop() {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN HỦY/THẤT BẠI NHIỆM VỤ */}
+      {confirmTaskStatusModal.show && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setConfirmTaskStatusModal({ show: false, type: null, loading: false })}
+        >
+          <div
+            className={styles.glass}
+            style={{
+              width: "90%",
+              maxWidth: "500px",
+              padding: "2rem",
+              borderRadius: "10px",
+              background: "white"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-4">
+              <h4 style={{ margin: 0, color: confirmTaskStatusModal.type === "canceled" ? "#dc3545" : "#fd7e14" }}>
+                <i className={`bi bi-${confirmTaskStatusModal.type === "canceled" ? "x-circle" : "exclamation-triangle"}-fill me-2`}></i>
+                Xác nhận {confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"} nhiệm vụ
+              </h4>
+              <button
+                className="btn-close"
+                onClick={() => setConfirmTaskStatusModal({ show: false, type: null, loading: false })}
+                aria-label="Close"
+                disabled={confirmTaskStatusModal.loading}
+              ></button>
+            </div>
+
+            <div className="alert alert-warning mb-4">
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              <strong>Lưu ý:</strong> Tất cả điểm dừng đều là <strong>{confirmTaskStatusModal.type === "canceled" ? "Bỏ qua" : "Thất bại"}</strong>.
+              <br />
+              Bạn có chắc muốn đánh dấu nhiệm vụ này là <strong>{confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"}</strong>?
+            </div>
+
+            <div className="d-flex gap-2 justify-content-end">
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => setConfirmTaskStatusModal({ show: false, type: null, loading: false })}
+                disabled={confirmTaskStatusModal.loading}
+                style={{ borderRadius: "5px" }}
+              >
+                Hủy
+              </button>
+              <button
+                className={`btn ${confirmTaskStatusModal.type === "canceled" ? "btn-danger" : "btn-warning"}`}
+                onClick={handleConfirmTaskStatus}
+                disabled={confirmTaskStatusModal.loading}
+                style={{ borderRadius: "5px" }}
+              >
+                {confirmTaskStatusModal.loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <i className={`bi bi-${confirmTaskStatusModal.type === "canceled" ? "x-circle" : "exclamation-triangle"}-fill me-1`}></i>
+                    Xác nhận {confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
