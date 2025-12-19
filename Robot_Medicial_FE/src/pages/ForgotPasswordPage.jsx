@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "@/assets/styles/forgotPassword.module.css";
-import { requestForgotPassword } from "@/services/authService";
+import { requestForgotPassword, verifyForgotPassword } from "@/services/authService";
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
@@ -27,7 +27,7 @@ export default function ForgotPassword() {
         try {
             setSending(true);
             await requestForgotPassword(email);
-            setDone(true);      // chuyển sang bước OTP
+            setDone(true);
         } catch (err) {
             setError(err.message || "Gửi email thất bại");
         } finally {
@@ -35,17 +35,38 @@ export default function ForgotPassword() {
         }
     }
 
-    function onSubmitOtp(e) {
+    async function onSubmitOtp(e) {
         e.preventDefault();
+        setError("");
+
         if (!otp) {
             setError("Vui lòng nhập OTP");
             return;
         }
-        // Navigate sang trang reset password để verify
-        navigate("/forgot-password-change", {
-            state: { email, otp },
-        });
+
+        try {
+            setSending(true);
+            const res = await verifyForgotPassword({
+                email,
+                otp,
+            });
+            const token = res?.token;
+
+            if (!token) {
+                throw new Error("Không nhận được token xác thực");
+            }
+            navigate("/forgot-password-change", {
+                state: {
+                    token
+                },
+            });
+        } catch (err) {
+            setError(err.message || "OTP không hợp lệ");
+        } finally {
+            setSending(false);
+        }
     }
+
 
     function masked(em) {
         if (!em.includes("@")) return em;

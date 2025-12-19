@@ -77,8 +77,15 @@ export async function requestForgotPassword(email) {
 
 // Step 2 — verify OTP + mật khẩu mới
 export async function verifyForgotPassword({ email, otp, newPassword }) {
-  return apiFetch("/auth/verify-forgot-password", {
+  return apiFetch("/auth/verify-otp-forgotPassword", {
     method: "POST",
     body: JSON.stringify({ email, otp, newPassword }),
+  });
+}
+
+export async function resetPassword(payload) {
+  return apiFetch("/auth/reset-password-byForgot", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

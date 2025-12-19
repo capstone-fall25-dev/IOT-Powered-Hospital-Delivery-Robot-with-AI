@@ -1,23 +1,22 @@
 // src/pages/ForgotPasswordChangePage.jsx
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { verifyForgotPassword } from "@/services/authService";
+import { resetPassword } from "@/services/authService";
 import styles from "@/assets/styles/changePassword.module.css";
 
 export default function ForgotPasswordChangePage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Nhận email + otp từ trang OTP
-    const email = location.state?.email;
-    const otp = location.state?.otp;
+    const token = location.state?.token;
+
 
     // Nếu user vào thẳng trang => văng ra forgot
     useEffect(() => {
-        if (!email || !otp) {
+        if (!token) {
             navigate("/forgot-password");
         }
-    }, [email, otp]);
+    }, [token]);
 
     const [pwd, setPwd] = useState("");
     const [pwd2, setPwd2] = useState("");
@@ -77,9 +76,8 @@ export default function ForgotPasswordChangePage() {
         try {
             setSubmitting(true);
 
-            await verifyForgotPassword({
-                email,
-                otp,
+            await resetPassword({
+                token,
                 newPassword: pwd,
             });
 
