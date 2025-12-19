@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using Microsoft.AspNetCore.SignalR;
 
 namespace API_Powered_Hospital_Delivery_Robot.Hubs
@@ -41,7 +42,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         public async Task BroadcastCameraFrame(object frame)
         {
             await Clients.All.SendAsync("ReceiveCameraFrame", frame);
-            Console.WriteLine($"🎞️ [Broadcast] Đã phát 1 frame camera → {Clients.All} lúc {DateTime.Now:HH:mm:ss.fff}");
+            Console.WriteLine($"🎞️ [Broadcast] Đã phát 1 frame camera → {Clients.All} lúc {DateTimeHelper.Now():HH:mm:ss.fff}");
         }
     }
 }

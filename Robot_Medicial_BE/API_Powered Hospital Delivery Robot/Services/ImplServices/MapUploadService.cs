@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -55,7 +56,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
             else
             {
-                incoming.CreatedAt = DateTime.Now;
+                incoming.CreatedAt = DateTimeHelper.Now();
                 var created = await _repository.UploadAsync(incoming);
                 return _mapper.Map<MapResponseDto>(created);
             }
@@ -114,7 +115,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
             else
             {
-                incoming.CreatedAt = DateTime.Now;
+                incoming.CreatedAt = DateTimeHelper.Now();
                 var created = await _repository.UploadAsync(incoming);
 
                 var reloaded = await _repository.GetByIdAsync(created.Id);

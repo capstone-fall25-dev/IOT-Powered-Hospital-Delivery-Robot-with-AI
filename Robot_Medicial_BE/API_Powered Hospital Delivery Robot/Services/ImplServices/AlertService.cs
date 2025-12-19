@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Hubs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -46,7 +47,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<AlertResponseDto> CreateAsync(AlertDto alertDto)
         {
             var alert = _mapper.Map<Alert>(alertDto);
-            alert.CreatedAt = DateTime.Now;
+            alert.CreatedAt = DateTimeHelper.Now();
             var created = await _repository.CreateAsync(alert);
             var response = _mapper.Map<AlertResponseDto>(created);
 
@@ -60,7 +61,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 TaskId = null, // AlertDto không có TaskId
                 LogType = logType,
                 Message = $"Cảnh báo mới: {alertDto.Message} (Mức độ: {alertDto.Severity}, Loại: {alertDto.Category})",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             // Gửi cảnh báo real-time qua SignalR
@@ -111,7 +112,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 Category = "manual",
                 Status = "open",
                 Message = $"Thuốc '{medicine.Name}' trong chi tiết đơn {prescriptionItemId} bị {reason}: {description}. Đã cập nhật tồn kho.",
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTimeHelper.Now(),
                 PrescriptionItemId = prescriptionItemId
             };
 
@@ -125,7 +126,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 TaskId = taskId,
                 LogType = "error",
                 Message = $"Cảnh báo thuốc: {medicine.Name} bị {reason} - {description} (Đơn thuốc: {prescriptionItemId})",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             // Gửi cảnh báo real-time qua SignalR
@@ -174,7 +175,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         TaskId = null, // Alert entity không có TaskId
                         LogType = "success",
                         Message = $"Cảnh báo #{id} đã được xử lý/đóng: {updated.Message}",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
             }

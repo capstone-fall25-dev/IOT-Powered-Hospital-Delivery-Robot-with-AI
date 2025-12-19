@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
@@ -48,7 +49,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     image_b64 = req.Image_b64,
                     timestamp = req.Timestamp > 0
                         ? DateTimeOffset.FromUnixTimeMilliseconds(req.Timestamp).UtcDateTime
-                        : DateTime.Now
+                        : DateTimeHelper.Now()
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveCameraFrame", frameData);

@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -49,7 +50,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 SkippedStops = task.TaskStops.Count(s => s.Status == "skipped"),
                 FailedStops = task.TaskStops.Count(s => s.Status == "failed"),
                 Note = note?.Trim(), 
-                RecordedAt = DateTime.Now,
+                RecordedAt = DateTimeHelper.Now(),
                 StopHistories = task.TaskStops.Select(s => new TaskStopHistory
                 {
                     SeqNo = s.SeqNo,
@@ -65,7 +66,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     ArrivedAt = s.ArrivedAt,
                     DeliveredAt = s.HandedOverAt ?? s.ArrivedAt,
                     DurationSeconds = s.ArrivedAt.HasValue
-                        ? (int?)(s.HandedOverAt ?? DateTime.Now).Subtract(s.ArrivedAt.Value).TotalSeconds
+                        ? (int?)(s.HandedOverAt ?? DateTimeHelper.Now()).Subtract(s.ArrivedAt.Value).TotalSeconds
                         : null
                 }).ToList()
             };

@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -40,7 +40,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 issuer: configuration["Jwt:Issuer"],
                 audience: configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(int.Parse(configuration["Jwt:ExpiryInMinutes"] ?? "60")),
+                expires: DateTimeHelper.Now().AddMinutes(int.Parse(configuration["Jwt:ExpiryInMinutes"] ?? "60")),
                 signingCredentials: creds
             );
 

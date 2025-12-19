@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -28,7 +29,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var existing = await _repository.GetByNameAsync(dto.Name);
             if (existing != null) throw new InvalidOperationException("Tên điểm đến đã tồn tại");
             var dest = _mapper.Map<Destination>(dto);
-            dest.CreatedAt = DateTime.Now;
+            dest.CreatedAt = DateTimeHelper.Now();
             var created = await _repository.CreateAsync(dest);
             return _mapper.Map<DestinationResponseDto>(created);
         }

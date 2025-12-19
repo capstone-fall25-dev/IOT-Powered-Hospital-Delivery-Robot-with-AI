@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Hubs;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -63,7 +64,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("Mapping thất bại: MapName là null sau AutoMapper");
             }
 
-            map.CreatedAt = DateTime.Now;
+            map.CreatedAt = DateTimeHelper.Now();
             // Xử lý upload hình ảnh
             if (imageFile != null && imageFile.Length > 0)
             {
@@ -85,7 +86,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     RobotId = firstRobot.Id,
                     LogType = "info",
                     Message = $"Bản đồ mới đã được tạo: {created.MapName} (ID: {created.Id})",
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTimeHelper.Now()
                 });
             }
             
@@ -132,10 +133,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             dto.TotalTasks = tasks.Count();
 
             // Hôm nay
-            dto.TasksToday = tasks.Count(t => t.CreatedAt.Date == DateTime.Today);
+            var today = DateTimeHelper.Now().Date;
+            dto.TasksToday = tasks.Count(t => t.CreatedAt.Date == today);
 
             // Tuần này
-            var weekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+            var weekStart = today.AddDays(-(int)today.DayOfWeek);
             dto.TasksThisWeek = tasks.Count(t => t.CreatedAt.Date >= weekStart);
 
             return dto;
@@ -229,7 +231,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         RobotId = firstRobot.Id,
                         LogType = "info",
                         Message = $"Bản đồ đã được cập nhật: {updated.MapName} (ID: {updated.Id})",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
             }

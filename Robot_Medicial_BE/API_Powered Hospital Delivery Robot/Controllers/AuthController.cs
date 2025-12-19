@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
@@ -89,7 +90,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log exception ở đây nếu có logger
                 return BadRequest(new { message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
@@ -165,7 +166,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             // Kiểm tra session còn hợp lệ không
             string tokenHash = HashToken(token);
             bool isValidSession = user.Sessions?.Any(s =>
-                s.SessionToken == tokenHash && s.ExpiresAt > DateTime.Now) == true;
+                s.SessionToken == tokenHash && s.ExpiresAt > DateTimeHelper.Now()) == true;
 
             if (!isValidSession)
                 return Unauthorized(new { message = "Bạn đã bị đăng xuất do đăng nhập ở thiết bị khác." });

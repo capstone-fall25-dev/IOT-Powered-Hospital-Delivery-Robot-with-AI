@@ -1,3 +1,5 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
@@ -7,7 +9,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using API_Powered_Hospital_Delivery_Robot.Hubs;
+
 namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 {
     /// <summary>
@@ -76,7 +78,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = robotId,
                 LogType = "info",
                 Message = $"Robot {robot.Code} đã được gán bản đồ {map.MapName}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             return new AssignMapResponseDto
@@ -107,7 +109,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var robot = _mapper.Map<Robot>(robotDto);
 
             robot.Status = "offline";
-            robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTime.Now;
+            robot.CreatedAt = robot.UpdatedAt = robot.LastHeartbeatAt = DateTimeHelper.Now();
 
             // Lưu robot trước
             var createdRobot = await _robotRepository.CreateAsync(robot);
@@ -153,7 +155,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var existingRobot = await _robotRepository.GetByIdAsync(
                 robotId,
                 includeCompartments: true,
-                includeTasks: true);   
+                includeTasks: true);
 
             if (existingRobot == null)
                 throw new InvalidOperationException("Robot không tồn tại");
@@ -162,7 +164,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (existingRobot.Tasks.Any(t => t.Status is "in_progress" or "transporting"))
                 throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
 
-            if(existingRobot.Status == "transporting" || existingRobot.Status == "in_progress")
+            if (existingRobot.Status == "transporting" || existingRobot.Status == "in_progress")
                 throw new InvalidOperationException("Không thể cập nhật robot khi đang thực hiện nhiệm vụ");
             // Cập nhật tên (nếu có)
             if (!string.IsNullOrWhiteSpace(updateDto.Name))
@@ -200,15 +202,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Update compartments có ID và tạo mới compartments không có ID
             var compartmentsToCreate = new List<RobotCompartment>();
-            var maxExistingIndex = existingCompartments.Any() 
-                ? existingCompartments.Max(ec => 
+            var maxExistingIndex = existingCompartments.Any()
+                ? existingCompartments.Max(ec =>
                     int.TryParse(ec.CompartmentCode?.Replace("C", ""), out var idx) ? idx : 0)
                 : 0;
 
             for (int index = 0; index < updateDto.Compartments.Count; index++)
             {
                 var compDto = updateDto.Compartments[index];
-                
+
                 if (compDto.Id.HasValue && compDto.Id.Value > 0)
                 {
                     // Update compartment có ID (giữ nguyên ID và CompartmentCode)
@@ -247,7 +249,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             // Cập nhật thời gian
-            existingRobot.UpdatedAt = DateTime.Now;
+            existingRobot.UpdatedAt = DateTimeHelper.Now();
 
             // Lưu robot
             var updatedRobot = await _robotRepository.UpdateAsync(existingRobot);
@@ -267,7 +269,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = robotId,
                 LogType = "info",
                 Message = $"Robot {updatedRobot.Code} ({updatedRobot.Name}) đã được cập nhật: tên, loại ngăn chứa và {mapChange}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             // Trả về response đầy đủ
@@ -390,7 +392,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotId = updated.Id,
                 LogType = "info",
                 Message = $"Robot {updated.Code} đã cập nhật trạng thái thành {dto.Status}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             return _mapper.Map<RobotResponseDto>(updated);
@@ -460,7 +462,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 type = "robot_power",
                 robotCode = req.RobotCode,       // 👈 gửi đúng robotCode FE yêu cầu
                 state,
-                timestamp = DateTime.UtcNow
+                timestamp = DateTimeHelper.Now()
             };
 
             // Theo yêu cầu: BE cứ gửi xuống; ROS2 sẽ tự lọc con nào hợp lệ (RBT001)
@@ -473,7 +475,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotCode = req.RobotCode,
                 Power = _desiredOn,
                 Status = _desiredOn ? "at_station" : "offline",
-                Time = DateTime.Now,
+                Time = DateTimeHelper.Now(),
                 Message = "sent"
             };
         }
@@ -508,7 +510,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 RobotCode = report.RobotCode,
                 Power = report.Power,
                 Status = newStatus,
-                Time = DateTime.Now,
+                Time = DateTimeHelper.Now(),
                 Message = "ok"
             };
 

@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (map == null) return null;
 
             robot.MapId = mapId;
-            robot.UpdatedAt = DateTime.Now;
+            robot.UpdatedAt = DateTimeHelper.Now();
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -128,7 +129,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.EtaReturnAt = robot.EtaReturnAt;
             existing.ErrorCountSession = robot.ErrorCountSession;
             existing.MapId = robot.MapId;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
             return existing;
@@ -144,8 +145,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             robot.Latitude = lat;
             robot.Longitude = lng;
-            robot.LastHeartbeatAt = DateTime.Now;
-            robot.UpdatedAt = DateTime.Now;
+            robot.LastHeartbeatAt = DateTimeHelper.Now();
+            robot.UpdatedAt = DateTimeHelper.Now();
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -159,7 +160,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return null;
 
             robot.Status = status;
-            robot.UpdatedAt = DateTime.Now;
+            robot.UpdatedAt = DateTimeHelper.Now();
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -173,8 +174,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return null;
 
             robot.Status = status;
-            robot.LastHeartbeatAt = DateTime.Now; // ➕ ghi nhận heartbeat khi có report
-            robot.UpdatedAt = DateTime.Now;
+            robot.LastHeartbeatAt = DateTimeHelper.Now(); // ➕ ghi nhận heartbeat khi có report
+            robot.UpdatedAt = DateTimeHelper.Now();
             await _context.SaveChangesAsync();
             return robot;
         }
@@ -191,7 +192,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (map == null) return null;
 
             robot.MapId = mapId;
-            robot.UpdatedAt = DateTime.Now;
+            robot.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
             return robot;

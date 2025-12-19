@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Mapping;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
@@ -251,8 +251,8 @@ using (var scope = app.Services.CreateScope())
             Role = "admin",
             IsActive = true,
             PasswordHash = adminPass,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
+            CreatedAt = DateTimeHelper.Now(),
+            UpdatedAt = DateTimeHelper.Now()
         });
 
         context.SaveChanges();

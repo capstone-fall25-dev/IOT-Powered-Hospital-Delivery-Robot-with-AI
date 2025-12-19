@@ -19,7 +19,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         /// <summary>
         /// Server phát lệnh đổi giọng
         /// </summary>
-        public async Task BroadcastSetVoice(int voice, string robotCode = null)
+        public async Task BroadcastSetVoice(int voice, string? robotCode = null)
         {
             await Clients.All.SendAsync("SetVoice", new { voice, robotCode });
         }
@@ -27,7 +27,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
         /// <summary>
         /// Robot ACK đổi giọng → Server phát cho FE
         /// </summary>
-        public async Task AckVoice(string robotCode, int voice, bool ok, string message = null)
+        public async Task AckVoice(string robotCode, int voice, bool ok, string? message = null)
         {
             await Clients.All.SendAsync("VoiceStatus", new { robotCode, voice, ok, message });
         }

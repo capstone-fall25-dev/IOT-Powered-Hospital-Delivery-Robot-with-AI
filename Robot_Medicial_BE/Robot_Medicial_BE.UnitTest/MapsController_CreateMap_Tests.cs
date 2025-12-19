@@ -236,7 +236,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Tests.Controllers
         public async Task UploadJson_UTCD09_MapNameNull_ShouldReturn500()
         {
             var req = CreateValidRequest();
-            req.MapName = null;
+            req.MapName = null!;
 
             _uploadServiceMock
                 .Setup(s => s.UploadJsonAsync(

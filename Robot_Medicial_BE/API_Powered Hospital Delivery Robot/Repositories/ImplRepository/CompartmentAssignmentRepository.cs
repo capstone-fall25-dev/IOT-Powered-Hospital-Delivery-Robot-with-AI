@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -80,7 +81,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.TaskId = assignment.TaskId;
             existing.ItemDesc = assignment.ItemDesc;
             existing.Status = assignment.Status;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
             return existing;
@@ -110,7 +111,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
 
             assignment.Status = "loaded";
             assignment.ItemDesc = itemDesc ?? assignment.ItemDesc; 
-            assignment.UpdatedAt = DateTime.Now;
+            assignment.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
             return assignment;

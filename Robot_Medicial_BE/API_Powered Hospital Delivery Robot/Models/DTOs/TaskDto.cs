@@ -111,7 +111,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong Id { get; set; }
 
         public string? RobotName { get; set; }
-        public string Status { get; set; } 
+        public string Status { get; set; } = ""; 
         public TaskPriority Priority { get; set; }
 
         public DateTime CreatedAt { get; set; }
