@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -138,7 +139,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.Status = task.Status;
             existing.Priority = task.Priority;
             existing.ScheduledStartAt = task.ScheduledStartAt;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTimeHelper.Now();
             await _context.SaveChangesAsync();
             return existing;
         }
@@ -267,7 +268,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (robot == null) return;
 
             robot.Status = status;
-            robot.UpdatedAt = DateTime.Now;
+            robot.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
         }

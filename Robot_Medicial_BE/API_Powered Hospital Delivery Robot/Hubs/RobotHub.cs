@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -84,7 +85,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Hubs
             var robot = await _db.Robots.FirstOrDefaultAsync(r => r.Code == robotCode);
             if (robot == null) return;
 
-            robot.LastHeartbeatAt = DateTime.Now;
+            robot.LastHeartbeatAt = DateTimeHelper.Now();
             await _db.SaveChangesAsync();
         }
     }

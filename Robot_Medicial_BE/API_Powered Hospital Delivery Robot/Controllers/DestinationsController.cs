@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
@@ -65,7 +66,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "destination_route",
                     map_id = route.MapId,
-                    timestamp = DateTime.Now,
+                    timestamp = DateTimeHelper.Now(),
                     destinations = route.Destinations.Select((d, index) => new
                     {
                         order = index + 1,
@@ -180,7 +181,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 var payload = new
                 {
                     type = "emergency_stop",
-                    timestamp = DateTime.Now,
+                    timestamp = DateTimeHelper.Now(),
                     command = "cancel_navigation"
                 };
 

@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
@@ -59,7 +60,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     type = "robot_mode",
                     mode,
                     map_name = req.MapName,
-                    timestamp = DateTime.Now
+                    timestamp = DateTimeHelper.Now()
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveRobotCommand", command);
@@ -98,7 +99,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                     x = pos.X,
                     y = pos.Y,
                     theta = pos.Theta,
-                    timestamp = DateTime.Now
+                    timestamp = DateTimeHelper.Now()
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceivePosition", positionData);
@@ -175,7 +176,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "navigation_progress",
                     text = req.Text,
-                    timestamp = DateTime.Now
+                    timestamp = DateTimeHelper.Now()
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveNavigationProgress", payload);
@@ -218,7 +219,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 {
                     type = "motor_control",
                     key,
-                    timestamp = DateTime.Now
+                    timestamp = DateTimeHelper.Now()
                 };
 
                 await _hubContext.Clients.All.SendAsync("ReceiveMotorCommand", motorCommand);

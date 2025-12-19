@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -28,7 +29,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<RoomResponseDto> CreateAsync(RoomDto roomDto)
         {
             var room = _mapper.Map<Room>(roomDto);
-            room.CreatedAt = DateTime.Now;
+            room.CreatedAt = DateTimeHelper.Now();
 
             var created = await _repository.CreateAsync(room);
             return _mapper.Map<RoomResponseDto>(created);

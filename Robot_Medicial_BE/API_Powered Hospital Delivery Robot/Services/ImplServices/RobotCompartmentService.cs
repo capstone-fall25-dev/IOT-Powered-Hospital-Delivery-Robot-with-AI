@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -49,7 +50,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     RobotId = updated.RobotId,
                     LogType = "info",
                     Message = $"Ngăn chứa {updated.CompartmentCode} đã được mở (Robot ID: {updated.RobotId})",
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTimeHelper.Now()
                 });
             }
             
@@ -74,7 +75,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     RobotId = updated.RobotId,
                     LogType = "info",
                     Message = $"Ngăn chứa {updated.CompartmentCode} đã được khóa (Robot ID: {updated.RobotId})",
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTimeHelper.Now()
                 });
             }
             

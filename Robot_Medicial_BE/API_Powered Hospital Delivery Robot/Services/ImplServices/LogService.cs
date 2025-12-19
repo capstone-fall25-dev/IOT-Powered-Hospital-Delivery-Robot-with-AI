@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -26,7 +27,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         public async Task<LogResponseDto> CreateAsync(LogDto logDto)
         {
             var log = _mapper.Map<Log>(logDto);
-            log.CreatedAt = DateTime.Now;
+            log.CreatedAt = DateTimeHelper.Now();
 
             var created = await _repository.CreateAsync(log);
             return _mapper.Map<LogResponseDto>(created);

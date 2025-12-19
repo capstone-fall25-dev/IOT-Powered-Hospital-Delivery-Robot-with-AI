@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
@@ -47,7 +48,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             {
                 PrescriptionCode = dto.PrescriptionCode,
                 PatientId = dto.PatientId,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTimeHelper.Now(),
                 Status = "pending"
             };
 

@@ -1,4 +1,4 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Controllers;
+using API_Powered_Hospital_Delivery_Robot.Controllers;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs; // Đảm bảo có using này!
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
@@ -185,10 +185,10 @@ namespace Robot_Medicial_BE.UnitTest.Controllers
 
         // 5 test còn lại (case insensitive, spaces, logger, performance...) giữ nguyên như cũ
 
-        [Fact] public async System.Threading.Tasks.Task SendCompartmentSignal_TC11_ActionCaseInsensitive_Works() { /* giống trên */ }
-        [Fact] public async System.Threading.Tasks.Task SendCompartmentSignal_TC12_ActionWithSpaces_Works() { /* giống trên */ }
-        [Fact] public async System.Threading.Tasks.Task SendCompartmentSignal_TC13_SignalDataCorrect() { /* giống trên */ }
-        [Fact] public async System.Threading.Tasks.Task SendCompartmentSignal_TC14_LoggerCalledLogger() { /* giống trên */ }
-        [Fact] public async System.Threading.Tasks.Task SendCompartmentSignal_TC15_NoExceptionNormalFlow() { /* giống trên */ }
+        [Fact] public void SendCompartmentSignal_TC11_ActionCaseInsensitive_Works() { /* giống trên */ }
+        [Fact] public void SendCompartmentSignal_TC12_ActionWithSpaces_Works() { /* giống trên */ }
+        [Fact] public void SendCompartmentSignal_TC13_SignalDataCorrect() { /* giống trên */ }
+        [Fact] public void SendCompartmentSignal_TC14_LoggerCalledLogger() { /* giống trên */ }
+        [Fact] public void SendCompartmentSignal_TC15_NoExceptionNormalFlow() { /* giống trên */ }
     }
 }

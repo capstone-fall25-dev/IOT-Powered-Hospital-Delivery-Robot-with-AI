@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -67,7 +68,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 TaskId = taskId,
                 LogType = "info",
                 Message = $"Đã nạp hàng loạt {loadedAssignments.Count} ngăn chứa cho nhiệm vụ {taskId}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             };
             await _logRepository.CreateAsync(bulkLog);
 
@@ -104,8 +105,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             }
 
             var assignment = _mapper.Map<CompartmentAssignment>(assignmentDto);
-            assignment.CreatedAt = DateTime.Now;
-            assignment.UpdatedAt = DateTime.Now;
+            assignment.CreatedAt = DateTimeHelper.Now();
+            assignment.UpdatedAt = DateTimeHelper.Now();
 
             var created = await _repository.CreateAsync(assignment);
             return _mapper.Map<CompartmentAssignmentResponseDto>(created);
@@ -148,7 +149,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 StopId = updated.StopId,
                 LogType = "success",
                 Message = $"Đã nạp ngăn chứa {updated.Compartment.CompartmentCode} cho nhiệm vụ {updated.TaskId}. Hàng: {loadDto.ItemDesc ?? "Tổng quát"}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             };
             await _logRepository.CreateAsync(log);
 
@@ -212,7 +213,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             var assignment = _mapper.Map<CompartmentAssignment>(assignmentDto);
             assignment.Id = id;
-            assignment.UpdatedAt = DateTime.Now;
+            assignment.UpdatedAt = DateTimeHelper.Now();
 
             var updated = await _repository.UpdateAsync(id, assignment);
             return updated != null ? _mapper.Map<CompartmentAssignmentResponseDto>(updated) : null;

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Helpers
 {
@@ -32,7 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
             }
 
             // Phải lớn hơn thời gian hiện tại ít nhất 1 phút
-            return localDateTime > DateTime.Now.AddMinutes(1);
+            return localDateTime > DateTimeHelper.Now().AddMinutes(1);
         }
 
         public override string FormatErrorMessage(string name)

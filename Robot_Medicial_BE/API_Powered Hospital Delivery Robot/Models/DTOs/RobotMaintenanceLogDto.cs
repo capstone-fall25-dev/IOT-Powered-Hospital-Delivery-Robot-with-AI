@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using System.ComponentModel.DataAnnotations;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
 {
@@ -10,7 +11,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         [Required]
         public ulong RobotId { get; set; }
 
-        public DateTime MaintenanceDate { get; set; } = DateTime.Now;
+        public DateTime MaintenanceDate { get; set; } = DateTimeHelper.Now();
 
         [StringLength(500)]
         public string? Details { get; set; }

@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+﻿using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
@@ -62,7 +63,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new InvalidOperationException("Phòng không tồn tại");
 
             var patient = _mapper.Map<Patient>(dto);
-            patient.CreatedAt = DateTime.Now;
+            patient.CreatedAt = DateTimeHelper.Now();
 
             var created = await _repo.CreateAsync(patient);
             return _mapper.Map<PatientResponseDto>(created);

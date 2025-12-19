@@ -24,7 +24,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         public class VoiceRequest
         {
             public int Voice { get; set; } = 1; // 1=VITS (nam), 2=Piper (nữ)
-            public string RobotCode { get; set; } // optional: khoanh đúng robot
+            public string? RobotCode { get; set; } // optional: khoanh đúng robot
         }
 
         [HttpPost]

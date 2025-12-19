@@ -1,4 +1,5 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.Entities;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using API_Powered_Hospital_Delivery_Robot.Models.Entities;
 using API_Powered_Hospital_Delivery_Robot.Repositories.IRepository;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,7 +88,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             existing.FullName = user.FullName;
             existing.Role = user.Role;
             existing.IsActive = user.IsActive;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = DateTimeHelper.Now();
 
             await _context.SaveChangesAsync();
             return existing;

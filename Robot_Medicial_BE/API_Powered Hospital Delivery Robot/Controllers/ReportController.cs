@@ -1,4 +1,5 @@
-﻿using ClosedXML.Excel;
+using API_Powered_Hospital_Delivery_Robot.Helpers;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 
@@ -162,7 +163,7 @@ namespace RobotManagerApi.Controllers
             workbook.SaveAs(stream);
             stream.Position = 0;
 
-            var fileName = $"Task_Status_{fromStr}_to_{toStr}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Task_Status_{fromStr}_to_{toStr}_{DateTimeHelper.Now():yyyyMMdd_HHmmss}.xlsx";
 
             // Bắt buộc có dòng này để hiện Save As
             Response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
@@ -323,7 +324,7 @@ namespace RobotManagerApi.Controllers
             workbook.SaveAs(stream);
             stream.Position = 0;
 
-            var fileName = $"Task_Timeline_{fromStr}_to_{toStr}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"Task_Timeline_{fromStr}_to_{toStr}_{DateTimeHelper.Now():yyyyMMdd_HHmmss}.xlsx";
 
             // Bắt buộc có dòng này để hiện Save As
             Response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
