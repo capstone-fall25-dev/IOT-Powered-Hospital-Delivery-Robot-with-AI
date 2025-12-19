@@ -134,10 +134,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 BatteryPercent = createdRobot.BatteryPercent,
                 Compartments = createdRobot.RobotCompartments.Select(c => new CompartmentDto
                 {
-
+                    Id = c.Id,
                     Code = c.CompartmentCode,
                     CategoryId = c.CategoryId
-
                 }).ToList()
 
             };
@@ -182,27 +181,81 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 existingRobot.MapId = null; // Bỏ gán bản đồ
             }
 
-            // Xóa hết ngăn chứa cũ + tạo mới
-            await _robotCompartmentRepository.DeleteByRobotIdAsync(robotId);
-
-            var newCompartments = updateDto.Compartments
-                .Select((c, index) => new RobotCompartment
-                {
-                    RobotId = robotId,
-                    CompartmentCode = $"C{index + 1:000}",
-                    CategoryId = c.CategoryId,
-                    Status = c.IsLocked ? "locked" : "unlocked",
-                    IsActive = true
-                })
+            // Cập nhật compartments: Update compartments có ID, tạo mới compartments không có ID, xóa compartments không còn trong danh sách
+            var existingCompartments = existingRobot.RobotCompartments?.ToList() ?? new List<RobotCompartment>();
+            var compartmentIdsInUpdate = updateDto.Compartments
+                .Where(c => c.Id.HasValue && c.Id.Value > 0)
+                .Select(c => c.Id!.Value)
                 .ToList();
 
-            await _robotCompartmentRepository.CreateManyAsync(newCompartments);
+            // Xóa compartments không còn trong danh sách mới
+            var compartmentsToDelete = existingCompartments
+                .Where(ec => !compartmentIdsInUpdate.Contains(ec.Id))
+                .ToList();
+
+            foreach (var compToDelete in compartmentsToDelete)
+            {
+                await _robotCompartmentRepository.DeleteAsync(compToDelete.Id);
+            }
+
+            // Update compartments có ID và tạo mới compartments không có ID
+            var compartmentsToCreate = new List<RobotCompartment>();
+            var maxExistingIndex = existingCompartments.Any() 
+                ? existingCompartments.Max(ec => 
+                    int.TryParse(ec.CompartmentCode?.Replace("C", ""), out var idx) ? idx : 0)
+                : 0;
+
+            for (int index = 0; index < updateDto.Compartments.Count; index++)
+            {
+                var compDto = updateDto.Compartments[index];
+                
+                if (compDto.Id.HasValue && compDto.Id.Value > 0)
+                {
+                    // Update compartment có ID (giữ nguyên ID và CompartmentCode)
+                    var existingComp = existingCompartments.FirstOrDefault(ec => ec.Id == compDto.Id.Value);
+                    if (existingComp != null)
+                    {
+                        // Tạo compartment object để update (chỉ update các field cần thiết)
+                        var updateComp = new RobotCompartment
+                        {
+                            CategoryId = compDto.CategoryId,
+                            Status = compDto.IsLocked ? "locked" : "unlocked",
+                            IsActive = true
+                        };
+                        await _robotCompartmentRepository.UpdateAsync(compDto.Id.Value, updateComp);
+                    }
+                }
+                else
+                {
+                    // Tạo mới compartment (không có ID)
+                    var newIndex = maxExistingIndex + compartmentsToCreate.Count + 1;
+                    compartmentsToCreate.Add(new RobotCompartment
+                    {
+                        RobotId = robotId,
+                        CompartmentCode = $"C{newIndex:000}",
+                        CategoryId = compDto.CategoryId,
+                        Status = compDto.IsLocked ? "locked" : "unlocked",
+                        IsActive = true
+                    });
+                }
+            }
+
+            // Tạo compartments mới
+            if (compartmentsToCreate.Any())
+            {
+                await _robotCompartmentRepository.CreateManyAsync(compartmentsToCreate);
+            }
 
             // Cập nhật thời gian
             existingRobot.UpdatedAt = DateTime.Now;
 
             // Lưu robot
             var updatedRobot = await _robotRepository.UpdateAsync(existingRobot);
+
+            // Reload robot để có compartments mới nhất (bao gồm cả compartments mới tạo)
+            updatedRobot = await _robotRepository.GetByIdAsync(robotId, includeCompartments: true, includeTasks: false);
+            if (updatedRobot == null)
+                throw new InvalidOperationException("Không thể tải lại thông tin robot sau khi cập nhật");
 
             // Ghi log hành động
             var mapChange = updateDto.MapId.HasValue
@@ -228,6 +281,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 MapId = updatedRobot.MapId,
                 Compartments = updatedRobot.RobotCompartments.Select(c => new CompartmentDto
                 {
+                    Id = c.Id,
                     Code = c.CompartmentCode,
                     CategoryId = c.CategoryId
                 }).ToList()
@@ -272,6 +326,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 MapId = robot.MapId,
                 Compartments = robot.RobotCompartments.Select(c => new CompartmentDto
                 {
+                    Id = c.Id,
                     Code = c.CompartmentCode,
                     CategoryId = c.CategoryId
                 }).ToList(),
