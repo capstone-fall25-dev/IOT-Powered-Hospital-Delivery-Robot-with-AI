@@ -358,10 +358,12 @@ export default function Sidebar() {
           .sidebar {
             transform: translateX(-100%);
             transition: transform 0.3s ease;
+            z-index: 1002 !important;
           }
 
           .sidebar.mobile-open {
             transform: translateX(0);
+            z-index: 1002 !important;
           }
 
           .mobile-menu-toggle {
@@ -370,6 +372,12 @@ export default function Sidebar() {
 
           .mobile-sidebar-overlay {
             display: block;
+            z-index: 1001 !important;
+          }
+
+          .mobile-sidebar-overlay.active {
+            opacity: 1;
+            z-index: 1001 !important;
           }
 
           body.sidebar-collapsed .page-wrapper {

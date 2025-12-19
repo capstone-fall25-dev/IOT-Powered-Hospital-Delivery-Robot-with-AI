@@ -62,18 +62,44 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             user.PasswordHash = HashPassword(userDto.Password);
             user.CreatedAt = DateTimeHelper.Now();
             user.UpdatedAt = DateTimeHelper.Now();
-            user.IsActive = false; // Kích hoạt sau khi xác minh OTP
+            user.IsActive = true; // Kích hoạt ngay khi admin cấp tài khoản
 
             var created = await _repository.CreateAsync(user);
 
-            string otp = new Random().Next(100000, 999999).ToString();
-            _cache.Set($"OTP_{user.Email}", otp, TimeSpan.FromMinutes(5));
+            // Gửi email thông báo thông tin tài khoản thay vì OTP
+            var roleDisplay = role == "doctor" ? "Bác sĩ" : "Dược sĩ";
+            var emailBody = $@"
+                <div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f6faf9;"">
+                    <div style=""background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;"">
+                        <h2 style=""color: white; margin: 0;"">Chào mừng đến với hệ thống!</h2>
+                    </div>
+                    <div style=""background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"">
+                        <p style=""font-size: 16px; color: #334155; line-height: 1.6;"">
+                            Xin chào <strong>{userDto.FullName ?? "User"}</strong>,
+                        </p>
+                        <p style=""font-size: 16px; color: #334155; line-height: 1.6;"">
+                            Tài khoản của bạn đã được tạo thành công trong hệ thống Robot Y Tế Thông Minh.
+                        </p>
+                        <div style=""background: #f0fdfa; border-left: 4px solid #0d9488; padding: 15px; margin: 20px 0; border-radius: 4px;"">
+                            <p style=""margin: 5px 0; color: #0f172a;""><strong>Email đăng nhập:</strong> {user.Email}</p>
+                            <p style=""margin: 5px 0; color: #0f172a;""><strong>Vai trò:</strong> {roleDisplay}</p>
+                            <p style=""margin: 5px 0; color: #0f172a;""><strong>Mật khẩu:</strong> {userDto.Password}</p>
+                        </div>
+                        <p style=""font-size: 16px; color: #334155; line-height: 1.6;"">
+                            Vui lòng đăng nhập vào hệ thống và đổi mật khẩu để bảo mật tài khoản của bạn.
+                        </p>
+                        <div style=""text-align: center; margin-top: 30px;"">
+                            <p style=""color: #64748b; font-size: 14px;"">
+                                Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với quản trị viên hệ thống.
+                            </p>
+                        </div>
+                    </div>
+                </div>";
+
             await _emailHelper.SendEmailAsync(
                 user.Email,
-                "Xác minh tài khoản",
-                $"<h3>Chào mừng, {userDto.FullName ?? "Nhân viên"}!</h3>" +
-                $"<p>Mã xác minh của bạn là: <b>{otp}</b></p>" +
-                $"<p>Mã có hiệu lực trong 5 phút.</p>"
+                "Thông báo tài khoản đã được tạo",
+                emailBody
             );
 
             return _mapper.Map<UserResponseDto>(created);
@@ -304,8 +330,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             var hash = sha256.ComputeHash(bytes);
             return Convert.ToBase64String(hash);
         }
-
-        
 
         /// <summary>
         /// Đăng nhập
