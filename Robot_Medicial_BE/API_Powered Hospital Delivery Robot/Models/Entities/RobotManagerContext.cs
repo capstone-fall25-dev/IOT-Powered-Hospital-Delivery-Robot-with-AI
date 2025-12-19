@@ -1,8 +1,12 @@
-﻿using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
+using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace API_Powered_Hospital_Delivery_Robot.Models.Entities;
 
@@ -64,6 +68,57 @@ public partial class RobotManagerContext : DbContext
     public virtual DbSet<TaskStopHistory> TaskStopHistories { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
+
+    /// <summary>
+    /// Chuyển đổi tất cả DateTime từ Local sang Unspecified để tránh EF Core convert sang UTC khi lưu
+    /// Giải quyết vấn đề production server (UTC) convert DateTime Local sang UTC, làm mất 7 giờ
+    /// </summary>
+    private void ConvertDateTimeToUnspecified()
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+
+        foreach (var entry in entries)
+        {
+            foreach (var property in entry.Properties)
+            {
+                if ((property.Metadata.ClrType == typeof(DateTime) || property.Metadata.ClrType == typeof(DateTime?)) 
+                    && property.CurrentValue != null)
+                {
+                    DateTime dateTime;
+                    if (property.Metadata.ClrType == typeof(DateTime?))
+                    {
+                        var nullableValue = (DateTime?)property.CurrentValue;
+                        if (nullableValue.HasValue && nullableValue.Value.Kind == DateTimeKind.Local)
+                        {
+                            dateTime = nullableValue.Value;
+                            property.CurrentValue = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified);
+                        }
+                    }
+                    else
+                    {
+                        dateTime = (DateTime)property.CurrentValue;
+                        if (dateTime.Kind == DateTimeKind.Local)
+                        {
+                            property.CurrentValue = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public override int SaveChanges()
+    {
+        ConvertDateTimeToUnspecified();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ConvertDateTimeToUnspecified();
+        return base.SaveChangesAsync(cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
