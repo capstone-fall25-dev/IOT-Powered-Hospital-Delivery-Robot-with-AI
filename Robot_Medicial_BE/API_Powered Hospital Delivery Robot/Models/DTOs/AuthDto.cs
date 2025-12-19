@@ -28,6 +28,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     /// </summary>
     public class ForgotPasswordRequest
     {
+        [Required(ErrorMessage = "Email là bắt buộc.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
         public string Email { get; set; } = string.Empty;
     }
 
@@ -45,13 +47,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
     /// </summary>
     public class VerifyForgotPasswordOtpRequest
     {
+        [Required(ErrorMessage = "Email là bắt buộc.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
         public string Email { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Mã OTP là bắt buộc.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Mã OTP phải có 6 chữ số.")]
         public string Otp { get; set; } = string.Empty;
     }
 
     public class ResetPasswordRequest
     {
+        [Required(ErrorMessage = "Token là bắt buộc.")]
         public string Token { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Mật khẩu mới là bắt buộc.")]
+        [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự.")]
         public string NewPassword { get; set; } = string.Empty;
     }
 

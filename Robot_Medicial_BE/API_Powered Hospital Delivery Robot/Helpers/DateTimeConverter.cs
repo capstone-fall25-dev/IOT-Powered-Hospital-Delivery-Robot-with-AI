@@ -47,11 +47,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 return;
             }
 
+            // Convert DateTime sang Vietnam time (UTC+7)
+            // Xử lý các trường hợp:
+            // - DateTimeKind.Utc: Convert từ UTC sang Vietnam time
+            // - DateTimeKind.Unspecified: Giả sử là UTC (từ database) và convert sang Vietnam time
+            // - DateTimeKind.Local: Giả sử đã là Vietnam time
+            DateTime vietnamTime;
+            if (value.Value.Kind == DateTimeKind.Utc || value.Value.Kind == DateTimeKind.Unspecified)
+            {
+                // Unspecified thường là từ database (lưu UTC), convert sang Vietnam time
+                vietnamTime = DateTimeHelper.FromUtc(value.Value);
+            }
+            else
+            {
+                // Local time, giả sử đã là Vietnam time
+                vietnamTime = value.Value;
+            }
+
             // Serialize như local time với timezone offset +07:00 (Vietnam)
             var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
             var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
             
-            writer.WriteStringValue($"{value.Value:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            writer.WriteStringValue($"{vietnamTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
         }
     }
 
@@ -92,11 +109,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
+            // Convert DateTime sang Vietnam time (UTC+7)
+            // Xử lý các trường hợp:
+            // - DateTimeKind.Utc: Convert từ UTC sang Vietnam time
+            // - DateTimeKind.Unspecified: Giả sử là UTC (từ database) và convert sang Vietnam time
+            // - DateTimeKind.Local: Giả sử đã là Vietnam time
+            DateTime vietnamTime;
+            if (value.Kind == DateTimeKind.Utc || value.Kind == DateTimeKind.Unspecified)
+            {
+                // Unspecified thường là từ database (lưu UTC), convert sang Vietnam time
+                vietnamTime = DateTimeHelper.FromUtc(value);
+            }
+            else
+            {
+                // Local time, giả sử đã là Vietnam time
+                vietnamTime = value;
+            }
+
             // Serialize như local time với timezone offset +07:00 (Vietnam)
             var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
             var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
             
-            writer.WriteStringValue($"{value:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            writer.WriteStringValue($"{vietnamTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
         }
     }
 }
