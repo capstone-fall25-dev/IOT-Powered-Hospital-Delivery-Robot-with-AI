@@ -49,28 +49,60 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 return;
             }
 
-            // Convert DateTime sang Vietnam time (UTC+7)
-            // Xử lý các trường hợp:
-            // - DateTimeKind.Utc: Convert từ UTC sang Vietnam time
-            // - DateTimeKind.Unspecified: Giả sử là UTC (từ database) và convert sang Vietnam time
-            // - DateTimeKind.Local: Giả sử đã là Vietnam time
-            DateTime vietnamTime;
-            if (value.Value.Kind == DateTimeKind.Utc || value.Value.Kind == DateTimeKind.Unspecified)
+            // Database đã lưu Vietnam time (ví dụ: 11:07)
+            // Ta cần serialize sao cho frontend hiểu đây là 11:07 Vietnam time
+            // Nếu serialize với offset +07:00, JavaScript sẽ parse và convert về local time
+            // Để frontend hiển thị đúng, ta serialize như UTC (không có offset) hoặc với offset 00:00
+            // Nhưng cách tốt nhất là serialize như local time với offset +07:00, nhưng giá trị phải là UTC equivalent
+            
+            // Database lưu Vietnam time (11:07), ta cần serialize như UTC equivalent (04:07 UTC) với offset +07:00
+            // Hoặc đơn giản hơn: serialize như local time với offset +00:00 (UTC) để JavaScript không convert
+            // Nhưng cách tốt nhất: serialize giá trị Vietnam time với offset +07:00, nhưng đảm bảo JavaScript parse đúng
+            
+            // Giá trị từ database đã là Vietnam time (11:07)
+            // Ta serialize như: "2025-12-19T11:07:35+07:00"
+            // JavaScript sẽ parse: 11:07 UTC+7 = 04:07 UTC, sau đó convert về local time (UTC+7) = 11:07 ✅
+            // Nhưng nếu có vấn đề, có thể JavaScript đang hiểu sai
+            
+            // Giải pháp: Serialize như UTC (không có offset) hoặc với offset 00:00
+            // Database lưu 11:07 (Vietnam time), ta serialize như 11:07 UTC (sai)
+            // Hoặc: Convert về UTC trước khi serialize
+            
+            // Cách đúng: Database lưu 11:07 (Vietnam time), ta cần serialize như 04:07 UTC với offset +07:00
+            // Hoặc đơn giản: Serialize như local time với offset +00:00 để JavaScript không convert
+            
+            // Giá trị từ database đã là Vietnam time
+            DateTime vietnamTime = value.Value;
+            
+            // Nếu Kind là Unspecified (từ database), giả sử đã là Vietnam time
+            // Nếu Kind là UTC, convert sang Vietnam time
+            if (vietnamTime.Kind == DateTimeKind.Utc)
             {
-                // Unspecified thường là từ database (lưu UTC), convert sang Vietnam time
-                vietnamTime = DateTimeHelper.FromUtc(value.Value);
+                vietnamTime = DateTimeHelper.FromUtc(vietnamTime);
             }
-            else
-            {
-                // Local time, giả sử đã là Vietnam time
-                vietnamTime = value.Value;
-            }
-
-            // Serialize như local time với timezone offset +07:00 (Vietnam)
+            
+            // Serialize như local time với offset +00:00 (UTC) để JavaScript không convert
+            // Frontend sẽ hiểu đây là 11:07 UTC và convert về local time (UTC+7) → 18:07 (SAI)
+            
+            // Cách đúng: Serialize như UTC equivalent với offset +07:00
+            // Database: 11:07 (Vietnam time) → UTC: 04:07 → Serialize: "04:07+07:00" → JavaScript parse: 04:07 UTC+7 = 11:07 local ✅
+            
+            // Database lưu Vietnam time (11:07), ta serialize như local time với offset +00:00 (UTC)
+            // JavaScript sẽ parse: 11:07 UTC → convert về local time (UTC+7) → 18:07 (SAI)
+            
+            // Cách đúng: Serialize như UTC equivalent với offset +07:00
+            // Database: 11:07 (Vietnam time) → UTC: 04:07 → Serialize: "04:07+07:00"
+            // JavaScript parse: 04:07 UTC+7 = 11:07 local time ✅
+            
+            // Convert Vietnam time về UTC trước khi serialize
+            var utcTime = DateTimeHelper.ToUtc(vietnamTime);
+            
+            // Serialize UTC time với offset +07:00
+            // JavaScript sẽ parse: UTC time + offset = Vietnam time
             var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
             var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
             
-            writer.WriteStringValue($"{vietnamTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            writer.WriteStringValue($"{utcTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
         }
     }
 
@@ -113,28 +145,30 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            // Convert DateTime sang Vietnam time (UTC+7)
-            // Xử lý các trường hợp:
-            // - DateTimeKind.Utc: Convert từ UTC sang Vietnam time
-            // - DateTimeKind.Unspecified: Giả sử là UTC (từ database) và convert sang Vietnam time
-            // - DateTimeKind.Local: Giả sử đã là Vietnam time
-            DateTime vietnamTime;
-            if (value.Kind == DateTimeKind.Utc || value.Kind == DateTimeKind.Unspecified)
+            // Database đã lưu Vietnam time (ví dụ: 11:07)
+            // Ta cần serialize sao cho frontend hiểu đây là 11:07 Vietnam time
+            // Cách đúng: Convert Vietnam time về UTC trước khi serialize với offset +07:00
+            // Database: 11:07 (Vietnam time) → UTC: 04:07 → Serialize: "04:07+07:00"
+            // JavaScript parse: 04:07 UTC+7 = 11:07 local time ✅
+            
+            // Giá trị từ database đã là Vietnam time
+            DateTime vietnamTime = value;
+            
+            // Nếu Kind là UTC, convert sang Vietnam time
+            if (vietnamTime.Kind == DateTimeKind.Utc)
             {
-                // Unspecified thường là từ database (lưu UTC), convert sang Vietnam time
-                vietnamTime = DateTimeHelper.FromUtc(value);
+                vietnamTime = DateTimeHelper.FromUtc(vietnamTime);
             }
-            else
-            {
-                // Local time, giả sử đã là Vietnam time
-                vietnamTime = value;
-            }
-
-            // Serialize như local time với timezone offset +07:00 (Vietnam)
+            
+            // Convert Vietnam time về UTC trước khi serialize
+            var utcTime = DateTimeHelper.ToUtc(vietnamTime);
+            
+            // Serialize UTC time với offset +07:00
+            // JavaScript sẽ parse: UTC time + offset = Vietnam time
             var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
             var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
             
-            writer.WriteStringValue($"{vietnamTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            writer.WriteStringValue($"{utcTime:yyyy-MM-ddTHH:mm:ss}{offsetString}");
         }
     }
 }

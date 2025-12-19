@@ -74,13 +74,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
         /// <summary>
         /// Convert DateTime sang UTC
         /// </summary>
-        public static DateTime ToUtc(DateTime vietnamDateTime)
+        public static DateTime ToUtc(DateTime dateTime)
         {
-            if (vietnamDateTime.Kind == DateTimeKind.Utc)
+            if (dateTime.Kind == DateTimeKind.Utc)
             {
-                return vietnamDateTime;
+                return dateTime;
             }
-            // Giả sử input là Vietnam time, convert sang UTC
+            // Nếu Kind là Unspecified hoặc Local, giả sử đã là Vietnam time, convert sang UTC
+            // Đảm bảo Kind là Unspecified hoặc Local trước khi convert
+            var vietnamDateTime = dateTime.Kind == DateTimeKind.Unspecified 
+                ? DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified)
+                : dateTime;
             return TimeZoneInfo.ConvertTimeToUtc(vietnamDateTime, VietnamTimeZone);
         }
     }
