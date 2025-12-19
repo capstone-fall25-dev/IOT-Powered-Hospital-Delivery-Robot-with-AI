@@ -45,6 +45,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Kiểm tra ngăn chứa đang được dùng chưa
         Task<bool> IsCompartmentBusyAsync(ulong id);
 
+        // Kiểm tra robot đã có task pending chưa
+        Task<bool> HasRobotPendingTaskAsync(ulong robotId);
+
         // Lấy đơn thuốc mới nhất của bệnh nhân
         Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId);
 

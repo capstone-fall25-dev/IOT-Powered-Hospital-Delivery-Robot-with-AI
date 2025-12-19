@@ -47,11 +47,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
                 return;
             }
 
-            // Serialize như local time với timezone offset +07:00 (Vietnam)
-            var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
-            var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
-            
-            writer.WriteStringValue($"{value.Value:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            // Serialize datetime như local time KHÔNG có timezone offset
+            // Vì database đã lưu local time (Vietnam UTC+7), không cần thêm offset
+            // Frontend sẽ parse như local time và hiển thị đúng
+            writer.WriteStringValue($"{value.Value:yyyy-MM-ddTHH:mm:ss}");
         }
     }
 
@@ -92,11 +91,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Helpers
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            // Serialize như local time với timezone offset +07:00 (Vietnam)
-            var offset = TimeSpan.FromHours(7); // Vietnam UTC+7
-            var offsetString = $"+{offset.Hours:D2}:{offset.Minutes:D2}";
-            
-            writer.WriteStringValue($"{value:yyyy-MM-ddTHH:mm:ss}{offsetString}");
+            // Serialize datetime như local time KHÔNG có timezone offset
+            // Vì database đã lưu local time (Vietnam UTC+7), không cần thêm offset
+            // Frontend sẽ parse như local time và hiển thị đúng
+            writer.WriteStringValue($"{value:yyyy-MM-ddTHH:mm:ss}");
         }
     }
 }

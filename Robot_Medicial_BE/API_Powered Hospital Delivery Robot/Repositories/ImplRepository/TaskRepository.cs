@@ -226,6 +226,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         }
 
         /// <summary>
+        /// Kiểm tra robot đã có task pending chưa (để tránh assign nhiều task cho cùng một robot)
+        /// </summary>
+        public async Task<bool> HasRobotPendingTaskAsync(ulong robotId)
+        {
+            return await _context.Tasks
+                .AnyAsync(t => t.RobotId == robotId && t.Status == "pending");
+        }
+
+        /// <summary>
         /// Lấy đơn thuốc mới nhất của bệnh nhân
         /// </summary>
         public async Task<Prescription?> GetLatestApprovedPrescriptionForPatientAsync(ulong patientId)
