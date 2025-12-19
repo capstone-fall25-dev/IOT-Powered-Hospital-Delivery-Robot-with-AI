@@ -33,8 +33,8 @@ export default function RobotRunMap() {
   const [remoteMode, setRemoteMode] = useState(false);
 
   const [compartments, setCompartments] = useState([
-    { id: 93, label: "Hộp 1", state: "closed" },
-    { id: 94, label: "Hộp 2", state: "closed" },
+    { id: 1, label: "Hộp 1", state: "closed" },
+    { id: 2, label: "Hộp 2", state: "closed" },
   ]);
 
   const [destinations, setDestinations] = useState([]);

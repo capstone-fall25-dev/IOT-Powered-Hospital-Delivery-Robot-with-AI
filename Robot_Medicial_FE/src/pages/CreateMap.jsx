@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ Thêm import này
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 
+
 export default function RobotCreateMap() {
+  const navigate = useNavigate(); // ✅ Thêm hook này
   const { toast, showToast } = useToast();
   const mapRef = useRef(null);
   const mapLayer = useRef(null);
   const robotMarker = useRef(null);
   const liveMapViewRef = useRef({ center: null, zoom: null });
+
 
   // ===================================
   // STATE
@@ -22,9 +26,14 @@ export default function RobotCreateMap() {
   const [activeKey, setActiveKey] = useState("");
   const [remoteMode, setRemoteMode] = useState(false);
   const [compartments, setCompartments] = useState([
-    { id: 93, label: "Hộp 1", state: "closed" },
-    { id: 94, label: "Hộp 2", state: "closed" },
+    { id: 1, label: "Hộp 1", state: "closed" },
+    { id: 2, label: "Hộp 2", state: "closed" },
   ]);
+  
+  // ✅ Thêm states cho countdown
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+
 
   // ===================================
   // SIGNALR HUBS
@@ -35,26 +44,31 @@ export default function RobotCreateMap() {
       .withAutomaticReconnect()
       .build();
 
+
     const camConn = new signalR.HubConnectionBuilder()
       .withUrl(API_CONFIG.API_BASE1 + "/hubs/robotcamera")
       .withAutomaticReconnect()
       .build();
+
 
     posConn.on("ReceiveMapUpdate", (map) => {
       console.log("[CreateMap] ReceiveMapUpdate", map);
       drawMap(map);
     });
 
+
     posConn.on("ReceivePosition", (pos) => {
       // console.log("[CreateMap] ReceivePosition", pos);
       updateRobotPosition(pos);
     });
+
 
     camConn.on("ReceiveCameraFrame", (frame) => {
       if (frame?.image_b64) {
         setCameraFrame(`data:image/jpeg;base64,${frame.image_b64}`);
       }
     });
+
 
     posConn
       .start()
@@ -64,13 +78,16 @@ export default function RobotCreateMap() {
         setStatus("Không kết nối được robot");
       });
 
+
     camConn.start().catch((e) => console.error("Camera Hub:", e));
+
 
     return () => {
       posConn.stop();
       camConn.stop();
     };
   }, []);
+
 
   // ===================================
   // MAP + ROBOT POSITION
@@ -79,6 +96,7 @@ export default function RobotCreateMap() {
     if (!window.L) return;
     const L = window.L;
 
+
     const base64 =
       mapData?.Data_b64 || mapData?.data_b64 || mapData?.data || null;
     if (!base64) {
@@ -86,19 +104,23 @@ export default function RobotCreateMap() {
       return;
     }
 
+
     const res = mapData.Resolution || mapData.resolution || 0.05;
     const w = mapData.Width || mapData.width || 800;
     const h = mapData.Height || mapData.height || 800;
     const ox = mapData.Origin?.X ?? mapData.origin?.x ?? 0;
     const oy = mapData.Origin?.Y ?? mapData.origin?.y ?? 0;
 
+
     const imgSrc = `data:image/png;base64,${base64}`;
+
 
     // bounds của overlay (CRS.Simple -> [lat, lng] = [y, x])
     const bounds = [
       [oy, ox],
       [oy + h * res, ox + w * res],
     ];
+
 
     // =============== LẦN ĐẦU TẠO MAP ===============
     if (!mapRef.current) {
@@ -107,7 +129,9 @@ export default function RobotCreateMap() {
         zoomControl: false,
       });
 
+
       L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+
 
       // Lúc user pan/zoom thì lưu lại view
       mapRef.current.on("moveend zoomend", () => {
@@ -118,6 +142,7 @@ export default function RobotCreateMap() {
         };
       });
 
+
       // Overlay lần đầu + fitBounds 1 lần
       if (mapLayer.current) {
         mapRef.current.removeLayer(mapLayer.current);
@@ -126,7 +151,9 @@ export default function RobotCreateMap() {
         mapRef.current
       );
 
+
       mapRef.current.fitBounds(bounds);
+
 
       // Lưu lại view sau khi fitBounds
       liveMapViewRef.current = {
@@ -134,13 +161,16 @@ export default function RobotCreateMap() {
         zoom: mapRef.current.getZoom(),
       };
 
+
       // Fix bug container chưa có size
       setTimeout(() => {
         mapRef.current && mapRef.current.invalidateSize();
       }, 100);
 
+
       return;
     }
+
 
     // =============== CÁC LẦN UPDATE SAU ===============
     // Lấy lại view đã lưu (nếu có), fallback sang view hiện tại
@@ -151,6 +181,7 @@ export default function RobotCreateMap() {
         ? liveMapViewRef.current.zoom
         : mapRef.current.getZoom();
 
+
     // Thay overlay nhưng KHÔNG fitBounds lại
     if (mapLayer.current) {
       mapRef.current.removeLayer(mapLayer.current);
@@ -159,13 +190,16 @@ export default function RobotCreateMap() {
       mapRef.current
     );
 
+
     // Restore lại đúng center + zoom cũ
     mapRef.current.setView(currentCenter, currentZoom, { animate: false });
   }
 
+
   function updateRobotPosition(pos) {
     if (!window.L || !mapRef.current) return;
     const L = window.L;
+
 
     const icon = L.divIcon({
       className: "robot-marker",
@@ -174,8 +208,10 @@ export default function RobotCreateMap() {
       iconAnchor: [12, 12],
     });
 
+
     // ROS: x,y theo world coords (mét) → dùng trực tiếp
     const latlng = [pos.y, pos.x];
+
 
     if (!robotMarker.current)
       robotMarker.current = L.marker(latlng, { icon }).addTo(mapRef.current);
@@ -184,6 +220,7 @@ export default function RobotCreateMap() {
       robotMarker.current.setIcon(icon);
     }
   }
+
 
   // ===================================
   // MANUAL CONTROL
@@ -210,6 +247,7 @@ export default function RobotCreateMap() {
     }
   }
 
+
   useEffect(() => {
     const handleKey = (e) => {
       const key = e.key.toLowerCase();
@@ -221,6 +259,7 @@ export default function RobotCreateMap() {
     if (remoteMode) window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [remoteMode]);
+
 
   // ===================================
   // COMPARTMENT OPEN/CLOSE
@@ -250,8 +289,9 @@ export default function RobotCreateMap() {
     }
   }
 
+
   // ===================================
-  // SAVE MAP
+  // SAVE MAP - ✅ ĐÃ SỬA
   // ===================================
   async function saveMap() {
     if (!mapName.trim()) {
@@ -272,12 +312,33 @@ export default function RobotCreateMap() {
         },
         ...l,
       ]);
-      setMapName("");
+      
+      // ✅ Hiển thị countdown modal
+      setShowCountdown(true);
+      setCountdown(5);
       showToast("success", "Đã gửi lệnh lưu bản đồ!");
+      
     } catch (err) {
       showToast("error", err.message || "Không thể lưu bản đồ!");
     }
   }
+
+  // ✅ COUNTDOWN EFFECT - MỚI THÊM
+  useEffect(() => {
+    if (!showCountdown) return;
+    
+    if (countdown === 0) {
+      navigate("/viewlistmap");
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [showCountdown, countdown, navigate]);
+
 
   // ===================================
   // UI
@@ -297,6 +358,7 @@ export default function RobotCreateMap() {
                     Điều khiển
                   </h6>
 
+
                   <button
                     className={`${styles.btnPrimary} mt-2`}
                     onClick={() => setRemoteMode(!remoteMode)}
@@ -308,6 +370,7 @@ export default function RobotCreateMap() {
                     ></i>
                     {remoteMode ? "Tắt lái từ xa" : "Lái từ xa"}
                   </button>
+
 
                   {remoteMode && (
                     <>
@@ -361,7 +424,9 @@ export default function RobotCreateMap() {
                   )}
                 </div>
 
+
                 <hr className={styles.divider} />
+
 
                 {/* Compartments */}
                 <div className="mb-3">
@@ -390,7 +455,9 @@ export default function RobotCreateMap() {
                   </div>
                 </div>
 
+
                 <hr className={styles.divider} />
+
 
                 {/* Logs */}
                 <div className="flex-grow-1">
@@ -425,6 +492,7 @@ export default function RobotCreateMap() {
               </div>
             </div>
           </div>
+
 
           {/* =================== RIGHT: CAMERA + MAP =================== */}
           <div className="col-lg-9 col-xl-10">
@@ -465,6 +533,7 @@ export default function RobotCreateMap() {
                 </div>
               </div>
 
+
               {/* Map Section */}
               <div
                 className={`${styles.glass} p-3 flex-grow-1 d-flex flex-column`}
@@ -500,6 +569,57 @@ export default function RobotCreateMap() {
           </div>
         </div>
       </div>
+      
+     {/* ✅ MODAL COUNTDOWN - Background Trắng */}
+{showCountdown && (
+  <div 
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div 
+      style={{
+        background: "white",
+        padding: "40px 60px",
+        borderRadius: "20px",
+        textAlign: "center",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+      }}
+    >
+      <div style={{ fontSize: "64px", marginBottom: "20px" }}>
+        💾
+      </div>
+      <h3 style={{ color: "#333", marginBottom: "15px", fontSize: "24px", fontWeight: "600" }}>
+        Đang lưu bản đồ...
+      </h3>
+      <div 
+        style={{
+          fontSize: "48px",
+          fontWeight: "bold",
+          color: "#667eea",
+          marginBottom: "10px",
+          animation: "pulse 1s ease-in-out infinite",
+        }}
+      >
+        {countdown}
+      </div>
+      <p style={{ color: "#666", fontSize: "16px", margin: 0 }}>
+        Chuyển đến danh sách bản đồ sau {countdown} giây
+      </p>
+    </div>
+  </div>
+)}
+
+      
       <Toast toast={toast} showToast={showToast} />
     </div>
   );
