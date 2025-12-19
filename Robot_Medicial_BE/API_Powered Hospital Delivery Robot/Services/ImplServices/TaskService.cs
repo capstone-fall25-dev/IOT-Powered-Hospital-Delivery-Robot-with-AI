@@ -1,3 +1,4 @@
+using API_Powered_Hospital_Delivery_Robot.Helpers;
 using API_Powered_Hospital_Delivery_Robot.Hubs;
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Models.Entities;
@@ -142,8 +143,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     AssignedBy = currentUserId,
                     Status = "pending",
                     Priority = dto.Priority.ToString(),
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now,
+                    CreatedAt = DateTimeHelper.Now(),
+                    UpdatedAt = DateTimeHelper.Now(),
                     ScheduledStartAt = dto.ScheduledStartAt
                 };
 
@@ -216,8 +217,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         PatientId = s.PatientId,
                         CustomName = finalName,
                         Status = "pending",
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now(),
+                        UpdatedAt = DateTimeHelper.Now()
                     };
 
                     stop = await _repo.CreateStopAsync(stop);
@@ -236,8 +237,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         CategoryId = s.CategoryId, // Lưu CategoryId để giữ lại khi task bị cancel
                         ItemDesc = finalItemDesc,
                         Status = "pending",
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now(),
+                        UpdatedAt = DateTimeHelper.Now()
                     });
 
                     // Log stop creation
@@ -248,7 +249,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         StopId = stop.Id,
                         LogType = "info",
                         Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được tạo cho nhiệm vụ #{task.Id}. Bệnh nhân: {patient.FullName} ({patient.PatientCode})",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
 
@@ -269,7 +270,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     StopId = null, // Log tổng quát về task, không cần stopId
                     LogType = "info",
                     Message = $"Nhiệm vụ #{task.Id} đã được tạo thành công. Robot: {robot.Name ?? robot.Code}, Ưu tiên: {task.Priority}, Số điểm dừng: {dto.Stops.Count}",
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTimeHelper.Now()
                 });
 
                 await _taskHub.Clients.All.SendAsync("TaskCreated", response);
@@ -443,7 +444,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         throw new InvalidOperationException($"Status '{newStatus}' không hợp lệ.");
 
                     task.Status = newStatus;
-                    task.UpdatedAt = DateTime.Now;
+                    task.UpdatedAt = DateTimeHelper.Now();
                     taskStatusManuallyChanged = true;
 
                     string stopStatus = MapTaskStatusToTaskStopStatus(newStatus);
@@ -460,7 +461,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 stop.Status = stopStatus;
                             }
 
-                            stop.UpdatedAt = DateTime.Now;
+                            stop.UpdatedAt = DateTimeHelper.Now();
 
                             // Map stop status sang CompartmentAssignment status hợp lệ
                             var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
@@ -470,7 +471,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 foreach (var assign in stop.CompartmentAssignments)
                                 {
                                     assign.Status = assignmentStatus;
-                                    assign.UpdatedAt = DateTime.Now;
+                                    assign.UpdatedAt = DateTimeHelper.Now();
                                 }
                             }
 
@@ -484,7 +485,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     StopId = stop.Id,
                                     LogType = stopStatus == "delivered" ? "success" : stopStatus == "failed" ? "error" : "info",
                                     Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật từ '{oldStopStatus}' sang '{stopStatus}' do thay đổi trạng thái nhiệm vụ",
-                                    CreatedAt = DateTime.Now
+                                    CreatedAt = DateTimeHelper.Now()
                                 });
                             }
                         }
@@ -512,7 +513,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     StopId = stop.Id,
                                     LogType = logType,
                                     Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                    CreatedAt = DateTime.Now
+                                    CreatedAt = DateTimeHelper.Now()
                                 });
                             }
                         }
@@ -525,7 +526,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 TaskId = task.Id,
                                 LogType = logType,
                                 Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                CreatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now()
                             });
                         }
                     }
@@ -575,8 +576,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 PatientId = sDto.PatientId,
                                 CustomName = "",
                                 Status = "pending",
-                                CreatedAt = DateTime.Now,
-                                UpdatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now(),
+                                UpdatedAt = DateTimeHelper.Now()
                             };
 
                             stop = await _repo.CreateStopAsync(stop);
@@ -628,7 +629,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 if (!string.Equals(oldStatus, newStopStatus, StringComparison.OrdinalIgnoreCase))
                                 {
                                     stop.Status = newStopStatus;
-                                    stop.UpdatedAt = DateTime.Now;
+                                    stop.UpdatedAt = DateTimeHelper.Now();
 
                                     // Map stop status sang CompartmentAssignment status hợp lệ
                                     // CompartmentAssignment chỉ chấp nhận: pending, loaded, unlocked, delivered, locked, canceled
@@ -639,7 +640,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                         foreach (var assign in stop.CompartmentAssignments)
                                         {
                                             assign.Status = assignmentStatus;
-                                            assign.UpdatedAt = DateTime.Now;
+                                            assign.UpdatedAt = DateTimeHelper.Now();
                                         }
                                     }
 
@@ -651,7 +652,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                         StopId = stop.Id,
                                         LogType = newStopStatus == "delivered" ? "success" : newStopStatus == "failed" ? "error" : "info",
                                         Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật trạng thái từ '{oldStatus}' sang '{newStopStatus}'",
-                                        CreatedAt = DateTime.Now
+                                        CreatedAt = DateTimeHelper.Now()
                                     });
                                 }
                             }
@@ -725,7 +726,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     StopId = stop.Id,
                                     LogType = "info",
                                     Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật: {changeMessage}",
-                                    CreatedAt = DateTime.Now
+                                    CreatedAt = DateTimeHelper.Now()
                                 });
                             }
                         }
@@ -744,7 +745,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             if (stop.DestinationId != sDto.DestinationId) stop.DestinationId = sDto.DestinationId;
                             if (stop.PatientId != sDto.PatientId) stop.PatientId = sDto.PatientId;
                         }
-                        stop.UpdatedAt = DateTime.Now;
+                        stop.UpdatedAt = DateTimeHelper.Now();
 
                         var assignment = stop.CompartmentAssignments?.FirstOrDefault();
 
@@ -796,8 +797,8 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                     CompartmentId = sDto.CompartmentId,
                                     CategoryId = sDto.CategoryId, // Lưu CategoryId để giữ lại khi task bị cancel
                                     Status = stop.Status,
-                                    CreatedAt = DateTime.Now,
-                                    UpdatedAt = DateTime.Now
+                                    CreatedAt = DateTimeHelper.Now(),
+                                    UpdatedAt = DateTimeHelper.Now()
                                 };
 
                                 await _repo.CreateAssignmentAsync(assignment);
@@ -809,7 +810,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             {
                                 assignment.CompartmentId = sDto.CompartmentId;
                                 assignment.CategoryId = sDto.CategoryId; // Cập nhật CategoryId khi edit
-                                assignment.UpdatedAt = DateTime.Now;
+                                assignment.UpdatedAt = DateTimeHelper.Now();
                             }
                         }
 
@@ -832,7 +833,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             assignment.ItemDesc = !string.IsNullOrWhiteSpace(sDto.ItemDesc)
                                 ? sDto.ItemDesc.Trim()
                                 : "";
-                            assignment.UpdatedAt = DateTime.Now;
+                            assignment.UpdatedAt = DateTimeHelper.Now();
                         }
                     }
                 }
@@ -848,7 +849,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (!taskStatusManuallyChanged && allDelivered)
                 {
                     task.Status = "completed";
-                    task.UpdatedAt = DateTime.Now;
+                    task.UpdatedAt = DateTimeHelper.Now();
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -867,7 +868,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 StopId = stop.Id,
                                 LogType = "success",
                                 Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                CreatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now()
                             });
                         }
                     }
@@ -880,7 +881,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             TaskId = task.Id,
                             LogType = "success",
                             Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -896,7 +897,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (!taskStatusManuallyChanged && allSkipped)
                 {
                     task.Status = "canceled";
-                    task.UpdatedAt = DateTime.Now;
+                    task.UpdatedAt = DateTimeHelper.Now();
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -915,7 +916,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 StopId = stop.Id,
                                 LogType = "warning",
                                 Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                CreatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now()
                             });
                         }
                     }
@@ -928,7 +929,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             TaskId = task.Id,
                             LogType = "warning",
                             Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -944,7 +945,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 if (!taskStatusManuallyChanged && allFailed)
                 {
                     task.Status = "failed";
-                    task.UpdatedAt = DateTime.Now;
+                    task.UpdatedAt = DateTimeHelper.Now();
 
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -963,7 +964,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 StopId = stop.Id,
                                 LogType = "error",
                                 Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                CreatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now()
                             });
                         }
                     }
@@ -976,7 +977,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             TaskId = task.Id,
                             LogType = "error",
                             Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -1332,7 +1333,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 throw new Exception("Stop has been delivered — cannot update again.");
             // Update stop status
             stop.Status = newStatus;
-            stop.UpdatedAt = DateTime.Now;
+            stop.UpdatedAt = DateTimeHelper.Now();
 
             // Log stop status update
             await _logRepository.CreateAsync(new Log
@@ -1342,7 +1343,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 StopId = stop.Id,
                 LogType = newStatus == "delivered" ? "success" : newStatus == "failed" ? "error" : "info",
                 Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã được cập nhật trạng thái thành: {newStatus}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             // ============================================================
@@ -1354,7 +1355,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             if (allDelivered)
             {
                 task.Status = "completed";
-                task.UpdatedAt = DateTime.Now;
+                task.UpdatedAt = DateTimeHelper.Now();
 
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -1382,7 +1383,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             StopId = stopItem.Id,
                             LogType = "success",
                             Message = $"{taskMessage}. Điểm dừng #{stopItem.SeqNo} (Stop ID: {stopItem.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -1395,7 +1396,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         TaskId = task.Id,
                         LogType = "success",
                         Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
             }
@@ -1430,7 +1431,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         // Map stop status sang assignment status hợp lệ
                         var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
                         assign.Status = assignmentStatus;
-                        assign.UpdatedAt = DateTime.Now;
+                        assign.UpdatedAt = DateTimeHelper.Now();
                     }
                 }
                 else
@@ -1441,15 +1442,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     {
                         var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
                         assign.Status = assignmentStatus;
-                        assign.UpdatedAt = DateTime.Now;
+                        assign.UpdatedAt = DateTimeHelper.Now();
                     }
                 }
             }
 
             // Task status = completed (nhưng giữ nguyên stop status)
             task.Status = "completed";
-            task.UpdatedAt = DateTime.Now;
-            task.CompletedAt = DateTime.Now;
+            task.UpdatedAt = DateTimeHelper.Now();
+            task.CompletedAt = DateTimeHelper.Now();
 
             await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
@@ -1474,7 +1475,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 TaskId = task.Id,
                 LogType = "success",
                 Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTimeHelper.Now()
             });
 
             // Gửi SignalR event để cập nhật real-time cho frontend
@@ -1578,15 +1579,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 // TÍNH TOÁN: Có chạy sớm không?
                 double? startedEarlyMinutes = null;
-                if (task.ScheduledStartAt.HasValue && task.ScheduledStartAt.Value > DateTime.Now)
+                if (task.ScheduledStartAt.HasValue && task.ScheduledStartAt.Value > DateTimeHelper.Now())
                 {
-                    startedEarlyMinutes = Math.Round((task.ScheduledStartAt.Value - DateTime.Now).TotalMinutes, 1);
+                    startedEarlyMinutes = Math.Round((task.ScheduledStartAt.Value - DateTimeHelper.Now()).TotalMinutes, 1);
                 }
 
                 // === CHUYỂN TRẠNG THÁI ===
                 task.Status = "in_progress";
-                task.StartedAt = DateTime.Now;
-                task.UpdatedAt = DateTime.Now;
+                task.StartedAt = DateTimeHelper.Now();
+                task.UpdatedAt = DateTimeHelper.Now();
 
                 robot.Status = "transporting";
                 await _repo.UpdateRobotStatusAsync(robot.Id, "transporting");
@@ -1614,7 +1615,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             StopId = stop.Id,
                             LogType = "info",
                             Message = $"{logMessagePrefix}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) sẵn sàng. Robot: {robot.Name ?? robot.Code}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -1627,7 +1628,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         TaskId = task.Id,
                         LogType = "info",
                         Message = $"{logMessagePrefix}. Robot: {robot.Name ?? robot.Code}",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
 
@@ -1653,7 +1654,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             using var transaction = await _repo.BeginTransactionAsync();
             try
             {
-                var now = DateTime.Now;
+                var now = DateTimeHelper.Now();
                 var overdueTime = now.AddMinutes(-GracePeriodMinutes);
 
                 var overdueTasks = await _repo.GetListAsync(new TaskFilterDto
@@ -1671,7 +1672,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 {
                     // 1. Chuyển task thành canceled
                     task.Status = "canceled";
-                    task.UpdatedAt = DateTime.Now;
+                    task.UpdatedAt = DateTimeHelper.Now();
 
                     // 2. Robot về trạm
                     await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
@@ -1692,7 +1693,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                     // TÍNH SỐ PHÚT QUÁ GIỜ
                     var overdueMinutes = task.ScheduledStartAt.HasValue
-                        ? Math.Round((DateTime.Now - task.ScheduledStartAt.Value).TotalMinutes, 1)
+                        ? Math.Round((DateTimeHelper.Now() - task.ScheduledStartAt.Value).TotalMinutes, 1)
                         : GracePeriodMinutes;
 
                     // TẠO GHI CHÚ ĐẸP
@@ -1715,7 +1716,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                                 StopId = stop.Id,
                                 LogType = "warning",
                                 Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã bị hủy. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                                CreatedAt = DateTime.Now
+                                CreatedAt = DateTimeHelper.Now()
                             });
                         }
                     }
@@ -1728,7 +1729,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             TaskId = task.Id,
                             LogType = "warning",
                             Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
 
@@ -1739,7 +1740,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     {
                         taskId = task.Id,
                         reason = $"Quá giờ khởi hành hơn {GracePeriodMinutes} phút",
-                        canceledAt = DateTime.Now,
+                        canceledAt = DateTimeHelper.Now(),
                         task = canceledTaskResponse
                     });
 
@@ -1795,7 +1796,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 // 1. Đổi status task thành "canceled"
                 task.Status = "canceled";
-                task.UpdatedAt = DateTime.Now;
+                task.UpdatedAt = DateTimeHelper.Now();
 
                 // 2. Đổi status của tất cả stops thành "canceled" hoặc "skipped"
                 foreach (var stop in task.TaskStops)
@@ -1805,7 +1806,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     if (stop.Status != "delivered")
                     {
                         stop.Status = "skipped";
-                        stop.UpdatedAt = DateTime.Now;
+                        stop.UpdatedAt = DateTimeHelper.Now();
                     }
 
                     // Đổi status của tất cả assignments
@@ -1814,7 +1815,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         if (assignment.Status != "delivered")
                         {
                             assignment.Status = "canceled";
-                            assignment.UpdatedAt = DateTime.Now;
+                            assignment.UpdatedAt = DateTimeHelper.Now();
                         }
                     }
 
@@ -1828,7 +1829,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             StopId = stop.Id,
                             LogType = "warning",
                             Message = $"Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}) đã bị hủy do nhiệm vụ bị hủy",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -1872,7 +1873,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                             StopId = stop.Id,
                             LogType = "warning",
                             Message = $"{taskMessage}. Điểm dừng #{stop.SeqNo} (Stop ID: {stop.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTime.Now
+                            CreatedAt = DateTimeHelper.Now()
                         });
                     }
                 }
@@ -1885,7 +1886,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         TaskId = task.Id,
                         LogType = "warning",
                         Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTimeHelper.Now()
                     });
                 }
 
@@ -1898,7 +1899,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 {
                     taskId = task.Id,
                     reason = reason ?? "Hủy thủ công",
-                    canceledAt = DateTime.Now,
+                    canceledAt = DateTimeHelper.Now(),
                     task = response
                 });
 
