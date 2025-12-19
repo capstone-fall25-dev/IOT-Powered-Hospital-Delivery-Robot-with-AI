@@ -412,7 +412,7 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
         );
       });
 
-      // === ĐIỂM ĐANG CHỌN: Dấu pin lớn + tên đơn giản ===
+      // === ĐIỂM ĐANG CHỌN: Dấu pin nhỏ hơn + tên đơn giản ===
       if (highlightStop) {
         const localX = highlightStop.x - originX;
         const localY = highlightStop.y - originY;
@@ -424,23 +424,23 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
             <div style="
               text-align: center;
               font-weight: bold;
-              font-size: 16px;
+              font-size: 14px;
               color: #2c3e50;
               background: white;
-              padding: 6px 10px;
+              padding: 4px 8px;
               border-radius: 6px;
               box-shadow: 0 2px 10px rgba(0,0,0,0.2);
               white-space: nowrap;
-              margin-bottom: 8px;
+              margin-bottom: 6px;
             ">
               ${highlightStop.name}
             </div>
-            <div style="font-size: 42px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-              
+            <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+              📍
             </div>
           `,
-          iconSize: [120, 80],
-          iconAnchor: [60, 78],
+          iconSize: [80, 60],
+          iconAnchor: [40, 58],
         });
 
         if (destinationMarker.current) {
@@ -812,7 +812,7 @@ async function sendEmergencyStop() {
 
     const icon = L.divIcon({
       className: "robot-marker",
-      html: `<div style="transform:rotate(${pos.theta}rad);font-size:15px;">Robot</div>`,
+      html: `<div style="transform:rotate(${pos.theta}rad);font-size:15px;">🤖</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
