@@ -251,8 +251,8 @@ using (var scope = app.Services.CreateScope())
             Role = "admin",
             IsActive = true,
             PasswordHash = adminPass,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
+            CreatedAt = DateTimeHelper.Now,
+            UpdatedAt = DateTimeHelper.Now
         });
 
         context.SaveChanges();
