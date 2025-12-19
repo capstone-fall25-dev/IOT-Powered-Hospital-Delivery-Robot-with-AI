@@ -56,6 +56,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     ScheduledStartAt = t.ScheduledStartAt,
                     StartedAt = t.StartedAt,
                     CompletedAt = t.CompletedAt,
+                    UpdatedAt = t.UpdatedAt,
                     TotalStops = t.TaskStops.Count,
                     CompletedStops = t.TaskStops.Count(s => string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase)),
                     FirstDestination = t.TaskStops.OrderBy(s => s.SeqNo).FirstOrDefault()?.Destination?.Name ?? "",
@@ -1004,6 +1005,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                     }
                 }
 
+                // Update task.UpdatedAt ở cuối để đảm bảo mọi thay đổi đều được ghi nhận
+                task.UpdatedAt = DateTimeHelper.Now();
+
                 // Save, commit
                 await _repo.SaveChangesAsync();
 
@@ -1088,6 +1092,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 ScheduledStartAt = task.ScheduledStartAt,
                 StartedAt = task.StartedAt,
                 CompletedAt = task.CompletedAt,
+                UpdatedAt = task.UpdatedAt,
                 AssignedByEmail = task.AssignedByNavigation?.Email,
                 AssignedByFullName = task.AssignedByNavigation?.FullName,
                 MapName = task.Map?.MapName,
@@ -1910,6 +1915,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 await transaction.RollbackAsync();
                 throw new InvalidOperationException($"Không thể hủy nhiệm vụ: {ex.Message}");
             }
+        }
+
+        // ======================================================================
+        // CHECK ROBOT PENDING TASK
+        // ======================================================================
+        public async Task<bool> HasRobotPendingTaskAsync(ulong robotId)
+        {
+            return await _repo.HasRobotPendingTaskAsync(robotId);
         }
     }
 }
