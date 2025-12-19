@@ -473,7 +473,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             // Cập nhật mật khẩu
             user.PasswordHash = HashPassword(request.NewPassword);
-            user.UpdatedAt = DateTimeHelper.Now;
+            user.UpdatedAt = DateTime.Now;
             await UpdateUserAsync(user);
 
             // Xóa token sau khi dùng
