@@ -7,6 +7,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -16,8 +17,32 @@ export default function Sidebar() {
     }
   }, [isCollapsed]);
 
+  useEffect(() => {
+    // Close mobile menu when clicking outside
+    const handleClickOutside = (e) => {
+      if (isMobileOpen && !e.target.closest('.sidebar') && !e.target.closest('.mobile-menu-toggle')) {
+        setIsMobileOpen(false);
+      }
+    };
+    if (isMobileOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isMobileOpen]);
+
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileOpen(!isMobileOpen);
+  };
+
+  const handleMenuClick = (path) => {
+    navigate(path);
+    setIsMobileOpen(false); // Close mobile menu after navigation
   };
 
   const isActive = (path) => {
@@ -70,7 +95,7 @@ export default function Sidebar() {
   const isDoctor = user?.role === "doctor"
 
   return (
-    <div className="sidebar glass d-flex flex-column">
+    <div className={`sidebar glass d-flex flex-column ${isMobileOpen ? 'mobile-open' : ''}`}>
       <style>{`
         :root {
           --teal: #4CE1C6;
@@ -283,7 +308,107 @@ export default function Sidebar() {
           overflow: hidden;
           border: none;
         }
+
+        /* Mobile Menu Toggle Button */
+        .mobile-menu-toggle {
+          display: none;
+          position: fixed;
+          top: 70px;
+          left: 15px;
+          z-index: 1001;
+          background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(8, 145, 178, 0.9) 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 12px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle:hover {
+          transform: scale(1.05);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .mobile-menu-toggle i {
+          font-size: 1.5rem;
+        }
+
+        /* Mobile Overlay */
+        .mobile-sidebar-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 998;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .mobile-sidebar-overlay.active {
+          opacity: 1;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 1024px) {
+          .sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+          }
+
+          .sidebar.mobile-open {
+            transform: translateX(0);
+          }
+
+          .mobile-menu-toggle {
+            display: block;
+          }
+
+          .mobile-sidebar-overlay {
+            display: block;
+          }
+
+          body.sidebar-collapsed .page-wrapper {
+            margin-left: 0 !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .mobile-menu-toggle {
+            top: 60px;
+            left: 10px;
+            padding: 8px 10px;
+          }
+
+          .mobile-menu-toggle i {
+            font-size: 1.3rem;
+          }
+
+          .sidebar {
+            width: 280px !important;
+            border-radius: 0 24px 24px 0 !important;
+          }
+        }
       `}</style>
+
+      {/* Mobile Menu Toggle Button */}
+      <button 
+        className="mobile-menu-toggle" 
+        onClick={toggleMobileMenu}
+        aria-label="Toggle menu"
+      >
+        <i className={isMobileOpen ? "bi bi-x-lg" : "bi bi-list"}></i>
+      </button>
+
+      {/* Mobile Overlay */}
+      <div 
+        className={`mobile-sidebar-overlay ${isMobileOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileOpen(false)}
+      ></div>
 
       {/* Header - Cố định */}
       <div className="sidebar-header">
@@ -300,35 +425,35 @@ export default function Sidebar() {
       <div className="sidebar-content">
         <ul>
           <li
-            onClick={() => navigate("/dashboard")}
+            onClick={() => handleMenuClick("/dashboard")}
             className={isActive("/dashboard") ? "active" : ""}
           >
           <i className="bi bi-list-task"></i>
             <span>Nhiệm vụ</span>
           </li>
            <li
-            onClick={() => navigate("/report")}
+            onClick={() => handleMenuClick("/report")}
             className={isActive("/report") ? "active" : ""}
           >
           <i className="bi bi-bar-chart-line"></i>
             <span>Thống kê nhiệm vụ</span>
           </li>
           <li
-            onClick={() => navigate("/team")}
+            onClick={() => handleMenuClick("/team")}
             className={isActive("/team") ? "active" : ""}
           >
             <i className="bi bi-robot"></i>
             <span>Robot</span>
           </li>
           <li
-            onClick={() => navigate("/viewlistmap")}
+            onClick={() => handleMenuClick("/viewlistmap")}
             className={isActive("/viewlistmap") ? "active" : ""}
           >
             <i className="bi bi-map"></i>
             <span>Bản đồ</span>
           </li>
           <li
-            onClick={() => navigate("/destinationlist")}
+            onClick={() => handleMenuClick("/destinationlist")}
             className={isActive("/destinationlist") ? "active" : ""}
           >
             <i className="bi bi-geo-alt-fill"></i>
@@ -337,7 +462,7 @@ export default function Sidebar() {
           {/* Người dùng - CHỈ ADMIN */}
           {isAdmin && (
           <li
-            onClick={() => navigate("/users")}
+            onClick={() => handleMenuClick("/users")}
             className={isActive("/users") ? "active" : ""}
           >
             <i className="bi bi-people"></i>
@@ -345,35 +470,35 @@ export default function Sidebar() {
           </li>
           )}
           <li 
-            onClick={() => navigate("/patients")}
+            onClick={() => handleMenuClick("/patients")}
             className={isActive("/patients") ? "active" : ""}
           >
             <i className="bi bi-person-lines-fill"></i>
             <span>Bệnh nhân</span>
           </li>
           <li
-            onClick={() => navigate("/compartment-categories")}
+            onClick={() => handleMenuClick("/compartment-categories")}
             className={isActive("/compartment-categories") ? "active" : ""}
           >
             <i className="bi bi-grid-3x3-gap-fill"></i>
             <span>Ngăn chứa</span>
           </li>
           <li hidden 
-            onClick={() => navigate("/rooms")}
+            onClick={() => handleMenuClick("/rooms")}
             className={isActive("/rooms") ? "active" : ""}
           >
             <i className="bi bi-hospital"></i>
             <span>Phòng bệnh</span>
           </li>
           <li hidden 
-            onClick={() => navigate("/prescriptions")}
+            onClick={() => handleMenuClick("/prescriptions")}
             className={isActive("/prescriptions") ? "active" : ""}
           >
             <i className="bi bi-file-medical"></i>
             <span>Đơn thuốc</span>
           </li>
           <li hidden 
-            onClick={() => navigate("/medicines")}
+            onClick={() => handleMenuClick("/medicines")}
             className={isActive("/medicines") ? "active" : ""}
           >
             <i className="bi bi-box-seam"></i>

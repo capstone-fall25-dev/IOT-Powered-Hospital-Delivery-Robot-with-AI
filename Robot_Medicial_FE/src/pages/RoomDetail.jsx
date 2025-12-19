@@ -134,7 +134,9 @@ export default function RoomDetail() {
                                             <td className={styles.patientName}>{p.fullName}</td>
                                             <td>{p.gender}</td>
                                             <td>
-                                                <span className={styles.statusBadge}>{p.status}</span>
+                                                <span className={styles.statusBadge}>
+                                                    {p.status === "active" ? "Đang điều trị" : p.status === "discharged" ? "Đã xuất viện" : p.status}
+                                                </span>
                                             </td>
                                             <td>
                                                 {p.createdAt 

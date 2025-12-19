@@ -46,6 +46,42 @@ export default function ProjectMapListView() {
   const navigate = useNavigate();
 
   // ==========================================================
+  // 0️⃣ Helper: Map robot status sang tiếng Việt
+  // ==========================================================
+  function mapRobotStatus(status) {
+    if (!status) return "Không rõ";
+
+    switch (status.toLowerCase()) {
+      case "transporting":
+        return "Đang vận chuyển";
+      case "awaiting_handover":
+        return "Chờ bàn giao";
+      case "returning_to_station":
+        return "Đang quay về trạm";
+      case "at_station":
+        return "Tại trạm";
+      case "completed":
+        return "Đã hoàn thành";
+      case "charging":
+        return "Đang sạc";
+      case "needs_attention":
+        return "Cần kiểm tra";
+      case "manual_control":
+        return "Điều khiển thủ công";
+      case "offline":
+        return "Mất kết nối";
+      case "pending":
+        return "Đang chờ";
+      case "in_progress":
+        return "Đang tiến hành";
+      case "returning":
+        return "Đang quay về";
+      default:
+        return status || "Không xác định";
+    }
+  }
+
+  // ==========================================================
   // 1️⃣ Load danh sách bản đồ từ API
   // ==========================================================
   useEffect(() => {
@@ -792,7 +828,7 @@ export default function ProjectMapListView() {
                             marginTop: "0.1rem",
                           }}
                         >
-                          Code: {r.code} • Trạng thái: {r.status}
+                          Code: {r.code} • Trạng thái: {mapRobotStatus(r.status)}
                         </div>
                       </div>
                       <div>

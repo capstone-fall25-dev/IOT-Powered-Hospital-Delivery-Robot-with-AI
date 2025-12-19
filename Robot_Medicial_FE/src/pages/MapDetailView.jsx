@@ -370,6 +370,7 @@ export default function MapDetailView() {
         return "Chờ bàn giao";
 
       case "returning_to_station":
+      case "returning":
         return "Đang quay về trạm";
 
       case "at_station":
@@ -390,8 +391,20 @@ export default function MapDetailView() {
       case "offline":
         return "Mất kết nối";
 
+      case "pending":
+        return "Đang chờ";
+
+      case "in_progress":
+        return "Đang tiến hành";
+
+      case "canceled":
+        return "Đã hủy";
+
+      case "failed":
+        return "Thất bại";
+
       default:
-        return "Không xác định";
+        return status || "Không xác định";
     }
   }
 

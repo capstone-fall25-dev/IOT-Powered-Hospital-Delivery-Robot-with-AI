@@ -245,12 +245,25 @@ export default function RobotDetail() {
   const getStatusBadge = (status) => {
     const s = (status || "").toLowerCase();
     const badges = {
+      // Robot statuses
       in_progress: { text: "Đang hoạt động", class: styles.badgeActive },
       at_station: { text: "Tại trạm", class: styles.badgeStation },
       pending: { text: "Chờ nhiệm vụ", class: styles.badgePending },
       offline: { text: "Không kết nối", class: styles.badgeOffline },
+      transporting: { text: "Đang vận chuyển", class: styles.badgeActive },
+      awaiting_handover: { text: "Chờ bàn giao", class: styles.badgePending },
+      returning: { text: "Đang quay về", class: styles.badgeActive },
+      returning_to_station: { text: "Đang quay về", class: styles.badgeActive },
+      // Task statuses
+      completed: { text: "Hoàn thành", class: styles.badgeStation },
+      canceled: { text: "Đã hủy", class: styles.badgeOffline },
+      failed: { text: "Thất bại", class: styles.badgeOffline },
+      // Other
+      charging: { text: "Đang sạc", class: styles.badgePending },
+      needs_attention: { text: "Cần hỗ trợ", class: styles.badgePending },
+      manual_control: { text: "Điều khiển thủ công", class: styles.badgePending },
     };
-    const badge = badges[s] || badges["offline"];
+    const badge = badges[s] || { text: "Không xác định", class: styles.badgeOffline };
     return <span className={badge.class}>{badge.text}</span>;
   };
 

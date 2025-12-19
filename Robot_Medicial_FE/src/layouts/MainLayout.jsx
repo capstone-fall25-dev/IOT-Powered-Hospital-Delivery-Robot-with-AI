@@ -11,17 +11,17 @@ const MainLayout = ({ children }) => {
                 {children}
             </main>
 
-            {/* CSS inline cho responsive và tích hợp - dựa hoàn toàn vào Sidebar CSS cho desktop */}
+            {/* CSS inline cho responsive và tích hợp */}
             <style jsx="true">{`
                 .main-layout {
                     display: flex;
                     flex-direction: row;
                 }
 
-                /* Không override background/margin ở đây, để Sidebar CSS xử lý .page-wrapper */
                 .page-wrapper.main-content {
                     flex: 1;
                     transition: margin-left 0.3s ease;
+                    padding-top: 80px; /* Chừa chỗ cho header */
                 }
 
                 /* ---------- TABLET (<= 1024px) ---------- */
@@ -32,48 +32,14 @@ const MainLayout = ({ children }) => {
 
                     .page-wrapper.main-content {
                         margin-left: 0 !important;
-                        padding-top: 4.5rem; /* Chừa chỗ cho header */
+                        padding-top: 70px;
                     }
 
                     .sidebar {
-                        width: 100% !important;
-                        height: auto !important;
-                        position: relative !important;
-                        border-radius: 0 !important;
-                        box-shadow: none !important;
-                        border-right: none !important;
-                        display: flex !important;
-                        flex-direction: row !important;
-                        justify-content: space-around !important;
-                        border-bottom: 1px solid #e0e0e0;
-                        background: white;
-                        padding: 0.5rem 0;
-                        margin: 0;
-                    }
-
-                    .sidebar ul {
-                        display: flex !important;
-                        flex-direction: row !important;
-                        width: 100% !important;
-                        justify-content: space-around !important;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .sidebar li {
-                        margin: 0 0.5rem !important;
-                        padding: 0.5rem !important;
-                        flex: 1 !important;
-                        text-align: center !important;
-                        justify-content: center !important;
-                    }
-
-                    .sidebar .logo {
-                        display: none !important; /* Ẩn logo toggle trên tablet */
-                    }
-
-                    .sidebar .footer {
-                        display: none !important;
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        z-index: 999 !important;
                     }
                 }
 
@@ -82,66 +48,32 @@ const MainLayout = ({ children }) => {
                     .page-wrapper.main-content {
                         margin-left: 0 !important;
                         padding: 1rem;
-                        padding-top: 5rem;
+                        padding-top: 60px;
+                        padding-bottom: 70px; /* Chừa chỗ cho mobile menu toggle */
                     }
 
-                    /* Sidebar bottom bar cho mobile */
                     .sidebar {
                         position: fixed !important;
-                        bottom: 0 !important;
+                        top: 0 !important;
                         left: 0 !important;
-                        top: auto !important;
-                        width: 100% !important;
-                        height: auto !important;
-                        border-radius: 0 !important;
-                        box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
-                        border-right: none !important;
-                        display: flex !important;
-                        flex-direction: row !important;
-                        justify-content: space-around !important;
-                        padding: 0.5rem 0 !important;
-                        z-index: 1000 !important;
-                        background: white !important;
-                        margin: 0;
-                    }
-
-                    .sidebar ul {
-                        display: flex !important;
-                        flex-direction: row !important;
-                        width: 100% !important;
-                        justify-content: space-around !important;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .sidebar li {
-                        margin: 0 !important;
-                        padding: 0.5rem !important;
-                        flex: 1 !important;
-                        text-align: center !important;
-                        justify-content: center !important;
-                        gap: 0 !important;
-                    }
-
-                    .sidebar li span {
-                        display: none !important; /* Chỉ icon trên mobile */
-                    }
-
-                    .sidebar .logo {
-                        display: none !important;
-                    }
-
-                    .sidebar .footer {
-                        display: none !important;
+                        z-index: 999 !important;
                     }
 
                     /* Header fixed */
-                    header {
+                    .navbar {
                         position: fixed !important;
                         top: 0 !important;
                         left: 0 !important;
                         right: 0 !important;
-                        z-index: 1001 !important;
+                        z-index: 1000 !important;
+                    }
+                }
+
+                /* ---------- SMALL MOBILE (<= 480px) ---------- */
+                @media (max-width: 480px) {
+                    .page-wrapper.main-content {
+                        padding-top: 55px;
+                        padding-bottom: 60px;
                     }
                 }
             `}</style>
