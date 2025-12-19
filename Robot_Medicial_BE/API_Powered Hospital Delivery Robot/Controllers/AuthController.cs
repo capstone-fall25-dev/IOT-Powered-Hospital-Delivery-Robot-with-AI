@@ -66,8 +66,34 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
-            var result = await _userService.RequestForgotPasswordAsync(request);
-            return Ok(new { message = result });
+            // Validate model state
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Dữ liệu gửi lên không hợp lệ.", errors = ModelState });
+            }
+
+            try
+            {
+                var result = await _userService.RequestForgotPasswordAsync(request);
+
+                // Nếu result chứa thông báo lỗi (không tìm thấy user hoặc lỗi gửi mail)
+                if (result.Contains("Không tìm thấy") || result.Contains("lỗi"))
+                {
+                    return BadRequest(new { message = result });
+                }
+
+                // Thành công
+                return Ok(new { message = result });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Log exception ở đây nếu có logger
+                return BadRequest(new { message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau." });
+            }
         }
 
         /// <summary>
