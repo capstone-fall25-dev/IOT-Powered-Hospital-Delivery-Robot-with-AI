@@ -127,6 +127,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         $"Robot {robot.Name} đang ở trạng thái '{robot.Status}', không thể nhận nhiệm vụ mới."
                     );
 
+                // Kiểm tra robot đã có task pending chưa (mỗi robot chỉ có thể có 1 task pending tại một thời điểm)
+                if (await _repo.HasRobotPendingTaskAsync(dto.RobotId))
+                    throw new InvalidOperationException(
+                        $"Robot {robot.Name ?? robot.Code} đã được assign cho một nhiệm vụ khác đang ở trạng thái pending. " +
+                        "Vui lòng chọn robot khác hoặc đợi nhiệm vụ hiện tại hoàn thành/hủy."
+                    );
+
                 // Create task
                 var task = new Models.Entities.Task
                 {
