@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getTaskById, updateStopStatus, cancelTask } from "@/services/taskService";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
+import { useAuth } from "@/utils/authContext";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 import styles from "@/assets/styles/taskDetail.module.css";
@@ -11,6 +12,7 @@ export default function TaskDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { toast, showToast } = useToast();
+    const { user } = useAuth(); // Lấy thông tin user hiện tại
 
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -302,7 +304,13 @@ export default function TaskDetail() {
                 setLoading(false);
             } catch (err) {
                 console.error(err);
-                showToast("error", err.message);
+                // Nếu lỗi 404 hoặc 403 (không có quyền), redirect về dashboard
+                if (err.status === 404 || err.status === 403) {
+                    showToast("error", "Bạn không có quyền xem nhiệm vụ này hoặc nhiệm vụ không tồn tại.");
+                    setTimeout(() => navigate("/dashboard"), 2000);
+                } else {
+                    showToast("error", err.message);
+                }
                 setLoading(false);
             }
         }
@@ -453,9 +461,10 @@ export default function TaskDetail() {
                                     <i className="bi bi-pencil me-1"></i>Sửa
                                 </button>
 
-                                {/* Nút bắt đầu task - chỉ hiển thị khi task ở trạng thái pending */}
+                                {/* Nút bắt đầu task - chỉ hiển thị khi task ở trạng thái pending VÀ user là creator hoặc admin */}
                                 {/* Chuyển sang trang RunTask để xử lý start task */}
-                                {task.status === "pending" && (
+                                {task.status === "pending" && 
+                                 (user?.role === "admin" || (task.assignedById && user?.id && Number(task.assignedById) === Number(user.id))) && (
                                     <button
                                         className="btn btn-success"
                                         onClick={() => navigate(`/run-task/${task.id}`)}

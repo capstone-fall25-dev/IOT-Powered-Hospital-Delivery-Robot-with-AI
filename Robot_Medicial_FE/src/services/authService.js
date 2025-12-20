@@ -36,7 +36,17 @@ export async function logout() {
 export async function getUserByToken() {
   try {
     const data = await apiFetch("/auth/check-login-status");
+    // Lấy user ID từ JWT token
+    const token = localStorage.getItem("token");
+    let userId = null;
+    if (token) {
+      const decoded = decodeJwt(token.replace(/^Bearer\s+/i, "").trim());
+      userId = decoded[Object.keys(decoded).find(key => 
+        key.includes("nameidentifier") || key.includes("sub") || key === "id"
+      )] || decoded.id || decoded.sub;
+    }
     return {
+      id: userId ? Number(userId) : null,
       email: data.email,
       fullName: data.fullName,
       role: data.role,

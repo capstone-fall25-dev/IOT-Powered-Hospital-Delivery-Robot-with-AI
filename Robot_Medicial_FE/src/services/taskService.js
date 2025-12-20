@@ -84,3 +84,17 @@ export const cancelTask = (taskId, reason = null) =>
  */
 export const checkRobotPendingTask = (robotId) =>
   apiFetch(`/tasks/check-robot-pending/${robotId}`);
+
+/**
+ * Lấy thông tin chạy nhiệm vụ (run-info)
+ */
+export const getRunInfo = (taskId) =>
+  apiFetch(`/tasks/${taskId}/run-info`);
+
+/**
+ * Bắt đầu nhiệm vụ
+ */
+export const startTask = (taskId) =>
+  apiFetch(`/tasks/${taskId}/start`, {
+    method: "POST",
+  });

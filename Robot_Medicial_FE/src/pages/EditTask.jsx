@@ -428,6 +428,14 @@ export default function EditTask() {
             } catch (err) {
                 console.error("Lỗi trong loadTask():", err);
                 
+                // Xử lý lỗi 403/404 (không có quyền hoặc không tìm thấy)
+                if (err.status === 404 || err.status === 403) {
+                    showToast("error", "Bạn không có quyền chỉnh sửa nhiệm vụ này hoặc nhiệm vụ không tồn tại.");
+                    setTimeout(() => navigate("/dashboard"), 2000);
+                    setLoading(false);
+                    return;
+                }
+                
                 // Cố gắng extract status từ error message nếu có
                 // Backend error message format: "Không thể chỉnh sửa nhiệm vụ ở trạng thái '{task.Status}'..."
                 const errorMessage = err.message || "";
@@ -860,7 +868,13 @@ export default function EditTask() {
             setTimeout(() => navigate(`/task-detail/${id}`), 1500);
         } catch (err) {
             console.error(err);
-            showToast("error", err.message);
+            // Xử lý lỗi 403 (không có quyền)
+            if (err.status === 403) {
+                showToast("error", "Bạn không có quyền cập nhật nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền cập nhật.");
+                setTimeout(() => navigate(`/task-detail/${id}`), 2000);
+            } else {
+                showToast("error", err.message);
+            }
         }
     }
 

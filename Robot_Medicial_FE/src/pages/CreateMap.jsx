@@ -30,9 +30,14 @@ export default function RobotCreateMap() {
     { id: 2, label: "Hộp 2", state: "closed" },
   ]);
   
-  // ✅ Thêm states cho countdown
+  // Countdown state cho save map (5s)
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  
+  // Countdown state khi vào trang (10s)
+  const [mappingCountdown, setMappingCountdown] = useState(10);
+  const [showMappingCountdown, setShowMappingCountdown] = useState(false);
+  const mappingCountdownIntervalRef = useRef(null);
 
 
   // ===================================
@@ -85,6 +90,35 @@ export default function RobotCreateMap() {
     return () => {
       posConn.stop();
       camConn.stop();
+    };
+  }, []);
+
+  // ===================================
+  // TỰ ĐỘNG HIỂN THỊ COUNTDOWN 10s KHI VÀO TRANG
+  // ===================================
+  useEffect(() => {
+    // Tự động hiển thị countdown 10 giây khi vào trang
+    setMappingCountdown(10);
+    setShowMappingCountdown(true);
+
+    mappingCountdownIntervalRef.current = setInterval(() => {
+      setMappingCountdown((prev) => {
+        if (prev <= 1) {
+          if (mappingCountdownIntervalRef.current) {
+            clearInterval(mappingCountdownIntervalRef.current);
+            mappingCountdownIntervalRef.current = null;
+          }
+          setShowMappingCountdown(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (mappingCountdownIntervalRef.current) {
+        clearInterval(mappingCountdownIntervalRef.current);
+      }
     };
   }, []);
 
@@ -570,8 +604,55 @@ export default function RobotCreateMap() {
         </div>
       </div>
       
-     {/* ✅ MODAL COUNTDOWN - Background Trắng */}
-{showCountdown && (
+      {/* Countdown Modal khi vào trang (10s) */}
+      {showMappingCountdown && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "2rem",
+              textAlign: "center",
+              minWidth: "300px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div 
+              style={{
+                fontSize: "4rem",
+                fontWeight: "bold",
+                color: mappingCountdown <= 3 ? "#dc3545" : "#0d6efd",
+                marginBottom: "1rem",
+                transition: "color 0.3s",
+              }}
+            >
+              {mappingCountdown}
+            </div>
+            <div style={{ fontSize: "1.2rem", color: "#6c757d", marginBottom: "1rem" }}>
+              Đang khởi động robot mapping...
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "#adb5bd" }}>
+              Vui lòng đợi trong giây lát
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Countdown Modal cho save map (5s) */}
+      {showCountdown && (
   <div 
     style={{
       position: "fixed",
