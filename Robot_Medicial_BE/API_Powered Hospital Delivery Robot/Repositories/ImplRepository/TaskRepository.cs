@@ -47,6 +47,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
             if (!string.IsNullOrEmpty(filter?.Priority))
                 q = q.Where(t => t.Priority == filter.Priority);
 
+            if (filter?.AssignedBy != null)
+                q = q.Where(t => t.AssignedBy == filter.AssignedBy);
+
             return await q.OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 

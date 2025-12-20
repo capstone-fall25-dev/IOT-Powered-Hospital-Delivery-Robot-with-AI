@@ -192,6 +192,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public ulong? RobotId { get; set; }
         public string? Status { get; set; }
         public string? Priority { get; set; }
+        public ulong? AssignedBy { get; set; } // Filter theo người tạo task
     }
 
     /// <summary>
@@ -212,6 +213,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Models.DTOs
         public DateTime? CompletedAt { get; set; }
         public DateTime UpdatedAt { get; set; } // Thời điểm cập nhật cuối cùng (để biết khi nào task bị hủy)
 
+        public ulong? AssignedById { get; set; } // ID của người tạo task (để FE kiểm tra quyền)
         public string? AssignedByEmail { get; set; }
         public string? AssignedByFullName { get; set; }
 

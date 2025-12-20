@@ -39,8 +39,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET LIST
         // ======================================================================
-        public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter)
+        public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter, ulong currentUserId, string currentUserRole)
         {
+            // Nếu không phải admin, chỉ hiển thị tasks của user tạo
+            if (currentUserRole != "admin" && filter != null)
+            {
+                filter.AssignedBy = currentUserId;
+            }
+            
             var tasks = await _repo.GetListAsync(filter);
 
             return tasks
@@ -87,10 +93,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET DETAIL
         // ======================================================================
-        public async Task<TaskDetailDto?> GetByIdAsync(ulong id)
+        public async Task<TaskDetailDto?> GetByIdAsync(ulong id, ulong currentUserId, string currentUserRole)
         {
             var task = await _repo.GetByIdAsync(id);
-            return task == null ? null : MapToDetail(task);
+            if (task == null) return null;
+
+            // Kiểm tra quyền: chỉ creator hoặc admin mới xem được
+            if (currentUserRole != "admin" && task.AssignedBy != currentUserId)
+            {
+                return null; // Không có quyền truy cập
+            }
+
+            return MapToDetail(task);
         }
 
         // ======================================================================
@@ -288,11 +302,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET EDIT DATA
         // ======================================================================
-        public async Task<TaskEditDto?> GetEditDataAsync(ulong id)
+        public async Task<TaskEditDto?> GetEditDataAsync(ulong id, ulong currentUserId, string currentUserRole)
         {
             // Sử dụng GetByIdForEditAsync để tối ưu performance (không load prescription data)
             var task = await _repo.GetByIdForEditAsync(id);
             if (task == null) return null;
+
+            // Kiểm tra quyền: chỉ creator hoặc admin mới xem được
+            if (currentUserRole != "admin" && task.AssignedBy != currentUserId)
+            {
+                return null; // Không có quyền truy cập
+            }
 
             // ❗ Không cho phép edit task đã completed hoặc canceled
             string taskStatus = task.Status.ToLower();
@@ -339,7 +359,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // UPDATE TASK
         // ======================================================================
-        public async Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto)
+        public async Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto, ulong currentUserId, string currentUserRole)
         {
             using var transaction = await _repo.BeginTransactionAsync();
 
@@ -348,6 +368,12 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // Đảm bảo TaskStops được load để có thể update status
                 var task = await _repo.GetTaskWithStopsAsync(id)
                     ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
+
+                // Kiểm tra quyền: chỉ creator hoặc admin mới cập nhật được
+                if (currentUserRole != "admin" && task.AssignedBy != currentUserId)
+                {
+                    throw new UnauthorizedAccessException("Bạn không có quyền cập nhật nhiệm vụ này.");
+                }
 
                 // ------------------------------
                 // 1. CHANGE ROBOT
@@ -1093,6 +1119,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 StartedAt = task.StartedAt,
                 CompletedAt = task.CompletedAt,
                 UpdatedAt = task.UpdatedAt,
+                AssignedById = task.AssignedBy, // ID của người tạo task (để FE kiểm tra quyền)
                 AssignedByEmail = task.AssignedByNavigation?.Email,
                 AssignedByFullName = task.AssignedByNavigation?.FullName,
                 MapName = task.Map?.MapName,
@@ -1565,7 +1592,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             return $"Khởi động sớm {seconds:F0} giây trước giờ dự kiến";
         }
-        public async Task<TaskResponseDto?> StartTaskAsync(ulong taskId)
+        public async Task<TaskResponseDto?> StartTaskAsync(ulong taskId, ulong currentUserId, string currentUserRole)
         {
             using var transaction = await _repo.BeginTransactionAsync();
             try
@@ -1573,25 +1600,83 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 var task = await _repo.GetByIdAsync(taskId)
                     ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
 
-                if (task.Status != "pending")
-                    throw new InvalidOperationException($"Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: {task.Status}");
+                // Kiểm tra quyền: chỉ creator mới start được, admin có thể start thay nếu task chưa được start
+                if (currentUserRole != "admin")
+                {
+                    // Nếu không phải admin, chỉ creator mới start được
+                    if (task.AssignedBy != currentUserId)
+                    {
+                        throw new UnauthorizedAccessException("Bạn không có quyền bắt đầu nhiệm vụ này. Chỉ người tạo nhiệm vụ mới có quyền bắt đầu.");
+                    }
+                }
+                else
+                {
+                    // Admin có thể start thay, nhưng chỉ khi task chưa được start (status = pending)
+                    // Nếu task đã được start bởi creator, admin không thể start lại
+                    if (task.Status != "pending")
+                    {
+                        throw new InvalidOperationException("Admin chỉ có thể bắt đầu nhiệm vụ khi nhiệm vụ chưa được bắt đầu (trạng thái pending).");
+                    }
+                }
+
+                // Kiểm tra status: cho phép start nếu task ở trạng thái "pending" hoặc "in_progress" (resume sau khi dừng khẩn cấp)
+                // Nếu task đã "in_progress", chỉ cho phép creator start lại (admin không thể start lại task đã được start)
+                if (task.Status == "pending")
+                {
+                    // Start task mới - bình thường
+                }
+                else if (task.Status == "in_progress")
+                {
+                    // Resume task sau khi dừng khẩn cấp - chỉ cho phép creator
+                    if (currentUserRole == "admin")
+                    {
+                        throw new InvalidOperationException("Admin không thể start lại nhiệm vụ đã được bắt đầu. Chỉ người tạo nhiệm vụ mới có quyền start lại sau khi dừng khẩn cấp.");
+                    }
+                    if (task.AssignedBy != currentUserId)
+                    {
+                        throw new UnauthorizedAccessException("Bạn không có quyền start lại nhiệm vụ này. Chỉ người tạo nhiệm vụ mới có quyền start lại sau khi dừng khẩn cấp.");
+                    }
+                }
+                else
+                {
+                    // Các trạng thái khác (completed, canceled, failed) không cho phép start
+                    throw new InvalidOperationException($"Không thể bắt đầu task ở trạng thái {task.Status}. Chỉ có thể bắt đầu task ở trạng thái pending hoặc resume task ở trạng thái in_progress.");
+                }
 
                 var robot = await _repo.GetRobotAsync(task.RobotId)
                     ?? throw new InvalidOperationException("Robot không tồn tại.");
 
-                if (robot.Status != "at_station")
+                // Nếu task đang "in_progress" (resume), cho phép start lại ngay cả khi robot không ở "at_station"
+                // (vì có thể robot đã dừng khẩn cấp và đang ở trạng thái khác)
+                if (task.Status == "pending" && robot.Status != "at_station")
+                {
                     throw new InvalidOperationException($"Robot đang bận ({robot.Status}), không thể bắt đầu task.");
+                }
+                // Nếu resume task (in_progress), không kiểm tra robot status - cho phép start lại
 
-                // TÍNH TOÁN: Có chạy sớm không?
+                // TÍNH TOÁN: Có chạy sớm không? (chỉ áp dụng cho task mới start, không áp dụng cho resume)
                 double? startedEarlyMinutes = null;
-                if (task.ScheduledStartAt.HasValue && task.ScheduledStartAt.Value > DateTimeHelper.Now())
+                bool isResume = task.Status == "in_progress";
+                
+                if (!isResume && task.ScheduledStartAt.HasValue && task.ScheduledStartAt.Value > DateTimeHelper.Now())
                 {
                     startedEarlyMinutes = Math.Round((task.ScheduledStartAt.Value - DateTimeHelper.Now()).TotalMinutes, 1);
                 }
 
                 // === CHUYỂN TRẠNG THÁI ===
                 task.Status = "in_progress";
-                task.StartedAt = DateTimeHelper.Now();
+                // Nếu là resume, cập nhật StartedAt thành thời gian resume (hoặc giữ nguyên nếu muốn giữ thời gian start ban đầu)
+                // Ở đây tôi sẽ cập nhật để track thời gian resume
+                if (isResume)
+                {
+                    // Resume task - cập nhật StartedAt thành thời gian resume
+                    task.StartedAt = DateTimeHelper.Now();
+                }
+                else
+                {
+                    // Start task mới
+                    task.StartedAt = DateTimeHelper.Now();
+                }
                 task.UpdatedAt = DateTimeHelper.Now();
 
                 robot.Status = "transporting";
@@ -1605,9 +1690,11 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 await RecordTaskHistory(fullTask!, startedEarlyMinutes);
 
                 // Log task started cho tất cả stops
-                var logMessagePrefix = startedEarlyMinutes.HasValue && startedEarlyMinutes > 0
-                    ? $"Nhiệm vụ #{task.Id} đã được bắt đầu sớm {startedEarlyMinutes:F1} phút"
-                    : $"Nhiệm vụ #{task.Id} đã được bắt đầu";
+                var logMessagePrefix = isResume
+                    ? $"Nhiệm vụ #{task.Id} đã được tiếp tục sau khi dừng khẩn cấp"
+                    : startedEarlyMinutes.HasValue && startedEarlyMinutes > 0
+                        ? $"Nhiệm vụ #{task.Id} đã được bắt đầu sớm {startedEarlyMinutes:F1} phút"
+                        : $"Nhiệm vụ #{task.Id} đã được bắt đầu";
                 
                 if (fullTask?.TaskStops != null && fullTask.TaskStops.Any())
                 {

@@ -5,19 +5,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
     public interface ITaskService
     {
         // Lấy danh sách task (dạng nhẹ cho danh sách)
-        Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter);
+        Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter, ulong currentUserId, string currentUserRole);
 
         // Lấy chi tiết một task theo ID
-        Task<TaskDetailDto?> GetByIdAsync(ulong id);
+        Task<TaskDetailDto?> GetByIdAsync(ulong id, ulong currentUserId, string currentUserRole);
 
         // Tạo mới task giao thuốc/thực phẩm
         Task<TaskResponseDto> CreateAsync(CreateTaskDto dto, ulong currentUserId);
 
         // Lấy dữ liệu để chỉnh sửa task (dùng cho form edit)
-        Task<TaskEditDto?> GetEditDataAsync(ulong id);
+        Task<TaskEditDto?> GetEditDataAsync(ulong id, ulong currentUserId, string currentUserRole);
 
         // Cập nhật thông tin task
-        Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto);
+        Task<TaskResponseDto?> UpdateAsync(ulong id, UpdateTaskDto dto, ulong currentUserId, string currentUserRole);
 
         // Xóa task (chỉ khi chưa bắt đầu)
         Task<bool> DeleteAsync(ulong id);
@@ -32,7 +32,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.IServices
         Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId);
 
         // Bắt đầu nhiệm vụ
-        Task<TaskResponseDto?> StartTaskAsync(ulong taskId);
+        Task<TaskResponseDto?> StartTaskAsync(ulong taskId, ulong currentUserId, string currentUserRole);
         
         // Tự động hủy các nhiệm vụ quá hạn chưa bắt đầu
         Task CancelOverduePendingTasksAsync();

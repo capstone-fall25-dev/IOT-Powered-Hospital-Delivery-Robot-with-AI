@@ -1,5 +1,6 @@
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +11,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _service;
@@ -21,6 +23,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         /// <summary>
         /// Lấy danh sách nhiệm vụ (có thể lọc theo robot, trạng thái, độ ưu tiên)
+        /// Chỉ hiển thị tasks của user tạo, trừ admin có thể xem tất cả
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TaskListItemDto>>> GetAll(
@@ -35,19 +38,24 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 Priority = priority
             };
 
-            var data = await _service.GetAllAsync(filter);
+            var currentUserId = GetCurrentUserId();
+            var currentUserRole = GetCurrentUserRole();
+            var data = await _service.GetAllAsync(filter, currentUserId, currentUserRole);
             return Ok(data);
         }
 
         /// <summary>
         /// Lấy chi tiết một nhiệm vụ theo ID
+        /// Chỉ creator hoặc admin mới xem được
         /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskDetailDto>> GetById(ulong id)
         {
-            var result = await _service.GetByIdAsync(id);
+            var currentUserId = GetCurrentUserId();
+            var currentUserRole = GetCurrentUserRole();
+            var result = await _service.GetByIdAsync(id, currentUserId, currentUserRole);
             return result == null
-                ? NotFound("Không tìm thấy nhiệm vụ.")
+                ? NotFound("Không tìm thấy nhiệm vụ hoặc bạn không có quyền truy cập.")
                 : Ok(result);
         }
 
@@ -80,26 +88,32 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         /// <summary>
         /// Lấy dữ liệu để chỉnh sửa nhiệm vụ
+        /// Chỉ creator hoặc admin mới xem được
         /// </summary>
         [HttpGet("{id}/edit")]
         public async Task<ActionResult<TaskEditDto>> GetEditData(ulong id)
         {
-            var task = await _service.GetEditDataAsync(id);
+            var currentUserId = GetCurrentUserId();
+            var currentUserRole = GetCurrentUserRole();
+            var task = await _service.GetEditDataAsync(id, currentUserId, currentUserRole);
             return task == null
-                ? NotFound("Không tìm thấy nhiệm vụ.")
+                ? NotFound("Không tìm thấy nhiệm vụ hoặc bạn không có quyền truy cập.")
                 : Ok(task);
         }
 
         /// <summary>
         /// Cập nhật thông tin nhiệm vụ
+        /// Chỉ creator hoặc admin mới cập nhật được
         /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<TaskResponseDto>> Update(ulong id, [FromBody] UpdateTaskDto dto)
         {
             try
             {
-                var updated = await _service.UpdateAsync(id, dto);
-                return updated == null ? NotFound("Không tìm thấy nhiệm vụ.") : Ok(updated);
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var updated = await _service.UpdateAsync(id, dto, currentUserId, currentUserRole);
+                return updated == null ? NotFound("Không tìm thấy nhiệm vụ hoặc bạn không có quyền truy cập.") : Ok(updated);
             }
             catch (Exception ex)
             {
@@ -127,8 +141,10 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         {
             try
             {
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
                 var update = new UpdateTaskDto { Status = dto.Status };
-                var result = await _service.UpdateAsync(id, update);
+                var result = await _service.UpdateAsync(id, update, currentUserId, currentUserRole);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -158,8 +174,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             ulong stopId,
             [FromBody] StopStatusChangeDto dto)
         {
-            await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
-            return Ok(new { message = "Cập nhật trạng thái điểm dừng thành công." });
+            try
+            {
+                await _service.UpdateStopStatusAsync(taskId, stopId, dto.Status);
+                return Ok(new { message = "Cập nhật trạng thái điểm dừng thành công." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -176,14 +199,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         /// <summary>
         /// Bắt đầu nhiệm vụ
+        /// Chỉ creator mới start được, admin có thể start thay nếu task chưa được start
         /// </summary>
         [HttpPost("{taskId}/start")]
         public async Task<ActionResult<TaskResponseDto>> StartTask(ulong taskId)
         {
             try
             {
-                var result = await _service.StartTaskAsync(taskId);
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var result = await _service.StartTaskAsync(taskId, currentUserId, currentUserRole);
                 return result == null ? NotFound("Không tìm thấy nhiệm vụ.") : Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Trả về 403 Forbidden khi không có quyền
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -235,6 +266,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return 1;
 
             return userId;
+        }
+
+        /// <summary>
+        /// Lấy role của nhân viên hiện tại từ token
+        /// </summary>
+        private string GetCurrentUserRole()
+        {
+            var roleClaim = User.FindFirst(claim =>
+                claim.Type == ClaimTypes.Role ||
+                claim.Type == "role");
+
+            return roleClaim?.Value ?? "pharmacist"; // Default role nếu không tìm thấy
         }
     }
 }
