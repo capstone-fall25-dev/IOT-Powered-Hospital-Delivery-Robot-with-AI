@@ -22,13 +22,13 @@ export default function CreateRobot() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // === TỰ ĐỘNG SINH MÃ ROBOT: RB + 3 số ngẫu nhiên ===
+  // === TỰ ĐỘNG SINH MÃ ROBOT: RBT + 3 số ngẫu nhiên ===
   useEffect(() => {
     const generateRobotCode = () => {
       const randomNum = Math.floor(Math.random() * 1000)
         .toString()
         .padStart(3, "0");
-      return `RB${randomNum}`;
+      return `RBT${randomNum}`;
     };
 
     if (!form.code) {
