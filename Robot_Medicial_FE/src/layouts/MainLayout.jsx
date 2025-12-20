@@ -49,14 +49,11 @@ const MainLayout = ({ children }) => {
                         margin-left: 0 !important;
                         padding: 1rem;
                         padding-top: 60px;
-                        padding-bottom: 70px; /* Chừa chỗ cho mobile menu toggle */
+                        padding-bottom: 80px !important; /* Chừa chỗ cho bottom navigation bar */
                     }
 
                     .sidebar {
-                        position: fixed !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        z-index: 999 !important;
+                        display: none !important;
                     }
 
                     /* Header fixed */

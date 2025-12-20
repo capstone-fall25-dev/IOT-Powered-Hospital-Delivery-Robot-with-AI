@@ -7,7 +7,6 @@ export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -17,32 +16,12 @@ export default function Sidebar() {
     }
   }, [isCollapsed]);
 
-  useEffect(() => {
-    // Close mobile menu when clicking outside
-    const handleClickOutside = (e) => {
-      if (isMobileOpen && !e.target.closest('.sidebar') && !e.target.closest('.mobile-menu-toggle')) {
-        setIsMobileOpen(false);
-      }
-    };
-    if (isMobileOpen) {
-      document.addEventListener('click', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [isMobileOpen]);
-
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  const toggleMobileMenu = () => {
-    setIsMobileOpen(!isMobileOpen);
-  };
-
   const handleMenuClick = (path) => {
     navigate(path);
-    setIsMobileOpen(false); // Close mobile menu after navigation
   };
 
   const isActive = (path) => {
@@ -95,7 +74,8 @@ export default function Sidebar() {
   const isDoctor = user?.role === "doctor"
 
   return (
-    <div className={`sidebar glass d-flex flex-column ${isMobileOpen ? 'mobile-open' : ''}`}>
+    <>
+      <div className={`sidebar glass d-flex flex-column`}>
       <style>{`
         :root {
           --teal: #4CE1C6;
@@ -309,114 +289,99 @@ export default function Sidebar() {
           border: none;
         }
 
-        /* Mobile Menu Toggle Button */
-        .mobile-menu-toggle {
+        /* Mobile Bottom Navigation Bar */
+        .mobile-bottom-nav {
           display: none;
           position: fixed;
-          top: 70px;
-          left: 15px;
-          z-index: 1001;
-          background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(8, 145, 178, 0.9) 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          padding: 10px 12px;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease;
-        }
-
-        .mobile-menu-toggle:hover {
-          transform: scale(1.05);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        }
-
-        .mobile-menu-toggle i {
-          font-size: 1.5rem;
-        }
-
-        /* Mobile Overlay */
-        .mobile-sidebar-overlay {
-          display: none;
-          position: fixed;
-          top: 0;
+          bottom: 0;
           left: 0;
           right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 998;
-          opacity: 0;
-          transition: opacity 0.3s ease;
+          background: rgba(255, 255, 255, 0.98);
+          backdrop-filter: blur(20px);
+          border-top: 1px solid rgba(13, 148, 136, 0.15);
+          box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.1);
+          z-index: 1001;
+          padding: 0.4rem 0.25rem;
+          height: 70px;
+          width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
         }
 
-        .mobile-sidebar-overlay.active {
-          opacity: 1;
+        .mobile-bottom-nav::-webkit-scrollbar {
+          display: none;
         }
 
-        /* Responsive Styles */
-        @media (max-width: 1024px) {
-          .sidebar {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1002 !important;
-          }
-
-          .sidebar.mobile-open {
-            transform: translateX(0);
-            z-index: 1002 !important;
-          }
-
-          .mobile-menu-toggle {
-            display: block;
-          }
-
-          .mobile-sidebar-overlay {
-            display: block;
-            z-index: 1001 !important;
-          }
-
-          .mobile-sidebar-overlay.active {
-            opacity: 1;
-            z-index: 1001 !important;
-          }
-
-          body.sidebar-collapsed .page-wrapper {
-            margin-left: 0 !important;
-          }
+        .mobile-bottom-nav {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
 
+        .mobile-bottom-nav-item {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 0.3rem 0.4rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          color: #64748b;
+          text-decoration: none;
+          border-radius: 8px;
+          margin: 0 0.15rem;
+          min-width: 0;
+        }
+
+        .mobile-bottom-nav-item:hover {
+          background: rgba(13, 148, 136, 0.08);
+          color: var(--teal-dark);
+        }
+
+        .mobile-bottom-nav-item.active {
+          color: var(--teal-dark);
+          background: rgba(13, 148, 136, 0.12);
+        }
+
+        .mobile-bottom-nav-item i {
+          font-size: 1.2rem;
+          margin-bottom: 0.15rem;
+        }
+
+        .mobile-bottom-nav-item span {
+          font-size: 0.65rem;
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+        }
+
+        /* Responsive Styles - Mobile */
         @media (max-width: 768px) {
-          .mobile-menu-toggle {
-            top: 60px;
-            left: 10px;
-            padding: 8px 10px;
-          }
-
-          .mobile-menu-toggle i {
-            font-size: 1.3rem;
-          }
-
           .sidebar {
-            width: 280px !important;
-            border-radius: 0 24px 24px 0 !important;
+            display: none !important;
+          }
+
+          .page-wrapper {
+            margin-left: 0 !important;
+            padding-bottom: 75px !important;
+          }
+
+          .mobile-bottom-nav {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 1001 !important;
           }
         }
+
       `}</style>
 
-      {/* Mobile Menu Toggle Button */}
-      <button 
-        className="mobile-menu-toggle" 
-        onClick={toggleMobileMenu}
-        aria-label="Toggle menu"
-      >
-        <i className={isMobileOpen ? "bi bi-x-lg" : "bi bi-list"}></i>
-      </button>
-
-      {/* Mobile Overlay */}
-      <div 
-        className={`mobile-sidebar-overlay ${isMobileOpen ? 'active' : ''}`}
-        onClick={() => setIsMobileOpen(false)}
-      ></div>
 
       {/* Header - Cố định */}
       <div className="sidebar-header">
@@ -514,6 +479,71 @@ export default function Sidebar() {
           </li>
         </ul>
       </div>
-    </div>
+
+      {/* Footer - Cố định */}
+      <div className="sidebar-footer">
+        <strong>Robot Y Tế</strong>
+        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
+          © 2025
+        </div>
+      </div>
+
+      </div>
+
+      {/* Mobile Bottom Navigation Bar - Render outside sidebar container */}
+      <div className="mobile-bottom-nav">
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/dashboard") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/dashboard")}
+        >
+          <i className="bi bi-list-task"></i>
+          <span>Nhiệm vụ</span>
+        </div>
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/team") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/team")}
+        >
+          <i className="bi bi-robot"></i>
+          <span>Robot</span>
+        </div>
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/viewlistmap") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/viewlistmap")}
+        >
+          <i className="bi bi-map"></i>
+          <span>Bản đồ</span>
+        </div>
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/destinationlist") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/destinationlist")}
+        >
+          <i className="bi bi-geo-alt-fill"></i>
+          <span>Điểm đến</span>
+        </div>
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/patients") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/patients")}
+        >
+          <i className="bi bi-person-lines-fill"></i>
+          <span>Bệnh nhân</span>
+        </div>
+        <div
+          className={`mobile-bottom-nav-item ${isActive("/compartment-categories") ? "active" : ""}`}
+          onClick={() => handleMenuClick("/compartment-categories")}
+        >
+          <i className="bi bi-grid-3x3-gap-fill"></i>
+          <span>Ngăn chứa</span>
+        </div>
+        {isAdmin && (
+          <div
+            className={`mobile-bottom-nav-item ${isActive("/users") ? "active" : ""}`}
+            onClick={() => handleMenuClick("/users")}
+          >
+            <i className="bi bi-people"></i>
+            <span>Người dùng</span>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
