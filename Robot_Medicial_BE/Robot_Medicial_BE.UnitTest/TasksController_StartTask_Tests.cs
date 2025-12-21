@@ -14,6 +14,7 @@ namespace Robot_Medicial_BE.UnitTest
         private readonly Mock<ITaskService> _mockService;
         private readonly TasksController _controller;
         private readonly ulong _currentUserId = 1;
+        private readonly string _currentUserRole = "admin";
         private readonly ulong _testTaskId = 100;
 
         public TasksController_StartTask_Tests()
@@ -49,20 +50,20 @@ namespace Robot_Medicial_BE.UnitTest
                 Status = "in_progress", 
                 RobotName = "R01" 
             };
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId)).ReturnsAsync(response);
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole)).ReturnsAsync(response);
 
             var result = await _controller.StartTask(_testTaskId);
 
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnValue = Assert.IsType<TaskResponseDto>(okResult.Value);
             Assert.Equal("in_progress", returnValue.Status);
-            _mockService.Verify(s => s.StartTaskAsync(_testTaskId), Times.Once);
+            _mockService.Verify(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole), Times.Once);
         }
 
         [Fact]
         public async Task StartTask_UTCID02_TaskNotExist_ReturnsNotFound()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ReturnsAsync((TaskResponseDto?)null);
 
             var result = await _controller.StartTask(_testTaskId);
@@ -74,7 +75,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID03_TaskNotExist_ThrowsException_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException("Không tìm thấy nhiệm vụ."));
 
             var result = await _controller.StartTask(_testTaskId);
@@ -86,7 +87,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID04_TaskNotPending_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: running"));
 
@@ -99,7 +100,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID05_TaskStatusCanceled_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: canceled"));
 
@@ -112,7 +113,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID06_TaskStatusCompleted_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: completed"));
 
@@ -125,7 +126,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID07_RobotNotExist_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException("Robot không tồn tại."));
 
             var result = await _controller.StartTask(_testTaskId);
@@ -137,7 +138,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID08_RobotNotAtStation_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Robot đang bận (transporting), không thể bắt đầu task."));
 
@@ -151,7 +152,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID09_RobotStatusTransporting_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Robot đang bận (transporting), không thể bắt đầu task."));
 
@@ -164,7 +165,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID10_RobotStatusCharging_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new InvalidOperationException(
                             "Robot đang bận (charging), không thể bắt đầu task."));
 
@@ -177,7 +178,7 @@ namespace Robot_Medicial_BE.UnitTest
         [Fact]
         public async Task StartTask_UTCID11_UnhandledException_ReturnsBadRequest()
         {
-            _mockService.Setup(s => s.StartTaskAsync(_testTaskId))
+            _mockService.Setup(s => s.StartTaskAsync(_testTaskId, _currentUserId, _currentUserRole))
                         .ThrowsAsync(new Exception("Lỗi hệ thống không xác định"));
 
             var result = await _controller.StartTask(_testTaskId);

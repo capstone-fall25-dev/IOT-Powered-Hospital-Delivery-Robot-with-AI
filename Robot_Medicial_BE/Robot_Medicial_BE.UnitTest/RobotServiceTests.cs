@@ -211,14 +211,42 @@ public class RobotServiceTests
         };
 
         // Mock repository và service
-        _robotRepo.Setup(r => r.GetByIdAsync(robotId, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-            .ReturnsAsync(robot);
+        // Setup để trả về robot cho cả 2 lần gọi GetByIdAsync
+        // Lần 1: lấy robot ban đầu, Lần 2: reload sau khi update
+        var robotWithUpdatedCompartments = new Robot
+        {
+            Id = robotId,
+            Code = "RB001",
+            Name = "New Name", // Tên đã được update
+            Status = "idle",
+            MapId = 5, // Map đã được update
+            Tasks = new List<TaskEntity>(),
+            RobotCompartments = new List<RobotCompartment>
+            {
+                new RobotCompartment
+                {
+                    Id = 1,
+                    RobotId = robotId,
+                    CategoryId = 2,
+                    CompartmentCode = "C001",
+                    Status = "unlocked"
+                }
+            }
+        };
+
+        // Lần gọi đầu tiên: trả về robot ban đầu
+        _robotRepo.SetupSequence(r => r.GetByIdAsync(robotId, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            .ReturnsAsync(robot)
+            .ReturnsAsync(robotWithUpdatedCompartments);
 
         _mapRepo.Setup(m => m.GetByIdAsync(5UL, It.IsAny<bool>()))
             .ReturnsAsync(new Map { Id = 5, MapName = "Floor 1" });
 
-        _compRepo.Setup(c => c.DeleteByRobotIdAsync(robotId))
-            .Returns(Task.CompletedTask);
+        // Note: UpdateAsync không còn gọi DeleteByRobotIdAsync
+        // Thay vào đó, nó gọi DeleteAsync cho từng compartment cần xóa
+        // Nhưng trong test này, robot ban đầu không có compartments nên không có gì để xóa
+        _compRepo.Setup(c => c.DeleteAsync(It.IsAny<ulong>()))
+            .ReturnsAsync(true);
 
         _compRepo.Setup(c => c.CreateManyAsync(It.IsAny<List<RobotCompartment>>()))
             .Returns(Task.CompletedTask);
@@ -240,9 +268,12 @@ public class RobotServiceTests
 
 
         // Verify các phương thức repository được gọi
-        _robotRepo.Verify(r => r.GetByIdAsync(robotId, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Once);
+        // GetByIdAsync được gọi 2 lần: lần 1 để lấy robot ban đầu, lần 2 để reload sau khi update
+        _robotRepo.Verify(r => r.GetByIdAsync(robotId, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Exactly(2));
         _mapRepo.Verify(m => m.GetByIdAsync(5UL, It.IsAny<bool>()), Times.Once);
-        _compRepo.Verify(c => c.DeleteByRobotIdAsync(robotId), Times.Once);
+        // DeleteByRobotIdAsync không còn được gọi, thay vào đó là DeleteAsync cho từng compartment
+        // Nhưng trong test này, robot ban đầu không có compartments nên không có gì để xóa
+        // _compRepo.Verify(c => c.DeleteByRobotIdAsync(robotId), Times.Once); // Removed - no longer called
         _compRepo.Verify(c => c.CreateManyAsync(It.IsAny<List<RobotCompartment>>()), Times.Once);
         _robotRepo.Verify(r => r.UpdateAsync(It.IsAny<Robot>()), Times.Once);
         _logRepo.Verify(l => l.CreateAsync(It.IsAny<Log>()), Times.Once);

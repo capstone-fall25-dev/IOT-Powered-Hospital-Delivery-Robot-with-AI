@@ -111,8 +111,8 @@ namespace Robot_Medicial_BE.UnitTest
                 Role = "doctor"
             };
 
-            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", false);
-            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", false);
+            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", true);
+            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", true);
 
             _mockRepository.Setup(r => r.GetByEmailAsync(userDto.Email)).ReturnsAsync((User?)null);
             _mockRepository.Setup(r => r.CreateAsync(It.IsAny<User>())).ReturnsAsync(createdUser);
@@ -121,7 +121,7 @@ namespace Robot_Medicial_BE.UnitTest
 
             // Act
             // Note: EmailHelper will try to send email and may throw exception due to missing SMTP config
-            // We catch it and verify that OTP was stored in cache (proving the method executed)
+            // We catch it but still verify the user was created successfully
             UserResponseDto result;
             try
             {
@@ -129,21 +129,20 @@ namespace Robot_Medicial_BE.UnitTest
             }
             catch (Exception)
             {
-                // Email sending failed, but OTP should still be in cache
-                Assert.True(_memoryCache.TryGetValue($"OTP_{userDto.Email}", out _));
-                return; // Test passes if OTP is in cache
+                // Email sending failed, but user creation should still succeed
+                // Verify that user was created
+                _mockRepository.Verify(r => r.CreateAsync(It.IsAny<User>()), Times.Once);
+                return; // Test passes if user was created
             }
 
             // Assert - Return T (True)
             Assert.NotNull(result);
             Assert.Equal(userDto.Email, result.Email);
             Assert.Equal("doctor", result.Role);
+            Assert.True(result.IsActive); // New accounts are always active when created by admin
             // Log "Tạo tài khoản thành công" - Verified by successful creation
             _mockRepository.Verify(r => r.GetByEmailAsync(userDto.Email), Times.Once);
             _mockRepository.Verify(r => r.CreateAsync(It.IsAny<User>()), Times.Once);
-            // Verify OTP was stored in cache
-            Assert.True(_memoryCache.TryGetValue($"OTP_{userDto.Email}", out string? cachedOtp));
-            Assert.NotNull(cachedOtp);
         }
 
         // Test Case 2: Password = "NewPass123@", Role = "Bác sĩ", Status = "Hoạt động"
@@ -212,8 +211,8 @@ namespace Robot_Medicial_BE.UnitTest
                 IsActive = false // Tạm dừng
             };
 
-            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", false);
-            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", false);
+            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", true);
+            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", true);
 
             _mockRepository.Setup(r => r.GetByEmailAsync(userDto.Email)).ReturnsAsync((User?)null);
             _mockRepository.Setup(r => r.CreateAsync(It.IsAny<User>())).ReturnsAsync(createdUser);
@@ -228,13 +227,14 @@ namespace Robot_Medicial_BE.UnitTest
             }
             catch (Exception)
             {
-                Assert.True(_memoryCache.TryGetValue($"OTP_{userDto.Email}", out _));
+                // Email sending failed, but user creation should still succeed
+                _mockRepository.Verify(r => r.CreateAsync(It.IsAny<User>()), Times.Once);
                 return;
             }
 
-            // Assert - Return F (False) - New accounts are always inactive (paused)
+            // Assert - New accounts created by admin are always active
             Assert.NotNull(result);
-            Assert.False(result.IsActive); // Status = Tạm dừng
+            Assert.True(result.IsActive); // Status = Hoạt động (admin creates active accounts)
         }
 
         // Test Case 5: Password = "NewPass123@", Role = "Bác sĩ", Status = "Tạm dừng"
@@ -298,8 +298,8 @@ namespace Robot_Medicial_BE.UnitTest
                 Role = "doctor"
             };
 
-            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", false);
-            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", false);
+            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", true);
+            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", true);
 
             _mockRepository.Setup(r => r.GetByEmailAsync(userDto.Email)).ReturnsAsync((User?)null);
             _mockRepository.Setup(r => r.CreateAsync(It.IsAny<User>())).ReturnsAsync(createdUser);
@@ -314,13 +314,14 @@ namespace Robot_Medicial_BE.UnitTest
             }
             catch (Exception)
             {
-                Assert.True(_memoryCache.TryGetValue($"OTP_{userDto.Email}", out _));
+                // Email sending failed, but user creation should still succeed
+                _mockRepository.Verify(r => r.CreateAsync(It.IsAny<User>()), Times.Once);
                 return;
             }
 
-            // Assert - Return F (False) - Status is paused (inactive)
+            // Assert - New accounts created by admin are always active
             Assert.NotNull(result);
-            Assert.False(result.IsActive);
+            Assert.True(result.IsActive);
         }
 
         // Test Case 8: Password = null, Role = "Bác sĩ", Status = "Tạm dừng"
@@ -359,8 +360,8 @@ namespace Robot_Medicial_BE.UnitTest
                 Role = "doctor"
             };
 
-            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", false);
-            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", false);
+            var createdUser = CreateTestUser(1, userDto.Email, userDto.Password, userDto.FullName, "doctor", true);
+            var userResponse = CreateUserResponseDto(1, userDto.Email, userDto.FullName, "doctor", true);
 
             _mockRepository.Setup(r => r.GetByEmailAsync(userDto.Email)).ReturnsAsync((User?)null);
             _mockRepository.Setup(r => r.CreateAsync(It.IsAny<User>())).ReturnsAsync(createdUser);
@@ -375,13 +376,14 @@ namespace Robot_Medicial_BE.UnitTest
             }
             catch (Exception)
             {
-                Assert.True(_memoryCache.TryGetValue($"OTP_{userDto.Email}", out _));
+                // Email sending failed, but user creation should still succeed
+                _mockRepository.Verify(r => r.CreateAsync(It.IsAny<User>()), Times.Once);
                 return;
             }
 
-            // Assert - Return F (False) - New accounts are inactive
+            // Assert - New accounts created by admin are always active
             Assert.NotNull(result);
-            Assert.False(result.IsActive);
+            Assert.True(result.IsActive);
         }
 
         // Test Case 10: Password < 8, Role = "Bác sĩ", Status = "Hoạt động"

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom"; // ✅ Thêm import này
+import { useNavigate } from "react-router-dom"; // ✅ Thêm import này
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
@@ -32,46 +32,8 @@ export default function RobotCreateMap() {
   
   // ✅ Thêm states cho countdown
   const [showCountdown, setShowCountdown] = useState(false);
-  const [countdown, setCountdown] = useState(10);
-  const [mappingStarted, setMappingStarted] = useState(false);
-  const [isSaveMapCountdown, setIsSaveMapCountdown] = useState(false);
-  
-  const [searchParams] = useSearchParams();
-  const robotId = searchParams.get("robotId");
+  const [countdown, setCountdown] = useState(5);
 
-
-  // ===================================
-  // START MAPPING WHEN PAGE LOADS
-  // ===================================
-  useEffect(() => {
-    async function startMapping() {
-      if (!robotId || mappingStarted) return;
-      
-      try {
-        // Gửi API bắt đầu mapping trước
-        await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "mapping",
-            robotId: Number(robotId),
-          }),
-        });
-
-        setMappingStarted(true);
-        showToast("success", "🚀 Robot bắt đầu mapping!");
-        
-        // Hiển thị countdown 10s sau khi API thành công
-        setShowCountdown(true);
-        setCountdown(10);
-      } catch (err) {
-        console.error("Lỗi bắt đầu mapping:", err);
-        showToast("error", "❌ Lỗi mapping: " + (err?.message || "Không xác định"));
-      }
-    }
-    
-    startMapping();
-  }, [robotId, mappingStarted, showToast]);
 
   // ===================================
   // SIGNALR HUBS
@@ -351,8 +313,7 @@ export default function RobotCreateMap() {
         ...l,
       ]);
       
-      // ✅ Hiển thị countdown modal sau khi API thành công
-      setIsSaveMapCountdown(true);
+      // ✅ Hiển thị countdown modal
       setShowCountdown(true);
       setCountdown(5);
       showToast("success", "Đã gửi lệnh lưu bản đồ!");
@@ -362,18 +323,12 @@ export default function RobotCreateMap() {
     }
   }
 
-  // ✅ COUNTDOWN EFFECT - Xử lý cả start mapping (10s) và save map (5s)
+  // ✅ COUNTDOWN EFFECT - MỚI THÊM
   useEffect(() => {
     if (!showCountdown) return;
     
     if (countdown === 0) {
-      // Nếu là save map countdown → navigate về viewlistmap
-      // Nếu là start mapping countdown → chỉ ẩn modal
-      if (isSaveMapCountdown) {
-        navigate("/viewlistmap");
-      } else {
-        setShowCountdown(false);
-      }
+      navigate("/viewlistmap");
       return;
     }
     
@@ -382,7 +337,7 @@ export default function RobotCreateMap() {
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [showCountdown, countdown, isSaveMapCountdown, navigate]);
+  }, [showCountdown, countdown, navigate]);
 
 
   // ===================================
@@ -641,10 +596,10 @@ export default function RobotCreateMap() {
       }}
     >
       <div style={{ fontSize: "64px", marginBottom: "20px" }}>
-        {isSaveMapCountdown ? "💾" : "🚀"}
+        💾
       </div>
       <h3 style={{ color: "#333", marginBottom: "15px", fontSize: "24px", fontWeight: "600" }}>
-        {isSaveMapCountdown ? "Đang lưu bản đồ..." : "Đang khởi động mapping..."}
+        Đang lưu bản đồ...
       </h3>
       <div 
         style={{
@@ -658,9 +613,7 @@ export default function RobotCreateMap() {
         {countdown}
       </div>
       <p style={{ color: "#666", fontSize: "16px", margin: 0 }}>
-        {isSaveMapCountdown 
-          ? `Chuyển đến danh sách bản đồ sau ${countdown} giây`
-          : `Robot sẽ bắt đầu mapping sau ${countdown} giây`}
+        Chuyển đến danh sách bản đồ sau {countdown} giây
       </p>
     </div>
   </div>

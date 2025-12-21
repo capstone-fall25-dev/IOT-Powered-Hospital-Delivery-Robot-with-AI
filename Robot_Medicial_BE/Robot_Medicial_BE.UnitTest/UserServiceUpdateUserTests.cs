@@ -553,7 +553,7 @@ namespace Robot_Medicial_BE.UnitTest
         }
 
         // UTCID14: User not found
-        // Expected: Throw exception "User không tồn tại", Type: Abnormal
+        // Expected: Throw exception "Nhân viên không tồn tại", Type: Abnormal
         [Fact]
         public async Task UpdateAsync_UTCID14_UserNotFound_ThrowsException()
         {
@@ -574,7 +574,7 @@ namespace Robot_Medicial_BE.UnitTest
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await _userService.UpdateAsync(userId, userDto));
 
-            Assert.Equal("User không tồn tại", exception.Message);
+            Assert.Equal("Nhân viên không tồn tại", exception.Message);
             _mockRepository.Verify(r => r.GetByIdAsync(userId, false, false), Times.Once);
             _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<ulong>(), It.Is<User>(u => u != null)), Times.Never);
         }
