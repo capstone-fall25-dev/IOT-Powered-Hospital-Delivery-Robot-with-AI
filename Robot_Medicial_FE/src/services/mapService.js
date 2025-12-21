@@ -4,6 +4,7 @@ import { apiFetch } from "./api";
 const BASE = "/maps";
 
 export const getAllMaps = () => apiFetch(BASE);
+export const getAllMapsWithRobots = () => apiFetch(`${BASE}/with-robots`);
 export const getMapById = (id) => apiFetch(`${BASE}/${id}`);
 
 export async function getMapImage(id) {

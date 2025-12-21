@@ -34,6 +34,17 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         }
 
         /// <summary>
+        /// Lấy danh sách bản đồ có robot (dùng cho trang tạo task)
+        /// </summary>
+        [HttpGet("with-robots")]
+        //   [Authorize(Roles = "admin, doctor")]
+        public async Task<ActionResult<IEnumerable<MapResponseDto>>> GetAllWithRobots()
+        {
+            var maps = await _service.GetAllWithRobotsAsync();
+            return Ok(maps);
+        }
+
+        /// <summary>
         /// Lấy chi tiết bản đồ (bao gồm danh sách robot)
         /// </summary>
         [HttpGet("{id}")]

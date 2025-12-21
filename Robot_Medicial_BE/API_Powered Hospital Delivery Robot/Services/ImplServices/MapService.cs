@@ -103,6 +103,15 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         }
 
         /// <summary>
+        /// Lấy danh sách bản đồ có robot
+        /// </summary>
+        public async Task<IEnumerable<MapResponseDto>> GetAllWithRobotsAsync()
+        {
+            var maps = await _repository.GetAllWithRobotsAsync();
+            return _mapper.Map<IEnumerable<MapResponseDto>>(maps);
+        }
+
+        /// <summary>
         /// Lấy chi tiết bản đồ theo ID (bao gồm thống kê nhiệm vụ)
         /// </summary>
         public async Task<MapResponseDto?> GetByIdAsync(ulong id)

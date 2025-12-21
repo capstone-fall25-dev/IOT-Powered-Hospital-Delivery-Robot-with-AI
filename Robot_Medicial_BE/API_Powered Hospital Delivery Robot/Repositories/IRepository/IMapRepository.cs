@@ -7,6 +7,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.IRepository
         // Lấy danh sách tất cả các bản đồ
         Task<IEnumerable<Map>> GetAllAsync();
 
+        // Lấy danh sách bản đồ có robot
+        Task<IEnumerable<Map>> GetAllWithRobotsAsync();
+
         // Lấy bản đồ theo ID, có thể include danh sách robot đang dùng
         Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false);
 

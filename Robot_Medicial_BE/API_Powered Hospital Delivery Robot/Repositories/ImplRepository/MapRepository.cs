@@ -36,6 +36,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Map>> GetAllWithRobotsAsync()
+        {
+            return await _context.Maps
+                .AsNoTracking()
+                .Include(m => m.Robots)
+                .Include(m => m.Destinations)
+                .Where(m => m.Robots != null && m.Robots.Any())
+                .ToListAsync();
+        }
+
         public async Task<Map?> GetByIdAsync(ulong id, bool includeRobots = false)
         {
             var query = _context.Maps.AsQueryable();

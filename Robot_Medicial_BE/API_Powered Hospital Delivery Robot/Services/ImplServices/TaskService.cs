@@ -1013,9 +1013,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // ==================================================================
                 // 8. RELEASE COMPARTMENTS WHEN TASK FINISHES
                 // ==================================================================
-                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
-                // Khoang sẽ được giữ nguyên trạng thái như lúc setup ban đầu
-                /*
+                // Giải phóng compartments khi task hoàn thành/hủy/thất bại để có thể tái sử dụng cho nhiệm vụ mới
                 if (task.Status == "completed" ||
                     task.Status == "failed" ||
                     task.Status == "canceled")
@@ -1034,7 +1032,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         }
                     }
                 }
-                */
 
                 // Update task.UpdatedAt ở cuối để đảm bảo mọi thay đổi đều được ghi nhận
                 task.UpdatedAt = DateTimeHelper.Now();
@@ -1392,68 +1389,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             });
 
             // ============================================================
-            // AUTO COMPLETE TASK NẾU TẤT CẢ STOP = delivered
+            // ❗ KHÔNG TỰ ĐỘNG COMPLETE TASK - ĐỂ USER XÁC NHẬN THỦ CÔNG
             // ============================================================
-            bool allDelivered = task.TaskStops.Any() &&
-                task.TaskStops.All(s => string.Equals(s.Status, "delivered", StringComparison.OrdinalIgnoreCase));
+            // Task chỉ được complete khi user nhấn nút "Xác nhận hoàn thành"
+            // Không tự động complete task trong UpdateStopStatusAsync
 
-            if (allDelivered)
+            // Update CompartmentAssignment status để đồng bộ với stop status
+            if (stop.CompartmentAssignments != null)
             {
-                task.Status = "completed";
-                task.UpdatedAt = DateTimeHelper.Now();
-
-                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
-
-                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
-                // Giải phóng khoang
-                /*
-                foreach (var s in task.TaskStops)
+                var assignmentStatus = MapStopStatusToAssignmentStatus(newStatus);
+                foreach (var assign in stop.CompartmentAssignments)
                 {
-                    foreach (var a in s.CompartmentAssignments)
-                    {
-                        await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
-                    }
-                }
-                */
-
-                // Log task auto-completed from stop status update cho tất cả stops
-                var robot = await _repo.GetRobotAsync(task.RobotId);
-                var taskMessage = $"Nhiệm vụ #{task.Id} đã tự động hoàn thành (tất cả điểm dừng đã giao)";
-                
-                if (task.TaskStops != null && task.TaskStops.Any())
-                {
-                    foreach (var stopItem in task.TaskStops.OrderBy(s => s.SeqNo))
-                    {
-                        await _logRepository.CreateAsync(new Log
-                        {
-                            RobotId = task.RobotId,
-                            TaskId = task.Id,
-                            StopId = stopItem.Id,
-                            LogType = "success",
-                            Message = $"{taskMessage}. Điểm dừng #{stopItem.SeqNo} (Stop ID: {stopItem.Id}). Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                            CreatedAt = DateTimeHelper.Now()
-                        });
-                    }
-                }
-                else
-                {
-                    // Fallback nếu không có stops
-                    await _logRepository.CreateAsync(new Log
-                    {
-                        RobotId = task.RobotId,
-                        TaskId = task.Id,
-                        LogType = "success",
-                        Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                        CreatedAt = DateTimeHelper.Now()
-                    });
+                    assign.Status = assignmentStatus;
+                    assign.UpdatedAt = DateTimeHelper.Now();
                 }
             }
 
-            // Lưu DB
             await _repo.SaveChangesAsync();
-
-            await RecordTaskHistory(task);
-
             return true;
         }
 
@@ -1529,15 +1481,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
-                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
-                // Release all compartments
-                /*
-                foreach (var stop in task.TaskStops)
+                // Giải phóng tất cả compartments khi task hoàn thành/hủy/thất bại để có thể tái sử dụng cho nhiệm vụ mới
+                if (task.TaskStops != null)
                 {
-                    foreach (var a in stop.CompartmentAssignments)
-                        await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+                    foreach (var stop in task.TaskStops)
+                    {
+                        if (stop.CompartmentAssignments != null)
+                        {
+                            foreach (var a in stop.CompartmentAssignments)
+                                await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+                        }
+                    }
                 }
-                */
 
                 await _repo.SaveChangesAsync();
 
@@ -1962,9 +1917,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // 3. Đưa robot về trạm (at_station)
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
-                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hủy để có thể tái sử dụng cho nhiệm vụ mới
-                // 4. Giải phóng tất cả khoang chứa (release compartments)
-                /*
+                // 4. Giải phóng tất cả khoang chứa khi task bị hủy để có thể tái sử dụng cho nhiệm vụ mới
                 foreach (var stop in task.TaskStops)
                 {
                     foreach (var assignment in stop.CompartmentAssignments)
@@ -1972,7 +1925,6 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
                     }
                 }
-                */
 
                 // 5. Lưu vào database (không xóa, chỉ đổi status)
                 await _repo.SaveChangesAsync();

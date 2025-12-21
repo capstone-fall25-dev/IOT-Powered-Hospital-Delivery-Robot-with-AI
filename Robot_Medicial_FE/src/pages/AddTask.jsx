@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTask, checkRobotPendingTask } from "@/services/taskService";
-import { getAllMaps } from "@/services/mapService";
+import { getAllMapsWithRobots } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import { getDestinationsByMap } from "@/services/destinationService";
 import {
@@ -60,11 +60,17 @@ export default function AddTask() {
 
   const [baseCompartments, setBaseCompartments] = useState([]);
   const [showFloatingAddButton, setShowFloatingAddButton] = useState(false);
+  const [availableCategoryIds, setAvailableCategoryIds] = useState(null); // null = show all, array = show only these IDs
 
   // Số điểm dừng tối đa = tổng số ngăn chứa của robot (từ robot data)
   // Lấy từ robots array vì mỗi robot có compartments array
   const selectedRobot = robots.find(r => r.id === Number(form.robotId));
   const MAX_STOPS = selectedRobot?.compartments?.length || 0;
+
+  // Lọc categories: nếu có robot được chọn và có availableCategoryIds, chỉ hiển thị categories có ngăn có thể sử dụng
+  const filteredCategories = availableCategoryIds === null 
+    ? categories 
+    : categories.filter(c => availableCategoryIds.includes(Number(c.id)));
 
   const canAddStop = form.robotId;
   
@@ -161,7 +167,7 @@ export default function AddTask() {
     async function load() {
       try {
         const [mapsRes, patientsRes, categoriesRes] = await Promise.all([
-          getAllMaps(),
+          getAllMapsWithRobots(), // Chỉ lấy maps có robot
           // Lấy tất cả bệnh nhân (khi chọn đơn thuốc sẽ tự động approve)
           getAllPatients(),
           // Danh mục loại ngăn của robot
@@ -238,6 +244,7 @@ export default function AddTask() {
       taskStops: [],
     }));
     setBaseCompartments([]);
+    setAvailableCategoryIds(null); // Reset filter khi đổi map
     setDestinations([]);
     setRobots([]);
 
@@ -275,6 +282,7 @@ export default function AddTask() {
 
     if (!robotId) {
       setBaseCompartments([]);
+      setAvailableCategoryIds(null); // Reset filter khi bỏ chọn robot
       return;
     }
 
@@ -297,12 +305,23 @@ export default function AddTask() {
           robotId: "",
         }));
         setBaseCompartments([]);
+        setAvailableCategoryIds(null);
         return;
       }
 
       // Nếu robot không có task pending, load compartments
       const data = await getUnlockedCompartments(robotId);
       setBaseCompartments(data || []);
+
+      // Lọc categories: chỉ hiển thị categories có ngăn có thể sử dụng
+      if (data && data.length > 0) {
+        // Lấy danh sách category IDs duy nhất từ các compartments có thể sử dụng
+        const uniqueCategoryIds = [...new Set(data.map(c => Number(c.categoryId)))];
+        setAvailableCategoryIds(uniqueCategoryIds);
+      } else {
+        // Nếu không có compartment nào có thể sử dụng, không hiển thị category nào
+        setAvailableCategoryIds([]);
+      }
     } catch (err) {
       console.error("Lỗi khi chọn robot:", err);
       showToast("error", err.message);
@@ -313,6 +332,7 @@ export default function AddTask() {
         robotId: "",
       }));
       setBaseCompartments([]);
+      setAvailableCategoryIds(null);
     }
   }
 
@@ -863,7 +883,7 @@ export default function AddTask() {
                         }
                       >
                         <option value="">— Chọn loại —</option>
-                        {categories.map((c) => (
+                        {filteredCategories.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
                           </option>

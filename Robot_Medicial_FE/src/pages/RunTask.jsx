@@ -1110,24 +1110,43 @@ async function sendEmergencyStop() {
 
         try {
             await updateStopStatus(taskId, selectedStop.stopId, selectedStopStatus);
+            
+            // ⭐ OPTIMISTIC UPDATE: Cập nhật state ngay lập tức trước khi reload
+            const updatedStop = {
+                ...selectedStop,
+                assignmentStatus: selectedStopStatus
+            };
+            setSelectedStop(updatedStop);
+            setSelectedStopStatus(selectedStopStatus);
+            
+            // Cập nhật stops array ngay lập tức
+            setStops(prevStops => 
+                prevStops.map(s => 
+                    s.stopId === selectedStop.stopId 
+                        ? { ...s, assignmentStatus: selectedStopStatus }
+                        : s
+                )
+            );
+            
             showToast("success", "Cập nhật trạng thái điểm dừng thành công!");
 
-            // Reload lại run-info để sync trạng thái mới
+            // Reload lại run-info để sync trạng thái mới từ server
             const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
             const data = await res.json();
             setTaskInfo(data);
             setStops(data.stops || []);
 
-            // Tìm lại stop vừa cập nhật
+            // Tìm lại stop vừa cập nhật từ server response
             const updated = data.stops?.find(s => s.stopId === selectedStop.stopId);
 
             if (!updated) return;
 
-            // === (1) Nếu stop chưa delivered -> giữ nguyên
+            // Cập nhật selectedStop với data từ server
+            setSelectedStop(updated);
+            setSelectedStopStatus(updated.assignmentStatus || "");
+
+            // === (1) Nếu stop chưa delivered -> kiểm tra skipped/failed
             if (updated.assignmentStatus !== "delivered") {
-                setSelectedStop(updated);
-                setSelectedStopStatus(updated.assignmentStatus || "");
-                
                 // Kiểm tra nếu tất cả stops đều "skipped" hoặc "failed" → hiển thị modal xác nhận
                 const allSkipped = data.stops && data.stops.length > 0 && 
                     data.stops.every(s => s.assignmentStatus?.toLowerCase() === "skipped");
@@ -1161,6 +1180,21 @@ async function sendEmergencyStop() {
         } catch (err) {
             console.error("Lỗi cập nhật trạng thái điểm dừng:", err);
             showToast("error", err.message || "Lỗi khi cập nhật điểm dừng");
+            
+            // Rollback: reload lại data từ server nếu có lỗi
+            try {
+                const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
+                const data = await res.json();
+                setTaskInfo(data);
+                setStops(data.stops || []);
+                const currentStop = data.stops?.find(s => s.stopId === selectedStop.stopId);
+                if (currentStop) {
+                    setSelectedStop(currentStop);
+                    setSelectedStopStatus(currentStop.assignmentStatus || "");
+                }
+            } catch (reloadErr) {
+                console.error("Lỗi reload sau khi update thất bại:", reloadErr);
+            }
         }
     }
 

@@ -118,6 +118,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
                 .Where(rc => rc.RobotId == robotId && 
                             rc.IsActive == true &&
                             rc.Status == "unlocked" &&  // Chỉ lấy unlocked
+                            rc.PatientId == null &&     // Chỉ lấy compartments chưa được gán cho patient
                             !busyCompartmentIds.Contains(rc.Id)); // Loại bỏ compartment đang được sử dụng
 
             // Nếu không chọn Category → trả tất cả unlocked và không busy
@@ -171,18 +172,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Repositories.ImplRepository
         }
 
         /// <summary>
-        /// Giải phóng ngăn chứa (xóa bệnh nhân, reset trạng thái)
+        /// Giải phóng ngăn chứa (xóa bệnh nhân, reset trạng thái, giữ nguyên CategoryId ban đầu)
         /// </summary>
         public async System.Threading.Tasks.Task ReleaseCompartmentAsync(ulong compartmentId)
         {
             var comp = await _context.RobotCompartments.FindAsync(compartmentId)
                 ?? throw new InvalidOperationException("Khoang không tồn tại.");
 
+            // Chỉ giải phóng PatientId và Status, giữ nguyên CategoryId (cấu hình ban đầu của compartment)
             comp.PatientId = null;
-            comp.CategoryId = null;
 
             if (comp.Status == "locked")
                 comp.Status = "unlocked";
+
+            // KHÔNG reset CategoryId vì đó là cấu hình ban đầu của compartment
+            // CategoryId sẽ được giữ nguyên để compartment có thể tái sử dụng với đúng loại ngăn ban đầu
 
             _context.RobotCompartments.Update(comp);
             await _context.SaveChangesAsync();
