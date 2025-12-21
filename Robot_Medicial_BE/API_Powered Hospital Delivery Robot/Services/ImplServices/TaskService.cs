@@ -777,9 +777,31 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                         var assignment = stop.CompartmentAssignments?.FirstOrDefault();
 
+                        // ⭐ VALIDATION: Kiểm tra các trường bắt buộc trước khi xử lý
+                        if (sDto.CompartmentId <= 0)
+                        {
+                            throw new InvalidOperationException(
+                                $"Điểm dừng #{sDto.SeqNo} chưa được gán ngăn chứa. Vui lòng chọn ngăn chứa trước khi lưu."
+                            );
+                        }
+
+                        if (sDto.CategoryId <= 0)
+                        {
+                            throw new InvalidOperationException(
+                                $"Điểm dừng #{sDto.SeqNo} chưa được gán loại ngăn chứa. Vui lòng chọn loại ngăn chứa trước khi lưu."
+                            );
+                        }
+
+                        if (sDto.PatientId <= 0)
+                        {
+                            throw new InvalidOperationException(
+                                $"Điểm dừng #{sDto.SeqNo} chưa được gán bệnh nhân. Vui lòng chọn bệnh nhân trước khi lưu."
+                            );
+                        }
+
                         // Lấy compartment để kiểm tra category
                         var comp = await _repo.GetCompartmentAsync(sDto.CompartmentId)
-                            ?? throw new InvalidOperationException("Khoang không tồn tại.");
+                            ?? throw new InvalidOperationException($"Khoang {sDto.CompartmentId} không tồn tại.");
 
                         bool changingCompartment =
                             assignment == null || assignment.CompartmentId != sDto.CompartmentId;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
@@ -223,9 +223,22 @@ export default function RunTask() {
                 }
                 
                 const data = await res.json();
+                console.log("📦 [DEBUG] Task run-info data received:", {
+                    mapId: data.mapId,
+                    stopsCount: data.stops?.length,
+                    robotId: data.robotId,
+                    mapName: data.nameMapFE || data.mapName
+                });
+                
                 setTaskInfo(data);
                 setSelectedMapName(data.nameMapFE || data.mapName);
                 setStops(data.stops || []);
+                
+                console.log("✅ [DEBUG] State updated:", {
+                    taskInfoSet: !!data,
+                    stopsSet: data.stops?.length || 0,
+                    selectedMapName: data.nameMapFE || data.mapName
+                });
 
                 // Load compartments từ robot
                 if (data.robotId) {
@@ -261,9 +274,16 @@ export default function RunTask() {
 
                 if (data.stops?.length > 0) {
                     const first = data.stops[0];
+                    console.log("🎯 [DEBUG] Setting first stop as selected:", {
+                        stopId: first.stopId,
+                        order: first.order,
+                        name: first.name,
+                        assignmentStatus: first.assignmentStatus
+                    });
                     setSelectedStop(first);
                     setSelectedStopStatus(first.assignmentStatus || "");
-                    loadNavigationMap(data.mapId, data.stops, first, filteredRooms);
+                } else {
+                    console.warn("⚠️ [DEBUG] Không có stops trong data");
                 }
                 
                 setLoadingTaskStatus(false);
@@ -280,20 +300,159 @@ export default function RunTask() {
         loadTask();
     }, [taskId]);
 
-    // Khi đổi điểm dừng hoặc rooms thay đổi
+    // ⭐ Load map sau khi component đã render xong và có đầy đủ data
     useEffect(() => {
-        if (taskInfo && selectedStop) {
-            loadNavigationMap(taskInfo.mapId, taskInfo.stops, selectedStop, rooms);
-            setSelectedStopStatus(selectedStop.assignmentStatus || "");
+        console.log("🔍 [DEBUG] useEffect load map triggered", {
+            loadingTaskStatus,
+            hasTaskInfo: !!taskInfo,
+            hasSelectedStop: !!selectedStop,
+            stopsLength: stops?.length,
+            taskInfoMapId: taskInfo?.mapId,
+            selectedStopId: selectedStop?.stopId
+        });
+
+        // Chỉ load map khi không còn loading và có đầy đủ data
+        if (loadingTaskStatus) {
+            console.log("⏳ [DEBUG] Đang loading, bỏ qua load map");
+            return;
         }
-    }, [selectedStop, taskInfo, rooms]);
+        
+        if (!taskInfo) {
+            console.log("❌ [DEBUG] Chưa có taskInfo");
+            return;
+        }
+        
+        if (!selectedStop) {
+            console.log("❌ [DEBUG] Chưa có selectedStop");
+            return;
+        }
+        
+        if (!stops || stops.length === 0) {
+            console.log("❌ [DEBUG] Chưa có stops hoặc stops rỗng");
+            return;
+        }
+
+        console.log("✅ [DEBUG] Tất cả điều kiện đã đủ, bắt đầu check DOM element");
+
+        // Đảm bảo DOM element đã sẵn sàng
+        const checkAndLoad = () => {
+            const navMapElement = document.getElementById("nav-map");
+            console.log("🔍 [DEBUG] Check DOM element:", {
+                elementExists: !!navMapElement,
+                offsetHeight: navMapElement?.offsetHeight,
+                offsetWidth: navMapElement?.offsetWidth,
+                clientHeight: navMapElement?.clientHeight,
+                clientWidth: navMapElement?.clientWidth
+            });
+
+            if (navMapElement && navMapElement.offsetHeight > 0) {
+                // Element đã tồn tại và có kích thước (đã render xong)
+                console.log("✅ [DEBUG] DOM element đã sẵn sàng, gọi loadNavigationMap", {
+                    mapId: taskInfo.mapId,
+                    stopsCount: stops.length,
+                    selectedStopOrder: selectedStop.order,
+                    roomsCount: (rooms || []).length
+                });
+                loadNavigationMap(taskInfo.mapId, stops, selectedStop, rooms || []);
+            } else {
+                // Nếu chưa có hoặc chưa render xong, đợi một chút rồi thử lại
+                let retryCount = 0;
+                const maxRetries = 30; // Tăng lên 30 lần (3 giây)
+                const retry = () => {
+                    retryCount++;
+                    const element = document.getElementById("nav-map");
+                    console.log(`🔄 [DEBUG] Retry ${retryCount}/${maxRetries}`, {
+                        elementExists: !!element,
+                        offsetHeight: element?.offsetHeight
+                    });
+                    
+                    if (element && element.offsetHeight > 0) {
+                        // Element đã sẵn sàng
+                        console.log("✅ [DEBUG] DOM element đã sẵn sàng sau retry, gọi loadNavigationMap");
+                        loadNavigationMap(taskInfo.mapId, stops, selectedStop, rooms || []);
+                    } else if (retryCount < maxRetries) {
+                        setTimeout(retry, 100);
+                    } else {
+                        console.error("❌ [DEBUG] Không thể tìm thấy element #nav-map sau nhiều lần thử");
+                    }
+                };
+                setTimeout(retry, 100);
+            }
+        };
+        
+        // Đợi một chút để đảm bảo component đã render xong
+        console.log("⏳ [DEBUG] Đợi 50ms trước khi check DOM");
+        const timer = setTimeout(checkAndLoad, 50);
+        
+        return () => {
+            console.log("🧹 [DEBUG] Cleanup timer");
+            clearTimeout(timer);
+        };
+    }, [
+        loadingTaskStatus,    // Chỉ load khi không còn loading
+        selectedStop?.stopId, // Chỉ dùng stopId để tránh reference thay đổi
+        taskInfo?.mapId,      // Chỉ dùng mapId
+        stops?.length,        // Chỉ dùng length để tránh reference thay đổi
+        rooms?.length         // Chỉ dùng length để tránh reference thay đổi
+    ]);
 
 // ===================================
 // NAVIGATION MAP + MARKERS
 // ===================================
 async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
-  if (!window.L || !mapId) return;
+  console.log("🗺️ [DEBUG] loadNavigationMap called", {
+    hasLeaflet: !!window.L,
+    mapId,
+    stopsCount: stops?.length,
+    highlightStopOrder: highlightStop?.order,
+    roomsCount: rooms?.length
+  });
+
+  if (!window.L) {
+    console.error("❌ [DEBUG] Leaflet chưa được load (window.L không tồn tại)");
+    return;
+  }
+  
+  if (!mapId) {
+    console.error("❌ [DEBUG] mapId không hợp lệ:", mapId);
+    return;
+  }
+  
   const L = window.L;
+
+  // ⭐ Kiểm tra DOM element có tồn tại chưa
+  const navMapElement = document.getElementById("nav-map");
+  console.log("🔍 [DEBUG] Check nav-map element:", {
+    elementExists: !!navMapElement,
+    offsetHeight: navMapElement?.offsetHeight,
+    offsetWidth: navMapElement?.offsetWidth
+  });
+
+  if (!navMapElement) {
+    console.warn("⚠️ [DEBUG] Element #nav-map chưa tồn tại, bắt đầu retry");
+    // Nếu element chưa tồn tại, đợi một chút rồi thử lại (tối đa 20 lần = 2 giây)
+    let retryCount = 0;
+    const maxRetries = 20;
+    const retry = () => {
+      retryCount++;
+      const element = document.getElementById("nav-map");
+      console.log(`🔄 [DEBUG] Retry ${retryCount}/${maxRetries} trong loadNavigationMap`, {
+        elementExists: !!element
+      });
+      
+      if (element) {
+        // Element đã tồn tại, gọi lại function
+        console.log("✅ [DEBUG] Element đã tồn tại sau retry, gọi lại loadNavigationMap");
+        loadNavigationMap(mapId, stops, highlightStop, rooms);
+      } else if (retryCount < maxRetries) {
+        setTimeout(retry, 100);
+      } else {
+        console.error("❌ [DEBUG] Không thể tìm thấy element #nav-map sau nhiều lần thử trong loadNavigationMap");
+      }
+    };
+    setTimeout(retry, 100);
+    return;
+  }
 
   // 🔁 helper dùng chung để vẽ map_error.jpg
   function showFallbackMap(resolution = 0.05) {
@@ -349,17 +508,32 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
   }
 
   try {
+    console.log("📡 [DEBUG] Fetching map metadata for mapId:", mapId);
     const metaRes = await fetch(`${API_CONFIG.API_BASE}/MapsUpload/${mapId}`);
     const meta = await metaRes.json();
+    console.log("✅ [DEBUG] Map metadata received:", {
+      resolution: meta.resolution,
+      originX: meta.originX,
+      originY: meta.originY,
+      width: meta.width,
+      height: meta.height
+    });
 
     const resolution = meta.resolution || 0.05;
     const originX = meta.originX || 0;
     const originY = meta.originY || 0;
     const imgUrl = `${API_CONFIG.API_BASE}/MapsUpload/${mapId}/image`;
+    console.log("🖼️ [DEBUG] Loading map image from:", imgUrl);
 
     const img = new Image();
 
     img.onload = () => {
+      console.log("✅ [DEBUG] Map image loaded", {
+        imgWidth: img.width,
+        imgHeight: img.height,
+        widthMeters: img.width * resolution,
+        heightMeters: img.height * resolution
+      });
       const widthMeters = img.width * resolution;
       const heightMeters = img.height * resolution;
 
@@ -372,6 +546,7 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
       const bounds = [[0, 0], [heightMeters, widthMeters]];
 
       if (!navMapRef.current) {
+        console.log("🆕 [DEBUG] Creating new Leaflet map instance");
         navMapRef.current = L.map("nav-map", {
           crs: L.CRS.Simple,
           zoomControl: true,
@@ -384,15 +559,32 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
         navMapRef.current
       );
       navMapRef.current.fitBounds(bounds);
+      
+      // ⭐ QUAN TRỌNG: Invalidate size sau khi thêm layer để map render đúng
+      setTimeout(() => {
+        if (navMapRef.current) {
+          navMapRef.current.invalidateSize();
+          // Force redraw map
+          navMapRef.current._onResize();
+          console.log("✅ [DEBUG] Map invalidateSize() và _onResize() called after adding layer");
+        }
+      }, 150);
 
       // Xóa hết marker cũ
-      if (window.navMapMarkers) window.navMapMarkers.clearLayers();
-      else window.navMapMarkers = L.layerGroup().addTo(navMapRef.current);
+      if (window.navMapMarkers) {
+        console.log("🧹 [DEBUG] Clearing old markers");
+        window.navMapMarkers.clearLayers();
+      } else {
+        console.log("➕ [DEBUG] Creating new navMapMarkers layer group");
+        window.navMapMarkers = L.layerGroup().addTo(navMapRef.current);
+      }
 
       // Xóa room markers cũ
       if (roomMarkersRef.current) {
+        console.log("🧹 [DEBUG] Removing old room markers");
         navMapRef.current.removeLayer(roomMarkersRef.current);
       }
+      console.log("➕ [DEBUG] Creating new room markers layer group");
       roomMarkersRef.current = L.layerGroup().addTo(navMapRef.current);
 
       // === VẼ CÁC PHÒNG TRÊN MAP ===
@@ -458,11 +650,21 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
         });
       }
 
-    // === VẼ TẤT CẢ ĐIỂM DỪNG ===
-stops.forEach((stop, idx) => {
-  const localX = stop.x - originX;
-  const localY = stop.y - originY;
-  const latlng = [localY, localX];
+     // === VẼ TẤT CẢ ĐIỂM DỪNG ===
+     console.log("📍 [DEBUG] Vẽ điểm dừng, tổng số:", stops.length);
+ stops.forEach((stop, idx) => {
+   const localX = stop.x - originX;
+   const localY = stop.y - originY;
+   const latlng = [localY, localX];
+   console.log(`📍 [DEBUG] Stop ${idx + 1}:`, {
+     order: stop.order,
+     name: stop.name,
+     x: stop.x,
+     y: stop.y,
+     localX,
+     localY,
+     latlng
+   });
 
   const isSelected =
     highlightStop && stop.order === highlightStop.order;
@@ -516,10 +718,31 @@ stops.forEach((stop, idx) => {
     iconAnchor: [isSelected ? 75 : 65, isSelected ? 45 : 40], // ⭐ THAY ĐỔI Ở ĐÂY
   });
 
-  L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 }).addTo(
-    window.navMapMarkers
-  );
-});
+   const marker = L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 });
+   marker.addTo(window.navMapMarkers);
+   console.log(`✅ [DEBUG] Đã thêm marker cho stop ${idx + 1} (order: ${stop.order}) vào map`);
+ });
+ 
+ console.log("✅ [DEBUG] Đã vẽ xong tất cả điểm dừng, tổng số markers:", stops.length);
+ 
+ // ⭐ QUAN TRỌNG: Invalidate size và update map view sau khi thêm markers
+ if (navMapRef.current) {
+   // Đợi một chút để đảm bảo markers đã được render
+   setTimeout(() => {
+     try {
+       navMapRef.current.invalidateSize();
+       // Force update map view
+       navMapRef.current.eachLayer((layer) => {
+         if (layer instanceof L.Marker) {
+           layer.update();
+         }
+       });
+       console.log("✅ [DEBUG] Map invalidateSize() và update markers called");
+     } catch (err) {
+       console.error("❌ [DEBUG] Lỗi khi gọi invalidateSize():", err);
+     }
+   }, 200);
+ }
 
     };
     

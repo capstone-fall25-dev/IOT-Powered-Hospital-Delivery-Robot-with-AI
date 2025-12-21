@@ -818,20 +818,33 @@ export default function EditTask() {
                         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetString}`;
                     })()
                     : null,
-                stops: form.stops.map((s) => {
+                stops: form.stops.map((s, idx) => {
+                    // ⭐ VALIDATION: Đảm bảo tất cả trường bắt buộc đã có giá trị trước khi gửi
+                    const stopNumber = idx + 1;
+                    
+                    if (!s.destinationId || s.destinationId === "" || Number(s.destinationId) <= 0) {
+                        throw new Error(`Điểm dừng #${stopNumber}: Điểm đến không hợp lệ.`);
+                    }
+                    
+                    if (!s.patientId || s.patientId === "" || Number(s.patientId) <= 0) {
+                        throw new Error(`Điểm dừng #${stopNumber}: Bệnh nhân không hợp lệ.`);
+                    }
+                    
+                    if (!s.categoryId || s.categoryId === "" || Number(s.categoryId) <= 0) {
+                        throw new Error(`Điểm dừng #${stopNumber}: Loại ngăn chứa không hợp lệ.`);
+                    }
+                    
+                    if (!s.compartmentId || s.compartmentId === "" || Number(s.compartmentId) <= 0) {
+                        throw new Error(`Điểm dừng #${stopNumber}: Ngăn chứa không hợp lệ.`);
+                    }
+                    
                     const stopPayload = {
                         stopId: s.stopId || 0, // 0 = stop mới, backend sẽ tạo mới
                         seqNo: s.seqNo,
-                        destinationId: s.destinationId
-                            ? Number(s.destinationId)
-                            : 0,
-                        patientId: s.patientId ? Number(s.patientId) : 0,
-                        compartmentId: s.compartmentId
-                            ? Number(s.compartmentId)
-                            : 0,
-                        categoryId: s.categoryId
-                            ? Number(s.categoryId)
-                            : 0,
+                        destinationId: Number(s.destinationId),
+                        patientId: Number(s.patientId),
+                        compartmentId: Number(s.compartmentId),
+                        categoryId: Number(s.categoryId),
                         customName: s.customName ?? "",
                         itemDesc: s.itemDesc ?? "",
                         // Chỉ gửi status stop nếu task là "pending" và user chọn 1 giá trị rõ ràng

@@ -1,7 +1,7 @@
 // src/services/mapService.js
 import { apiFetch } from "./api";
 
-const BASE = "/maps";
+const BASE = "/Maps"; // ⚠️ Phải viết hoa chữ M để match với controller name "Maps"
 
 export const getAllMaps = () => apiFetch(BASE);
 export const getAllMapsWithRobots = () => apiFetch(`${BASE}/with-robots`);

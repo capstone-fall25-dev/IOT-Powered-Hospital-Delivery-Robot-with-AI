@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTask, checkRobotPendingTask } from "@/services/taskService";
-import { getAllMapsWithRobots } from "@/services/mapService";
+import { getAllMaps } from "@/services/mapService";
 import { getAllPatients } from "@/services/patientService";
 import { getDestinationsByMap } from "@/services/destinationService";
 import {
@@ -167,14 +167,18 @@ export default function AddTask() {
     async function load() {
       try {
         const [mapsRes, patientsRes, categoriesRes] = await Promise.all([
-          getAllMapsWithRobots(), // Chỉ lấy maps có robot
+          getAllMaps(), // Lấy tất cả maps, sau đó filter ở frontend
           // Lấy tất cả bệnh nhân (khi chọn đơn thuốc sẽ tự động approve)
           getAllPatients(),
           // Danh mục loại ngăn của robot
           getAllCompartmentCategories(),
         ]);
 
-        setMaps(mapsRes || []);
+        // ⭐ Filter chỉ lấy maps có robot (có ít nhất 1 robot)
+        const mapsWithRobots = (mapsRes || []).filter(map => 
+          map.robots && Array.isArray(map.robots) && map.robots.length > 0
+        );
+        setMaps(mapsWithRobots);
         setPatients(patientsRes || []);
         setCategories(categoriesRes || []);
       } catch (err) {
