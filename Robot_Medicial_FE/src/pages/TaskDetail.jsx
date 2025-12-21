@@ -16,6 +16,7 @@ export default function TaskDetail() {
     const [loading, setLoading] = useState(true);
     const [stopStatusEdit, setStopStatusEdit] = useState({});
     const [tick, setTick] = useState(0);
+    const [taskError, setTaskError] = useState(null); // Error state để hiển thị lỗi
 
     // Modal hủy task
     const [cancelModal, setCancelModal] = useState({
@@ -301,8 +302,23 @@ export default function TaskDetail() {
 
                 setLoading(false);
             } catch (err) {
-                console.error(err);
-                showToast("error", err.message);
+                // Xử lý lỗi 403 - không có quyền (403 Forbidden, không phải 401 Unauthorized)
+                if (err.status === 403) {
+                    setTaskError({
+                        type: "forbidden",
+                        message: err.message || "Bạn không có quyền xem nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền."
+                    });
+                } else if (err.status === 404) {
+                    setTaskError({
+                        type: "notfound",
+                        message: "Không tìm thấy nhiệm vụ này trong hệ thống."
+                    });
+                } else {
+                    setTaskError({
+                        type: "error",
+                        message: err.message || "Không thể tải thông tin nhiệm vụ. Vui lòng thử lại sau."
+                    });
+                }
                 setLoading(false);
             }
         }
@@ -380,6 +396,69 @@ export default function TaskDetail() {
     // ============================================
     // RENDER UI
     // ============================================
+    // Error state - hiển thị khi có lỗi 404/403 hoặc lỗi khác
+    if (taskError) {
+        const isForbidden = taskError.type === "forbidden";
+        const isNotFound = taskError.type === "notfound";
+        
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className="row justify-content-center">
+                        <div className="col-lg-11 col-xl-10">
+                            <div className={`${styles.glass} p-5 text-center`}>
+                                <div className="mb-4">
+                                    {isForbidden ? (
+                                        <i className="bi bi-shield-exclamation text-danger" style={{ fontSize: "4rem" }}></i>
+                                    ) : isNotFound ? (
+                                        <i className="bi bi-exclamation-circle text-warning" style={{ fontSize: "4rem" }}></i>
+                                    ) : (
+                                        <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: "4rem" }}></i>
+                                    )}
+                                </div>
+                                <h4 className="mb-3">
+                                    {isForbidden ? "Không có quyền truy cập" : 
+                                     isNotFound ? "Không tìm thấy nhiệm vụ" : 
+                                     "Lỗi tải nhiệm vụ"}
+                                </h4>
+                                <p className="text-muted mb-4">
+                                    {taskError.message}
+                                    {isForbidden && (
+                                        <>
+                                            <br />
+                                            <small>Chỉ người tạo nhiệm vụ hoặc admin mới có quyền truy cập trang này.</small>
+                                        </>
+                                    )}
+                                    {isNotFound && (
+                                        <>
+                                            <br />
+                                            <small>Nhiệm vụ có thể đã bị xóa hoặc không tồn tại trong hệ thống.</small>
+                                        </>
+                                    )}
+                                </p>
+                                <div className="d-flex gap-2 justify-content-center">
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => navigate("/dashboard")}
+                                        style={{ borderRadius: "5px" }}
+                                    >
+                                        <i className="bi bi-arrow-left me-2"></i>
+                                        Quay lại danh sách nhiệm vụ
+                                    </button>
+                                </div>
+                                {(isForbidden || isNotFound) && (
+                                    <p className="text-muted mt-3 small">
+                                        Tự động chuyển về danh sách nhiệm vụ sau 5 giây...
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className={styles.page}>

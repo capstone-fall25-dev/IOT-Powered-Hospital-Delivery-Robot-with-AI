@@ -21,6 +21,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         /// <summary>
         /// Lấy danh sách nhiệm vụ (có thể lọc theo robot, trạng thái, độ ưu tiên)
+        /// Chỉ hiển thị nhiệm vụ của user hiện tại, trừ admin có thể xem tất cả
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TaskListItemDto>>> GetAll(
@@ -28,6 +29,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
             [FromQuery] string? status,
             [FromQuery] string? priority)
         {
+            var currentUserId = GetCurrentUserId();
+            var currentUserRole = GetCurrentUserRole();
+            
             var filter = new TaskFilterDto
             {
                 RobotId = robotId,
@@ -35,20 +39,34 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 Priority = priority
             };
 
-            var data = await _service.GetAllAsync(filter);
+            var data = await _service.GetAllAsync(filter, currentUserId, currentUserRole);
             return Ok(data);
         }
 
         /// <summary>
         /// Lấy chi tiết một nhiệm vụ theo ID
+        /// Chỉ user tạo task hoặc admin mới có quyền xem
         /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskDetailDto>> GetById(ulong id)
         {
-            var result = await _service.GetByIdAsync(id);
-            return result == null
-                ? NotFound("Không tìm thấy nhiệm vụ.")
-                : Ok(result);
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var result = await _service.GetByIdAsync(id, currentUserId, currentUserRole);
+                return result == null
+                    ? NotFound("Không tìm thấy nhiệm vụ.")
+                    : Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message }); // 403 Forbidden - không có quyền, không phải token invalid
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -80,14 +98,28 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
 
         /// <summary>
         /// Lấy dữ liệu để chỉnh sửa nhiệm vụ
+        /// Chỉ user tạo task hoặc admin mới có quyền xem/sửa
         /// </summary>
         [HttpGet("{id}/edit")]
         public async Task<ActionResult<TaskEditDto>> GetEditData(ulong id)
         {
-            var task = await _service.GetEditDataAsync(id);
-            return task == null
-                ? NotFound("Không tìm thấy nhiệm vụ.")
-                : Ok(task);
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var task = await _service.GetEditDataAsync(id, currentUserId, currentUserRole);
+                return task == null
+                    ? NotFound("Không tìm thấy nhiệm vụ.")
+                    : Ok(task);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message }); // 403 Forbidden - không có quyền, không phải token invalid
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -143,10 +175,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         [HttpGet("{taskId}/run-info")]
         public async Task<ActionResult<RunTaskInfoDto>> GetRunInfo(ulong taskId)
         {
-            var info = await _service.GetRunInfoAsync(taskId);
-            return info == null
-                ? NotFound("Nhiệm vụ không tồn tại.")
-                : Ok(info);
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var info = await _service.GetRunInfoAsync(taskId, currentUserId, currentUserRole);
+                return info == null
+                    ? NotFound("Nhiệm vụ không tồn tại.")
+                    : Ok(info);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message }); // 403 Forbidden - không có quyền, không phải token invalid
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -168,10 +213,23 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         [HttpPut("{taskId}/complete")]
         public async Task<IActionResult> CompleteTask(ulong taskId)
         {
-            var result = await _service.CompleteTaskAsync(taskId);
-            return result.Success
-                ? Ok(result.Task)
-                : BadRequest(result.Message);
+            try
+            {
+                var result = await _service.CompleteTaskAsync(taskId);
+                return result.Success
+                    ? Ok(result.Task)
+                    : BadRequest(new { message = result.Message });
+            }
+            catch (Exception ex)
+            {
+                // Log inner exception nếu có để debug
+                string errorMessage = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorMessage += $" | Inner: {ex.InnerException.Message}";
+                }
+                return BadRequest(new { message = errorMessage });
+            }
         }
 
         /// <summary>
@@ -182,8 +240,14 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         {
             try
             {
-                var result = await _service.StartTaskAsync(taskId);
+                var currentUserId = GetCurrentUserId();
+                var currentUserRole = GetCurrentUserRole();
+                var result = await _service.StartTaskAsync(taskId, currentUserId, currentUserRole);
                 return result == null ? NotFound("Không tìm thấy nhiệm vụ.") : Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message }); // 403 Forbidden - không có quyền, không phải token invalid
             }
             catch (Exception ex)
             {
@@ -235,6 +299,18 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
                 return 1;
 
             return userId;
+        }
+
+        /// <summary>
+        /// Lấy role của nhân viên hiện tại từ token
+        /// </summary>
+        private string GetCurrentUserRole()
+        {
+            var roleClaim = User.FindFirst(claim =>
+                claim.Type == ClaimTypes.Role ||
+                claim.Type == "role");
+
+            return roleClaim?.Value ?? "user";
         }
     }
 }

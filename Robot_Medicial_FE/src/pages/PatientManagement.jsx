@@ -147,7 +147,7 @@ export default function PatientsManagement() {
                                     <th>Giới tính</th>
                                     <th>Ngày sinh</th>
                                     <th>Khoa</th>
-                                    <th>Phòng</th>
+                                    {/* <th>Phòng</th> */}
                                     <th>SĐT</th>
                                     <th>Trạng thái</th>
                                     <th>Đơn thuốc</th>
@@ -180,7 +180,7 @@ export default function PatientsManagement() {
                                             <td>{p.gender}</td>
                                             <td>{p.dob}</td>
                                             <td>{p.department}</td>
-                                            <td>{p.roomName}</td>
+                                            {/* <td>{p.roomName}</td> */}
                                             <td>{p.phone}</td>
 
                                             <td>
@@ -264,7 +264,7 @@ export default function PatientsManagement() {
                                         <thead>
                                             <tr>
                                                 <th style={{ width: '50px' }}>#</th>
-                                                <th>Thuốc</th>
+                                                {/* <th>Thuốc</th> */}
                                                 <th>Mã đơn thuốc</th>
                                                 <th>Tổng SL</th>
                                                 <th>Ngày kê lần cuối</th>
@@ -274,7 +274,7 @@ export default function PatientsManagement() {
                                             {medicineHistory.map((m, i) => (
                                                 <tr key={i}>
                                                     <td>{i + 1}</td>
-                                                    <td className="fw-semibold">{m.medicineName}</td>
+                                                    {/* <td className="fw-semibold">{m.medicineName}</td> */}
                                                     <td className="fw-semibold text-primary">{m.prescriptionCode || "-"}</td>
                                                     <td>{m.totalPrescribedQuantity}</td>
                                                     <td>{new Date(m.lastPrescribedAt).toLocaleDateString("vi-VN")}</td>

@@ -41,6 +41,7 @@ export default function RobotTaskDashboard() {
     offline: "Ngoại tuyến",
     pending: "Đang chờ",
     canceled: "Đã hủy",
+    failed: "Thất bại",
     in_progress: "Đang tiến hành",
   };
 

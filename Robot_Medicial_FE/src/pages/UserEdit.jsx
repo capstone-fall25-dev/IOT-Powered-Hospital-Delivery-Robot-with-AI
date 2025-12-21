@@ -84,6 +84,7 @@ export default function UserEdit() {
             }
             await updateUser(userId, userDto);
             showToast("success", "Lưu thành công!");
+            setTimeout(() => navigate("/users"), 800);
         } catch (err) {
             console.error("Lỗi khi lưu:", err);
             showToast("error", err.message || "Không thể lưu thay đổi. Vui lòng thử lại.");

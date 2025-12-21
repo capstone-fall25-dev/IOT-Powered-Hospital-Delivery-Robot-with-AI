@@ -39,9 +39,16 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET LIST
         // ======================================================================
-        public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter)
+        public async Task<IEnumerable<TaskListItemDto>> GetAllAsync(TaskFilterDto? filter, ulong currentUserId, string currentUserRole)
         {
             var tasks = await _repo.GetListAsync(filter);
+            
+            // Filter theo user: chỉ admin mới xem được tất cả, user thường chỉ xem task của mình
+            bool isAdmin = string.Equals(currentUserRole, "admin", StringComparison.OrdinalIgnoreCase);
+            if (!isAdmin)
+            {
+                tasks = tasks.Where(t => t.AssignedBy.HasValue && t.AssignedBy.Value == currentUserId);
+            }
 
             return tasks
             .OrderByDescending(t => t.Id)
@@ -87,10 +94,21 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET DETAIL
         // ======================================================================
-        public async Task<TaskDetailDto?> GetByIdAsync(ulong id)
+        public async Task<TaskDetailDto?> GetByIdAsync(ulong id, ulong currentUserId, string currentUserRole)
         {
             var task = await _repo.GetByIdAsync(id);
-            return task == null ? null : MapToDetail(task);
+            if (task == null) return null;
+
+            // Kiểm tra quyền: chỉ user tạo task hoặc admin mới được xem
+            bool isAdmin = string.Equals(currentUserRole, "admin", StringComparison.OrdinalIgnoreCase);
+            bool isOwner = task.AssignedBy.HasValue && task.AssignedBy.Value == currentUserId;
+            
+            if (!isAdmin && !isOwner)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền xem nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền.");
+            }
+
+            return MapToDetail(task);
         }
 
         // ======================================================================
@@ -288,11 +306,20 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
         // ======================================================================
         // GET EDIT DATA
         // ======================================================================
-        public async Task<TaskEditDto?> GetEditDataAsync(ulong id)
+        public async Task<TaskEditDto?> GetEditDataAsync(ulong id, ulong currentUserId, string currentUserRole)
         {
             // Sử dụng GetByIdForEditAsync để tối ưu performance (không load prescription data)
             var task = await _repo.GetByIdForEditAsync(id);
             if (task == null) return null;
+
+            // Kiểm tra quyền: chỉ user tạo task hoặc admin mới được xem/sửa
+            bool isAdmin = string.Equals(currentUserRole, "admin", StringComparison.OrdinalIgnoreCase);
+            bool isOwner = task.AssignedBy.HasValue && task.AssignedBy.Value == currentUserId;
+            
+            if (!isAdmin && !isOwner)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền xem/sửa nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền.");
+            }
 
             // ❗ Không cho phép edit task đã completed hoặc canceled
             string taskStatus = task.Status.ToLower();
@@ -986,6 +1013,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // ==================================================================
                 // 8. RELEASE COMPARTMENTS WHEN TASK FINISHES
                 // ==================================================================
+                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
+                // Khoang sẽ được giữ nguyên trạng thái như lúc setup ban đầu
+                /*
                 if (task.Status == "completed" ||
                     task.Status == "failed" ||
                     task.Status == "canceled")
@@ -1004,6 +1034,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         }
                     }
                 }
+                */
 
                 // Update task.UpdatedAt ở cuối để đảm bảo mọi thay đổi đều được ghi nhận
                 task.UpdatedAt = DateTimeHelper.Now();
@@ -1299,10 +1330,19 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
             return medicineKeywords.Any(keyword => categoryName.Contains(keyword));
         }
 
-        public async Task<RunTaskInfoDto?> GetRunInfoAsync(ulong taskId)
+        public async Task<RunTaskInfoDto?> GetRunInfoAsync(ulong taskId, ulong currentUserId, string currentUserRole)
         {
             var task = await _repo.GetTaskWithStopsAsync(taskId);
             if (task == null) return null;
+
+            // Kiểm tra quyền: chỉ user tạo task hoặc admin mới được xem
+            bool isAdmin = string.Equals(currentUserRole, "admin", StringComparison.OrdinalIgnoreCase);
+            bool isOwner = task.AssignedBy.HasValue && task.AssignedBy.Value == currentUserId;
+            
+            if (!isAdmin && !isOwner)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền xem nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền.");
+            }
 
             var stops = task.TaskStops.OrderBy(s => s.SeqNo).Select(s => new RunTaskStopDto
             {
@@ -1364,7 +1404,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
+                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
                 // Giải phóng khoang
+                /*
                 foreach (var s in task.TaskStops)
                 {
                     foreach (var a in s.CompartmentAssignments)
@@ -1372,6 +1414,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
                     }
                 }
+                */
 
                 // Log task auto-completed from stop status update cho tất cả stops
                 var robot = await _repo.GetRobotAsync(task.RobotId);
@@ -1418,81 +1461,149 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
         public async Task<StopUpdateResultDto> CompleteTaskAsync(ulong taskId)
         {
-            var task = await _repo.GetByIdAsync(taskId);
-            if (task == null)
-                return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
-
-            // ❗ KHÔNG force tất cả stops thành delivered - giữ nguyên status của từng stop
-            // Chỉ update CompartmentAssignment status cho các stops đã delivered
-            int deliveredCount = 0;
-            foreach (var stop in task.TaskStops)
+            using var transaction = await _repo.BeginTransactionAsync();
+            try
             {
-                // Chỉ update CompartmentAssignment status nếu stop đã delivered
-                if (string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
+                var task = await _repo.GetByIdAsync(taskId);
+                if (task == null)
+                    return new StopUpdateResultDto { Success = false, Message = "Task không tồn tại." };
+
+                // ❗ KHÔNG force tất cả stops thành delivered - giữ nguyên status của từng stop
+                // Chỉ update CompartmentAssignment status cho các stops đã delivered
+                int deliveredCount = 0;
+                foreach (var stop in task.TaskStops)
                 {
-                    deliveredCount++;
-                    foreach (var assign in stop.CompartmentAssignments)
+                    // Chỉ update CompartmentAssignment status nếu stop đã delivered
+                    if (string.Equals(stop.Status, "delivered", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Map stop status sang assignment status hợp lệ
-                        var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
-                        assign.Status = assignmentStatus;
-                        assign.UpdatedAt = DateTimeHelper.Now();
+                        deliveredCount++;
+                        foreach (var assign in stop.CompartmentAssignments)
+                        {
+                            // Map stop status sang assignment status hợp lệ
+                            var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
+                            assign.Status = assignmentStatus;
+                            assign.UpdatedAt = DateTimeHelper.Now();
+                        }
                     }
+                    else
+                    {
+                        // Với stops chưa delivered (skipped, failed, pending, etc.)
+                        // Vẫn update CompartmentAssignment status để phản ánh đúng trạng thái
+                        foreach (var assign in stop.CompartmentAssignments)
+                        {
+                            var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
+                            assign.Status = assignmentStatus;
+                            assign.UpdatedAt = DateTimeHelper.Now();
+                        }
+                    }
+                }
+
+                // Xác định task status dựa trên trạng thái của tất cả stops
+                // - Tất cả stops đều "failed" → task status = "failed"
+                // - Tất cả stops đều "skipped" → task status = "canceled"
+                // - Ngược lại → task status = "completed"
+                bool allFailed = task.TaskStops != null && task.TaskStops.Any() &&
+                    task.TaskStops.All(s => string.Equals(s.Status, "failed", StringComparison.OrdinalIgnoreCase));
+                bool allSkipped = task.TaskStops != null && task.TaskStops.Any() &&
+                    task.TaskStops.All(s => string.Equals(s.Status, "skipped", StringComparison.OrdinalIgnoreCase));
+
+                if (allFailed)
+                {
+                    task.Status = "failed";
+                    task.FinalStatus = "failed";
+                }
+                else if (allSkipped)
+                {
+                    task.Status = "canceled";
+                    task.FinalStatus = "canceled";
                 }
                 else
                 {
-                    // Với stops chưa delivered (skipped, failed, pending, etc.)
-                    // Vẫn update CompartmentAssignment status để phản ánh đúng trạng thái
-                    foreach (var assign in stop.CompartmentAssignments)
-                    {
-                        var assignmentStatus = MapStopStatusToAssignmentStatus(stop.Status);
-                        assign.Status = assignmentStatus;
-                        assign.UpdatedAt = DateTimeHelper.Now();
-                    }
+                    task.Status = "completed";
+                    task.FinalStatus = "completed";
                 }
+
+                task.UpdatedAt = DateTimeHelper.Now();
+                // Set CompletedAt cho tất cả trường hợp (completed, failed, canceled) để đánh dấu thời điểm kết thúc
+                task.CompletedAt = DateTimeHelper.Now();
+
+                await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
+
+                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hoàn thành để có thể tái sử dụng cho nhiệm vụ mới
+                // Release all compartments
+                /*
+                foreach (var stop in task.TaskStops)
+                {
+                    foreach (var a in stop.CompartmentAssignments)
+                        await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+                }
+                */
+
+                await _repo.SaveChangesAsync();
+
+                // Log task với thông tin phù hợp
+                var robot = await _repo.GetRobotAsync(task.RobotId);
+                var totalStops = task.TaskStops?.Count ?? 0;
+                string taskMessage;
+                string logType;
+
+                // Xác định log message và type dựa trên task status
+                if (task.Status == "failed")
+                {
+                    taskMessage = $"Nhiệm vụ #{task.Id} đã thất bại. Tất cả {totalStops} điểm dừng đều thất bại";
+                    logType = "error";
+                }
+                else if (task.Status == "canceled")
+                {
+                    taskMessage = $"Nhiệm vụ #{task.Id} đã bị hủy. Tất cả {totalStops} điểm dừng đều bỏ qua";
+                    logType = "warning";
+                }
+                else
+                {
+                    taskMessage = $"Nhiệm vụ #{task.Id} đã hoàn thành. Đã giao: {deliveredCount}/{totalStops} điểm dừng";
+                    logType = "success";
+                }
+                
+                await _logRepository.CreateAsync(new Log
+                {
+                    RobotId = task.RobotId,
+                    TaskId = task.Id,
+                    LogType = logType,
+                    Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
+                    CreatedAt = DateTimeHelper.Now()
+                });
+
+                await _repo.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // RecordTaskHistory được gọi SAU khi commit để tránh conflict với transaction
+                // Wrap trong try-catch để không ảnh hưởng đến kết quả chính nếu có lỗi
+                try
+                {
+                    await RecordTaskHistory(task);
+                }
+                catch (Exception historyEx)
+                {
+                    // Log lỗi nhưng không throw để không ảnh hưởng đến kết quả complete task
+                    Console.WriteLine($"[Warning] Không thể lưu lịch sử nhiệm vụ {taskId}: {historyEx.Message}");
+                }
+
+                // Gửi SignalR event để cập nhật real-time cho frontend
+                var updatedTask = await _repo.GetByIdAsync(task.Id);
+                var response = MapToResponse(updatedTask!);
+                await _taskHub.Clients.All.SendAsync("TaskUpdated", response);
+
+                return new StopUpdateResultDto
+                {
+                    Success = true,
+                    Task = MapToDetail(task)
+                };
             }
-
-            // Task status = completed (nhưng giữ nguyên stop status)
-            task.Status = "completed";
-            task.UpdatedAt = DateTimeHelper.Now();
-            task.CompletedAt = DateTimeHelper.Now();
-
-            await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
-
-            // Release all compartments
-            foreach (var stop in task.TaskStops)
+            catch (Exception ex)
             {
-                foreach (var a in stop.CompartmentAssignments)
-                    await _repoRobotCom.ReleaseCompartmentAsync(a.CompartmentId);
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException($"Không thể hoàn thành nhiệm vụ: {ex.Message}", ex);
             }
-
-            await _repo.SaveChangesAsync();
-            await RecordTaskHistory(task);
-
-            // Log task completed với thông tin số stops đã delivered
-            var robot = await _repo.GetRobotAsync(task.RobotId);
-            var totalStops = task.TaskStops?.Count ?? 0;
-            var taskMessage = $"Nhiệm vụ #{task.Id} đã hoàn thành. Đã giao: {deliveredCount}/{totalStops} điểm dừng";
-            
-            await _logRepository.CreateAsync(new Log
-            {
-                RobotId = task.RobotId,
-                TaskId = task.Id,
-                LogType = "success",
-                Message = $"{taskMessage}. Robot: {robot?.Name ?? robot?.Code ?? "N/A"}",
-                CreatedAt = DateTimeHelper.Now()
-            });
-
-            // Gửi SignalR event để cập nhật real-time cho frontend
-            var updatedTask = await _repo.GetByIdAsync(task.Id);
-            var response = MapToResponse(updatedTask!);
-            await _taskHub.Clients.All.SendAsync("TaskUpdated", response);
-
-            return new StopUpdateResultDto
-            {
-                Success = true,
-                Task = MapToDetail(task)
-            };
         }
 
         private async System.Threading.Tasks.Task RecordTaskHistory(Models.Entities.Task task, double? startedEarlyMinutes = null, string? cancelNote = null)
@@ -1565,13 +1676,22 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
 
             return $"Khởi động sớm {seconds:F0} giây trước giờ dự kiến";
         }
-        public async Task<TaskResponseDto?> StartTaskAsync(ulong taskId)
+        public async Task<TaskResponseDto?> StartTaskAsync(ulong taskId, ulong currentUserId, string currentUserRole)
         {
             using var transaction = await _repo.BeginTransactionAsync();
             try
             {
                 var task = await _repo.GetByIdAsync(taskId)
                     ?? throw new InvalidOperationException("Không tìm thấy nhiệm vụ.");
+
+                // Kiểm tra quyền: chỉ user tạo task hoặc admin mới được start
+                bool isAdmin = string.Equals(currentUserRole, "admin", StringComparison.OrdinalIgnoreCase);
+                bool isOwner = task.AssignedBy.HasValue && task.AssignedBy.Value == currentUserId;
+                
+                if (!isAdmin && !isOwner)
+                {
+                    throw new UnauthorizedAccessException("Bạn không có quyền bắt đầu nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền.");
+                }
 
                 if (task.Status != "pending")
                     throw new InvalidOperationException($"Chỉ có thể bắt đầu task ở trạng thái pending. Hiện tại: {task.Status}");
@@ -1842,7 +1962,9 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                 // 3. Đưa robot về trạm (at_station)
                 await _repo.UpdateRobotStatusAsync(task.RobotId, "at_station");
 
+                // ❗ ĐÃ TẮT: Giữ nguyên khoang sau khi hủy để có thể tái sử dụng cho nhiệm vụ mới
                 // 4. Giải phóng tất cả khoang chứa (release compartments)
+                /*
                 foreach (var stop in task.TaskStops)
                 {
                     foreach (var assignment in stop.CompartmentAssignments)
@@ -1850,6 +1972,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Services.ImplServices
                         await _repoRobotCom.ReleaseCompartmentAsync(assignment.CompartmentId);
                     }
                 }
+                */
 
                 // 5. Lưu vào database (không xóa, chỉ đổi status)
                 await _repo.SaveChangesAsync();

@@ -24,7 +24,7 @@ public partial class Task
     [Column("assigned_by")]
     public ulong? AssignedBy { get; set; }
 
-    [Column("status", TypeName = "enum('pending','in_progress','awaiting_handover','returning','at_station','completed','canceled')")]
+    [Column("status", TypeName = "enum('pending','in_progress','awaiting_handover','returning','at_station','completed','canceled','failed')")]
     public string Status { get; set; } = null!;
 
     [Column("started_at", TypeName = "datetime")]

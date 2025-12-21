@@ -4,6 +4,8 @@ import * as signalR from "@microsoft/signalr";
 import { API_CONFIG } from "@/utils/apiConfig";
 import { updateStopStatus, updateTask, getTaskById } from "@/services/taskService";
 import { getAllRooms } from "@/services/roomService";
+import { getUnlockedCompartments } from "@/services/robotCompartmentService";
+import { useAuth } from "@/utils/authContext";
 import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
@@ -13,14 +15,13 @@ export default function RunTask() {
     const { taskId } = useParams();
     const navigate = useNavigate();
     const { toast, showToast } = useToast();
+    const { user } = useAuth();
 
     // ===================================
     // STATUS MAPPING (Tiếng Việt)
     // ===================================
     const statusMap = {
-        pending: "Chờ xử lý",
-        in_progress: "Đang xử lý",
-        awaiting_handover: "Chờ bàn giao",
+        pending: "Đang chờ xử lý",
         delivered: "Đã giao",
         skipped: "Bỏ qua",
         failed: "Thất bại",
@@ -68,10 +69,7 @@ export default function RunTask() {
     const [activeKey, setActiveKey] = useState("");
     const [remoteMode, setRemoteMode] = useState(false);
 
-    const [compartments, setCompartments] = useState([
-        { id: 1, label: "Hộp 1", state: "closed" },
-        { id: 2, label: "Hộp 2", state: "closed" },
-    ]);
+    const [compartments, setCompartments] = useState([]);
 
     // Task data
     const [taskInfo, setTaskInfo] = useState(null);
@@ -83,6 +81,11 @@ export default function RunTask() {
     // Task status check
     const [taskStatus, setTaskStatus] = useState(null); // Status của task để kiểm tra
     const [loadingTaskStatus, setLoadingTaskStatus] = useState(true); // Loading state để check status
+    const [taskError, setTaskError] = useState(null); // Error state để hiển thị lỗi
+    
+    // Countdown states
+    const [showCountdown, setShowCountdown] = useState(false);
+    const [countdown, setCountdown] = useState(10);
 
     // Trạng thái điểm dừng đang chọn (để cập nhật status)
     const [selectedStopStatus, setSelectedStopStatus] = useState("");
@@ -145,7 +148,31 @@ export default function RunTask() {
         async function loadTask() {
             try {
                 // Kiểm tra task status trước
-                const taskDetail = await getTaskById(taskId);
+                let taskDetail;
+                try {
+                    taskDetail = await getTaskById(taskId);
+                } catch (err) {
+                    // Nếu không tìm thấy task hoặc lỗi 403 (không có quyền)
+                    if (err.status === 403) {
+                        setTaskError({
+                            type: "forbidden",
+                            message: err.message || "Bạn không có quyền xem nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền."
+                        });
+                    } else if (err.status === 404) {
+                        setTaskError({
+                            type: "notfound",
+                            message: "Không tìm thấy nhiệm vụ này trong hệ thống."
+                        });
+                    } else {
+                        setTaskError({
+                            type: "error",
+                            message: err.message || "Không thể tải thông tin nhiệm vụ. Vui lòng thử lại sau."
+                        });
+                    }
+                    setLoadingTaskStatus(false);
+                    return;
+                }
+                
                 const currentStatus = taskDetail?.status?.toLowerCase()?.trim() || "";
                 setTaskStatus(currentStatus);
                 
@@ -157,11 +184,65 @@ export default function RunTask() {
                 }
                 
                 // Nếu status hợp lệ, tiếp tục load task info
-                const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`);
+                const res = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/run-info`, {
+                    headers: {
+                        "Authorization": `Bearer ${localStorage.getItem("token")?.replace(/^Bearer\s+/i, "")}`,
+                    },
+                });
+                
+                if (res.status === 403) {
+                    const errorData = await res.json().catch(() => ({ message: "Bạn không có quyền xem nhiệm vụ này." }));
+                    setTaskError({
+                        type: "forbidden",
+                        message: errorData.message || "Bạn không có quyền xem nhiệm vụ này. Chỉ người tạo nhiệm vụ hoặc admin mới có quyền."
+                    });
+                    setLoadingTaskStatus(false);
+                    // Tự động redirect sau 5 giây
+                    setTimeout(() => navigate("/dashboard"), 5000);
+                    return;
+                }
+                
+                if (res.status === 404) {
+                    setTaskError({
+                        type: "notfound",
+                        message: "Không tìm thấy nhiệm vụ này trong hệ thống."
+                    });
+                    setLoadingTaskStatus(false);
+                    // Tự động redirect sau 5 giây
+                    setTimeout(() => navigate("/dashboard"), 5000);
+                    return;
+                }
+                
+                if (!res.ok) {
+                    setTaskError({
+                        type: "error",
+                        message: "Không thể tải thông tin nhiệm vụ. Vui lòng thử lại sau."
+                    });
+                    setLoadingTaskStatus(false);
+                    return;
+                }
+                
                 const data = await res.json();
                 setTaskInfo(data);
                 setSelectedMapName(data.nameMapFE || data.mapName);
                 setStops(data.stops || []);
+
+                // Load compartments từ robot
+                if (data.robotId) {
+                    try {
+                        const comps = await getUnlockedCompartments(data.robotId);
+                        // Map compartments với state "closed" mặc định
+                        const compartmentsWithState = (comps || []).map(comp => ({
+                            id: comp.id,
+                            label: comp.compartmentCode || `Compartment ${comp.id}`,
+                            state: "closed"
+                        }));
+                        setCompartments(compartmentsWithState);
+                    } catch (compErr) {
+                        console.error("Không lấy được danh sách compartments:", compErr);
+                        setCompartments([]);
+                    }
+                }
 
                 // Load rooms theo mapId (giống RunMap)
                 let filteredRooms = [];
@@ -188,8 +269,11 @@ export default function RunTask() {
                 setLoadingTaskStatus(false);
             } catch (err) {
                 console.error("Lỗi load task:", err);
+                setTaskError({
+                    type: "error",
+                    message: err.message || "Không thể tải thông tin nhiệm vụ. Vui lòng thử lại sau."
+                });
                 setStatus("Không tải được nhiệm vụ");
-                showToast("error", err.message || "Không thể tải thông tin nhiệm vụ!");
                 setLoadingTaskStatus(false);
             }
         }
@@ -387,71 +471,56 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
           className: "custom-stop-marker",
           html: `
             <div style="
-              width: ${isSelected ? "44px" : "36px"};
-              height: ${isSelected ? "44px" : "36px"};
-              background: ${isSelected ? "#e74c3c" : "#27ae60"};
-              color: white;
-              border: 3px solid white;
-              border-radius: 50%;
               display: flex;
+              flex-direction: column;
               align-items: center;
-              justify-content: center;
-              font-weight: bold;
-              font-size: ${isSelected ? "18px" : "16px"};
-              box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+              text-align: center;
             ">
-              ${idx + 1}
+            ${stop.name ? `
+              <div style="
+                background: white;
+                color: #2c3e50;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: ${isSelected ? "11px" : "10px"};
+                font-weight: bold;
+                white-space: nowrap;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              ">
+                ${stop.name}
+              </div>
+            ` : ''}
+              <div style="
+                width: ${isSelected ? "32px" : "28px"};
+                height: ${isSelected ? "32px" : "28px"};
+                background: ${isSelected ? "#e74c3c" : "#27ae60"};
+                color: white;
+                border: 3px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: ${isSelected ? "14px" : "12px"};
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                margin-bottom: 2px;
+              ">
+                ${idx + 1}
+              </div>
+              
             </div>
           `,
-          iconSize: [isSelected ? 44 : 36, isSelected ? 44 : 36],
-          iconAnchor: [isSelected ? 22 : 18, isSelected ? 22 : 18],
+          iconSize: [isSelected ? 150 : 130, isSelected ? 60 : 50],
+          iconAnchor: [isSelected ? 75 : 65, isSelected ? 5 : 5],
         });
 
         L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 }).addTo(
           window.navMapMarkers
         );
       });
-
-      // === ĐIỂM ĐANG CHỌN: Dấu pin nhỏ hơn + tên đơn giản ===
-      if (highlightStop) {
-        const localX = highlightStop.x - originX;
-        const localY = highlightStop.y - originY;
-        const latlng = [localY, localX];
-
-        const selectedIcon = L.divIcon({
-          className: "selected-destination-marker",
-          html: `
-            <div style="
-              text-align: center;
-              font-weight: bold;
-              font-size: 14px;
-              color: #2c3e50;
-              background: white;
-              padding: 4px 8px;
-              border-radius: 6px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-              white-space: nowrap;
-              margin-bottom: 6px;
-            ">
-              ${highlightStop.name}
-            </div>
-            <div style="font-size: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-              📍
-            </div>
-          `,
-          iconSize: [80, 60],
-          iconAnchor: [40, 58],
-        });
-
-        if (destinationMarker.current) {
-          destinationMarker.current.setLatLng(latlng).setIcon(selectedIcon);
-        } else {
-          destinationMarker.current = L.marker(latlng, {
-            icon: selectedIcon,
-            zIndexOffset: 2000,
-          }).addTo(navMapRef.current);
-        }
-      }
     };
 
     img.onerror = (err) => {
@@ -896,41 +965,52 @@ async function sendEmergencyStop() {
         }
 
         try {
-            // Bước 1: Kích hoạt task trên server → chuyển status + robot
-            const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-            });
+            // Nếu task đang pending → gọi API start để kích hoạt task trước
+            // Nếu task đang in_progress → bỏ qua API start, chỉ gửi lệnh run_map
+            const isRestart = taskStatus === "in_progress";
+            
+            if (!isRestart) {
+                // Bước 1: Kích hoạt task trên server → chuyển status + robot
+                const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
 
-            if (!startRes.ok) {
-              const text = await startRes.text();
-              let message = "Không thể bắt đầu nhiệm vụ";
+                if (!startRes.ok) {
+                  const text = await startRes.text();
+                  let message = "Không thể bắt đầu nhiệm vụ";
 
-              try {
-                  const json = JSON.parse(text);
-                  message =
-                      json.message ||
-                      json.Message ||
-                      json.error ||
-                      json.Error ||
-                      json.title ||
-                      message;
-              } catch {
-                  if (text) message = text;
+                  try {
+                      const json = JSON.parse(text);
+                      message =
+                          json.message ||
+                          json.Message ||
+                          json.error ||
+                          json.Error ||
+                          json.title ||
+                          message;
+                  } catch {
+                      if (text) message = text;
+                  }
+
+                  throw new Error(message);
               }
+              
+              // Cập nhật taskStatus sau khi start thành công
+              setTaskStatus("in_progress");
+            }
 
-              throw new Error(message);
-          }
-
-            // 1️⃣ Gửi mode run_map cho robot
+            // Bước 2: Gửi lệnh run_map ngay sau khi API start thành công (hoặc nếu là restart)
             await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ mode: "run_map", mapName: selectedMapName }),
             });
 
-            // 2️⃣ Gửi câu thông báo cho robot đọc
-            const ttsText = `Robot bắt đầu chạy trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop.order}: ${selectedStop.name}`;
+            // Bước 3: Gửi câu thông báo cho robot đọc
+            const ttsText = isRestart
+                ? `Robot khởi động lại trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop?.order}: ${selectedStop?.name}`
+                : `Robot bắt đầu chạy trên bản đồ ${selectedMapName}, đang đi đến điểm dừng số ${selectedStop?.order}: ${selectedStop?.name}`;
 
             try {
                 await fetch(API_CONFIG.API_BASE1 + "/api/TTS", {
@@ -942,7 +1022,10 @@ async function sendEmergencyStop() {
                 console.error("Gửi TTS lỗi:", ttsErr);
             }
 
-            showToast("success", "Đã gửi lệnh bắt đầu chạy!");
+            // Bước 4: Hiển thị countdown 10s sau khi đã gửi tất cả lệnh
+            setShowCountdown(true);
+            setCountdown(10);
+            showToast("success", isRestart ? "Đã gửi lệnh khởi động lại! Đang đếm ngược..." : "Đã gửi lệnh bắt đầu chạy! Đang đếm ngược...");
         } catch (err) {
             console.error("Lỗi bắt đầu chạy:", err);
             showToast("error", err.message || "Không thể gửi lệnh bắt đầu chạy!");
@@ -1130,11 +1213,52 @@ async function sendEmergencyStop() {
         setConfirmTaskStatusModal(prev => ({ ...prev, loading: true }));
 
         try {
-            await updateTask(taskId, {
-                status: confirmTaskStatusModal.type,
-            });
+            // Nếu task đang in_progress, dùng API complete
+            // API complete sẽ tự động xác định task status:
+            // - Tất cả stops failed → task status = "failed"
+            // - Tất cả stops skipped → task status = "canceled"
+            // - Ngược lại → task status = "completed"
+            if (taskStatus === "in_progress") {
+                const response = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/complete`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" }
+                });
 
-            showToast("success", `Nhiệm vụ đã được đánh dấu là ${confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"}!`);
+                if (!response.ok) {
+                    // Xử lý cả trường hợp response là text hoặc JSON
+                    let errorMessage = "Không thể hoàn thành nhiệm vụ!";
+                    try {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            const error = await response.json();
+                            errorMessage = error.message || error.Message || errorMessage;
+                        } else {
+                            const text = await response.text();
+                            errorMessage = text || errorMessage;
+                        }
+                    } catch (parseErr) {
+                        console.error("Lỗi parse error response:", parseErr);
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Kiểm tra response có phải JSON không
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    await response.json(); // Đọc response để tránh warning
+                }
+
+                const statusText = confirmTaskStatusModal.type === "canceled" ? "bị hủy" : "thất bại";
+                showToast("success", `Nhiệm vụ đã được đánh dấu là ${statusText}!`);
+            } else {
+                // Nếu task đang pending, có thể dùng updateTask
+                await updateTask(taskId, {
+                    status: confirmTaskStatusModal.type,
+                });
+
+                showToast("success", `Nhiệm vụ đã được đánh dấu là ${confirmTaskStatusModal.type === "canceled" ? "Hủy bỏ" : "Thất bại"}!`);
+            }
+
             setConfirmTaskStatusModal({ show: false, type: null, loading: false });
             
             // Navigate về trang list task sau 1 giây
@@ -1449,6 +1573,25 @@ async function sendEmergencyStop() {
     };
   }, []);
 
+  // ===================================
+  // COUNTDOWN EFFECT
+  // ===================================
+  useEffect(() => {
+    if (!showCountdown) return;
+    
+    if (countdown === 0) {
+      // Khi countdown về 0, chỉ ẩn modal (lệnh đã được gửi trước đó)
+      setShowCountdown(false);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [showCountdown, countdown]);
+
     // ===================================
     // STATUS MAPPING (Tiếng Việt) cho UI chặn
     // ===================================
@@ -1466,6 +1609,64 @@ async function sendEmergencyStop() {
     // ===================================
     // RENDER
     // ===================================
+    // Error state - hiển thị khi có lỗi 404/403 hoặc lỗi khác
+    if (taskError) {
+        const isForbidden = taskError.type === "forbidden";
+        const isNotFound = taskError.type === "notfound";
+        
+        return (
+            <div className={styles.page}>
+                <div className="container-xl py-4">
+                    <div className="row justify-content-center">
+                        <div className="col-lg-11 col-xl-10">
+                            <div className={`${styles.glass} p-5 text-center`}>
+                                <div className="mb-4">
+                                    {isForbidden ? (
+                                        <i className="bi bi-shield-exclamation text-danger" style={{ fontSize: "4rem" }}></i>
+                                    ) : isNotFound ? (
+                                        <i className="bi bi-exclamation-circle text-warning" style={{ fontSize: "4rem" }}></i>
+                                    ) : (
+                                        <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: "4rem" }}></i>
+                                    )}
+                                </div>
+                                <h4 className="mb-3">
+                                    {isForbidden ? "Không có quyền truy cập" : 
+                                     isNotFound ? "Không tìm thấy nhiệm vụ" : 
+                                     "Lỗi tải nhiệm vụ"}
+                                </h4>
+                                <p className="text-muted mb-4">
+                                    {taskError.message}
+                                    {isForbidden && (
+                                        <>
+                                            <br />
+                                            <small>Chỉ người tạo nhiệm vụ hoặc admin mới có quyền truy cập trang này.</small>
+                                        </>
+                                    )}
+                                    {isNotFound && (
+                                        <>
+                                            <br />
+                                            <small>Nhiệm vụ có thể đã bị xóa hoặc không tồn tại trong hệ thống.</small>
+                                        </>
+                                    )}
+                                </p>
+                                <div className="d-flex gap-2 justify-content-center">
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => navigate("/dashboard")}
+                                        style={{ borderRadius: "5px" }}
+                                    >
+                                        <i className="bi bi-arrow-left me-2"></i>
+                                        Quay lại danh sách nhiệm vụ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // Loading state
     if (loadingTaskStatus) {
         return (
@@ -1526,6 +1727,55 @@ async function sendEmergencyStop() {
 
     return (
         <div className={styles.page}>
+            {/* Countdown Modal */}
+            {showCountdown && (
+                <div 
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 9999,
+                    }}
+                >
+                    <div 
+                        style={{
+                            background: "white",
+                            padding: "40px 60px",
+                            borderRadius: "20px",
+                            textAlign: "center",
+                            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                        }}
+                    >
+                        <div style={{ fontSize: "64px", marginBottom: "20px" }}>
+                            🚀
+                        </div>
+                        <h3 style={{ color: "#333", marginBottom: "15px", fontSize: "24px", fontWeight: "600" }}>
+                            Đang khởi động robot...
+                        </h3>
+                        <div 
+                            style={{
+                                fontSize: "48px",
+                                fontWeight: "bold",
+                                color: "#667eea",
+                                marginBottom: "10px",
+                                animation: "pulse 1s ease-in-out infinite",
+                            }}
+                        >
+                            {countdown}
+                        </div>
+                        <p style={{ color: "#666", fontSize: "16px", margin: 0 }}>
+                            Robot sẽ bắt đầu chạy sau {countdown} giây
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <Toast toast={toast} showToast={showToast} />
       <div className="container-xxl py-3">
         <div className="row g-3" style={{ height: "calc(100vh - 2rem)" }}>
@@ -1607,7 +1857,7 @@ async function sendEmergencyStop() {
                   >
                     <h6 className={styles.sectionTitle}>
                       <i className={`bi bi-chevron-${collapsedSections.audio ? 'down' : 'up'} me-1`}></i>
-                      Âm thanh (WebRTC)
+                      Cuộc gọi
                     </h6>
                   </div>
                   {!collapsedSections.audio && (
@@ -1615,14 +1865,14 @@ async function sendEmergencyStop() {
                       <div className="d-flex flex-column gap-2">
                     <button className={isCallActive ? styles.btnDanger : styles.btnSuccess} onClick={toggleWebRtcCall}>
                       <i className="bi bi-telephone-fill me-1"></i>
-                      {isCallActive ? "Tắt cuộc gọi WebRTC" : "Bật cuộc gọi WebRTC"}
+                      {isCallActive ? "Tắt cuộc gọi" : "Bật cuộc gọi"}
                     </button>
                   
-                    <small style={{ opacity: 0.8 }}>
+                    {/* <small style={{ opacity: 0.8 }}>
                       {webRtcStatus}<br />
                       {webMicStatus}<br />
                       {robotMicStatus}
-                    </small>
+                    </small> */}
                         <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: "none" }} />
                       </div>
                     </div>
@@ -1732,126 +1982,130 @@ async function sendEmergencyStop() {
                         onClick={startRunMap}
                         style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
                     >
-                        Bắt đầu chạy
+                        {taskStatus === "in_progress" ? "Khởi động lại" : "Bắt đầu chạy"}
                     </button>
 
-                    <button 
-                        className={`${styles.btnOutlinePrimary} mt-1 w-100`} 
-                        onClick={sendRoute}
-                        style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
-                    >
-                        Gửi vị trí muốn đến
-                    </button>
+                    {/* ⭐ CHỈ HIỂN THỊ KHI TASK ĐÃ BẮT ĐẦU (KHÔNG PHẢI PENDING) */}
+                    {taskStatus && taskStatus !== "pending" && (
+                        <>
+                            <button 
+                                className={`${styles.btnOutlinePrimary} mt-1 w-100`} 
+                                onClick={sendRoute}
+                                style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                            >
+                                Gửi vị trí muốn đến
+                            </button>
 
-                    {/* ⭐ NÚT VỀ TRẠM */}
-                    <button
-                        className={`${styles.btnSuccess} mt-1 w-100`}
-                        onClick={sendReturnToStation}
-                        style={{
-                            fontSize: "0.85rem",
-                            padding: "0.5rem 0.75rem",
-                            background: "linear-gradient(135deg, #28a745, #20c997)",
-                            border: "none",
-                        }}
-                    >
-                        <i className="bi bi-house-fill me-1"></i>
-                        Về trạm
-                    </button>
+                            {/* ⭐ NÚT VỀ TRẠM */}
+                            <button
+                                className={`${styles.btnSuccess} mt-1 w-100`}
+                                onClick={sendReturnToStation}
+                                style={{
+                                    fontSize: "0.85rem",
+                                    padding: "0.5rem 0.75rem",
+                                    background: "linear-gradient(135deg, #28a745, #20c997)",
+                                    border: "none",
+                                }}
+                            >
+                                <i className="bi bi-house-fill me-1"></i>
+                                Về trạm
+                            </button>
 
-                    {/* ⭐ NÚT DỪNG KHẨN CẤP */}
-                    <button
-                        className={`${styles.btnDanger} mt-1 w-100`}
-                        onClick={sendEmergencyStop}
-                        style={{
-                            fontSize: "0.85rem",
-                            padding: "0.5rem 0.75rem",
-                            background: "linear-gradient(135deg, #dc3545, #c82333)",
-                            border: "none",
-                        }}
-                    >
-                        <i className="bi bi-stop-circle-fill me-1"></i>
-                        Dừng khẩn cấp
-                    </button>
+                            {/* ⭐ NÚT DỪNG KHẨN CẤP */}
+                            <button
+                                className={`${styles.btnDanger} mt-1 w-100`}
+                                onClick={sendEmergencyStop}
+                                style={{
+                                    fontSize: "0.85rem",
+                                    padding: "0.5rem 0.75rem",
+                                    background: "linear-gradient(135deg, #dc3545, #c82333)",
+                                    border: "none",
+                                }}
+                            >
+                                <i className="bi bi-stop-circle-fill me-1"></i>
+                                Dừng khẩn cấp
+                            </button>
 
-                    {/* ⭐ NÚT HOÀN THÀNH - Chỉ hiển thị khi tất cả stops đã finished */}
-                    {areAllStopsFinished() && (
-                        <button
-                            className={`${styles.btnSuccess} mt-2 w-100`}
-                            onClick={handleShowCompleteModal}
-                            style={{
-                                fontSize: "0.9rem",
-                                padding: "0.6rem 0.75rem",
-                                background: "linear-gradient(135deg, #28a745, #20c997)",
-                                border: "none",
-                                fontWeight: "bold",
-                            }}
-                        >
-                            <i className="bi bi-check-circle-fill me-1"></i>
-                            Hoàn thành
-                        </button>
-                    )}
+                            {/* ⭐ NÚT HOÀN THÀNH - Chỉ hiển thị khi tất cả stops đã finished */}
+                            {areAllStopsFinished() && (
+                                <button
+                                    className={`${styles.btnSuccess} mt-2 w-100`}
+                                    onClick={handleShowCompleteModal}
+                                    style={{
+                                        fontSize: "0.9rem",
+                                        padding: "0.6rem 0.75rem",
+                                        background: "linear-gradient(135deg, #28a745, #20c997)",
+                                        border: "none",
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    <i className="bi bi-check-circle-fill me-1"></i>
+                                    Hoàn thành
+                                </button>
+                            )}
 
-                    {selectedStop && (
-                        <div className={`${styles.destinationInfo} mt-1`} style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
-                            <div><strong>{selectedStop.name}</strong></div>
-                            <div>Map: {selectedMapName}</div>
-                            <div>X: {selectedStop.x.toFixed(2)} | Y: {selectedStop.y.toFixed(2)}</div>
-                            {selectedStop.assignmentStatus && (
-                                <div className="mt-1">
-                                    <small>
-                                        Trạng thái:{" "}
-                                        <span
-                                            style={{
-                                                padding: "2px 6px",
-                                                borderRadius: "4px",
-                                                background: selectedStop.assignmentStatus === "delivered" ? "#2ecc71" : "#bdc3c7",
-                                                color: "white",
-                                                fontWeight: "bold",
-                                                fontSize: "0.7rem"
-                                            }}
-                                        >
-                                            {getStatusText(selectedStop.assignmentStatus)}
-                                        </span>
-                                    </small>
+                            {selectedStop && (
+                                <div className={`${styles.destinationInfo} mt-1`} style={{ padding: "0.5rem", fontSize: "0.75rem" }}>
+                                    <div><strong>{selectedStop.name}</strong></div>
+                                    <div>Map: {selectedMapName}</div>
+                                    <div>X: {selectedStop.x.toFixed(2)} | Y: {selectedStop.y.toFixed(2)}</div>
+                                    {selectedStop.assignmentStatus && (
+                                        <div className="mt-1">
+                                            <small>
+                                                Trạng thái:{" "}
+                                                <span
+                                                    style={{
+                                                        padding: "2px 6px",
+                                                        borderRadius: "4px",
+                                                        background: selectedStop.assignmentStatus === "delivered" ? "#2ecc71" : "#bdc3c7",
+                                                        color: "white",
+                                                        fontWeight: "bold",
+                                                        fontSize: "0.7rem"
+                                                    }}
+                                                >
+                                                    {getStatusText(selectedStop.assignmentStatus)}
+                                                </span>
+                                            </small>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
                   </div>
                 </div>
 
-                {/* Xác nhận trạng thái điểm dừng - QUAN TRỌNG, luôn hiển thị */}
-                <div className={styles.collapsibleSection}>
-                    <h6 className={styles.sectionTitle}>Xác nhận trạng thái điểm dừng</h6>
-                    <div className={styles.sectionContent}>
-                        <div className="d-flex gap-2 mt-1">
-                            <select
-                                className={styles.formSelect}
-                                value={selectedStopStatus}
-                                onChange={(e) => setSelectedStopStatus(e.target.value)}
-                                style={{ flex: 1, fontSize: "0.85rem", padding: "0.4rem 0.6rem" }}
-                                disabled={selectedStop?.assignmentStatus === "delivered"}
-                            >
-                                <option value="">-- Chọn trạng thái --</option>
-                                <option value="pending">Chờ xử lý</option>
-                                <option value="in_progress">Đang xử lý</option>
-                                <option value="awaiting_handover">Chờ bàn giao</option>
-                                <option value="delivered">Đã giao</option>
-                                <option value="skipped">Bỏ qua</option>
-                                <option value="failed">Thất bại</option>
-                            </select>
+                {/* Xác nhận trạng thái điểm dừng - CHỈ HIỂN THỊ KHI TASK ĐÃ BẮT ĐẦU */}
+                {taskStatus && taskStatus !== "pending" && (
+                    <div className={styles.collapsibleSection}>
+                        <h6 className={styles.sectionTitle}>Xác nhận trạng thái điểm dừng</h6>
+                        <div className={styles.sectionContent}>
+                            <div className="d-flex gap-2 mt-1">
+                                <select
+                                    className={styles.formSelect}
+                                    value={selectedStopStatus}
+                                    onChange={(e) => setSelectedStopStatus(e.target.value)}
+                                    style={{ flex: 1, fontSize: "0.85rem", padding: "0.4rem 0.6rem" }}
+                                    disabled={selectedStop?.assignmentStatus === "delivered"}
+                                >
+                                    <option value="pending">Đang chờ xử lý</option>
+                                    <option value="delivered">Đã giao</option>
+                                    <option value="skipped">Bỏ qua</option>
+                                    <option value="failed">Thất bại</option>
+                                </select>
 
-                            <button
-                                className={styles.btnSuccess}
-                                onClick={handleUpdateSelectedStopStatus}
-                                disabled={selectedStop?.assignmentStatus === "delivered"}
-                                style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem" }}
-                            >
-                                Cập nhật
-                            </button>
+                                <button
+                                    className={styles.btnSuccess}
+                                    onClick={handleUpdateSelectedStopStatus}
+                                    disabled={selectedStop?.assignmentStatus === "delivered"}
+                                    style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem" }}
+                                >
+                                    Cập nhật
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Logs - Collapsible */}
                 <div className={`${styles.collapsibleSection} flex-grow-1`}>

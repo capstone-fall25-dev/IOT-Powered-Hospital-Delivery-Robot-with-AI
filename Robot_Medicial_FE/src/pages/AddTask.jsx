@@ -49,7 +49,6 @@ export default function AddTask() {
   const [destinations, setDestinations] = useState([]);
   const [patients, setPatients] = useState([]);
   const [categories, setCategories] = useState([]);
-  const MAX_STOPS = 10;
 
   const [form, setForm] = useState({
     mapId: "",
@@ -61,6 +60,11 @@ export default function AddTask() {
 
   const [baseCompartments, setBaseCompartments] = useState([]);
   const [showFloatingAddButton, setShowFloatingAddButton] = useState(false);
+
+  // Số điểm dừng tối đa = tổng số ngăn chứa của robot (từ robot data)
+  // Lấy từ robots array vì mỗi robot có compartments array
+  const selectedRobot = robots.find(r => r.id === Number(form.robotId));
+  const MAX_STOPS = selectedRobot?.compartments?.length || 0;
 
   const canAddStop = form.robotId;
   
@@ -330,8 +334,20 @@ export default function AddTask() {
   // ADD STOP
   // ============================================================
   function addStop() {
+    if (!form.robotId) {
+      showToast("warning", "Vui lòng chọn robot trước khi thêm điểm dừng.");
+      return;
+    }
+
+    if (MAX_STOPS === 0) {
+      showToast("warning", "Robot này không có ngăn chứa nào.");
+      return;
+    }
+
     if (form.taskStops.length >= MAX_STOPS) {
-      showToast("warning", "Chỉ được tối đa 10 điểm dừng cho mỗi nhiệm vụ.");
+      const selectedRobot = robots.find(r => r.id === Number(form.robotId));
+      const robotName = selectedRobot ? `${selectedRobot.name} (${selectedRobot.code})` : `Robot ID ${form.robotId}`;
+      showToast("warning", `Robot ${robotName} có ${MAX_STOPS} ngăn chứa. Chỉ được tối đa ${MAX_STOPS} điểm dừng.`);
       return;
     }
 
@@ -741,7 +757,20 @@ export default function AddTask() {
               <hr className={styles.divider} />
 
               {/* ADD STOP */}
-              <div className="text-end mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  {form.robotId && MAX_STOPS > 0 && (
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      Robot có <strong>{MAX_STOPS}</strong> ngăn chứa
+                      {form.taskStops.length > 0 && (
+                        <span className="ms-2">
+                          (Đã thêm: {form.taskStops.length}/{MAX_STOPS})
+                        </span>
+                      )}
+                    </small>
+                  )}
+                </div>
                 <button
                   className={styles.btnAddStop}
                   onClick={addStop}
@@ -992,8 +1021,8 @@ export default function AddTask() {
         <button
           className={styles.btnAddStopFloating}
           onClick={addStop}
-          disabled={!canAddStop}
-          title="Thêm điểm dừng"
+          disabled={!canAddStop || form.taskStops.length >= MAX_STOPS}
+          title={form.taskStops.length >= MAX_STOPS ? `Đã đạt tối đa ${MAX_STOPS} điểm dừng` : "Thêm điểm dừng"}
         >
           <i className="bi bi-plus-circle"></i>
         </button>

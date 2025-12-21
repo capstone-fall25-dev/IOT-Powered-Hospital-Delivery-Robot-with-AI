@@ -745,7 +745,7 @@ CREATE TABLE `tasks` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `robot_id` bigint unsigned NOT NULL,
   `assigned_by` bigint unsigned DEFAULT NULL,
-  `status` enum('pending','in_progress','awaiting_handover','returning','at_station','completed','canceled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `status` enum('pending','in_progress','awaiting_handover','returning','at_station','completed','canceled','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `started_at` datetime DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
   `total_duration_s` int DEFAULT NULL,
