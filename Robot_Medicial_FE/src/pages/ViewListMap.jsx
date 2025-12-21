@@ -43,6 +43,11 @@ export default function ProjectMapListView() {
   const [isRobotModalOpen, setIsRobotModalOpen] = useState(false);
   const [selectedRobotId, setSelectedRobotId] = useState(null);
 
+  // 🔹 State cho countdown modal
+const [showCountdown, setShowCountdown] = useState(false);
+const [countdown, setCountdown] = useState(10);
+
+
   const navigate = useNavigate();
 
   // ==========================================================
@@ -97,6 +102,28 @@ export default function ProjectMapListView() {
     }
     fetchMaps();
   }, []);
+
+  // ==========================================================
+// 🕐 useEffect xử lý countdown và navigation
+// ==========================================================
+useEffect(() => {
+  let timer;
+  
+  if (showCountdown && countdown > 0) {
+    timer = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+  } else if (showCountdown && countdown === 0) {
+    // Khi countdown = 0, chuyển trang
+    navigate(`/create-map?robotId=${selectedRobotId}`);
+  }
+
+  // Cleanup để tránh memory leak
+  return () => {
+    if (timer) clearTimeout(timer);
+  };
+}, [showCountdown, countdown, selectedRobotId, navigate]);
+
 
   // ==========================================================
   // 2️⃣ Load YAML info (resolution, originX, originY, …)
@@ -518,36 +545,42 @@ export default function ProjectMapListView() {
   }
 
   // ==========================================================
-  // 🧩 XÁC NHẬN TẠO MAP SAU KHI ĐÃ CHỌN ROBOT
-  // ==========================================================
-  async function handleConfirmCreateMap() {
-    if (!selectedRobotId) {
-      showToast(
-        "warning",
-        "⚠️ Vui lòng chọn một robot đang ở trạm trước khi tạo bản đồ!"
-      );
-      return;
-    }
-
-    try {
-      await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "mapping",
-          robotId: Number(selectedRobotId),
-        }),
-      });
-
-      showToast("success", "🚀 Robot bắt đầu mapping!");
-
-      setIsRobotModalOpen(false);
-      // truyền robotId sang trang create-map (nếu cần dùng)
-      navigate(`/create-map?robotId=${selectedRobotId}`);
-    } catch (err) {
-      showToast("error", "❌ Lỗi mapping: " + (err?.message || "Không xác định"));
-    }
+// 🧩 XÁC NHẬN TẠO MAP SAU KHI ĐÃ CHỌN ROBOT
+// ==========================================================
+async function handleConfirmCreateMap() {
+  if (!selectedRobotId) {
+    showToast(
+      "warning",
+      "⚠️ Vui lòng chọn một robot đang ở trạm trước khi tạo bản đồ!"
+    );
+    return;
   }
+
+  try {
+    // Gửi API mode mapping
+    await fetch(API_CONFIG.API_BASE1 + "/api/RobotMode/SendMode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "mapping",
+        robotId: Number(selectedRobotId),
+      }),
+    });
+
+    showToast("success", "🚀 Robot bắt đầu mapping!");
+
+    // Đóng modal chọn robot
+    setIsRobotModalOpen(false);
+    
+    // Hiển thị modal countdown
+    setShowCountdown(true);
+    setCountdown(10); // Reset countdown về 10
+
+  } catch (err) {
+    showToast("error", "❌ Lỗi mapping: " + (err?.message || "Không xác định"));
+  }
+}
+
 
   function handleCloseRobotModal() {
     setIsRobotModalOpen(false);
@@ -872,8 +905,63 @@ export default function ProjectMapListView() {
           </div>
         </div>
       )}
+{/* ================ MODAL COUNTDOWN ================ */}
+{showCountdown && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1060, // Cao hơn modal robot (1050)
+    }}
+  >
+    <div
+      style={{
+        background: "white",
+        padding: "40px 60px",
+        borderRadius: "20px",
+        textAlign: "center",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+      }}
+    >
+      <div style={{ fontSize: "64px", marginBottom: "20px" }}>
+        🗺️
+      </div>
+      <h3
+        style={{
+          color: "#333",
+          marginBottom: "15px",
+          fontSize: "24px",
+          fontWeight: "600",
+        }}
+      >
+        Đang chuẩn bị mapping...
+      </h3>
+      <div
+        style={{
+          fontSize: "48px",
+          fontWeight: "bold",
+          color: "var(--teal-dark, #0d9488)",
+          marginBottom: "10px",
+          animation: "pulse 1s ease-in-out infinite",
+        }}
+      >
+        {countdown}
+      </div>
+      <p style={{ color: "#666", fontSize: "16px", margin: 0 }}>
+        Chuyển đến trang tạo bản đồ sau {countdown} giây
+      </p>
+    </div>
+  </div>
+)}
 
-      <Toast toast={toast} showToast={showToast} />
+<Toast toast={toast} showToast={showToast} />
     </div>
   );
 }

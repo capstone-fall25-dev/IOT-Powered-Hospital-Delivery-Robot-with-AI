@@ -350,4 +350,20 @@
         font-size: 0.75rem;
         padding: 0.4rem 0.8rem;
     }
+
+    
+}
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.pulseAnimation {
+  animation: pulse 1s ease-in-out infinite;
 }

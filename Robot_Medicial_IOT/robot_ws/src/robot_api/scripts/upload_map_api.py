@@ -17,8 +17,8 @@ class MapUploader(Node):
 
         # === Path to your map files ===
         pkg_share = get_package_share_directory("robot_navigation")
-        yaml_path = os.path.join(pkg_share,"map" ,'T06.yaml')
-        pgm_path = os.path.join(pkg_share,"map" ,'T06.pgm')
+        yaml_path = os.path.join(pkg_share,"map" ,'okeroiday.yaml')
+        pgm_path = os.path.join(pkg_share,"map" ,'okeroiday.pgm')
 
         self.get_logger().info(f"Reading map YAML: {yaml_path}")
 

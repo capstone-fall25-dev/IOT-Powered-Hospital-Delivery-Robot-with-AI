@@ -458,70 +458,72 @@ async function loadNavigationMap(mapId, stops, highlightStop, rooms = []) {
         });
       }
 
-      // === VẼ TẤT CẢ ĐIỂM DỪNG ===
-      stops.forEach((stop, idx) => {
-        const localX = stop.x - originX;
-        const localY = stop.y - originY;
-        const latlng = [localY, localX];
+    // === VẼ TẤT CẢ ĐIỂM DỪNG ===
+stops.forEach((stop, idx) => {
+  const localX = stop.x - originX;
+  const localY = stop.y - originY;
+  const latlng = [localY, localX];
 
-        const isSelected =
-          highlightStop && stop.order === highlightStop.order;
+  const isSelected =
+    highlightStop && stop.order === highlightStop.order;
 
-        const icon = L.divIcon({
-          className: "custom-stop-marker",
-          html: `
-            <div style="
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              text-align: center;
-            ">
-            ${stop.name ? `
-              <div style="
-                background: white;
-                color: #2c3e50;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-size: ${isSelected ? "11px" : "10px"};
-                font-weight: bold;
-                white-space: nowrap;
-                box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-                max-width: 120px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              ">
-                ${stop.name}
-              </div>
-            ` : ''}
-              <div style="
-                width: ${isSelected ? "32px" : "28px"};
-                height: ${isSelected ? "32px" : "28px"};
-                background: ${isSelected ? "#e74c3c" : "#27ae60"};
-                color: white;
-                border: 3px solid white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: ${isSelected ? "14px" : "12px"};
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                margin-bottom: 2px;
-              ">
-                ${idx + 1}
-              </div>
-              
-            </div>
-          `,
-          iconSize: [isSelected ? 150 : 130, isSelected ? 60 : 50],
-          iconAnchor: [isSelected ? 75 : 65, isSelected ? 5 : 5],
-        });
+  const icon = L.divIcon({
+    className: "custom-stop-marker",
+    html: `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      ">
+      ${stop.name ? `
+        <div style="
+          background: white;
+          color: #2c3e50;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: ${isSelected ? "11px" : "10px"};
+          font-weight: bold;
+          white-space: nowrap;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+          max-width: 120px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 2px;
+        ">
+          ${stop.name}
+        </div>
+      ` : ''}
+        <div style="
+          width: ${isSelected ? "32px" : "28px"};
+          height: ${isSelected ? "32px" : "28px"};
+          background: ${isSelected ? "#e74c3c" : "#27ae60"};
+          color: white;
+          border: 3px solid white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: ${isSelected ? "14px" : "12px"};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">
+          ${idx + 1}
+        </div>
+      </div>
+    `,
+    iconSize: [isSelected ? 150 : 130, isSelected ? 60 : 50],
+    iconAnchor: [isSelected ? 75 : 65, isSelected ? 45 : 40], // ⭐ THAY ĐỔI Ở ĐÂY
+  });
 
-        L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 }).addTo(
-          window.navMapMarkers
-        );
-      });
+  L.marker(latlng, { icon, zIndexOffset: isSelected ? 1000 : 500 }).addTo(
+    window.navMapMarkers
+  );
+});
+
     };
+    
+    
 
     img.onerror = (err) => {
       console.error("Không tải được ảnh bản đồ, dùng map_error.jpg:", err);
