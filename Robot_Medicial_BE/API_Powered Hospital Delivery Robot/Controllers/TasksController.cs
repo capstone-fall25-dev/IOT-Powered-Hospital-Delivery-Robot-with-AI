@@ -10,7 +10,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _service;
@@ -288,7 +288,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// <summary>
         /// Lấy ID của nhân viên hiện tại từ token
         /// </summary>
-        private ulong GetCurrentUserId()
+         private ulong GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(claim =>
                 claim.Type == ClaimTypes.NameIdentifier ||
@@ -305,7 +305,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// <summary>
         /// Lấy role của nhân viên hiện tại từ token
         /// </summary>
-         private string GetCurrentUserRole()
+        private string GetCurrentUserRole()
         {
             var roleClaim = User.FindFirst(claim =>
                 claim.Type == ClaimTypes.Role ||
