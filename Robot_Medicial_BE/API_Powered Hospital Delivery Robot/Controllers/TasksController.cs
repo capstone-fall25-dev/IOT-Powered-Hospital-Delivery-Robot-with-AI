@@ -10,6 +10,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _service;
