@@ -721,7 +721,7 @@ export default function RobotTaskDashboard() {
                       <td>
                         <div className="d-flex gap-1 justify-content-end">
                           {/* Nút hủy - chỉ hiển thị khi task chưa bắt đầu (pending), chưa hoàn thành và chưa bị hủy */}
-                          {t.statusRaw && t.statusRaw !== "completed" && t.statusRaw !== "canceled" && (
+                          {t.statusRaw && t.statusRaw !== "completed" && t.statusRaw !== "canceled" && t.statusRaw !== "failed" && (
                             <button
                               className="btn btn-sm btn-danger"
                               onClick={() => setCancelModal({ show: true, taskId: t.id, reason: "", loading: false })}
@@ -733,7 +733,7 @@ export default function RobotTaskDashboard() {
                           )}
                           
                           {/* Nút theo dõi - không hiển thị khi task đã hủy hoặc đã hoàn thành */}
-                          {t.statusRaw !== "canceled" && t.statusRaw !== "completed" && (
+                          {t.statusRaw !== "canceled" && t.statusRaw !== "completed" && t.statusRaw !== "failed" && (
                             <button
                               className={styles.btnSecondary}
                               onClick={() => navigate(`/run-task/${t.id}`)}
