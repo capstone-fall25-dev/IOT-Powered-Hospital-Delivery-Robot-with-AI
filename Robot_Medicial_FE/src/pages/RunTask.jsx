@@ -10,6 +10,7 @@ import useToast from "@/hooks/useToast";
 import Toast from "@/components/Toast";
 import styles from "@/assets/styles/robotLiveConsole.module.css";
 import mapErrorImage from "@/assets/image/map_error.jpg";
+import { apiFetch } from "@/services/api";
 
 export default function RunTask() {
     const { taskId } = useParams();
@@ -1196,30 +1197,9 @@ async function sendEmergencyStop() {
             
             if (!isRestart) {
                 // Bước 1: Kích hoạt task trên server → chuyển status + robot
-                const startRes = await fetch(`${API_CONFIG.API_BASE}/Tasks/${taskId}/start`, {
+                await apiFetch(`/Tasks/${taskId}/start`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
                 });
-
-                if (!startRes.ok) {
-                  const text = await startRes.text();
-                  let message = "Không thể bắt đầu nhiệm vụ";
-
-                  try {
-                      const json = JSON.parse(text);
-                      message =
-                          json.message ||
-                          json.Message ||
-                          json.error ||
-                          json.Error ||
-                          json.title ||
-                          message;
-                  } catch {
-                      if (text) message = text;
-                  }
-
-                  throw new Error(message);
-              }
               
               // Cập nhật taskStatus sau khi start thành công
               setTaskStatus("in_progress");

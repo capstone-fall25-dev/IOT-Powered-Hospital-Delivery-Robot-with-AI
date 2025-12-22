@@ -1,5 +1,6 @@
 using API_Powered_Hospital_Delivery_Robot.Models.DTOs;
 using API_Powered_Hospital_Delivery_Robot.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,7 +11,7 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class TasksController : ControllerBase
     {
         private readonly ITaskService _service;
