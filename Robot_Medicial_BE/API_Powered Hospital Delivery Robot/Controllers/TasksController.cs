@@ -304,13 +304,13 @@ namespace API_Powered_Hospital_Delivery_Robot.Controllers
         /// <summary>
         /// Lấy role của nhân viên hiện tại từ token
         /// </summary>
-        private string GetCurrentUserRole()
+         private string GetCurrentUserRole()
         {
             var roleClaim = User.FindFirst(claim =>
                 claim.Type == ClaimTypes.Role ||
                 claim.Type == "role");
 
-            return roleClaim?.Value ?? "user";
+            return roleClaim?.Value ?? "pharmacist"; // Default role nếu không tìm thấy
         }
     }
 }
