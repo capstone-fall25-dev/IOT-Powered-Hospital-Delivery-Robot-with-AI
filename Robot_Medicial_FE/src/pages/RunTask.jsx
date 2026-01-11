@@ -397,6 +397,53 @@ export default function RunTask() {
         rooms?.length         // Chỉ dùng length để tránh reference thay đổi
     ]);
 
+    // ===================================
+    // AUTO SEND ROUTE KHI CHỌN STOP MỚI
+    // ===================================
+    useEffect(() => {
+        // Chỉ gửi route nếu:
+        // 1. Task đã bắt đầu (in_progress)
+        // 2. Có selectedStop
+        // 3. Stop chưa được delivered
+        if (taskStatus !== "in_progress" || !selectedStop || selectedStop.assignmentStatus === "delivered") {
+            return;
+        }
+
+        // Delay một chút để tránh gửi nhiều lần liên tiếp
+        const timeout = setTimeout(async () => {
+            try {
+                const payload = {
+                    type: "destination_route",
+                    map_id: taskInfo.mapId,
+                    timestamp: new Date().toISOString(),
+                    destinations: [{
+                        order: selectedStop.order,
+                        id: selectedStop.destinationId,
+                        name: selectedStop.name,
+                        x: selectedStop.x,
+                        y: selectedStop.y,
+                    }],
+                };
+                
+                const response = await fetch(`${API_CONFIG.API_BASE}/Destinations/send-route`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    console.log("✅ [AUTO] Đã gửi route tới điểm dừng:", selectedStop.name);
+                } else {
+                    console.error("❌ [AUTO] Gửi route thất bại:", response.status);
+                }
+            } catch (err) {
+                console.error("❌ [AUTO] Lỗi gửi route tự động:", err);
+            }
+        }, 300); // Delay 300ms
+
+        return () => clearTimeout(timeout);
+    }, [selectedStop?.stopId, taskStatus, taskInfo?.mapId]);
+
 // ===================================
 // NAVIGATION MAP + MARKERS
 // ===================================
@@ -1365,15 +1412,14 @@ async function sendEmergencyStop() {
                 return;
             }
 
-            // === (2) Nếu stop đã delivered → AUTO NEXT STOP
+            // === (2) Nếu stop đã delivered → KHÔNG TỰ ĐỘNG CHUYỂN STOP
+            // Giữ vị trí hiện tại, để user chủ động chọn stop tiếp theo
             const currentIndex = data.stops.findIndex(s => s.stopId === updated.stopId);
             const isLastStop = currentIndex === data.stops.length - 1;
 
             if (!isLastStop) {
-                const nextStop = data.stops[currentIndex + 1];
-                setSelectedStop(nextStop);
-                setSelectedStopStatus(nextStop.assignmentStatus || "");
-                showToast("info", `Điểm dừng #${updated.order} đã giao — chuyển sang điểm #${nextStop.order}`);
+                // Không tự động chuyển, chỉ thông báo
+                showToast("info", `Điểm dừng #${updated.order} đã giao — Chọn điểm dừng tiếp theo để tiếp tục`);
                 return;
             }
 
@@ -2227,12 +2273,25 @@ async function sendEmergencyStop() {
                     {/* ⭐ CHỈ HIỂN THỊ KHI TASK ĐÃ BẮT ĐẦU (KHÔNG PHẢI PENDING) */}
                     {taskStatus && taskStatus !== "pending" && (
                         <>
+                            <div style={{ 
+                                marginTop: "8px", 
+                                padding: "6px 8px", 
+                                borderRadius: "4px", 
+                                background: "rgba(13, 110, 253, 0.05)",
+                                fontSize: "0.8rem",
+                                color: "#0d6efd",
+                                fontWeight: 500
+                            }}>
+                                <i className="bi bi-info-circle me-1"></i>
+                                Route sẽ được gửi tự động khi chọn điểm dừng
+                            </div>
+
                             <button 
-                                className={`${styles.btnOutlinePrimary} mt-1 w-100`} 
+                                className={`${styles.btnOutlinePrimary} mt-2 w-100`} 
                                 onClick={sendRoute}
                                 style={{ fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
                             >
-                                Gửi vị trí muốn đến
+                                Gửi lại vị trí (nếu robot không di chuyển)
                             </button>
 
                             {/* ⭐ NÚT VỀ TRẠM */}
